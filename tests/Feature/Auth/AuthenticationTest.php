@@ -41,6 +41,51 @@ test('vendors are redirected to the vendor dashboard after login', function () {
     $this->assertAuthenticatedAs($user);
 });
 
+test('inactive users can not authenticate using the login screen', function () {
+    $user = User::factory()->inactive()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response->assertSessionHasErrorsIn('email');
+
+    $this->assertGuest();
+});
+
+test('pending vendors are redirected to the customer storefront after login', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('shop.home', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+});
+
+test('rejected vendors are redirected to the customer storefront after login', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->rejected()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('shop.home', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+});
+
 test('admins are redirected to the admin dashboard after login', function () {
     $user = User::factory()->admin()->create();
 

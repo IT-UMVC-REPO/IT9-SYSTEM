@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Enums\VendorStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -89,9 +90,36 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === $expectedRole;
     }
 
+    public function canAccessMarketplaceRole(UserRole|string $role): bool
+    {
+        $expectedRole = $role instanceof UserRole ? $role : UserRole::from($role);
+
+        return $this->effectiveMarketplaceRole() === $expectedRole;
+    }
+
+    public function effectiveMarketplaceRole(): UserRole
+    {
+        if ($this->role === UserRole::Admin) {
+            return UserRole::Admin;
+        }
+
+        if ($this->role === UserRole::Vendor || $this->vendorProfile !== null) {
+            return $this->hasApprovedVendorProfile()
+                ? UserRole::Vendor
+                : UserRole::Customer;
+        }
+
+        return UserRole::Customer;
+    }
+
+    public function hasApprovedVendorProfile(): bool
+    {
+        return $this->vendorProfile?->status === VendorStatus::Approved;
+    }
+
     public function homeRoute(): string
     {
-        return match ($this->role) {
+        return match ($this->effectiveMarketplaceRole()) {
             UserRole::Admin => 'admin.dashboard',
             UserRole::Vendor => 'vendor.dashboard',
             UserRole::Customer => 'shop.home',

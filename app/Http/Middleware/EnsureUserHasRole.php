@@ -35,7 +35,7 @@ class EnsureUserHasRole
                 return $mappedRole;
             });
 
-        if (! $allowedRoles->contains(fn (UserRole $role): bool => $user->hasMarketplaceRole($role))) {
+        if (! $allowedRoles->contains(fn (UserRole $role): bool => $user->canAccessMarketplaceRole($role))) {
             return new RedirectResponse(route($user->homeRoute()));
         }
 
