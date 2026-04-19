@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ShopController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -15,7 +15,8 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'role:customer'])->prefix('shop')->group(function () {
-    Route::get('/', [CustomerController::class, 'index'])->name('shop.home');
+    Route::get('/', [ShopController::class, 'index'])->name('shop.home');
+    Route::get('/products/{product}', [ShopController::class, 'show'])->name('shop.products.show');
 });
 
 Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->group(function () {

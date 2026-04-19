@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -70,5 +71,33 @@ class Product extends Model
     {
         return $this->belongsToMany(Order::class, 'order_items')
             ->withPivot(['quantity', 'unit_price']);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('status', ProductStatus::Active);
+    }
+
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        $searchTerm = trim((string) $term);
+
+        if ($searchTerm === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $builder) use ($searchTerm): void {
+            $builder
+                ->where('name', 'like', "%{$searchTerm}%")
+                ->orWhere('description', 'like', "%{$searchTerm}%");
+        });
+    }
+
+    public function scopeVisibleToCustomers(Builder $query): Builder
+    {
+        return $query
+            ->active()
+            ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved())
+            ->with(['vendor.user', 'category']);
     }
 }
