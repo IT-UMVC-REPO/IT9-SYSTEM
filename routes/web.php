@@ -1,12 +1,13 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\VendorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', [LandingPageController::class, 'index'])->name('home');
 
 Route::middleware('auth')->group(function () {
     Route::get('dashboard', function (Request $request) {

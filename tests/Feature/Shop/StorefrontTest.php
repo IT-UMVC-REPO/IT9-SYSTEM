@@ -26,7 +26,7 @@ test('authenticated customers can view the storefront', function () {
     $response = $this->actingAs($customer)->get(route('shop.home'));
 
     $response->assertOk()
-        ->assertSee('Fresh from the palengke')
+        ->assertSee('A brighter market floor for your next suki run.')
         ->assertSee($product->name)
         ->assertSee($vendor->store_name)
         ->assertSee($category->name);

@@ -1,9 +1,14 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
+        <x-auth-header :title="__('Create your SukiMarket account')" :description="__('Register to access the customer storefront and follow the next marketplace features as they launch.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
+
+        <div class="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+            <span class="font-semibold">This form creates a customer account.</span>
+            Vendor access is enabled separately after admin approval.
+        </div>
 
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
@@ -59,9 +64,9 @@
             </div>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
+        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-neutral-500">
             <span>{{ __('Already have an account?') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('Log in') }}</flux:link>
+            <flux:link :href="route('login')" wire:navigate class="font-semibold">{{ __('Log in') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>
