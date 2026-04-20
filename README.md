@@ -23,11 +23,11 @@
 
 ## 1. Team Roles
 
-| Person | Alias | Responsibility |
-|---|---|---|
-| **Trisha Mae Llano** | `???` | ??? |
-| **Kate Kryztel Valdez** | `???` | ??? |
-| **Joshua Miguel Moran** | `???` | ??? |
+| Person | Responsibility |
+|---|---|
+| **Trisha Mae Llano** | ??? |
+| **Kate Kryztel Valdez** | ??? |
+| **Joshua Miguel Moran** | ??? |
 
 > **Lead rule:** ?? reviews and merges all PRs into `develop`. No one merges their own PR.
 
