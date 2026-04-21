@@ -24,7 +24,7 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     $response->assertOk()
         ->assertSee('SukiMarket')
         ->assertSee($expectedLabel)
-        ->assertSee('Home')
+        ->assertDontSee('Home')
         ->assertSee('Settings');
 })->with([
     'customer' => [

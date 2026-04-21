@@ -96,7 +96,7 @@
                     </div>
                 </div>
 
-                <div class="relative hidden h-[520px] items-center justify-center lg:flex">
+                <div class="relative hidden h-130 items-center justify-center lg:flex">
                     @if ($featuredVendor)
                         <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72">
                             <div class="flex items-start justify-between gap-4">
@@ -291,7 +291,7 @@
                 </div>
 
                 <div class="mt-14 grid gap-6 xl:grid-cols-3">
-                    <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
+                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer storefront</h3>
                         <p class="mt-4 text-sm leading-7 text-emerald-100">A welcoming storefront for discovering products, comparing stalls, and browsing the market with confidence.</p>
@@ -300,14 +300,14 @@
                         </a>
                     </article>
 
-                    <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg">
+                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shop"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor dashboard</h3>
                         <p class="mt-4 text-sm leading-7 text-amber-100">A digital stall presence designed for sellers who want their products and store identity presented clearly online.</p>
                         <a href="#features" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100">See the experience</a>
                     </article>
 
-                    <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-neutral-800 to-neutral-950 p-10 text-white shadow-lg">
+                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-neutral-800 to-neutral-950 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shield-halved"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Admin panel</h3>
                         <p class="mt-4 text-sm leading-7 text-neutral-200">A marketplace control layer for keeping storefront quality, seller visibility, and platform trust organized.</p>
@@ -346,15 +346,11 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="flex flex-col items-center justify-between gap-6 sm:flex-row">
                     <div class="flex items-center gap-3">
-                        <span class="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-sm">S</span>
-                        <span>
-                            <span class="brand-serif block font-bold text-neutral-900">SukiMarket</span>
-                            <span class="block text-[11px] uppercase tracking-[0.28em] text-neutral-400">Academic prototype</span>
-                        </span>
+                       <x-app-logo class="h-8 w-auto" />
                     </div>
 
                     <p class="max-w-xl text-center text-xs leading-6 text-neutral-400">
-                        A marketplace prototype inspired by the Filipino wet market experience and shaped around local trust, freshness, and familiar buying habits.
+                        A digital marketplace inspired by the Filipino wet market experience and shaped around local trust, freshness, and familiar buying habits.
                     </p>
 
                     <div class="flex items-center gap-5 text-xs text-neutral-400">
@@ -364,7 +360,7 @@
                 </div>
 
                 <div class="mt-8 border-t border-stone-200 pt-6 text-center text-xs text-neutral-400">
-                    &copy; {{ date('Y') }} SukiMarket. Built for IT Professional Track 3.
+                    &copy; {{ date('Y') }} SukiMarket. All rights reserved.
                 </div>
             </div>
         </footer>

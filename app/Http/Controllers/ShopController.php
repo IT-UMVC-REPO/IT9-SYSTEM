@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\VendorProfile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -40,11 +42,23 @@ class ShopController extends Controller
             ->orderBy('name')
             ->get();
 
+        $popularVendors = VendorProfile::query()
+            ->approved()
+            ->withCount(['products as active_products_count' => function ($q) {
+                $q->where('status', ProductStatus::Active);
+            }])
+            ->with('user:id,name')
+            ->having('active_products_count', '>', 0)
+            ->orderByDesc('approved_at')
+            ->limit(6)
+            ->get();
+
         return view('pages.shop.home', [
             'categories' => $categories,
             'products' => $products,
             'searchTerm' => $searchTerm,
             'selectedCategory' => $selectedCategory > 0 ? $selectedCategory : null,
+            'popularVendors' => $popularVendors,
         ]);
     }
 

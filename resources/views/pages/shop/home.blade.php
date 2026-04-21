@@ -12,45 +12,125 @@
         };
     @endphp
 
-    <section class="relative min-h-[420px] overflow-hidden border-b border-emerald-900/10 bg-gradient-to-br from-lime-300 via-emerald-500 to-green-900 text-white">
-        <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgb(255_255_255_/_0.24),_transparent_52%)]"></div>
-        <div class="pointer-events-none absolute -left-20 top-10 h-56 w-56 rounded-full bg-white/12 blur-3xl"></div>
-        <div class="pointer-events-none absolute bottom-0 right-[-4rem] h-72 w-72 rounded-full bg-lime-200/20 blur-3xl"></div>
+    <section class="relative min-h-[420px] overflow-hidden border-b border-emerald-900/10 text-white">
+        {{-- Full-bleed hero background --}}
+        <div class="absolute inset-0 z-0">
+            {{-- The actual palengke photo --}}
+            <img
+                src="https://static.tripzilla.ph/media/98742/conversions/Palengke-Tips-w1024.webp"
+                alt=""
+                aria-hidden="true"
+                class="h-full w-full object-cover object-center"
+            >
+            {{-- Left-side gradient: fully opaque emerald, fades to transparent going right --}}
+            {{-- This covers the text area completely, revealing the image on the right --}}
+            <div class="absolute inset-0"
+                style="background: linear-gradient(
+                    to right,
+                    #059669 0%,
+                    #059669 30%,
+                    rgba(5,150,105,0.85) 45%,
+                    rgba(5,150,105,0.4) 65%,
+                    rgba(5,150,105,0.1) 80%,
+                    transparent 100%
+                );"></div>
+            {{-- Top + bottom vignette so the image edges don't look raw --}}
+            <div class="absolute inset-0"
+                style="background: linear-gradient(
+                    to bottom,
+                    rgba(0,0,0,0.18) 0%,
+                    transparent 25%,
+                    transparent 75%,
+                    rgba(0,0,0,0.25) 100%
+                );"></div>
+        </div>
+        <div class="pointer-events-none absolute inset-y-0 right-0 z-10 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgb(255_255_255_/_0.24),_transparent_52%)]"></div>
+        <div class="pointer-events-none absolute -left-20 top-10 z-10 h-56 w-56 rounded-full bg-white/12 blur-3xl"></div>
+        <div class="pointer-events-none absolute bottom-0 right-[-4rem] z-10 h-72 w-72 rounded-full bg-lime-200/20 blur-3xl"></div>
 
-        <div class="mx-auto grid max-w-[1500px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:px-8 lg:py-16">
-            <div class="max-w-3xl">
+        <div class="relative z-10 mx-auto max-w-[1500px] px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+            <div class="max-w-2xl">
                 <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50">
                     <i class="fa-solid fa-store"></i>
                     Customer storefront
                 </span>
 
-                <h1 class="brand-serif mt-6 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+                <h1 class="brand-serif mt-6 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl" style="text-shadow: 0 1px 3px rgba(0,0,0,0.2);">
                     A brighter market floor for your next suki run.
                 </h1>
 
                 <p class="mt-5 max-w-2xl text-base leading-8 text-emerald-50/90">
                     Browse approved stalls, scan live listings faster, and move through the catalog in a storefront that feels open, welcoming, and easy to explore.
                 </p>
-
-            </div>
-
-            <div class="relative hidden h-full min-h-[320px] xl:block">
-                <div class="absolute inset-0 overflow-hidden rounded-3xl">
-                    <img
-                        src="https://static.tripzilla.ph/media/98742/conversions/Palengke-Tips-w1024.webp"
-                        alt="Filipino wet market"
-                        class="h-full w-full object-cover object-center"
-                    >
-                    <div class="absolute inset-0 bg-gradient-to-r from-green-700/60 via-transparent to-transparent"></div>
-                    <div class="absolute bottom-4 left-4 right-4">
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">
-                            Your local palengke, online
-                        </p>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
+
+    @if ($popularVendors->isNotEmpty())
+        <div class="border-b border-stone-200 bg-white">
+            <div class="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 lg:px-8">
+                <div class="mb-6 flex items-end justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">
+                            Marketplace
+                        </p>
+                        <h2 class="brand-serif mt-1 text-2xl font-bold text-neutral-900">
+                            Popular vendors this week
+                        </h2>
+                    </div>
+                    <a href="{{ route('shop.home') }}"
+                        class="hidden text-sm font-medium text-emerald-700 hover:underline sm:block">
+                        Browse all &rarr;
+                    </a>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    @foreach ($popularVendors as $vendor)
+                        <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-emerald-200 hover:shadow-md">
+                            {{-- Dummy follow button --}}
+                            <button
+                                type="button"
+                                aria-label="Follow {{ $vendor->store_name }}"
+                                class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-400 transition hover:border-rose-300 hover:text-rose-500"
+                                onclick="this.classList.toggle('!text-rose-500'); this.classList.toggle('!border-rose-400'); this.classList.toggle('!bg-rose-50');"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126
+                                        -4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75
+                                        3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                                </svg>
+                            </button>
+
+                            {{-- Vendor avatar / initials --}}
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-base font-bold text-emerald-700">
+                                {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
+                            </div>
+
+                            {{-- Store info --}}
+                            <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900">
+                                {{ $vendor->store_name }}
+                            </p>
+                            <p class="mt-1 flex-1 line-clamp-2 text-xs leading-5 text-neutral-400">
+                                {{ $vendor->store_description }}
+                            </p>
+
+                            {{-- Footer stat --}}
+                            <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3">
+                                <span class="text-xs font-semibold text-emerald-700">
+                                    {{ $vendor->active_products_count }}
+                                </span>
+                                <span class="text-xs text-stone-400">
+                                    {{ Str::plural('listing', $vendor->active_products_count) }}
+                                </span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <section class="grid gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
