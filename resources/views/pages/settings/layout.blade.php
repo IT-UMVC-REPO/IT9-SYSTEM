@@ -9,7 +9,7 @@
 
     <flux:separator class="md:hidden" />
 
-    <div class="flex-1 self-stretch max-md:pt-6">
+    <div class="flex-1 self-stretch max-md:pt-6 rounded-2xl bg-white/80 backdrop-blur-sm border border-stone-200/60 p-6 shadow-sm">
         <flux:heading>{{ $heading ?? '' }}</flux:heading>
         <flux:subheading>{{ $subheading ?? '' }}</flux:subheading>
 

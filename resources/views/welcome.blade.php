@@ -19,13 +19,7 @@
 
         <header class="sticky top-0 z-50 border-b border-stone-200 bg-stone-50/90 backdrop-blur-md">
             <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-                <a href="{{ route('home') }}" class="flex items-center gap-3">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-sm">S</span>
-                    <span class="min-w-0">
-                        <span class="brand-serif block text-lg font-bold text-neutral-900">SukiMarket</span>
-                        <span class="block text-[11px] uppercase tracking-[0.28em] text-neutral-400">Digital palengke</span>
-                    </span>
-                </a>
+                <x-app-logo href="{{ route('home') }}" />
 
                 <ul class="hidden items-center gap-8 text-sm font-medium text-neutral-500 md:flex">
                     <li><a href="#features" class="transition hover:text-emerald-700">Features</a></li>
@@ -65,14 +59,12 @@
             </nav>
         </header>
 
-            <div class="pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full bg-emerald-100 blur-3xl"></div>
-            <div class="pointer-events-none absolute -left-10 bottom-0 h-72 w-72 rounded-full bg-amber-100 blur-3xl"></div>
-        <section class="relative overflow-hidden py-2 lg:py-8">
+        <div class="pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full bg-emerald-100 blur-3xl"></div>
+        <div class="pointer-events-none absolute -left-10 bottom-0 h-72 w-72 rounded-full bg-amber-100 blur-3xl"></div>
 
+        <section class="relative overflow-hidden py-2 lg:py-8">
             <div class="mx-auto grid max-w-7xl items-center gap-16 px-4 sm:px-6 lg:grid-cols-2">
                 <div class="max-w-2xl">
-                    
-
                     <h1 class="brand-serif mt-6 text-5xl font-bold leading-tight tracking-tight text-neutral-900 sm:text-6xl">
                         Fresh from the palengke,
                         <span class="text-emerald-600">with your suki still in view.</span>
@@ -175,8 +167,6 @@
                             </p>
                         </div>
                     @endif
-
-                   
                 </div>
             </div>
         </section>
@@ -204,46 +194,46 @@
                 </div>
 
                 <div class="mt-16 grid gap-8 lg:grid-cols-3">
-                    <article class="group rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
-                            <i class="fa-solid fa-store text-xl"></i>
+                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                        <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
+                            style="background-image: url('https://cdn.shopify.com/s/files/1/0423/3674/7669/files/2_fruit_600x600.png?v=1695048744');">
                         </div>
-                        <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">Fresh finds</p>
-                        <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Browse the market with ease</h3>
-                        <p class="mt-3 text-sm leading-7 text-neutral-500">Explore produce, seafood, meat, and pantry staples through a clean storefront built around how people already shop in the palengke.</p>
-                        <ul class="mt-5 space-y-3 text-sm text-neutral-500">
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Keyword and category browsing</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Clear prices and stock visibility</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Dedicated product pages for each listing</span></li>
-                        </ul>
+                        <div class="relative z-10">
+                            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
+                                <i class="fa-solid fa-store text-xl"></i>
+                            </div>
+                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">Fresh finds</p>
+                            <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Browse the market with ease</h3>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500">Explore produce, seafood, meat, and pantry staples through a clean storefront built around how people already shop in the palengke.</p>
+                        </div>
                     </article>
 
-                    <article class="group rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 transition group-hover:scale-105">
-                            <i class="fa-solid fa-shop text-xl"></i>
+                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                        <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
+                            style="background-image: url('https://static.tripzilla.ph/media/98778/conversions/Palengke-tips-buying-veggies-w768.webp');">
                         </div>
-                        <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Trusted stalls</p>
-                        <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Know the vendor behind the listing</h3>
-                        <p class="mt-3 text-sm leading-7 text-neutral-500">Each storefront carries its own name, identity, and product selection so shoppers can recognize the people behind the goods they browse.</p>
-                        <ul class="mt-5 space-y-3 text-sm text-neutral-500">
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Recognizable store identity</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Visible seller and product details</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>A cleaner way to discover local vendors</span></li>
-                        </ul>
+                        <div class="relative z-10">
+                            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 transition group-hover:scale-105">
+                                <i class="fa-solid fa-shop text-xl"></i>
+                            </div>
+                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-amber-600">Trusted stalls</p>
+                            <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Know the vendor behind the listing</h3>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500">Each storefront carries its own name, identity, and product selection so shoppers can recognize the people behind the goods they browse.</p>
+                        </div>
                     </article>
 
-                    <article class="group rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition group-hover:scale-105">
-                            <i class="fa-solid fa-heart text-xl"></i>
+                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                        <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
+                            style="background-image: url('https://www.bulatlat.com/wp-content/uploads/2022/11/market-evelyn-eleazar-840x560.png');">
                         </div>
-                        <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">Suki spirit</p>
-                        <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Keep the market relationship alive</h3>
-                        <p class="mt-3 text-sm leading-7 text-neutral-500">SukiMarket is built around familiarity and trust, turning neighborhood market habits into a more organized digital experience.</p>
-                        <ul class="mt-5 space-y-3 text-sm text-neutral-500">
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Warm, community-first branding</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>Designed for repeat shopper trust</span></li>
-                            <li class="flex items-start gap-3"><i class="fa-solid fa-circle-check mt-1 text-xs text-emerald-600"></i><span>The familiar rhythm of your local market</span></li>
-                        </ul>
+                        <div class="relative z-10">
+                            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition group-hover:scale-105">
+                                <i class="fa-solid fa-heart text-xl"></i>
+                            </div>
+                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">Suki spirit</p>
+                            <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">Keep the market relationship alive</h3>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500">SukiMarket is built around familiarity and trust, turning neighborhood market habits into a more organized digital experience.</p>
+                        </div>
                     </article>
                 </div>
             </div>
@@ -302,7 +292,6 @@
 
                 <div class="mt-14 grid gap-6 xl:grid-cols-3">
                     <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
-                        <div class="absolute -bottom-10 -right-8 h-40 w-40 rounded-full bg-white/5"></div>
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer storefront</h3>
                         <p class="mt-4 text-sm leading-7 text-emerald-100">A welcoming storefront for discovering products, comparing stalls, and browsing the market with confidence.</p>
@@ -312,7 +301,6 @@
                     </article>
 
                     <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg">
-                        <div class="absolute -bottom-10 -right-8 h-40 w-40 rounded-full bg-white/5"></div>
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shop"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor dashboard</h3>
                         <p class="mt-4 text-sm leading-7 text-amber-100">A digital stall presence designed for sellers who want their products and store identity presented clearly online.</p>
@@ -320,7 +308,6 @@
                     </article>
 
                     <article class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-neutral-800 to-neutral-950 p-10 text-white shadow-lg">
-                        <div class="absolute -bottom-10 -right-8 h-40 w-40 rounded-full bg-white/5"></div>
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shield-halved"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Admin panel</h3>
                         <p class="mt-4 text-sm leading-7 text-neutral-200">A marketplace control layer for keeping storefront quality, seller visibility, and platform trust organized.</p>
@@ -330,27 +317,8 @@
             </div>
         </section>
 
-        <section class="border-y border-stone-200 bg-white py-14">
-            <div class="mx-auto max-w-5xl px-4 text-center sm:px-6">
-                <p class="text-sm font-semibold uppercase tracking-[0.28em] text-neutral-400">Marketplace values</p>
-                <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 sm:text-4xl">Why SukiMarket feels familiar.</h2>
-                <p class="mx-auto mt-4 max-w-2xl text-sm leading-7 text-neutral-500">
-                    It is shaped around the same things people already value in the palengke: clarity, trust, and the comfort of knowing who you buy from.
-                </p>
-
-                <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-                    <span class="brand-badge px-5 py-3 text-sm font-semibold text-neutral-700"><i class="fa-solid fa-file-lines text-emerald-600"></i> Clear product details</span>
-                    <span class="brand-badge px-5 py-3 text-sm font-semibold text-neutral-700"><i class="fa-solid fa-shop text-emerald-600"></i> Recognizable vendor identity</span>
-                    <span class="brand-badge px-5 py-3 text-sm font-semibold text-neutral-700"><i class="fa-solid fa-seedling text-emerald-600"></i> Local market-inspired design</span>
-                </div>
-            </div>
-        </section>
-
         <section class="bg-neutral-950 py-24">
             <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
-                <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-500/15 text-emerald-400">
-                    <i class="fa-solid fa-leaf text-2xl"></i>
-                </span>
                 <h2 class="brand-serif mt-6 text-4xl font-bold text-white sm:text-5xl">Explore the customer storefront today.</h2>
                 <p class="mt-5 text-lg leading-8 text-neutral-300">
                     Step into a cleaner digital palengke with real storefronts, strong vendor identity, and a warm market-first browsing experience.

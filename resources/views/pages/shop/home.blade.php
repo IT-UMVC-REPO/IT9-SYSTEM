@@ -12,12 +12,12 @@
         };
     @endphp
 
-    <section class="relative overflow-hidden border-b border-emerald-900/10 bg-gradient-to-br from-lime-300 via-emerald-500 to-green-900 text-white">
+    <section class="relative min-h-[420px] overflow-hidden border-b border-emerald-900/10 bg-gradient-to-br from-lime-300 via-emerald-500 to-green-900 text-white">
         <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgb(255_255_255_/_0.24),_transparent_52%)]"></div>
         <div class="pointer-events-none absolute -left-20 top-10 h-56 w-56 rounded-full bg-white/12 blur-3xl"></div>
         <div class="pointer-events-none absolute bottom-0 right-[-4rem] h-72 w-72 rounded-full bg-lime-200/20 blur-3xl"></div>
 
-        <div class="mx-auto grid max-w-[1500px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] lg:px-8 lg:py-16">
+        <div class="mx-auto grid max-w-[1500px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:px-8 lg:py-16">
             <div class="max-w-3xl">
                 <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50">
                     <i class="fa-solid fa-store"></i>
@@ -32,53 +32,20 @@
                     Browse approved stalls, scan live listings faster, and move through the catalog in a storefront that feels open, welcoming, and easy to explore.
                 </p>
 
-                <div class="mt-8 flex flex-wrap gap-3">
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white">
-                        <i class="fa-solid fa-circle-check text-emerald-100"></i>
-                        Approved stalls only
-                    </span>
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white">
-                        <i class="fa-solid fa-grip text-emerald-100"></i>
-                        Roomier listing grid
-                    </span>
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white">
-                        <i class="fa-solid fa-thumbtack text-emerald-100"></i>
-                        Sticky filters and quick links
-                    </span>
-                </div>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">Live listings</p>
-                    <p class="mt-3 text-3xl font-semibold text-white">{{ $products->total() }}</p>
-                    <p class="mt-2 text-sm leading-6 text-emerald-50/85">Fresh picks that are ready to browse right now.</p>
-                </div>
-
-                <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">Open aisles</p>
-                    <p class="mt-3 text-3xl font-semibold text-white">{{ $categories->count() }}</p>
-                    <p class="mt-2 text-sm leading-6 text-emerald-50/85">Categories with visible products from approved sellers.</p>
-                </div>
-
-                <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm sm:col-span-2">
-                    <div class="flex items-start gap-3">
-                        <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-white">
-                            <i class="fa-solid fa-sliders"></i>
-                        </span>
-                        <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">Browsing mode</p>
-                            <p class="mt-2 text-sm leading-6 text-emerald-50/90">{{ $filterSummary }}</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <span class="rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold text-white">
-                            {{ $selectedCategoryName ?? 'All categories' }}
-                        </span>
-                        <span class="rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold text-white">
-                            {{ $searchTerm !== '' ? 'Search: '.$searchTerm : 'No keyword filter' }}
-                        </span>
+            <div class="relative hidden h-full min-h-[320px] xl:block">
+                <div class="absolute inset-0 overflow-hidden rounded-3xl">
+                    <img
+                        src="https://static.tripzilla.ph/media/98742/conversions/Palengke-Tips-w1024.webp"
+                        alt="Filipino wet market"
+                        class="h-full w-full object-cover object-center"
+                    >
+                    <div class="absolute inset-0 bg-gradient-to-r from-green-700/60 via-transparent to-transparent"></div>
+                    <div class="absolute bottom-4 left-4 right-4">
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">
+                            Your local palengke, online
+                        </p>
                     </div>
                 </div>
             </div>
@@ -87,115 +54,89 @@
 
     <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <section class="grid gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
-            <aside class="self-start xl:sticky xl:top-24">
-                <div class="space-y-5">
-                    <form method="GET" action="{{ route('shop.home') }}" class="brand-panel p-6">
-                        <div class="flex items-center gap-3">
-                            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                                <i class="fa-solid fa-sliders text-lg"></i>
-                            </span>
-                            <div>
-                                <h2 class="text-sm font-semibold text-neutral-900">Filter the market</h2>
-                                <p class="text-xs leading-5 text-neutral-400">Search the live catalog and jump straight into the right aisle.</p>
-                            </div>
-                        </div>
+            <aside class="self-start scrollbar-none xl:sticky xl:top-[76px] xl:max-h-[calc(100vh-76px)] xl:overflow-y-auto">
+                <form method="GET" action="{{ route('shop.home') }}"
+                    class="brand-panel space-y-5 p-5">
 
-                        <div class="mt-6 space-y-4">
-                            <label class="block">
-                                <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">Keyword</span>
-                                <input
-                                    type="search"
-                                    name="search"
-                                    value="{{ $searchTerm }}"
-                                    placeholder="Try ampalaya or seafood"
-                                    class="brand-input"
-                                >
-                            </label>
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                            Search
+                        </label>
+                        <input
+                            type="search"
+                            name="search"
+                            value="{{ $searchTerm }}"
+                            placeholder="Try ampalaya or seafood"
+                            class="brand-input"
+                        >
+                    </div>
 
-                            <label class="block">
-                                <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">Category</span>
-                                <select name="category" class="brand-select">
-                                    <option value="">All categories</option>
-                                    @foreach ($categories as $category)
-                                        <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>
-                                            {{ $category->name }} ({{ $category->products_count }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </label>
-                        </div>
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                            Category
+                        </label>
+                        <select name="category" class="brand-select">
+                            <option value="">All categories</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                        <div class="mt-6 flex flex-col gap-2">
-                            <button type="submit" class="brand-button-primary w-full">Apply filters</button>
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                            Max price (PHP)
+                        </label>
+                        <select name="max_price" class="brand-select">
+                            <option value="">Any price</option>
+                            <option value="50" @selected(request('max_price') == '50')>Under &#8369;50</option>
+                            <option value="100" @selected(request('max_price') == '100')>Under &#8369;100</option>
+                            <option value="200" @selected(request('max_price') == '200')>Under &#8369;200</option>
+                            <option value="500" @selected(request('max_price') == '500')>Under &#8369;500</option>
+                            <option value="1000" @selected(request('max_price') == '1000')>Under &#8369;1,000</option>
+                        </select>
+                    </div>
 
-                            @if ($searchTerm !== '' || $selectedCategory !== null)
-                                <a href="{{ route('shop.home') }}" class="brand-button-secondary w-full">
-                                    Clear filters
-                                </a>
-                            @endif
-                        </div>
-                    </form>
+                    <div>
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                            Sort by
+                        </label>
+                        <select name="sort" class="brand-select">
+                            <option value="" @selected(! request('sort'))>Recently added</option>
+                            <option value="price_asc" @selected(request('sort') === 'price_asc')>Price: low to high</option>
+                            <option value="price_desc" @selected(request('sort') === 'price_desc')>Price: high to low</option>
+                            <option value="name_asc" @selected(request('sort') === 'name_asc')>Name: A&ndash;Z</option>
+                        </select>
+                    </div>
 
-                    @if ($categories->isNotEmpty())
-                        <div class="brand-panel p-6">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <h2 class="text-sm font-semibold text-neutral-900">Quick aisle links</h2>
-                                    <p class="mt-1 text-xs leading-5 text-neutral-400">Pin yourself to the busiest categories in one tap.</p>
-                                </div>
-                                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                    {{ $categories->count() }} live
-                                </span>
-                            </div>
-
-                            <ul class="mt-5 space-y-2">
-                                @foreach ($categories as $category)
-                                    <li>
-                                        <a
-                                            href="{{ route('shop.home', array_filter(['category' => $category->id, 'search' => $searchTerm])) }}"
-                                            class="flex items-center justify-between gap-3 rounded-[1.25rem] border px-4 py-3 text-sm font-medium transition {{ $selectedCategory === $category->id ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-stone-200 text-neutral-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700' }}"
-                                        >
-                                            <span class="truncate">{{ $category->name }}</span>
-                                            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-neutral-400 shadow-sm">
-                                                {{ $category->products_count }}
-                                            </span>
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                </div>
+                    <div class="flex flex-col gap-2 pt-1">
+                        <button type="submit" class="brand-button-primary w-full">Search</button>
+                        @if ($searchTerm !== '' || $selectedCategory !== null || request('max_price') || request('sort'))
+                            <a href="{{ route('shop.home') }}" class="brand-button-secondary w-full text-center">
+                                Clear filters
+                            </a>
+                        @endif
+                    </div>
+                </form>
             </aside>
 
             <section>
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="max-w-3xl">
-                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
-                            {{ $searchTerm !== '' || $selectedCategory !== null ? 'Filtered market picks' : 'Live market picks' }}
-                        </p>
-                        <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 sm:text-4xl">Fresh finds with room to browse</h2>
-                        <p class="mt-3 text-sm leading-7 text-neutral-500">
-                            {{ $products->total() }} customer-visible product{{ $products->total() === 1 ? '' : 's' }} from approved stalls, laid out in a cleaner catalog that is easier to scan on mobile and desktop.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-wrap gap-2">
-                        <span class="brand-badge px-4 py-2 text-sm text-neutral-700">
-                            <i class="fa-solid fa-layer-group text-emerald-600"></i>
-                            {{ $products->count() }} on this page
-                        </span>
-                        @if ($selectedCategoryName)
-                            <span class="brand-badge px-4 py-2 text-sm text-neutral-700">
-                                <i class="fa-solid fa-tag text-emerald-600"></i>
-                                {{ $selectedCategoryName }}
-                            </span>
-                        @endif
-                    </div>
+                <div class="mb-6 flex items-center justify-between">
+                    <p class="text-sm font-semibold text-stone-500">
+                        {{ $products->total() }} {{ Str::plural('product', $products->total()) }}
+                        {{ $selectedCategoryName ? 'in '.$selectedCategoryName : 'available' }}
+                    </p>
+                    @if ($searchTerm !== '' || $selectedCategory !== null)
+                        <a href="{{ route('shop.home') }}" class="text-sm text-emerald-700 hover:underline">
+                            Clear filters
+                        </a>
+                    @endif
                 </div>
 
                 @if ($products->isNotEmpty())
-                    <div class="mt-8 grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                    <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($products as $product)
                             <article class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                                 <a href="{{ route('shop.products.show', $product) }}" class="block">
@@ -255,7 +196,7 @@
                         </div>
                     @endif
                 @else
-                    <div class="brand-panel mt-8 px-6 py-14 text-center">
+                    <div class="brand-panel px-6 py-14 text-center">
                         <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400">
                             <i class="fa-solid fa-magnifying-glass text-xl"></i>
                         </span>

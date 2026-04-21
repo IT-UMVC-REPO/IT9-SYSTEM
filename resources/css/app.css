@@ -171,3 +171,82 @@ select:focus[data-flux-control] {
 .brand-float-b {
     animation: brand-float-b 6s ease-in-out infinite 1s;
 }
+
+.brand-panel [data-flux-label] {
+    color: var(--color-zinc-900) !important;
+}
+
+.brand-panel [data-flux-control] {
+    color: var(--color-zinc-900) !important;
+    background-color: #fff !important;
+    border-color: var(--color-zinc-200) !important;
+}
+
+.brand-panel [data-flux-error] {
+    color: #dc2626 !important;
+}
+
+.brand-panel [data-flux-description] {
+    color: var(--color-zinc-500) !important;
+}
+
+.brand-panel [data-flux-heading],
+.brand-panel [data-flux-subheading],
+.brand-panel [data-flux-text] {
+    color: var(--color-zinc-900) !important;
+}
+
+.brand-panel a {
+    color: #059669;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-none {
+    scrollbar-width: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: #a8c5a0;
+    border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: #059669; }
+* { scrollbar-width: thin; scrollbar-color: #a8c5a0 transparent; }
+
+/* Settings page - force Flux components into light mode regardless of system theme */
+.settings-page [data-flux-label],
+.settings-page [data-flux-heading],
+.settings-page [data-flux-subheading],
+.settings-page [data-flux-text] {
+    color: #1c1917 !important;
+}
+
+.settings-page [data-flux-control] {
+    color: #1c1917 !important;
+    background-color: #ffffff !important;
+    border-color: #d6d3d1 !important;
+}
+
+.settings-page [data-flux-control]::placeholder {
+    color: #a8a29e !important;
+}
+
+.settings-page [data-flux-error] {
+    color: #dc2626 !important;
+}
+
+.settings-page [data-flux-navlist-item] {
+    color: #44403c !important;
+}
+
+.settings-page [data-flux-navlist-item][aria-current="page"],
+.settings-page [data-flux-navlist-item][data-current],
+.settings-page [data-flux-navlist-item]:hover {
+    color: #059669 !important;
+    background-color: #f0fdf4 !important;
+}

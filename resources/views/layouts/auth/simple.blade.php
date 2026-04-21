@@ -18,34 +18,30 @@
                         </span>
                     </a>
 
-                    <div class="relative z-10 max-w-xl">
-                        <span class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-200">
-                            <i class="fa-solid fa-store"></i>
-                            Customer portal
-                        </span>
-                        <h1 class="brand-serif mt-6 text-5xl font-bold leading-tight">
-                            Fresh market finds, one familiar place.
+                    <div class="relative z-10">
+                        <p class="mb-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-400">
+                            The Filipino wet market, online
+                        </p>
+                        <h1 class="brand-serif mb-5 text-5xl font-bold leading-tight text-white">
+                            Your suki,<br>wherever you are.
                         </h1>
-                        <p class="mt-5 text-base leading-8 text-neutral-300">
-                            Browse approved vendors today with the same branding and storefront language you see on the public homepage. Vendor onboarding remains admin-reviewed as the next modules roll out.
+                        <p class="max-w-sm text-base leading-8 text-neutral-300">
+                            Browse fresh produce, seafood, and everyday market staples from verified local vendors — all in one familiar, easy-to-navigate storefront.
                         </p>
                     </div>
 
-                    <div class="relative z-10 grid gap-4 sm:grid-cols-2">
-                        <div class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-200">
-                                <i class="fa-solid fa-circle-check"></i>
-                            </span>
-                            <h2 class="mt-4 text-lg font-semibold text-white">Storefront live now</h2>
-                            <p class="mt-2 text-sm leading-6 text-neutral-300">Search, browse, and inspect approved listings from the customer portal.</p>
+                    <div class="relative z-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+                        <div>
+                            <p class="text-2xl font-bold text-white">3</p>
+                            <p class="mt-1 text-xs leading-5 text-neutral-400">User roles supported</p>
                         </div>
-
-                        <div class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400/15 text-amber-200">
-                                <i class="fa-solid fa-user-shield"></i>
-                            </span>
-                            <h2 class="mt-4 text-lg font-semibold text-white">Seller access reviewed</h2>
-                            <p class="mt-2 text-sm leading-6 text-neutral-300">Registration stays customer-first while vendor approval continues through admin review.</p>
+                        <div>
+                            <p class="text-2xl font-bold text-white">100%</p>
+                            <p class="mt-1 text-xs leading-5 text-neutral-400">Verified vendors only</p>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-white">Free</p>
+                            <p class="mt-1 text-xs leading-5 text-neutral-400">To browse and order</p>
                         </div>
                     </div>
                 </section>

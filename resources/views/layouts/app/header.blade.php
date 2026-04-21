@@ -34,16 +34,20 @@
         ];
     @endphp
     <body class="brand-shell min-h-screen text-neutral-800 antialiased">
-        <header class="sticky top-0 z-50 border-b border-stone-200/90 bg-stone-50/95 backdrop-blur-md">
-            <nav class="mx-auto flex max-w-[1500px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-                <x-app-logo href="{{ $primaryItem['route'] }}" wire:navigate class="shrink-0" />
+        <header class="sticky top-0 z-50 border-b border-[#e7e5e4] bg-white/95 backdrop-blur-md">
+            <nav class="mx-auto flex h-[52px] max-w-[1500px] items-stretch gap-4 px-4 sm:px-6 lg:px-8">
+                <div class="flex shrink-0 items-center">
+                    <x-app-logo href="{{ $primaryItem['route'] }}" wire:navigate class="shrink-0" />
+                </div>
 
-                <div class="hidden items-center gap-2 xl:ml-4 lg:flex">
+                <div class="hidden flex-1 items-stretch justify-center lg:flex">
                     @foreach ($navigationItems as $item)
+                        @continue($item['pattern'] === 'home')
+
                         <a
                             href="{{ $item['route'] }}"
                             wire:navigate
-                            class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition {{ request()->routeIs($item['pattern']) ? 'border-emerald-200 bg-white text-emerald-700 shadow-sm' : 'border-transparent text-neutral-600 hover:border-stone-200 hover:bg-white hover:text-neutral-900' }}"
+                            class="flex h-full items-center gap-2 px-5 text-sm border-b-2 transition-colors {{ request()->routeIs($item['pattern']) ? 'border-emerald-600 text-emerald-700 font-semibold' : 'border-transparent text-stone-500 hover:text-stone-800' }}"
                         >
                             <i class="{{ $item['icon'] }} text-sm"></i>
                             <span>{{ $item['label'] }}</span>
@@ -51,17 +55,61 @@
                     @endforeach
                 </div>
 
-                <div class="ml-auto hidden items-center gap-3 lg:flex">
-                    <span class="inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] {{ $portalClasses }}">
-                        <i class="{{ $primaryItem['icon'] }} text-[11px]"></i>
-                        {{ $portalLabel }}
-                    </span>
+                <div class="hidden lg:flex items-center gap-1 ml-auto mr-3">
+                    {{-- Cart --}}
+                    <a href="#" title="Cart"
+                        class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25
+                                a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684
+                                2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25
+                                L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0
+                                011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                        </svg>
+                    </a>
 
+                    {{-- Messages --}}
+                    <a href="#" title="Messages"
+                        class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0
+                                01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0
+                                .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0
+                                11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5
+                                3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16
+                                2.185.283 3.293.369V21l4.184-4.183a1.14 1.14
+                                0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233
+                                2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995
+                                -2.707-3.228A48.394 48.394 0 0012 3c-2.392
+                                0-4.744.175-7.043.513C3.373 3.746 2.25 5.14
+                                2.25 6.741v6.018z" />
+                        </svg>
+                    </a>
+
+                    {{-- Favourites --}}
+                    <a href="#" title="Favourites"
+                        class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935
+                                0-3.597 1.126-4.312 2.733-.715-1.607-2.377
+                                -2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0
+                                7.22 9 12 9 12s9-4.78 9-12z" />
+                        </svg>
+                    </a>
+                </div>
+
+                <div class="hidden items-center lg:flex">
                     <x-desktop-user-menu />
                 </div>
 
-                <details class="relative ml-auto lg:hidden">
-                    <summary class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-stone-200 bg-white text-neutral-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 marker:hidden [&::-webkit-details-marker]:hidden">
+                <details class="relative ml-auto flex items-center lg:hidden">
+                    <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 marker:hidden [&::-webkit-details-marker]:hidden">
                         <i class="fa-solid fa-bars-staggered text-sm"></i>
                     </summary>
 
@@ -78,13 +126,20 @@
                             </div>
 
                             <div class="mt-4 rounded-[1.25rem] border border-stone-200 bg-white p-3">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400">{{ $portalLabel }}</p>
-                                <p class="mt-2 text-sm leading-6 text-neutral-600">{{ $portalSummary }}</p>
+                                <p class="text-sm text-neutral-600">
+                                    {{ match ($user->effectiveMarketplaceRole()) {
+                                        \App\Enums\UserRole::Customer => 'You are browsing as a customer.',
+                                        \App\Enums\UserRole::Vendor => 'You are browsing as a vendor.',
+                                        \App\Enums\UserRole::Admin => 'You are browsing as an admin.',
+                                    } }}
+                                </p>
                             </div>
                         </div>
 
                         <div class="grid gap-2 p-4">
                             @foreach ($navigationItems as $item)
+                                @continue($item['pattern'] === 'home')
+
                                 <a
                                     href="{{ $item['route'] }}"
                                     wire:navigate

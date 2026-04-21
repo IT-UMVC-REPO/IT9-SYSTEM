@@ -1,14 +1,9 @@
 <x-layouts::auth :title="__('Log in')">
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-6 ">
         <x-auth-header :title="__('Welcome back to SukiMarket')" :description="__('Sign in to continue browsing the storefront and return to your account.')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
-
-        <div class="rounded-3xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm leading-6 text-neutral-500">
-            <span class="font-semibold text-neutral-800">Customer accounts are live now.</span>
-            Vendor onboarding continues through admin approval as the next modules are completed.
-        </div>
 
         <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
             @csrf

@@ -96,13 +96,6 @@
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400">Sold by</p>
                     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900">{{ $product->vendor->store_name }}</h2>
                     <p class="mt-3 text-sm leading-7 text-neutral-500">{{ $product->vendor->store_description }}</p>
-
-                    <div class="mt-5 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400">Why this page feels clearer now</p>
-                        <p class="mt-2 text-sm leading-6 text-neutral-600">
-                            Product photos, pricing, stock, and vendor details stay visible without cramming the whole listing into one crowded panel.
-                        </p>
-                    </div>
                 </div>
             </div>
         </section>
