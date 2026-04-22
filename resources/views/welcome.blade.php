@@ -287,10 +287,10 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
                     <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Built for the marketplace</p>
-                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 sm:text-5xl">One marketplace, three perspectives.</h2>
+                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 sm:text-5xl">One marketplace, two perspectives.</h2>
                 </div>
 
-                <div class="mt-14 grid gap-6 xl:grid-cols-3">
+                <div class="mt-14 grid gap-6 xl:grid-cols-2">
                     <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer storefront</h3>
@@ -307,12 +307,6 @@
                         <a href="#features" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100">See the experience</a>
                     </article>
 
-                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-neutral-800 to-neutral-950 p-10 text-white shadow-lg">
-                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shield-halved"></i></span>
-                        <h3 class="brand-serif mt-6 text-3xl font-bold">Admin panel</h3>
-                        <p class="mt-4 text-sm leading-7 text-neutral-200">A marketplace control layer for keeping storefront quality, seller visibility, and platform trust organized.</p>
-                        <a href="#features" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-100">View the highlights</a>
-                    </article>
                 </div>
             </div>
         </section>
