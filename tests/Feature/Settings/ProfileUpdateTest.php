@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\VendorProfile;
 use Livewire\Livewire;
 
 test('profile page is displayed', function () {
@@ -72,4 +73,15 @@ test('correct password must be provided to delete account', function () {
     $response->assertHasErrors(['password']);
 
     expect($user->fresh())->not->toBeNull();
+});
+
+test('verified users are redirected back to their portal home when requesting another verification email', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->call('resendVerificationNotification')
+        ->assertRedirect(route('vendor.dashboard', absolute: false));
 });

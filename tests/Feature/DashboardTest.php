@@ -8,13 +8,31 @@ test('guests are redirected to the login page', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('authenticated users can visit the dashboard', function () {
-    $user = User::factory()->create();
-    $this->actingAs($user);
+test('shared dashboard route redirects users to their portal home and preserves query strings', function (callable $makeUser, string $expectedRouteName) {
+    $user = $makeUser();
 
-    $response = $this->get(route('dashboard'));
-    $response->assertRedirect(route('customer.dashboard', absolute: false));
-});
+    $response = $this->actingAs($user)->get(route('dashboard', ['tab' => 'alerts']));
+
+    $response->assertRedirect(route($expectedRouteName, ['tab' => 'alerts'], absolute: false));
+})->with([
+    'customer' => [
+        fn () => User::factory()->create(),
+        'customer.dashboard',
+    ],
+    'vendor' => [
+        function () {
+            $user = User::factory()->vendor()->create();
+            VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+            return $user;
+        },
+        'vendor.dashboard',
+    ],
+    'admin' => [
+        fn () => User::factory()->admin()->create(),
+        'admin.dashboard',
+    ],
+]);
 
 test('shared app header shows role-aware navigation', function (callable $makeUser, string $routeName, string $expectedLabel) {
     $user = $makeUser();

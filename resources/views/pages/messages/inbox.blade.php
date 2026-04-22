@@ -1,5 +1,7 @@
 @php
-    $isVendor = auth()->user()->effectiveMarketplaceRole() === \App\Enums\UserRole::Vendor;
+    $user = auth()->user();
+    $isVendor = $user->effectiveMarketplaceRole() === \App\Enums\UserRole::Vendor;
+    $dashboardHref = route($user->homeRoute());
     $workspaceLabel = $isVendor ? 'Vendor orders shell' : 'Customer orders shell';
     $workspaceHref = $isVendor ? route('vendor.orders') : route('shop.orders');
 
@@ -19,7 +21,7 @@
     $links = [
         ['label' => 'Conversation shell', 'href' => route('messages.conversation', ['conversationReference' => 'sample-thread']), 'description' => 'Preview the future thread page.'],
         ['label' => $workspaceLabel, 'href' => $workspaceHref, 'description' => 'Jump back to the role-specific order workspace.'],
-        ['label' => 'Dashboard', 'href' => route('dashboard'), 'description' => 'Return to the current portal home.'],
+        ['label' => 'Dashboard', 'href' => $dashboardHref, 'description' => 'Return to the current portal home.'],
     ];
 @endphp
 

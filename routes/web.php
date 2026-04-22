@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
 
 Route::middleware('auth')->group(function () {
+    // Shared portal entry point that forwards users to their role-specific home route.
     Route::get('dashboard', function (Request $request) {
         return redirect()->route($request->user()->homeRoute(), $request->query());
     })->name('dashboard');

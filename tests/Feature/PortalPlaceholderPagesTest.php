@@ -69,13 +69,15 @@ test('shared message placeholders render for customers and vendors', function (c
         ->assertOk()
         ->assertSee('Messages inbox')
         ->assertSee('TBD')
-        ->assertDontSee('Planned content');
+        ->assertDontSee('Planned content')
+        ->assertSee(route($user->homeRoute()), false);
 
     $this->actingAs($user)->get(route('messages.conversation', ['conversationReference' => 'sample-thread']))
         ->assertOk()
         ->assertSee('Conversation detail')
         ->assertSee('TBD')
-        ->assertDontSee('Linked placeholders');
+        ->assertDontSee('Linked placeholders')
+        ->assertSee(route($user->homeRoute()), false);
 })->with([
     'customer' => [
         fn () => User::factory()->create(),
