@@ -30,7 +30,6 @@
         $navigationItems = [
             $primaryItem,
             ['label' => __('Home'), 'route' => route('home'), 'pattern' => 'home', 'icon' => 'fa-solid fa-house'],
-            ['label' => __('Settings'), 'route' => route('profile.edit'), 'pattern' => 'profile.*', 'icon' => 'fa-solid fa-gear'],
         ];
     @endphp
     <body class="brand-shell min-h-screen text-neutral-800 antialiased">
