@@ -26,7 +26,7 @@
 | Person | Responsibility |
 |---|---|
 | **Trisha Mae Llano** | ??? |
-| **Kate Kryztel Valdez** | ??? |
+| **Kryztel Kate Valdez** | ??? |
 | **Joshua Miguel Moran** | ??? |
 
 > **Lead rule:** ?? reviews and merges all PRs into `develop`. No one merges their own PR.
