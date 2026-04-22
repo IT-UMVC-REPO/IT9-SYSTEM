@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
@@ -23,10 +23,6 @@ new class extends Component {
 
     #[Validate('required|string|size:6', onUpdate: false)]
     public string $code = '';
-
-    /**
-     * Mount the component.
-     */
     public function mount(bool $requiresConfirmation): void
     {
         $this->requiresConfirmation = $requiresConfirmation;
@@ -40,10 +36,6 @@ new class extends Component {
 
         $this->loadSetupData();
     }
-
-    /**
-     * Load the two-factor authentication setup data for the user.
-     */
     private function loadSetupData(): void
     {
         $user = auth()->user()?->fresh();
@@ -61,10 +53,6 @@ new class extends Component {
             $this->reset('qrCodeSvg', 'manualSetupKey');
         }
     }
-
-    /**
-     * Show the two-factor verification step if necessary.
-     */
     public function showVerificationIfNecessary(): void
     {
         if ($this->requiresConfirmation) {
@@ -78,10 +66,6 @@ new class extends Component {
         $this->closeModal();
         $this->dispatch('two-factor-enabled');
     }
-
-    /**
-     * Confirm two-factor authentication for the user.
-     */
     public function confirmTwoFactor(ConfirmTwoFactorAuthentication $confirmTwoFactorAuthentication): void
     {
         $this->validate();
@@ -94,20 +78,12 @@ new class extends Component {
 
         $this->dispatch('two-factor-enabled');
     }
-
-    /**
-     * Reset two-factor verification state.
-     */
     public function resetVerification(): void
     {
         $this->reset('code', 'showVerificationStep');
 
         $this->resetErrorBag();
     }
-
-    /**
-     * Close the two-factor authentication modal.
-     */
     public function closeModal(): void
     {
         $this->reset(
@@ -120,10 +96,6 @@ new class extends Component {
 
         $this->resetErrorBag();
     }
-
-    /**
-     * Get the current modal configuration state.
-     */
     public function getModalConfigProperty(): array
     {
         if ($this->setupComplete) {

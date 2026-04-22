@@ -287,14 +287,14 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
                     <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Built for the marketplace</p>
-                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 sm:text-5xl">One marketplace, two perspectives.</h2>
+                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 sm:text-5xl">Three tailored portals, one shared market.</h2>
                 </div>
 
-                <div class="mt-14 grid gap-6 xl:grid-cols-2">
+                <div class="mt-14 grid gap-6 xl:grid-cols-3">
                     <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
-                        <h3 class="brand-serif mt-6 text-3xl font-bold">Customer storefront</h3>
-                        <p class="mt-4 text-sm leading-7 text-emerald-100">A welcoming storefront for discovering products, comparing stalls, and browsing the market with confidence.</p>
+                        <h3 class="brand-serif mt-6 text-3xl font-bold">Customer dashboard</h3>
+                        <p class="mt-4 text-sm leading-7 text-emerald-100">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and following upcoming orders.</p>
                         <a href="{{ auth()->check() ? route('dashboard') : route('register') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-stone-100">
                             {{ auth()->check() ? 'Open my dashboard' : 'Create a customer account' }}
                         </a>
@@ -302,11 +302,21 @@
 
                     <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shop"></i></span>
-                        <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor dashboard</h3>
-                        <p class="mt-4 text-sm leading-7 text-amber-100">A digital stall presence designed for sellers who want their products and store identity presented clearly online.</p>
-                        <a href="#features" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100">See the experience</a>
+                        <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor workspace</h3>
+                        <p class="mt-4 text-sm leading-7 text-amber-100">A seller portal built around onboarding, catalog management, order handling, and sales visibility.</p>
+                        <a href="{{ auth()->check() ? route('vendor.registration') : route('register') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100">
+                            {{ auth()->check() ? 'Explore seller pages' : 'Start with an account' }}
+                        </a>
                     </article>
 
+                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-sky-600 to-cyan-700 p-10 text-white shadow-lg">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shield-halved"></i></span>
+                        <h3 class="brand-serif mt-6 text-3xl font-bold">Admin oversight</h3>
+                        <p class="mt-4 text-sm leading-7 text-sky-100">A marketplace operations portal for vendor approvals, user oversight, and platform-wide order monitoring.</p>
+                        <a href="{{ auth()->check() ? route('dashboard') : route('login') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-sky-700 transition hover:bg-stone-100">
+                            {{ auth()->check() ? 'Go to portal' : 'Sign in for access' }}
+                        </a>
+                    </article>
                 </div>
             </div>
         </section>

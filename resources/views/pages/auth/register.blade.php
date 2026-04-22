@@ -1,13 +1,10 @@
-<x-layouts::auth :title="__('Register')">
+﻿<x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
         <x-auth-header :title="__('Create your SukiMarket account')" :description="__('Register to access the customer storefront and follow the next marketplace features as they launch.')" />
-
-        <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
-            <!-- Name -->
             <flux:input
                 name="name"
                 :label="__('Name')"
@@ -18,8 +15,6 @@
                 autocomplete="name"
                 :placeholder="__('Full name')"
             />
-
-            <!-- Email Address -->
             <flux:input
                 name="email"
                 :label="__('Email address')"
@@ -29,8 +24,6 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
-
-            <!-- Password -->
             <flux:input
                 name="password"
                 :label="__('Password')"
@@ -40,8 +33,6 @@
                 :placeholder="__('Password')"
                 viewable
             />
-
-            <!-- Confirm Password -->
             <flux:input
                 name="password_confirmation"
                 :label="__('Confirm password')"

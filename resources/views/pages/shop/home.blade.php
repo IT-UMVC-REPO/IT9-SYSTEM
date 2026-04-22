@@ -1,4 +1,4 @@
-<x-layouts::app :title="__('SukiMarket Storefront')">
+﻿<x-layouts::app :title="__('SukiMarket Storefront')">
     @php
         $selectedCategoryName = $selectedCategory !== null
             ? $categories->firstWhere('id', $selectedCategory)?->name
@@ -13,17 +13,13 @@
     @endphp
 
     <section class="relative min-h-[420px] overflow-hidden border-b border-emerald-900/10 text-white">
-        {{-- Full-bleed hero background --}}
         <div class="absolute inset-0 z-0">
-            {{-- The actual palengke photo --}}
             <img
                 src="https://static.tripzilla.ph/media/98742/conversions/Palengke-Tips-w1024.webp"
                 alt=""
                 aria-hidden="true"
                 class="h-full w-full object-cover object-center"
             >
-            {{-- Left-side gradient: fully opaque emerald, fades to transparent going right --}}
-            {{-- This covers the text area completely, revealing the image on the right --}}
             <div class="absolute inset-0"
                 style="background: linear-gradient(
                     to right,
@@ -34,7 +30,6 @@
                     rgba(5,150,105,0.1) 80%,
                     transparent 100%
                 );"></div>
-            {{-- Top + bottom vignette so the image edges don't look raw --}}
             <div class="absolute inset-0"
                 style="background: linear-gradient(
                     to bottom,
@@ -87,7 +82,6 @@
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     @foreach ($popularVendors as $vendor)
                         <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-emerald-200 hover:shadow-md">
-                            {{-- Dummy follow button --}}
                             <button
                                 type="button"
                                 aria-label="Follow {{ $vendor->store_name }}"
@@ -102,21 +96,15 @@
                                         3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                 </svg>
                             </button>
-
-                            {{-- Vendor avatar / initials --}}
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-base font-bold text-emerald-700">
                                 {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
                             </div>
-
-                            {{-- Store info --}}
                             <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900">
                                 {{ $vendor->store_name }}
                             </p>
                             <p class="mt-1 flex-1 line-clamp-2 text-xs leading-5 text-neutral-400">
                                 {{ $vendor->store_description }}
                             </p>
-
-                            {{-- Footer stat --}}
                             <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3">
                                 <span class="text-xs font-semibold text-emerald-700">
                                     {{ $vendor->active_products_count }}

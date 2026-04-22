@@ -17,7 +17,7 @@ test('users are redirected to their own portal when they hit another role route'
 
     $response = $this->actingAs($user)->get(route('admin.dashboard'));
 
-    $response->assertRedirect(route('shop.home', absolute: false));
+    $response->assertRedirect(route('customer.dashboard', absolute: false));
 });
 
 test('non approved vendors are redirected to the customer portal when visiting vendor routes', function () {
@@ -26,5 +26,5 @@ test('non approved vendors are redirected to the customer portal when visiting v
 
     $response = $this->actingAs($user)->get(route('vendor.dashboard'));
 
-    $response->assertRedirect(route('shop.home', absolute: false));
+    $response->assertRedirect(route('customer.dashboard', absolute: false));
 });

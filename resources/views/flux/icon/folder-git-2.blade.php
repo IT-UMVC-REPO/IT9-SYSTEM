@@ -1,5 +1,4 @@
-{{-- Credit: Lucide (https://lucide.dev) --}}
-
+﻿
 @props([
     'variant' => 'outline',
 ])

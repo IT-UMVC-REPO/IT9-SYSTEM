@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+﻿@import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
 
 @source '../views';
@@ -208,7 +208,6 @@ select:focus[data-flux-control] {
     scrollbar-width: none;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -218,7 +217,6 @@ select:focus[data-flux-control] {
 ::-webkit-scrollbar-thumb:hover { background: #059669; }
 * { scrollbar-width: thin; scrollbar-color: #a8c5a0 transparent; }
 
-/* Settings page - force Flux components into light mode regardless of system theme */
 .settings-page [data-flux-label],
 .settings-page [data-flux-heading],
 .settings-page [data-flux-subheading],

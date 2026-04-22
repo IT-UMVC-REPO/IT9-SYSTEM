@@ -122,7 +122,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return match ($this->effectiveMarketplaceRole()) {
             UserRole::Admin => 'admin.dashboard',
             UserRole::Vendor => 'vendor.dashboard',
-            UserRole::Customer => 'shop.home',
+            UserRole::Customer => 'customer.dashboard',
         };
     }
 

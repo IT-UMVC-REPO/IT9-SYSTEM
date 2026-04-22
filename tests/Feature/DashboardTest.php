@@ -13,7 +13,7 @@ test('authenticated users can visit the dashboard', function () {
     $this->actingAs($user);
 
     $response = $this->get(route('dashboard'));
-    $response->assertRedirect(route('shop.home', absolute: false));
+    $response->assertRedirect(route('customer.dashboard', absolute: false));
 });
 
 test('shared app header shows role-aware navigation', function (callable $makeUser, string $routeName, string $expectedLabel) {
@@ -24,13 +24,12 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     $response->assertOk()
         ->assertSee('SukiMarket')
         ->assertSee($expectedLabel)
-        ->assertDontSee('Home')
         ->assertSee('Settings');
 })->with([
     'customer' => [
         fn () => User::factory()->create(),
-        'shop.home',
-        'Storefront',
+        'customer.dashboard',
+        'Seller setup',
     ],
     'vendor' => [
         function () {
@@ -40,11 +39,11 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
             return $user;
         },
         'vendor.dashboard',
-        'Vendor',
+        'Sales',
     ],
     'admin' => [
         fn () => User::factory()->admin()->create(),
         'admin.dashboard',
-        'Admin',
+        'Vendors',
     ],
 ]);

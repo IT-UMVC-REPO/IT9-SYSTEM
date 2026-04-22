@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Concerns\PasswordValidationRules;
 use App\Livewire\Actions\Logout;
@@ -9,10 +9,6 @@ new class extends Component {
     use PasswordValidationRules;
 
     public string $password = '';
-
-    /**
-     * Delete the currently authenticated user.
-     */
     public function deleteUser(Logout $logout): void
     {
         $this->validate([

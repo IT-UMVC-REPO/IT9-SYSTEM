@@ -1,14 +1,10 @@
-<x-layouts::auth :title="__('Log in')">
+﻿<x-layouts::auth :title="__('Log in')">
     <div class="flex flex-col gap-6 ">
         <x-auth-header :title="__('Welcome back to SukiMarket')" :description="__('Sign in to continue browsing the storefront and return to your account.')" />
-
-        <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
             @csrf
-
-            <!-- Email Address -->
             <flux:input
                 name="email"
                 :label="__('Email address')"
@@ -19,8 +15,6 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
-
-            <!-- Password -->
             <div class="relative">
                 <flux:input
                     name="password"
@@ -38,8 +32,6 @@
                     </flux:link>
                 @endif
             </div>
-
-            <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
 
             <div class="flex items-center justify-end">

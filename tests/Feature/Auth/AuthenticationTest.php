@@ -20,7 +20,7 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticated();
 });
@@ -65,7 +65,7 @@ test('pending vendors are redirected to the customer storefront after login', fu
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });
@@ -81,7 +81,7 @@ test('rejected vendors are redirected to the customer storefront after login', f
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });

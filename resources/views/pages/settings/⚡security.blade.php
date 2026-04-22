@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Concerns\PasswordValidationRules;
 use Flux\Flux;
@@ -23,10 +23,6 @@ new #[Title('Security settings')] class extends Component {
     public bool $twoFactorEnabled;
 
     public bool $requiresConfirmation;
-
-    /**
-     * Mount the component.
-     */
     public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
@@ -40,10 +36,6 @@ new #[Title('Security settings')] class extends Component {
             $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
         }
     }
-
-    /**
-     * Update the password for the currently authenticated user.
-     */
     public function updatePassword(): void
     {
         try {
@@ -65,19 +57,11 @@ new #[Title('Security settings')] class extends Component {
 
         Flux::toast(variant: 'success', text: __('Password updated.'));
     }
-
-    /**
-     * Handle the two-factor authentication enabled event.
-     */
     #[On('two-factor-enabled')]
     public function onTwoFactorEnabled(): void
     {
         $this->twoFactorEnabled = true;
     }
-
-    /**
-     * Disable two-factor authentication for the user.
-     */
     public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
         $disableTwoFactorAuthentication(auth()->user());
