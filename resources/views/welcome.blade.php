@@ -197,7 +197,7 @@
                 <div class="mt-16 grid gap-8 lg:grid-cols-3">
                     <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
-                            style="background-image: url('https://cdn.shopify.com/s/files/1/0423/3674/7669/files/2_fruit_600x600.png?v=1695048744');">
+                            style="background-image: url('{{ asset('imgs/sukifruits.webp') }}')">
                         </div>
                         <div class="relative z-10">
                             <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition group-hover:scale-105">
@@ -211,7 +211,7 @@
 
                     <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
-                            style="background-image: url('https://static.tripzilla.ph/media/98778/conversions/Palengke-tips-buying-veggies-w768.webp');">
+                            style="background-image: url('{{ asset('imgs/sukivendor.webp') }}')">
                         </div>
                         <div class="relative z-10">
                             <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 transition group-hover:scale-105">
@@ -225,7 +225,7 @@
 
                     <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
-                            style="background-image: url('https://www.bulatlat.com/wp-content/uploads/2022/11/market-evelyn-eleazar-840x560.png');">
+                            style="background-image: url('{{ asset('imgs/sukisda.png') }}')">
                         </div>
                         <div class="relative z-10">
                             <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition group-hover:scale-105">
