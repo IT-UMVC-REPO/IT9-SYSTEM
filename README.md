@@ -98,7 +98,6 @@ Suggested modules: `auth`, `admin`, `vendor`, `customer`, `cart`, `orders`, `mes
 git clone <repo-url> sukimarket
 cd sukimarket
 
-composer config http-basic.composer.fluxui.dev YOUR_FLUX_USERNAME YOUR_FLUX_LICENSE_KEY
 composer install
 
 npm install
