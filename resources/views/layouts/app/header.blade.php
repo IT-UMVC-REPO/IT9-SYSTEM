@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
+        <link rel="icon" type="image/png" href="{{ asset('imgs/sukilogo.png') }}">
         @include('partials.head')
     </head>
     @php
