@@ -20,7 +20,9 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
 
 test('marketplace tables and user columns exist', function () {
     expect(Schema::hasColumns('users', ['role', 'phone', 'address', 'profile_image', 'is_active']))->toBeTrue()
@@ -142,12 +144,80 @@ test('favorites are unique per customer and vendor', function () {
     ]))->toThrow(QueryException::class);
 });
 
-test('database seeder provisions baseline marketplace data', function () {
+test('database seeder provisions a large marketplace dataset', function () {
     $this->seed();
 
+    $stableVendor = User::query()
+        ->with('vendorProfile')
+        ->where('email', 'vendor@example.com')
+        ->firstOrFail();
+    $messagesCount = Message::query()->count();
+    $favoritesCount = Favorite::query()->count();
+    $cartItemsCount = CartItem::query()->count();
+    $orderItemsCount = OrderItem::query()->count();
+    $mismatchedOrderItems = DB::table('order_items')
+        ->join('orders', 'orders.id', '=', 'order_items.order_id')
+        ->join('products', 'products.id', '=', 'order_items.product_id')
+        ->whereColumn('orders.vendor_id', '!=', 'products.vendor_id')
+        ->exists();
+
     expect(User::query()->where('email', 'admin@example.com')->first()?->role)->toBe(UserRole::Admin)
-        ->and(User::query()->where('email', 'vendor@example.com')->first()?->role)->toBe(UserRole::Vendor)
-        ->and(VendorProfile::query()->where('store_name', 'Fresh Vendor Market')->exists())->toBeTrue()
-        ->and(Category::query()->count())->toBe(3)
-        ->and(Product::query()->count())->toBe(6);
+        ->and($stableVendor->role)->toBe(UserRole::Vendor)
+        ->and($stableVendor->vendorProfile?->status)->toBe(VendorStatus::Approved)
+        ->and(User::query()->where('email', 'test@example.com')->first()?->role)->toBe(UserRole::Customer)
+        ->and(Role::query()->count())->toBe(3)
+        ->and(User::query()->count())->toBe(95)
+        ->and(VendorProfile::query()->count())->toBe(19)
+        ->and(VendorProfile::query()->approved()->count())->toBe(15)
+        ->and(Category::query()->count())->toBe(10)
+        ->and(Product::query()->count())->toBe(170)
+        ->and(Cart::query()->count())->toBe(30)
+        ->and($cartItemsCount)->toBeGreaterThanOrEqual(60)
+        ->and($cartItemsCount)->toBeLessThanOrEqual(150)
+        ->and(Favorite::query()->count())->toBeGreaterThanOrEqual(45)
+        ->and(Order::query()->count())->toBe(120)
+        ->and($orderItemsCount)->toBeGreaterThanOrEqual(120)
+        ->and($orderItemsCount)->toBeLessThanOrEqual(480)
+        ->and(Payment::query()->count())->toBe(120)
+        ->and($messagesCount)->toBeGreaterThanOrEqual(120)
+        ->and($messagesCount)->toBeLessThanOrEqual(240)
+        ->and(Notification::query()->count())->toBe(145)
+        ->and($favoritesCount)->toBeLessThanOrEqual(135)
+        ->and(Order::query()->doesntHave('orderItems')->exists())->toBeFalse()
+        ->and(Order::query()->doesntHave('payment')->exists())->toBeFalse()
+        ->and($mismatchedOrderItems)->toBeFalse();
+});
+
+test('database seeder is rerun safe for baseline records', function () {
+    $this->seed();
+    $this->seed();
+
+    $duplicateVendorProfiles = DB::table('vendor_profiles')
+        ->select('user_id')
+        ->groupBy('user_id')
+        ->havingRaw('COUNT(*) > 1')
+        ->exists();
+    $duplicateCarts = DB::table('carts')
+        ->select('customer_id')
+        ->groupBy('customer_id')
+        ->havingRaw('COUNT(*) > 1')
+        ->exists();
+    $duplicatePayments = DB::table('payments')
+        ->select('order_id')
+        ->groupBy('order_id')
+        ->havingRaw('COUNT(*) > 1')
+        ->exists();
+
+    expect(Role::query()->count())->toBe(3)
+        ->and(Role::query()->where('name', 'admin')->count())->toBe(1)
+        ->and(Role::query()->where('name', 'vendor')->count())->toBe(1)
+        ->and(Role::query()->where('name', 'customer')->count())->toBe(1)
+        ->and(User::query()->where('email', 'admin@example.com')->count())->toBe(1)
+        ->and(User::query()->where('email', 'vendor@example.com')->count())->toBe(1)
+        ->and(User::query()->where('email', 'test@example.com')->count())->toBe(1)
+        ->and(VendorProfile::query()->where('store_name', 'Fresh Vendor Market')->count())->toBe(1)
+        ->and(Category::query()->count())->toBe(10)
+        ->and($duplicateVendorProfiles)->toBeFalse()
+        ->and($duplicateCarts)->toBeFalse()
+        ->and($duplicatePayments)->toBeFalse();
 });

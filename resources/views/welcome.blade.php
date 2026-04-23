@@ -1,65 +1,19 @@
-<!DOCTYPE html>
-<html class="overflow-x-hidden" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        @include('partials.head', ['title' => 'Fresh from the Palengke'])
-    </head>
-    <body class="brand-shell min-h-screen text-neutral-800 antialiased">
-        @php
-            $marketItems = collect([
-                ['icon' => 'fa-solid fa-carrot', 'label' => 'Vegetables'],
-                ['icon' => 'fa-solid fa-fish', 'label' => 'Seafood'],
-                ['icon' => 'fa-solid fa-drumstick-bite', 'label' => 'Meat'],
-                ['icon' => 'fa-solid fa-apple-whole', 'label' => 'Fruits'],
-                ['icon' => 'fa-solid fa-seedling', 'label' => 'Herbs'],
-                ['icon' => 'fa-solid fa-wheat-awn', 'label' => 'Grains'],
-            ]);
+<x-layouts::app.header :title="'Fresh from the Palengke'">
+    @php
+        $marketItems = collect([
+            ['icon' => 'fa-solid fa-carrot', 'label' => 'Vegetables'],
+            ['icon' => 'fa-solid fa-fish', 'label' => 'Seafood'],
+            ['icon' => 'fa-solid fa-drumstick-bite', 'label' => 'Meat'],
+            ['icon' => 'fa-solid fa-apple-whole', 'label' => 'Fruits'],
+            ['icon' => 'fa-solid fa-seedling', 'label' => 'Herbs'],
+            ['icon' => 'fa-solid fa-wheat-awn', 'label' => 'Grains'],
+        ]);
 
-            $marketStream = $marketItems->concat($marketItems);
-            $portalHomeRoute = auth()->check() ? route(auth()->user()->homeRoute()) : null;
-        @endphp
+        $marketStream = $marketItems->concat($marketItems);
+        $portalHomeRoute = auth()->check() ? route(auth()->user()->homeRoute()) : null;
+    @endphp
 
-        <header class="sticky top-0 z-50 border-b border-stone-200 bg-stone-50/90 backdrop-blur-md">
-            <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-                <x-app-logo href="{{ route('home') }}" />
-
-                <ul class="hidden items-center gap-8 text-sm font-medium text-neutral-500 md:flex">
-                    <li><a href="#features" class="transition hover:text-emerald-700">Features</a></li>
-                    <li><a href="#how-it-works" class="transition hover:text-emerald-700">How it works</a></li>
-                    <li><a href="#portals" class="transition hover:text-emerald-700">Portals</a></li>
-                </ul>
-
-                <div class="hidden items-center gap-3 md:flex">
-                    @auth
-                        <a href="{{ $portalHomeRoute }}" class="brand-button-primary">Open dashboard</a>
-                    @else
-                        <a href="{{ route('login') }}" class="text-sm font-medium text-neutral-600 transition hover:text-neutral-900">Log in</a>
-                        <a href="{{ route('register') }}" class="brand-button-primary">Get started</a>
-                    @endauth
-                </div>
-
-                <details class="relative md:hidden">
-                    <summary class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-stone-200 bg-white text-neutral-600 shadow-sm marker:hidden">
-                        <i class="fa-solid fa-bars text-sm"></i>
-                    </summary>
-                    <div class="absolute right-0 mt-3 w-64 rounded-3xl border border-stone-200 bg-white p-4 shadow-xl">
-                        <div class="grid gap-2 text-sm font-medium text-neutral-600">
-                            <a href="#features" class="rounded-2xl px-3 py-2 transition hover:bg-emerald-50 hover:text-emerald-700">Features</a>
-                            <a href="#how-it-works" class="rounded-2xl px-3 py-2 transition hover:bg-emerald-50 hover:text-emerald-700">How it works</a>
-                            <a href="#portals" class="rounded-2xl px-3 py-2 transition hover:bg-emerald-50 hover:text-emerald-700">Portals</a>
-                        </div>
-                        <div class="mt-4 grid gap-2 border-t border-stone-200 pt-4">
-                            @auth
-                                <a href="{{ $portalHomeRoute }}" class="brand-button-primary w-full">Open dashboard</a>
-                            @else
-                                <a href="{{ route('login') }}" class="brand-button-secondary w-full">Log in</a>
-                                <a href="{{ route('register') }}" class="brand-button-primary w-full">Get started</a>
-                            @endauth
-                        </div>
-                    </div>
-                </details>
-            </nav>
-        </header>
-
+    <div class="overflow-x-hidden">
         <div class="pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full bg-emerald-100 blur-3xl"></div>
         <div class="pointer-events-none absolute -left-10 bottom-0 h-72 w-72 rounded-full bg-amber-100 blur-3xl"></div>
 
@@ -361,5 +315,5 @@
                 </div>
             </div>
         </footer>
-    </body>
-</html>
+    </div>
+</x-layouts::app.header>

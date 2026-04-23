@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-neutral-100 antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
-        <div class="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <div class="flex w-full max-w-md flex-col gap-6">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
-                    </span>
+    <body class="brand-shell min-h-screen antialiased">
+        <div class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+            <div class="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"></div>
+            <div class="pointer-events-none absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-amber-300/10 blur-3xl"></div>
 
-                    <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
-                </a>
+            <div class="relative z-10 flex w-full max-w-xl flex-col gap-6">
+                <div class="flex justify-center">
+                    <x-app-logo href="{{ route('home') }}" wire:navigate />
+                </div>
 
-                <div class="flex flex-col gap-6">
-                    <div class="rounded-xl border bg-white dark:bg-stone-950 dark:border-stone-800 text-stone-800 shadow-xs">
-                        <div class="px-10 py-8">{{ $slot }}</div>
+                <div class="brand-panel w-full p-6 shadow-xl sm:p-8 lg:p-10">
+                    <div class="flex flex-col gap-6">
+                        {{ $slot }}
                     </div>
                 </div>
             </div>
