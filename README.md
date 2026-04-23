@@ -108,7 +108,8 @@ php artisan key:generate
 php artisan migrate
 php artisan db:seed
 
-npm run build
+npm run dev
+php artisan serve
 ```
 
 ### `.env` values to confirm locally
