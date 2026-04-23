@@ -103,6 +103,9 @@ composer install
 npm install
 
 cp .env.example .env
+
+git checkout BRANCH-NAME
+
 php artisan key:generate
 
 php artisan migrate
