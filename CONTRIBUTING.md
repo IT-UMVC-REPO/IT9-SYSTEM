@@ -21,6 +21,24 @@ The following features are confirmed working in the current codebase:
 
 ---
 
+## Claiming a Task
+
+1. Edit this file — find the task row you are taking on and replace `—` in **Claimed by** with your name.
+2. Update **Status** to `In progress`.
+3. When done and all tests pass, update **Status** to `Done` and open a pull request against `develop`.
+4. Run `composer test` locally before pushing — the CI pipeline runs the same check.
+
+## Team Members
+
+| Name | Currently working on |
+|------|----------------------|
+| Trisha Mae Llano | — |
+| Kate Kryztel Valdez | — |
+| Joshua Miguel Moran | — |
+
+
+---
+
 ## Placeholder Pages (Confirmed TBD Shells)
 
 Every route below currently renders a minimal `TBD` placeholder shell (see `resources/views/components/placeholder-page.blade.php`) and has no production business logic.
@@ -249,22 +267,6 @@ The current storefront search is a full-page GET form reload. This module conver
 | O6 | Remove `ShopController::index()` and its `Route::get` binding once the Livewire page is confirmed working; replace with `Route::livewire('/', 'pages::shop.home')->name('shop.home')` in `routes/web.php` | S | O1, O2, O3 | — | Not started |
 | O7 | Pest tests: keyword search updates results without a redirect, category filter narrows listing, max price filter excludes products above threshold, clearing filters restores full visible listing, `#[Url]` properties hydrate correctly on direct URL navigation | M | O1, O2, O3 | — | Not started |
 
----
-
-## Claiming a Task
-
-1. Edit this file — find the task row you are taking on and replace `—` in **Claimed by** with your name.
-2. Update **Status** to `In progress`.
-3. When done and all tests pass, update **Status** to `Done` and open a pull request against `develop`.
-4. Run `composer test` locally before pushing — the CI pipeline runs the same check.
-
-## Team Members
-
-| Name | Currently working on |
-|------|----------------------|
-| Trisha Mae Llano | — |
-| Kate Kryztel Valdez | — |
-| Joshua Miguel Moran | — |
 
 ---
 
