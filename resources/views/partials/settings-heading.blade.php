@@ -26,23 +26,23 @@
     <div class="settings-intro-card max-w-lg">
         <div class="flex flex-wrap items-center gap-2">
             <span class="settings-role-badge">{{ $roleLabel }}</span>
-            <span class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-500 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-300">
-                <i class="brand-accent-text fa-solid fa-envelope text-[11px]"></i>
+            <span class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300">
+                <i class="fa-solid fa-envelope text-[11px] text-emerald-600"></i>
                 {{ $user->email }}
             </span>
         </div>
 
         <div class="mt-1 grid gap-3 sm:grid-cols-3">
-            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-300">
-                <i class="brand-accent-text fa-solid fa-id-card mr-2"></i>
+            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300">
+                <i class="fa-solid fa-id-card mr-2 text-emerald-600"></i>
                 Profile
             </div>
-            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-300">
-                <i class="brand-accent-text fa-solid fa-shield-halved mr-2"></i>
+            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300">
+                <i class="fa-solid fa-shield-halved mr-2 text-emerald-600"></i>
                 Security
             </div>
-            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-300">
-                <i class="brand-accent-text fa-solid fa-circle-half-stroke mr-2"></i>
+            <div class="rounded-[1.25rem] border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-300">
+                <i class="fa-solid fa-circle-half-stroke mr-2 text-emerald-600"></i>
                 Appearance
             </div>
         </div>

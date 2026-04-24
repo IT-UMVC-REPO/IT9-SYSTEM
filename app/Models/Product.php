@@ -93,6 +93,25 @@ class Product extends Model
         });
     }
 
+    public function scopeWithinMaxPrice(Builder $query, ?int $maxPrice): Builder
+    {
+        if ($maxPrice === null || $maxPrice <= 0) {
+            return $query;
+        }
+
+        return $query->where('price', '<=', $maxPrice);
+    }
+
+    public function scopeSortForStorefront(Builder $query, ?string $sort): Builder
+    {
+        return match ($sort) {
+            'price_asc' => $query->orderBy('price')->orderByDesc('products.created_at'),
+            'price_desc' => $query->orderByDesc('price')->orderByDesc('products.created_at'),
+            'name_asc' => $query->orderBy('name')->orderByDesc('products.created_at'),
+            default => $query->latest('products.created_at'),
+        };
+    }
+
     public function scopeVisibleToCustomers(Builder $query): Builder
     {
         return $query

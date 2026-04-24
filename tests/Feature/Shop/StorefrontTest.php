@@ -4,6 +4,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
+use Livewire\Livewire;
 
 test('authenticated customers can view the storefront', function () {
     $customer = User::factory()->create();
@@ -33,6 +34,8 @@ test('authenticated customers can view the storefront', function () {
     $response->assertOk()
         ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false)
         ->assertSee('A brighter market floor for your next suki run.')
+        ->assertSee('wire:model.live.debounce.250ms="search"', false)
+        ->assertDontSee('class="brand-button-primary w-full">Search', false)
         ->assertSee(route('shop.vendors'), false)
         ->assertSee(route('shop.vendors.show', $vendor), false)
         ->assertSee($product->name)
@@ -282,6 +285,311 @@ test('storefront leaf category filter narrows the product listing to the selecte
     $response->assertOk()
         ->assertSee($leafyProduct->name)
         ->assertDontSee($rootCropProduct->name);
+});
+
+test('live storefront search filters visible products by name and description', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+
+    $matchingProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Ampalaya',
+            'description' => 'Fresh bitter gourd from Davao farms.',
+        ]);
+
+    $otherProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Bananas',
+            'description' => 'Sweet saba for merienda.',
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set('search', 'bitter gourd')
+        ->assertSee($matchingProduct->name)
+        ->assertDontSee($otherProduct->name);
+});
+
+test('live storefront category filter narrows the product listing', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $rootCrops = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Root Crops',
+        'slug' => 'root-crops',
+    ]);
+    $fruits = Category::factory()->topLevel()->create([
+        'name' => 'Fruits',
+        'slug' => 'fruits',
+    ]);
+    $tropicalFruits = Category::factory()->childOf($fruits)->create([
+        'name' => 'Tropical Fruits',
+        'slug' => 'tropical-fruits',
+    ]);
+
+    $vegetableProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($leafyGreens)
+        ->active()
+        ->create([
+            'name' => 'Eggplant',
+        ]);
+    $secondVegetableProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($rootCrops)
+        ->active()
+        ->create([
+            'name' => 'Sweet Potato',
+        ]);
+    $fruitProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($tropicalFruits)
+        ->active()
+        ->create([
+            'name' => 'Mango',
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set('selectedCategory', (string) $vegetables->id)
+        ->assertSee($vegetableProduct->name)
+        ->assertSee($secondVegetableProduct->name)
+        ->assertDontSee($fruitProduct->name);
+});
+
+test('live storefront max price filter narrows the product listing', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+
+    $budgetProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Budget Talong',
+            'price' => 75,
+        ]);
+
+    $premiumProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Premium Tuna',
+            'price' => 250,
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set('maxPrice', '100')
+        ->assertSee($budgetProduct->name)
+        ->assertDontSee($premiumProduct->name);
+});
+
+test('live storefront sort orders products', function (string $sort, array $expectedOrder) {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+
+    Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Market Ampalaya',
+            'price' => 90,
+        ]);
+
+    Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Budget Talong',
+            'price' => 45,
+        ]);
+
+    Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Premium Salmon',
+            'price' => 280,
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set('sort', $sort)
+        ->assertSeeInOrder($expectedOrder);
+})->with([
+    'price ascending' => ['price_asc', ['Budget Talong', 'Market Ampalaya', 'Premium Salmon']],
+    'price descending' => ['price_desc', ['Premium Salmon', 'Market Ampalaya', 'Budget Talong']],
+    'name ascending' => ['name_asc', ['Budget Talong', 'Market Ampalaya', 'Premium Salmon']],
+]);
+
+test('live storefront shows an empty state when no visible products match the filters', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+
+    Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => 'Talong',
+            'description' => 'Fresh purple eggplant.',
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set('search', 'dragon fruit')
+        ->assertSee('No matching market finds yet')
+        ->assertDontSee('Talong');
+});
+
+test('live storefront clear filters restores the default catalog state', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $seafood = Category::factory()->topLevel()->create([
+        'name' => 'Seafood',
+        'slug' => 'seafood',
+    ]);
+    $freshFish = Category::factory()->childOf($seafood)->create([
+        'name' => 'Fresh Fish',
+        'slug' => 'fresh-fish',
+    ]);
+
+    $filteredProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($leafyGreens)
+        ->active()
+        ->create([
+            'name' => 'Pechay',
+            'price' => 40,
+        ]);
+
+    $otherProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($freshFish)
+        ->active()
+        ->create([
+            'name' => 'Bangus',
+            'price' => 180,
+        ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.catalog-browser')
+        ->set([
+            'search' => 'Pechay',
+            'selectedCategory' => (string) $vegetables->id,
+            'maxPrice' => '50',
+            'sort' => 'name_asc',
+        ])
+        ->call('clearFilters')
+        ->assertSet('search', '')
+        ->assertSet('selectedCategory', '')
+        ->assertSet('maxPrice', '')
+        ->assertSet('sort', '')
+        ->assertSee($filteredProduct->name)
+        ->assertSee($otherProduct->name);
+});
+
+test('live storefront resets pagination when filters change from page two', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+
+    Product::factory()
+        ->for($vendor, 'vendor')
+        ->active()
+        ->create([
+            'name' => '00 Ampalaya Special',
+        ]);
+
+    Product::factory()
+        ->count(13)
+        ->for($vendor, 'vendor')
+        ->active()
+        ->sequence(fn ($sequence) => [
+            'name' => 'Regular Product '.str_pad((string) ($sequence->index + 1), 2, '0', STR_PAD_LEFT),
+        ])
+        ->create();
+
+    Livewire::actingAs($customer)
+        ->withQueryParams([
+            'page' => 2,
+            'sort' => 'name_asc',
+        ])
+        ->test('pages::shop.catalog-browser')
+        ->assertDontSee('00 Ampalaya Special')
+        ->set('search', 'Ampalaya')
+        ->assertSee('00 Ampalaya Special');
+});
+
+test('live storefront hydrates filters from url query parameters', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $fruits = Category::factory()->topLevel()->create([
+        'name' => 'Fruits',
+        'slug' => 'fruits',
+    ]);
+    $tropicalFruits = Category::factory()->childOf($fruits)->create([
+        'name' => 'Tropical Fruits',
+        'slug' => 'tropical-fruits',
+    ]);
+
+    $matchingProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($leafyGreens)
+        ->active()
+        ->create([
+            'name' => 'Fresh Ampalaya',
+            'price' => 80,
+        ]);
+
+    $filteredOutProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($tropicalFruits)
+        ->active()
+        ->create([
+            'name' => 'Fresh Mango',
+            'price' => 150,
+        ]);
+
+    Livewire::actingAs($customer)
+        ->withQueryParams([
+            'search' => 'Fresh',
+            'category' => (string) $vegetables->id,
+            'max_price' => '100',
+            'sort' => 'name_asc',
+        ])
+        ->test('pages::shop.catalog-browser')
+        ->assertSet('search', 'Fresh')
+        ->assertSet('selectedCategory', (string) $vegetables->id)
+        ->assertSet('maxPrice', '100')
+        ->assertSet('sort', 'name_asc')
+        ->assertSee($matchingProduct->name)
+        ->assertDontSee($filteredOutProduct->name);
 });
 
 test('customers can open a visible product detail page', function () {
