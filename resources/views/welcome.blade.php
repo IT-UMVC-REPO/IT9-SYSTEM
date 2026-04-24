@@ -11,6 +11,31 @@
 
         $marketStream = $marketItems->concat($marketItems);
         $portalHomeRoute = auth()->check() ? route(auth()->user()->homeRoute()) : null;
+        $heroActions = auth()->check()
+            ? [
+                ['label' => 'Go to my dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+            ]
+            : [
+                ['label' => 'Create a customer account', 'href' => route('register'), 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Sign in to continue', 'href' => route('login'), 'class' => 'brand-button-secondary', 'icon' => null],
+            ];
+        $marketBadges = [
+            ['icon' => 'fa-solid fa-circle-check', 'label' => 'Fresh daily listings'],
+            ['icon' => 'fa-solid fa-user-shield', 'label' => 'Verified vendor storefronts'],
+            ['icon' => 'fa-solid fa-leaf', 'label' => 'Market-first design'],
+        ];
+        $ctaActions = auth()->check()
+            ? [
+                ['label' => 'Go to your dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+            ]
+            : [
+                ['label' => 'Create a free account', 'href' => route('register'), 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Sign in', 'href' => route('login'), 'class' => 'inline-flex items-center justify-center rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-300 transition hover:border-neutral-500 hover:text-white', 'icon' => null],
+            ];
+        $footerLinks = [
+            ['label' => 'Log in', 'href' => route('login')],
+            ['label' => 'Register', 'href' => route('register')],
+        ];
     @endphp
 
     <div class="relative overflow-x-hidden dark:text-zinc-100">
@@ -30,24 +55,20 @@
                     </p>
 
                     <div class="mt-8 flex flex-wrap gap-3">
-                        @auth
-                            <a href="{{ $portalHomeRoute }}" class="brand-button-primary">
-                                Go to my dashboard
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                        @foreach ($heroActions as $action)
+                            <a href="{{ $action['href'] }}" class="{{ $action['class'] }}">
+                                {{ $action['label'] }}
+                                @if ($action['icon'])
+                                    <i class="{{ $action['icon'] }}"></i>
+                                @endif
                             </a>
-                        @else
-                            <a href="{{ route('register') }}" class="brand-button-primary">
-                                Create a customer account
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
-                            </a>
-                            <a href="{{ route('login') }}" class="brand-button-secondary">Sign in to continue</a>
-                        @endauth
+                        @endforeach
                     </div>
 
                     <div class="mt-10 flex flex-wrap items-center gap-3 border-t border-stone-200 pt-8 dark:border-white/10">
-                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-circle-check"></i> Fresh daily listings</span>
-                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-user-shield"></i> Verified vendor storefronts</span>
-                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-leaf"></i> Market-first design</span>
+                        @foreach ($marketBadges as $badge)
+                            <span class="brand-badge"><i class="brand-accent-text {{ $badge['icon'] }}"></i> {{ $badge['label'] }}</span>
+                        @endforeach
                     </div>
                 </div>
 
@@ -277,20 +298,14 @@
                     Step into a cleaner digital palengke with real storefronts, strong vendor identity, and a warm market-first browsing experience.
                 </p>
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-                    @auth
-                        <a href="{{ $portalHomeRoute }}" class="brand-button-primary">
-                            Go to your dashboard
-                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                    @foreach ($ctaActions as $action)
+                        <a href="{{ $action['href'] }}" class="{{ $action['class'] }}">
+                            {{ $action['label'] }}
+                            @if ($action['icon'])
+                                <i class="{{ $action['icon'] }}"></i>
+                            @endif
                         </a>
-                    @else
-                        <a href="{{ route('register') }}" class="brand-button-primary">
-                            Create a free account
-                            <i class="fa-solid fa-arrow-right text-xs"></i>
-                        </a>
-                        <a href="{{ route('login') }}" class="inline-flex items-center justify-center rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-300 transition hover:border-neutral-500 hover:text-white">
-                            Sign in
-                        </a>
-                    @endauth
+                    @endforeach
                 </div>
             </div>
         </section>
@@ -307,8 +322,9 @@
                     </p>
 
                     <div class="flex items-center gap-5 text-xs text-neutral-400 dark:text-zinc-400">
-                        <a href="{{ route('login') }}" class="transition hover:text-neutral-700 dark:hover:text-zinc-100">Log in</a>
-                        <a href="{{ route('register') }}" class="transition hover:text-neutral-700 dark:hover:text-zinc-100">Register</a>
+                        @foreach ($footerLinks as $link)
+                            <a href="{{ $link['href'] }}" class="transition hover:text-neutral-700 dark:hover:text-zinc-100">{{ $link['label'] }}</a>
+                        @endforeach
                     </div>
                 </div>
 

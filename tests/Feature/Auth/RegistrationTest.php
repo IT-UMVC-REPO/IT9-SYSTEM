@@ -36,3 +36,20 @@ test('new users can register', function () {
         ->and($user->profile_image)->toBeNull()
         ->and($user->vendorProfile)->toBeNull();
 });
+
+test('new users are redirected to their intended page after registration', function () {
+    $this->get(route('shop.cart'))
+        ->assertRedirect(route('login'));
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'Jane Doe',
+        'email' => 'jane@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertSessionHasNoErrors()
+        ->assertRedirect(route('shop.cart', absolute: false));
+
+    $this->assertAuthenticated();
+});

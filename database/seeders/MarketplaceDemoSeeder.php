@@ -23,12 +23,50 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class MarketplaceDemoSeeder extends Seeder
 {
+    public const STABLE_ADMIN_EMAIL = 'admin@example.com';
+
+    public const STABLE_VENDOR_EMAIL = 'vendor@example.com';
+
+    public const STABLE_CUSTOMER_EMAIL = 'test@example.com';
+
+    public const STABLE_VENDOR_STORE_NAME = 'Fresh Vendor Market';
+
+    public const ADDITIONAL_APPROVED_VENDOR_COUNT = 14;
+
+    public const PENDING_VENDOR_COUNT = 2;
+
+    public const REJECTED_VENDOR_COUNT = 2;
+
+    public const ADDITIONAL_CUSTOMER_COUNT = 74;
+
+    public const APPROVED_VENDOR_ACTIVE_PRODUCT_COUNT = 8;
+
+    public const APPROVED_VENDOR_INACTIVE_PRODUCT_COUNT = 2;
+
+    public const CART_COUNT = 30;
+
+    public const FAVORITED_CUSTOMER_COUNT = 45;
+
+    public const ORDER_COUNT = 120;
+
+    public const EXTRA_NOTIFICATION_COUNT = 25;
+
+    /**
+     * @var array<int, string>
+     */
+    private const STABLE_VENDOR_PRODUCT_TEMPLATES = [
+        'Premium %s Selection',
+        'Daily %s Bundle',
+        '%s Market Best Seller',
+    ];
+
     /**
      * Run the database seeds.
      */
@@ -101,16 +139,13 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedStableAdmin(): User
     {
         return User::query()->updateOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Marketplace Admin',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'role' => UserRole::Admin,
-                'phone' => '+63 900 000 0001',
-                'address' => 'SukiMarket HQ, Market Avenue, Quezon City',
-                'is_active' => true,
-            ],
+            ['email' => self::STABLE_ADMIN_EMAIL],
+            $this->stableUserAttributes(
+                name: 'Marketplace Admin',
+                role: UserRole::Admin,
+                phone: '+63 900 000 0001',
+                address: 'SukiMarket HQ, Market Avenue, Quezon City',
+            ),
         );
     }
 
@@ -120,22 +155,19 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedStableVendor(Collection $categories): VendorProfile
     {
         $vendorUser = User::query()->updateOrCreate(
-            ['email' => 'vendor@example.com'],
-            [
-                'name' => 'Fresh Vendor',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'role' => UserRole::Vendor,
-                'phone' => '+63 900 000 0002',
-                'address' => 'Fresh Vendor Stall, Central Market, Pasig',
-                'is_active' => true,
-            ],
+            ['email' => self::STABLE_VENDOR_EMAIL],
+            $this->stableUserAttributes(
+                name: 'Fresh Vendor',
+                role: UserRole::Vendor,
+                phone: '+63 900 000 0002',
+                address: 'Fresh Vendor Stall, Central Market, Pasig',
+            ),
         );
 
         $vendorProfile = VendorProfile::query()->updateOrCreate(
             ['user_id' => $vendorUser->id],
             [
-                'store_name' => 'Fresh Vendor Market',
+                'store_name' => self::STABLE_VENDOR_STORE_NAME,
                 'store_description' => 'Daily market goods from an approved vendor.',
                 'store_image' => $this->marketImage('vendor'),
                 'status' => VendorStatus::Approved,
@@ -152,16 +184,13 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedStableCustomer(): User
     {
         return User::query()->updateOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'role' => UserRole::Customer,
-                'phone' => '+63 900 000 0003',
-                'address' => '123 Demo Street, Mandaluyong City',
-                'is_active' => true,
-            ],
+            ['email' => self::STABLE_CUSTOMER_EMAIL],
+            $this->stableUserAttributes(
+                name: 'Test User',
+                role: UserRole::Customer,
+                phone: '+63 900 000 0003',
+                address: '123 Demo Street, Mandaluyong City',
+            ),
         );
     }
 
@@ -170,70 +199,44 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedApprovedVendors(): Collection
     {
-        return User::factory()
-            ->count(14)
-            ->vendor()
-            ->state(fn (): array => [
-                'email' => sprintf('vendor.%s@example.com', Str::lower((string) Str::ulid())),
-                'phone' => fake()->phoneNumber(),
-                'address' => fake()->address(),
-            ])
-            ->create()
-            ->map(function (User $vendorUser): VendorProfile {
-                return VendorProfile::factory()
-                    ->approved()
-                    ->for($vendorUser, 'user')
-                    ->create();
-            })
-            ->values();
+        return $this->seedGeneratedVendors(
+            count: self::ADDITIONAL_APPROVED_VENDOR_COUNT,
+            emailPrefix: 'vendor',
+            createVendorProfile: fn (User $vendorUser): VendorProfile => VendorProfile::factory()
+                ->approved()
+                ->for($vendorUser, 'user')
+                ->create(),
+        );
     }
 
     private function seedPendingVendors(): void
     {
-        User::factory()
-            ->count(2)
-            ->vendor()
-            ->state(fn (): array => [
-                'email' => sprintf('vendor-pending.%s@example.com', Str::lower((string) Str::ulid())),
-                'phone' => fake()->phoneNumber(),
-                'address' => fake()->address(),
-            ])
-            ->create()
-            ->each(function (User $vendorUser): void {
-                VendorProfile::factory()
-                    ->for($vendorUser, 'user')
-                    ->create();
-            });
+        $this->seedGeneratedVendors(
+            count: self::PENDING_VENDOR_COUNT,
+            emailPrefix: 'vendor-pending',
+            createVendorProfile: fn (User $vendorUser): VendorProfile => VendorProfile::factory()
+                ->for($vendorUser, 'user')
+                ->create(),
+        );
     }
 
     private function seedRejectedVendors(): void
     {
-        User::factory()
-            ->count(2)
-            ->vendor()
-            ->state(fn (): array => [
-                'email' => sprintf('vendor-rejected.%s@example.com', Str::lower((string) Str::ulid())),
-                'phone' => fake()->phoneNumber(),
-                'address' => fake()->address(),
-            ])
-            ->create()
-            ->each(function (User $vendorUser): void {
-                VendorProfile::factory()
-                    ->rejected()
-                    ->for($vendorUser, 'user')
-                    ->create();
-            });
+        $this->seedGeneratedVendors(
+            count: self::REJECTED_VENDOR_COUNT,
+            emailPrefix: 'vendor-rejected',
+            createVendorProfile: fn (User $vendorUser): VendorProfile => VendorProfile::factory()
+                ->rejected()
+                ->for($vendorUser, 'user')
+                ->create(),
+        );
     }
 
     private function seedCustomers(): void
     {
         User::factory()
-            ->count(74)
-            ->state(fn (): array => [
-                'email' => sprintf('customer.%s@example.com', Str::lower((string) Str::ulid())),
-                'phone' => fake()->phoneNumber(),
-                'address' => fake()->address(),
-            ])
+            ->count(self::ADDITIONAL_CUSTOMER_COUNT)
+            ->state($this->generatedMarketplaceUserState('customer'))
             ->create();
     }
 
@@ -242,14 +245,8 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedStableVendorProducts(VendorProfile $vendorProfile, Collection $categories): void
     {
-        $productNameTemplates = [
-            'Premium %s Selection',
-            'Daily %s Bundle',
-            '%s Market Best Seller',
-        ];
-
-        $categories->values()->each(function (Category $category, int $categoryIndex) use ($productNameTemplates, $vendorProfile): void {
-            foreach ($productNameTemplates as $productIndex => $template) {
+        $categories->values()->each(function (Category $category, int $categoryIndex) use ($vendorProfile): void {
+            foreach (self::STABLE_VENDOR_PRODUCT_TEMPLATES as $productIndex => $template) {
                 $productName = sprintf($template, $category->name);
                 $price = round(65 + (($categoryIndex + 1) * 8.5) + (($productIndex + 1) * 5.75), 2);
 
@@ -282,7 +279,7 @@ class MarketplaceDemoSeeder extends Seeder
     {
         $vendorProfiles->each(function (VendorProfile $vendorProfile) use ($categories): void {
             Product::factory()
-                ->count(8)
+                ->count(self::APPROVED_VENDOR_ACTIVE_PRODUCT_COUNT)
                 ->for($vendorProfile, 'vendor')
                 ->active()
                 ->state(fn (): array => [
@@ -291,7 +288,7 @@ class MarketplaceDemoSeeder extends Seeder
                 ->create();
 
             Product::factory()
-                ->count(2)
+                ->count(self::APPROVED_VENDOR_INACTIVE_PRODUCT_COUNT)
                 ->for($vendorProfile, 'vendor')
                 ->state(fn (): array => [
                     'category_id' => $categories->random()->id,
@@ -333,10 +330,14 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedCarts(Collection $customers, Collection $activeProducts): void
     {
+        if ($activeProducts->isEmpty()) {
+            return;
+        }
+
         $customers
             ->filter(fn (User $customer): bool => $customer->cart === null)
             ->shuffle()
-            ->take(30)
+            ->take(self::CART_COUNT)
             ->each(function (User $customer) use ($activeProducts): void {
                 $cart = Cart::factory()
                     ->for($customer, 'customer')
@@ -361,9 +362,13 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedFavorites(Collection $customers, Collection $approvedVendors): void
     {
+        if ($approvedVendors->isEmpty()) {
+            return;
+        }
+
         $customers
             ->shuffle()
-            ->take(45)
+            ->take(self::FAVORITED_CUSTOMER_COUNT)
             ->each(function (User $customer) use ($approvedVendors): void {
                 $favoriteCount = min(fake()->numberBetween(1, 3), $approvedVendors->count());
 
@@ -385,7 +390,11 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedOrders(Collection $customers, Collection $approvedVendors): void
     {
-        for ($index = 0; $index < 120; $index++) {
+        if ($customers->isEmpty() || $approvedVendors->isEmpty()) {
+            return;
+        }
+
+        for ($index = 0; $index < self::ORDER_COUNT; $index++) {
             $customer = $customers->random();
             $vendorProfile = $approvedVendors->random();
             $activeVendorProducts = $vendorProfile->products
@@ -456,13 +465,18 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedExtraNotifications(): void
     {
         $users = User::query()->get();
+
+        if ($users->isEmpty()) {
+            return;
+        }
+
         $notificationTypes = [
             NotificationType::System,
             NotificationType::NewProduct,
             NotificationType::Message,
         ];
 
-        for ($index = 0; $index < 25; $index++) {
+        for ($index = 0; $index < self::EXTRA_NOTIFICATION_COUNT; $index++) {
             $user = $users->random();
             $notificationType = fake()->randomElement($notificationTypes);
             $content = $this->notificationContentFor($notificationType);
@@ -557,6 +571,56 @@ class MarketplaceDemoSeeder extends Seeder
                 'message' => 'Your recent order has a new status update.',
             ],
         };
+    }
+
+    /**
+     * @param  callable(User): VendorProfile  $createVendorProfile
+     * @return Collection<int, VendorProfile>
+     */
+    private function seedGeneratedVendors(
+        int $count,
+        string $emailPrefix,
+        callable $createVendorProfile,
+    ): Collection {
+        return User::factory()
+            ->count($count)
+            ->vendor()
+            ->state($this->generatedMarketplaceUserState($emailPrefix))
+            ->create()
+            ->map(fn (User $vendorUser): VendorProfile => $createVendorProfile($vendorUser))
+            ->values();
+    }
+
+    /**
+     * @return \Closure(): array{email: string, phone: string, address: string}
+     */
+    private function generatedMarketplaceUserState(string $emailPrefix): \Closure
+    {
+        return fn (): array => [
+            'email' => sprintf('%s.%s@example.com', $emailPrefix, Str::lower((string) Str::ulid())),
+            'phone' => fake()->phoneNumber(),
+            'address' => fake()->address(),
+        ];
+    }
+
+    /**
+     * @return array{name: string, password: string, email_verified_at: Carbon, role: UserRole, phone: string, address: string, is_active: bool}
+     */
+    private function stableUserAttributes(
+        string $name,
+        UserRole $role,
+        string $phone,
+        string $address,
+    ): array {
+        return [
+            'name' => $name,
+            'password' => 'password',
+            'email_verified_at' => now(),
+            'role' => $role,
+            'phone' => $phone,
+            'address' => $address,
+            'is_active' => true,
+        ];
     }
 
     private function paymentStatusFor(OrderStatus $orderStatus, PaymentMethod $paymentMethod): PaymentStatus

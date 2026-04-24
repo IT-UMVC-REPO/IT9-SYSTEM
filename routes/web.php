@@ -26,11 +26,16 @@ Route::middleware(['auth', 'role:customer'])->prefix('shop')->name('shop.')->gro
     Route::get('/vendors', [ShopController::class, 'vendors'])->name('vendors');
     Route::get('/vendors/{vendorProfile}', [ShopController::class, 'vendor'])->name('vendors.show');
     Route::get('/products/{product}', [ShopController::class, 'show'])->name('products.show');
-    Route::view('/cart', 'pages.shop.cart')->name('cart');
-    Route::view('/checkout', 'pages.shop.checkout')->name('checkout');
-    Route::view('/orders', 'pages.shop.orders')->name('orders');
-    Route::view('/orders/{orderReference}', 'pages.shop.order-detail')->name('orders.show');
-    Route::view('/favorites', 'pages.shop.favorites')->name('favorites');
+
+    foreach ([
+        ['/cart', 'pages.shop.cart', 'cart'],
+        ['/checkout', 'pages.shop.checkout', 'checkout'],
+        ['/orders', 'pages.shop.orders', 'orders'],
+        ['/orders/{orderReference}', 'pages.shop.order-detail', 'orders.show'],
+        ['/favorites', 'pages.shop.favorites', 'favorites'],
+    ] as [$uri, $view, $name]) {
+        Route::view($uri, $view)->name($name);
+    }
 });
 
 Route::middleware(['auth', 'role:customer'])->prefix('vendor')->name('vendor.')->group(function () {
@@ -38,26 +43,40 @@ Route::middleware(['auth', 'role:customer'])->prefix('vendor')->name('vendor.')-
 });
 
 Route::middleware(['auth', 'role:customer,vendor'])->prefix('messages')->name('messages.')->group(function () {
-    Route::view('/', 'pages.messages.inbox')->name('inbox');
-    Route::view('/{conversationReference}', 'pages.messages.conversation')->name('conversation');
+    foreach ([
+        ['/', 'pages.messages.inbox', 'inbox'],
+        ['/{conversationReference}', 'pages.messages.conversation', 'conversation'],
+    ] as [$uri, $view, $name]) {
+        Route::view($uri, $view)->name($name);
+    }
 });
 
 Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
     Route::get('/dashboard', [VendorController::class, 'index'])->name('dashboard');
-    Route::view('/products', 'pages.vendor.products')->name('products');
-    Route::view('/products/create', 'pages.vendor.product-create')->name('products.create');
-    Route::view('/products/{productReference}/edit', 'pages.vendor.product-edit')->name('products.edit');
-    Route::view('/orders', 'pages.vendor.orders')->name('orders');
-    Route::view('/orders/{orderReference}', 'pages.vendor.order-detail')->name('orders.show');
-    Route::view('/sales', 'pages.vendor.sales')->name('sales');
+
+    foreach ([
+        ['/products', 'pages.vendor.products', 'products'],
+        ['/products/create', 'pages.vendor.product-create', 'products.create'],
+        ['/products/{productReference}/edit', 'pages.vendor.product-edit', 'products.edit'],
+        ['/orders', 'pages.vendor.orders', 'orders'],
+        ['/orders/{orderReference}', 'pages.vendor.order-detail', 'orders.show'],
+        ['/sales', 'pages.vendor.sales', 'sales'],
+    ] as [$uri, $view, $name]) {
+        Route::view($uri, $view)->name($name);
+    }
 });
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
-    Route::view('/vendors', 'pages.admin.vendors')->name('vendors');
-    Route::view('/vendors/{vendorReference}', 'pages.admin.vendor-detail')->name('vendors.show');
-    Route::view('/users', 'pages.admin.users')->name('users');
-    Route::view('/orders', 'pages.admin.orders')->name('orders');
+
+    foreach ([
+        ['/vendors', 'pages.admin.vendors', 'vendors'],
+        ['/vendors/{vendorReference}', 'pages.admin.vendor-detail', 'vendors.show'],
+        ['/users', 'pages.admin.users', 'users'],
+        ['/orders', 'pages.admin.orders', 'orders'],
+    ] as [$uri, $view, $name]) {
+        Route::view($uri, $view)->name($name);
+    }
 });
 
 require __DIR__.'/settings.php';

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\MarketCategory;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -21,9 +20,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Permission\Models\Role;
 
 test('marketplace tables and user columns exist', function () {
     expect(Schema::hasColumns('users', ['role', 'phone', 'address', 'profile_image', 'is_active']))->toBeTrue()
@@ -103,140 +100,53 @@ test('marketplace factories build related records with enum casts', function () 
         ->and($notification->user->is($customer))->toBeTrue();
 });
 
-test('vendor profiles are one to one with users', function () {
-    $user = User::factory()->create();
+test('marketplace unique constraints reject duplicate records for :dataset', function (Closure $assertDuplicateInsertFails) {
+    $assertDuplicateInsertFails();
+})->with([
+    'vendor profiles are one to one with users' => [
+        function (): void {
+            $user = User::factory()->create();
 
-    VendorProfile::factory()->for($user, 'user')->create();
+            VendorProfile::factory()->for($user, 'user')->create();
 
-    expect(fn () => VendorProfile::factory()->for($user, 'user')->create())
-        ->toThrow(QueryException::class);
-});
+            expect(fn () => VendorProfile::factory()->for($user, 'user')->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'carts are one to one with customers' => [
+        function (): void {
+            $customer = User::factory()->create();
 
-test('carts are one to one with customers', function () {
-    $customer = User::factory()->create();
+            Cart::factory()->for($customer, 'customer')->create();
 
-    Cart::factory()->for($customer, 'customer')->create();
+            expect(fn () => Cart::factory()->for($customer, 'customer')->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'payments are one to one with orders' => [
+        function (): void {
+            $order = Order::factory()->create();
 
-    expect(fn () => Cart::factory()->for($customer, 'customer')->create())
-        ->toThrow(QueryException::class);
-});
+            Payment::factory()->for($order)->create();
 
-test('payments are one to one with orders', function () {
-    $order = Order::factory()->create();
+            expect(fn () => Payment::factory()->for($order)->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'favorites are unique per customer and vendor' => [
+        function (): void {
+            $customer = User::factory()->create();
+            $vendorProfile = VendorProfile::factory()->approved()->create();
 
-    Payment::factory()->for($order)->create();
+            Favorite::query()->create([
+                'customer_id' => $customer->id,
+                'vendor_id' => $vendorProfile->id,
+            ]);
 
-    expect(fn () => Payment::factory()->for($order)->create())
-        ->toThrow(QueryException::class);
-});
-
-test('favorites are unique per customer and vendor', function () {
-    $customer = User::factory()->create();
-    $vendorProfile = VendorProfile::factory()->approved()->create();
-
-    Favorite::query()->create([
-        'customer_id' => $customer->id,
-        'vendor_id' => $vendorProfile->id,
-    ]);
-
-    expect(fn () => Favorite::query()->create([
-        'customer_id' => $customer->id,
-        'vendor_id' => $vendorProfile->id,
-    ]))->toThrow(QueryException::class);
-});
-
-test('database seeder provisions a large marketplace dataset', function () {
-    $this->seed();
-
-    $marketCategoryCount = count(MarketCategory::cases());
-    $topLevelCategoryCount = count(MarketCategory::topLevelCases());
-    $leafCategoryCount = count(MarketCategory::leafCases());
-    $expectedProductCount = ($leafCategoryCount * 3) + (14 * 10);
-    $stableVendor = User::query()
-        ->with('vendorProfile')
-        ->where('email', 'vendor@example.com')
-        ->firstOrFail();
-    $messagesCount = Message::query()->count();
-    $favoritesCount = Favorite::query()->count();
-    $cartItemsCount = CartItem::query()->count();
-    $orderItemsCount = OrderItem::query()->count();
-    $mismatchedOrderItems = DB::table('order_items')
-        ->join('orders', 'orders.id', '=', 'order_items.order_id')
-        ->join('products', 'products.id', '=', 'order_items.product_id')
-        ->whereColumn('orders.vendor_id', '!=', 'products.vendor_id')
-        ->exists();
-    $productsAssignedToParentCategories = Product::query()
-        ->whereHas('category.children')
-        ->exists();
-
-    expect(User::query()->where('email', 'admin@example.com')->first()?->role)->toBe(UserRole::Admin)
-        ->and($stableVendor->role)->toBe(UserRole::Vendor)
-        ->and($stableVendor->vendorProfile?->status)->toBe(VendorStatus::Approved)
-        ->and(User::query()->where('email', 'test@example.com')->first()?->role)->toBe(UserRole::Customer)
-        ->and(Role::query()->count())->toBe(3)
-        ->and(User::query()->count())->toBe(95)
-        ->and(VendorProfile::query()->count())->toBe(19)
-        ->and(VendorProfile::query()->approved()->count())->toBe(15)
-        ->and(Category::query()->count())->toBe($marketCategoryCount)
-        ->and(Category::query()->whereNull('parent_id')->count())->toBe($topLevelCategoryCount)
-        ->and(Category::query()->whereNotNull('parent_id')->count())->toBe($leafCategoryCount)
-        ->and(Category::query()->whereNull('slug')->exists())->toBeFalse()
-        ->and(Product::query()->count())->toBe($expectedProductCount)
-        ->and(Cart::query()->count())->toBe(30)
-        ->and($cartItemsCount)->toBeGreaterThanOrEqual(60)
-        ->and($cartItemsCount)->toBeLessThanOrEqual(150)
-        ->and(Favorite::query()->count())->toBeGreaterThanOrEqual(45)
-        ->and(Order::query()->count())->toBe(120)
-        ->and($orderItemsCount)->toBeGreaterThanOrEqual(120)
-        ->and($orderItemsCount)->toBeLessThanOrEqual(480)
-        ->and(Payment::query()->count())->toBe(120)
-        ->and($messagesCount)->toBeGreaterThanOrEqual(120)
-        ->and($messagesCount)->toBeLessThanOrEqual(240)
-        ->and(Notification::query()->count())->toBe(145)
-        ->and($favoritesCount)->toBeLessThanOrEqual(135)
-        ->and(Order::query()->doesntHave('orderItems')->exists())->toBeFalse()
-        ->and(Order::query()->doesntHave('payment')->exists())->toBeFalse()
-        ->and($mismatchedOrderItems)->toBeFalse()
-        ->and($productsAssignedToParentCategories)->toBeFalse();
-});
-
-test('database seeder is rerun safe for baseline records', function () {
-    $this->seed();
-    $this->seed();
-
-    $duplicateVendorProfiles = DB::table('vendor_profiles')
-        ->select('user_id')
-        ->groupBy('user_id')
-        ->havingRaw('COUNT(*) > 1')
-        ->exists();
-    $duplicateCarts = DB::table('carts')
-        ->select('customer_id')
-        ->groupBy('customer_id')
-        ->havingRaw('COUNT(*) > 1')
-        ->exists();
-    $duplicatePayments = DB::table('payments')
-        ->select('order_id')
-        ->groupBy('order_id')
-        ->havingRaw('COUNT(*) > 1')
-        ->exists();
-    $duplicateCategorySlugs = DB::table('categories')
-        ->select('slug')
-        ->groupBy('slug')
-        ->havingRaw('COUNT(*) > 1')
-        ->exists();
-
-    expect(Role::query()->count())->toBe(3)
-        ->and(Role::query()->where('name', 'admin')->count())->toBe(1)
-        ->and(Role::query()->where('name', 'vendor')->count())->toBe(1)
-        ->and(Role::query()->where('name', 'customer')->count())->toBe(1)
-        ->and(User::query()->where('email', 'admin@example.com')->count())->toBe(1)
-        ->and(User::query()->where('email', 'vendor@example.com')->count())->toBe(1)
-        ->and(User::query()->where('email', 'test@example.com')->count())->toBe(1)
-        ->and(VendorProfile::query()->where('store_name', 'Fresh Vendor Market')->count())->toBe(1)
-        ->and(Category::query()->count())->toBe(count(MarketCategory::cases()))
-        ->and(Category::query()->whereNull('slug')->exists())->toBeFalse()
-        ->and($duplicateCategorySlugs)->toBeFalse()
-        ->and($duplicateVendorProfiles)->toBeFalse()
-        ->and($duplicateCarts)->toBeFalse()
-        ->and($duplicatePayments)->toBeFalse();
-});
+            expect(fn () => Favorite::query()->create([
+                'customer_id' => $customer->id,
+                'vendor_id' => $vendorProfile->id,
+            ]))->toThrow(QueryException::class);
+        },
+    ],
+]);

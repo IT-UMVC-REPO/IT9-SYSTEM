@@ -9,59 +9,72 @@
         $quickActionItems = [];
         $portalSummary = null;
         $mobileNavigationItems = [];
+        $navItem = fn (string $label, string $routeName, array $patterns, string $icon): array => [
+            'label' => __($label),
+            'route' => route($routeName),
+            'patterns' => $patterns,
+            'icon' => $icon,
+        ];
+        $homeNavigationItem = $navItem('Home', 'home', ['home'], 'fa-solid fa-house');
 
         if ($user !== null) {
-            [$navigationItems, $quickActionItems, $portalSummary] = match ($user->effectiveMarketplaceRole()) {
+            $effectiveMarketplaceRole = $user->effectiveMarketplaceRole();
+
+            [$navigationItems, $quickActionItems, $portalSummary] = match ($effectiveMarketplaceRole) {
                 \App\Enums\UserRole::Customer => [
                     [
-                        ['label' => __('Home'), 'route' => route('home'), 'patterns' => ['home'], 'icon' => 'fa-solid fa-house'],
-                        ['label' => __('Dashboard'), 'route' => route('customer.dashboard'), 'patterns' => ['customer.*'], 'icon' => 'fa-solid fa-table-cells-large'],
-                        ['label' => __('Storefront'), 'route' => route('shop.home'), 'patterns' => ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'icon' => 'fa-solid fa-store'],
-                        ['label' => __('Orders'), 'route' => route('shop.orders'), 'patterns' => ['shop.orders', 'shop.orders.*'], 'icon' => 'fa-solid fa-bag-shopping'],
-                        ['label' => __('Seller setup'), 'route' => route('vendor.registration'), 'patterns' => ['vendor.registration'], 'icon' => 'fa-solid fa-shop'],
+                        $homeNavigationItem,
+                        $navItem('Dashboard', 'customer.dashboard', ['customer.*'], 'fa-solid fa-table-cells-large'),
+                        $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                        $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
+                        $navItem('Seller setup', 'vendor.registration', ['vendor.registration'], 'fa-solid fa-shop'),
                     ],
                     [
-                        ['label' => __('Cart'), 'route' => route('shop.cart'), 'patterns' => ['shop.cart'], 'icon' => 'fa-solid fa-cart-shopping'],
-                        ['label' => __('Messages'), 'route' => route('messages.inbox'), 'patterns' => ['messages.*'], 'icon' => 'fa-solid fa-comments'],
-                        ['label' => __('Favourites'), 'route' => route('shop.favorites'), 'patterns' => ['shop.favorites'], 'icon' => 'fa-solid fa-heart'],
+                        $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
+                        $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
+                        $navItem('Favourites', 'shop.favorites', ['shop.favorites'], 'fa-solid fa-heart'),
                     ],
                     __('Browse the market, track orders, and keep your favorite stalls close.'),
                 ],
                 \App\Enums\UserRole::Vendor => [
                     [
-                        ['label' => __('Dashboard'), 'route' => route('vendor.dashboard'), 'patterns' => ['vendor.dashboard'], 'icon' => 'fa-solid fa-shop'],
-                        ['label' => __('Products'), 'route' => route('vendor.products'), 'patterns' => ['vendor.products', 'vendor.products.*'], 'icon' => 'fa-solid fa-boxes-stacked'],
-                        ['label' => __('Orders'), 'route' => route('vendor.orders'), 'patterns' => ['vendor.orders', 'vendor.orders.*'], 'icon' => 'fa-solid fa-bag-shopping'],
-                        ['label' => __('Sales'), 'route' => route('vendor.sales'), 'patterns' => ['vendor.sales'], 'icon' => 'fa-solid fa-chart-line'],
+                        $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
+                        $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
+                        $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
+                        $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
                     ],
                     [
-                        ['label' => __('Messages'), 'route' => route('messages.inbox'), 'patterns' => ['messages.*'], 'icon' => 'fa-solid fa-comments'],
+                        $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                     ],
                     __('Manage your storefront, prepare orders, and review sales from one place.'),
                 ],
                 \App\Enums\UserRole::Admin => [
                     [
-                        ['label' => __('Dashboard'), 'route' => route('admin.dashboard'), 'patterns' => ['admin.dashboard'], 'icon' => 'fa-solid fa-shield-halved'],
-                        ['label' => __('Vendors'), 'route' => route('admin.vendors'), 'patterns' => ['admin.vendors', 'admin.vendors.*'], 'icon' => 'fa-solid fa-user-check'],
-                        ['label' => __('Users'), 'route' => route('admin.users'), 'patterns' => ['admin.users'], 'icon' => 'fa-solid fa-users'],
-                        ['label' => __('Orders'), 'route' => route('admin.orders'), 'patterns' => ['admin.orders'], 'icon' => 'fa-solid fa-bag-shopping'],
+                        $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
+                        $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
+                        $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
+                        $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                     ],
                     [],
                     __('Review approvals, users, and marketplace operations from the admin portal.'),
                 ],
             };
 
-            $mobileNavigationItems = [
-                ...$navigationItems,
-                ['label' => __('Home'), 'route' => route('home'), 'patterns' => ['home'], 'icon' => 'fa-solid fa-house'],
-            ];
+            $mobileNavigationItems = $effectiveMarketplaceRole === \App\Enums\UserRole::Customer
+                ? $navigationItems
+                : [
+                    ...$navigationItems,
+                    $homeNavigationItem,
+                ];
         }
+
+        $logoHref = $user !== null ? $navigationItems[0]['route'] : route('home');
     @endphp
     <body class="brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <header class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/70">
             <nav class="mx-auto flex h-[52px] max-w-[1500px] items-stretch gap-4 px-4 sm:px-6 lg:px-8">
                 <div class="flex shrink-0 items-center">
-                    <x-app-logo href="{{ $user ? $navigationItems[0]['route'] : route('home') }}" wire:navigate class="shrink-0" />
+                    <x-app-logo href="{{ $logoHref }}" wire:navigate class="shrink-0" />
                 </div>
 
                 @auth

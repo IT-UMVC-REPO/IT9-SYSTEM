@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
 use Closure;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,21 +23,29 @@ class EnsureUserHasRole
             return redirect()->route('login');
         }
 
-        $allowedRoles = collect($roles)
-            ->map(function (string $role): UserRole {
-                $mappedRole = UserRole::tryFrom($role);
-
-                if ($mappedRole === null) {
-                    throw new InvalidArgumentException("Unknown marketplace role [{$role}].");
-                }
-
-                return $mappedRole;
-            });
-
-        if (! $allowedRoles->contains(fn (UserRole $role): bool => $user->canAccessMarketplaceRole($role))) {
-            return new RedirectResponse(route($user->homeRoute()));
+        foreach ($this->resolveAllowedRoles($roles) as $role) {
+            if ($user->canAccessMarketplaceRole($role)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        return redirect()->route($user->homeRoute());
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     * @return array<int, UserRole>
+     */
+    private function resolveAllowedRoles(array $roles): array
+    {
+        return array_map(function (string $role): UserRole {
+            $mappedRole = UserRole::tryFrom($role);
+
+            if ($mappedRole === null) {
+                throw new InvalidArgumentException("Unknown marketplace role [{$role}].");
+            }
+
+            return $mappedRole;
+        }, $roles);
     }
 }

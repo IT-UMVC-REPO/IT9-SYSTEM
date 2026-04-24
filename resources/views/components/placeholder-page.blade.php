@@ -1,12 +1,4 @@
-@props([
-    'eyebrow',
-    'title',
-    'description',
-    'sections' => [],
-    'notes' => [],
-    'links' => [],
-    'status' => 'Placeholder page',
-])
+@props(['title'])
 
 <section class="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
     <div class="brand-panel px-6 py-16 text-center sm:px-10">

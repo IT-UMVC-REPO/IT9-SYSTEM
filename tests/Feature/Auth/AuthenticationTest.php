@@ -26,6 +26,24 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
 });
 
+test('users are redirected to their intended page after login', function () {
+    $user = User::factory()->create();
+
+    $this->get(route('shop.cart'))
+        ->assertRedirect(route('login'));
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('shop.cart', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+});
+
 test('vendors are redirected to the vendor dashboard after login', function () {
     $user = User::factory()->vendor()->create();
     VendorProfile::factory()->for($user, 'user')->approved()->create();

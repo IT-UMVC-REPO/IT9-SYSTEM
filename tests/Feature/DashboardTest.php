@@ -65,3 +65,13 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
         'Vendors',
     ],
 ]);
+
+test('customer header renders the home navigation link only once', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('customer.dashboard'));
+
+    $response->assertOk();
+
+    expect(substr_count($response->getContent(), '>Home<'))->toBe(1);
+});
