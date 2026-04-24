@@ -28,6 +28,9 @@ SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market
 1. Install PHP and Node.js dependencies:
 
    ```bash
+   git clone [REPO GIT LINK] sukimarket
+   cd sukimarket
+   git checkout devtest
    composer install
    npm install
    ```
