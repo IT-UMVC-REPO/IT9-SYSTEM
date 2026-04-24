@@ -199,11 +199,11 @@
                         {{ $products->total() }} {{ Str::plural('product', $products->total()) }}
                         {{ $selectedCategoryName ? 'in '.$selectedCategoryName : 'available' }}
                     </p>
-                    @if ($searchTerm !== '' || $selectedCategory !== null)
+                    {{-- @if ($searchTerm !== '' || $selectedCategory !== null)
                         <a href="{{ route('shop.home') }}" class="text-sm text-emerald-700 hover:underline">
                             Clear filters
                         </a>
-                    @endif
+                    @endif --}}
                 </div>
 
                 @if ($products->isNotEmpty())
@@ -277,7 +277,7 @@
                         </p>
                         @if ($searchTerm !== '' || $selectedCategory !== null)
                             <a href="{{ route('shop.home') }}" class="brand-button-primary mt-5">
-                                Clear filters
+                                <span class="text-accent-foreground">Clear filters</span>
                             </a>
                         @endif
                     </div>
