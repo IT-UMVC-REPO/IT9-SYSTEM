@@ -3,7 +3,7 @@
         class="brand-panel-muted flex flex-col gap-4 px-5 py-4 sm:px-6">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                <p class="brand-accent-text text-xs font-semibold uppercase tracking-[0.18em]">
                     Browse more listings
                 </p>
                 <p class="mt-1 text-sm text-stone-500">
@@ -52,7 +52,7 @@
                 </span>
             @else
                 <a href="{{ $paginator->previousPageUrl() }}"
-                    class="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-3 text-stone-500 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700">
+                    class="brand-outline-hover inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-3 text-stone-500 shadow-sm transition">
                     <span class="sr-only">Previous</span>
                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd"
@@ -74,12 +74,12 @@
                     @foreach ($element as $page => $url)
                         @if ($page === $paginator->currentPage())
                             <span aria-current="page"
-                                class="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-emerald-600 bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm">
+                                class="brand-accent-pill inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold shadow-sm">
                                 {{ $page }}
                             </span>
                         @else
                             <a href="{{ $url }}"
-                                class="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-600 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700">
+                                class="brand-outline-hover inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-600 shadow-sm transition">
                                 {{ $page }}
                             </a>
                         @endif
@@ -89,7 +89,7 @@
 
             @if ($paginator->hasMorePages())
                 <a href="{{ $paginator->nextPageUrl() }}"
-                    class="inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-3 text-stone-500 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700">
+                    class="brand-outline-hover inline-flex h-11 min-w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-3 text-stone-500 shadow-sm transition">
                     <span class="sr-only">Next</span>
                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd"

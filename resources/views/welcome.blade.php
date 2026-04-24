@@ -14,7 +14,7 @@
     @endphp
 
     <div class="relative overflow-x-hidden dark:text-zinc-100">
-        <div class="pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full bg-emerald-100 blur-3xl dark:bg-emerald-900/30"></div>
+        <div class="brand-glow-orb pointer-events-none absolute -right-16 top-0 h-72 w-72 rounded-full blur-3xl"></div>
         {{-- <div class="pointer-events-none absolute -left-10 bottom-0 h-72 w-72 rounded-full bg-amber-100 blur-3xl dark:bg-amber-900/20"></div> --}}
 
         <section class="relative overflow-hidden py-2 lg:py-8">
@@ -22,7 +22,7 @@
                 <div class="max-w-2xl">
                     <h1 class="brand-serif mt-6 text-5xl font-bold leading-tight tracking-tight text-neutral-900 dark:text-zinc-100 sm:text-6xl">
                         Fresh from the palengke,
-                        <span class="text-emerald-600">with your suki still in view.</span>
+                        <span class="brand-accent-text">with your suki still in view.</span>
                     </h1>
 
                     <p class="mt-6 max-w-xl text-lg leading-8 text-neutral-500 dark:text-zinc-400">
@@ -45,9 +45,9 @@
                     </div>
 
                     <div class="mt-10 flex flex-wrap items-center gap-3 border-t border-stone-200 pt-8 dark:border-white/10">
-                        <span class="brand-badge"><i class="fa-solid fa-circle-check text-emerald-600"></i> Fresh daily listings</span>
-                        <span class="brand-badge"><i class="fa-solid fa-user-shield text-emerald-600"></i> Verified vendor storefronts</span>
-                        <span class="brand-badge"><i class="fa-solid fa-leaf text-emerald-600"></i> Market-first design</span>
+                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-circle-check"></i> Fresh daily listings</span>
+                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-user-shield"></i> Verified vendor storefronts</span>
+                        <span class="brand-badge"><i class="brand-accent-text fa-solid fa-leaf"></i> Market-first design</span>
                     </div>
                 </div>
 
@@ -56,15 +56,15 @@
                         <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex items-center gap-3">
-                                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                                    <span class="brand-soft-surface flex h-11 w-11 items-center justify-center rounded-2xl">
                                         <i class="fa-solid fa-store text-lg"></i>
                                     </span>
                                     <div>
-                                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Featured market stall</p>
+                                        <p class="brand-accent-text-strong text-xs font-semibold uppercase tracking-[0.22em]">Featured market stall</p>
                                         <h2 class="mt-1 text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $featuredVendor->store_name }}</h2>
                                     </div>
                                 </div>
-                                <span class="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">Verified</span>
+                                <span class="brand-soft-surface rounded-full px-3 py-1 text-[11px] font-semibold">Verified</span>
                             </div>
 
                             <p class="mt-4 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
@@ -109,11 +109,11 @@
                     @else
                         <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72">
                             <div class="flex items-center gap-3">
-                                <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                                <span class="brand-soft-surface flex h-11 w-11 items-center justify-center rounded-2xl">
                                     <i class="fa-solid fa-store text-lg"></i>
                                 </span>
                                 <div>
-                                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Marketplace spotlight</p>
+                                    <p class="brand-accent-text-strong text-xs font-semibold uppercase tracking-[0.22em]">Marketplace spotlight</p>
                                     <h2 class="mt-1 text-sm font-semibold text-neutral-900 dark:text-zinc-100">Featured stalls will appear here as listings go live.</h2>
                                 </div>
                             </div>
@@ -131,7 +131,7 @@
                 <div class="brand-marquee-track flex min-w-full w-max gap-0">
                     @foreach ($marketStream as $item)
                         <span class="flex shrink-0 items-center gap-3 px-6 text-sm font-medium text-neutral-500 dark:text-zinc-400">
-                            <i class="{{ $item['icon'] }} text-emerald-600"></i>
+                            <i class="{{ $item['icon'] }} brand-accent-text"></i>
                             <span>{{ $item['label'] }}</span>
                             <span class="ml-3 text-stone-300 dark:text-zinc-700">/</span>
                         </span>
@@ -143,7 +143,7 @@
         <section id="features" class="py-24">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
-                    <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">What makes it special</p>
+                    <p class="brand-accent-text text-sm font-semibold uppercase tracking-[0.28em]">What makes it special</p>
                     <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">A digital palengke with a familiar feel.</h2>
                     <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-neutral-500 dark:text-zinc-400">
                         Every section is meant to feel closer to a real market stall: easy to scan, easy to trust, and easy to come back to.
@@ -156,10 +156,10 @@
                             style="background-image: url('{{ asset('imgs/sukifruits.webp') }}')">
                         </div>
                         <div class="relative z-10">
-                            <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            <div class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-2xl transition group-hover:scale-105">
                                 <i class="fa-solid fa-store text-xl"></i>
                             </div>
-                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">Fresh finds</p>
+                            <p class="brand-accent-text mt-5 text-xs font-semibold uppercase tracking-[0.22em]">Fresh finds</p>
                             <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">Browse the market with ease</h3>
                             <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">Explore produce, seafood, meat, and pantry staples through a clean storefront built around how people already shop in the palengke.</p>
                         </div>
@@ -199,14 +199,14 @@
         <section id="how-it-works" class="border-y border-stone-200 bg-white py-24 dark:border-white/10 dark:bg-zinc-900/80">
             <div class="mx-auto max-w-5xl px-4 sm:px-6">
                 <div class="text-center">
-                    <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">How it works</p>
+                    <p class="brand-accent-text text-sm font-semibold uppercase tracking-[0.28em]">How it works</p>
                     <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">Simple, familiar, and market-inspired.</h2>
                 </div>
 
                 <div class="mt-16 grid gap-8 md:grid-cols-3">
                     <article class="brand-panel p-7">
                         <div class="flex items-start gap-4">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">01</span>
+                            <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">01</span>
                             <div>
                                 <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300"><i class="fa-solid fa-user-plus"></i></span>
                                 <h3 class="brand-serif mt-4 text-xl font-bold text-neutral-900 dark:text-zinc-100">Browse market categories</h3>
@@ -217,7 +217,7 @@
 
                     <article class="brand-panel p-7">
                         <div class="flex items-start gap-4">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">02</span>
+                            <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">02</span>
                             <div>
                                 <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300"><i class="fa-solid fa-magnifying-glass"></i></span>
                                 <h3 class="brand-serif mt-4 text-xl font-bold text-neutral-900 dark:text-zinc-100">Check each stall closely</h3>
@@ -228,7 +228,7 @@
 
                     <article class="brand-panel p-7">
                         <div class="flex items-start gap-4">
-                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">03</span>
+                            <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">03</span>
                             <div>
                                 <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300"><i class="fa-solid fa-list-check"></i></span>
                                 <h3 class="brand-serif mt-4 text-xl font-bold text-neutral-900 dark:text-zinc-100">Build your go-to routine</h3>
@@ -243,16 +243,16 @@
         <section id="portals" class="py-24">
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
-                    <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Built for the marketplace</p>
+                    <p class="brand-accent-text text-sm font-semibold uppercase tracking-[0.28em]">Built for the marketplace</p>
                     <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">Two tailored portals, one shared market.</h2>
                 </div>
 
                 <div class="mt-14 grid gap-6 xl:grid-cols-2">
-                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-emerald-600 to-emerald-800 p-10 text-white shadow-lg">
+                    <article class="brand-gradient-card relative overflow-hidden rounded-4xl p-10 text-white shadow-lg">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer dashboard</h3>
-                        <p class="mt-4 text-sm leading-7 text-emerald-100">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and following upcoming orders.</p>
-                        <a href="{{ auth()->check() ? $portalHomeRoute : route('register') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:text-emerald-300 dark:hover:bg-zinc-900">
+                        <p class="brand-hero-copy mt-4 text-sm leading-7">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and following upcoming orders.</p>
+                        <a href="{{ auth()->check() ? $portalHomeRoute : route('register') }}" class="brand-accent-text-strong mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:hover:bg-zinc-900">
                             {{ auth()->check() ? 'Open my dashboard' : 'Create a customer account' }}
                         </a>
                     </article>

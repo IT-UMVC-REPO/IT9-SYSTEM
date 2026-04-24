@@ -1,10 +1,10 @@
 <flux:dropdown {{ $attributes->class('') }} position="bottom" align="end">
     <button
         type="button"
-        class="flex items-center gap-2 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-2 text-left shadow-sm transition hover:border-emerald-200 dark:border-white/10 dark:bg-zinc-900/80 dark:hover:border-emerald-500"
+        class="brand-outline-hover flex items-center gap-2 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-2 text-left shadow-sm transition dark:border-white/10 dark:bg-zinc-900/80"
         data-test="sidebar-menu-button"
     >
-        <span class="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-stone-900 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+        <span class="flex h-[34px] w-[34px] items-center justify-center rounded-full brand-logo-badge text-sm font-semibold text-white dark:text-zinc-900">
             {{ auth()->user()->initials() }}
         </span>
 

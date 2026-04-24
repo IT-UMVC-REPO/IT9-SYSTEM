@@ -79,7 +79,7 @@ new #[Title('Security settings')] class extends Component {
         <x-pages::settings.layout :heading="__('Security')" :subheading="__('Protect your account and manage sign-in safeguards')">
             <section class="settings-section-card">
                 <div class="flex items-start gap-4">
-                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    <span class="brand-soft-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
                         <i class="fa-solid fa-key text-lg"></i>
                     </span>
 
@@ -128,7 +128,7 @@ new #[Title('Security settings')] class extends Component {
             @if ($canManageTwoFactor)
                 <section class="settings-section-card">
                     <div class="flex items-start gap-4">
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        <span class="brand-soft-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
                             <i class="fa-solid fa-shield-halved text-lg"></i>
                         </span>
 

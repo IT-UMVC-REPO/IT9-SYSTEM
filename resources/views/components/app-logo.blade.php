@@ -3,7 +3,7 @@
 ])
 
 <a {{ $attributes->class('flex items-center gap-3') }}>
-    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-sm font-bold text-white shadow-sm">
+    <span class="brand-logo-badge flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold shadow-sm">
         <img src="{{ asset('imgs/sukilogo.png') }}" alt="SukiMarket Logo" class="h-full w-full object-cover" />
     </span>
 

@@ -1,7 +1,7 @@
 <x-layouts::app :title="$product->name">
     @php
         $availabilityClasses = $product->stock_quantity > 0
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'
+            ? 'brand-soft-surface border'
             : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300';
 
         $availabilityLabel = $product->stock_quantity > 0
@@ -9,7 +9,7 @@
             : 'Currently sold out';
     @endphp
 
-    <section class="relative overflow-hidden border-b border-emerald-900/10 bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-950 text-white">
+    <section class="relative overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12); background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 55%, color-mix(in oklab, var(--brand-950) 80%, black) 100%);">
         <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgb(255_255_255_/_0.18),_transparent_52%)]"></div>
         <div class="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
 
@@ -34,11 +34,11 @@
                     </div>
 
                     <h1 class="brand-serif mt-5 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{{ $product->name }}</h1>
-                    <p class="mt-5 max-w-2xl text-base leading-8 text-emerald-50/90">{{ $product->description }}</p>
+                    <p class="brand-hero-copy mt-5 max-w-2xl text-base leading-8">{{ $product->description }}</p>
                 </div>
 
                 <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50/80">Market price</p>
+                    <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">Market price</p>
                     <p class="mt-3 text-4xl font-semibold text-white">PHP {{ number_format((float) $product->price, 2) }}</p>
 
                     <div class="mt-6 flex flex-wrap gap-3">
@@ -158,7 +158,7 @@
                                     <div class="flex items-center gap-3">
                                         <button
                                             type="button"
-                                            class="flex h-11 w-11 items-center justify-center rounded-xl border border-stone-300 bg-white text-lg font-semibold text-neutral-800 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+                                            class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                                             x-on:click="decrement()"
                                             x-bind:disabled="maxQuantity === 0 || quantity <= 1"
                                             aria-label="Decrease quantity"
@@ -174,12 +174,12 @@
                                             x-model.number="quantity"
                                             x-on:change="clamp()"
                                             x-on:blur="clamp()"
-                                            class="h-11 w-full rounded-xl border border-stone-300 bg-white px-4 text-center text-sm font-semibold text-neutral-900 outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100"
+                                            class="brand-stepper-input"
                                         >
 
                                         <button
                                             type="button"
-                                            class="flex h-11 w-11 items-center justify-center rounded-xl border border-stone-300 bg-white text-lg font-semibold text-neutral-800 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+                                            class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                                             x-on:click="increment()"
                                             x-bind:disabled="maxQuantity === 0 || quantity >= maxQuantity"
                                             aria-label="Increase quantity"
@@ -227,9 +227,9 @@
 
                     <a
                         href="{{ route('messages.inbox') }}"
-                        class="block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition hover:border-emerald-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:border-emerald-500/30"
+                        class="brand-card-hover block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
                     >
-                        <span class="flex items-center gap-3 text-emerald-700 dark:text-emerald-400">
+                        <span class="brand-accent-text-strong flex items-center gap-3">
                             <i class="fa-solid fa-comments"></i>
                             <span class="font-semibold">Message vendor</span>
                         </span>
@@ -240,7 +240,7 @@
 
                     <div class="grid grid-cols-3 gap-3">
                         <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-900/20 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
                                 <i class="fa-solid fa-money-bill-wave"></i>
                             </span>
                             <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">Cash on delivery</p>
@@ -248,7 +248,7 @@
                         </div>
 
                         <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-900/20 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
                                 <i class="fa-solid fa-wallet"></i>
                             </span>
                             <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">GCash &amp; Maya</p>
@@ -256,7 +256,7 @@
                         </div>
 
                         <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-900/20 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
                                 <i class="fa-solid fa-headset"></i>
                             </span>
                             <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">Vendor support</p>
@@ -293,7 +293,7 @@
                 <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">Sold by</p>
                     <a href="{{ route('shop.vendors.show', $product->vendor) }}" class="group mt-3 block">
-                        <h2 class="brand-serif text-2xl font-bold text-neutral-900 transition group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400">{{ $product->vendor->store_name }}</h2>
+                        <h2 class="brand-group-hover-text brand-serif text-2xl font-bold text-neutral-900 transition dark:text-zinc-100">{{ $product->vendor->store_name }}</h2>
                     </a>
                     <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ $product->vendor->store_description }}</p>
                 </div>

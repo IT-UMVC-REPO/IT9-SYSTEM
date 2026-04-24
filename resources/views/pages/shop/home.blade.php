@@ -8,7 +8,7 @@
         };
     @endphp
 
-    <section class="relative min-h-[420px] overflow-hidden border-b border-emerald-900/10 text-white">
+    <section class="relative min-h-[420px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0 z-0">
             <img
                 src="https://static.tripzilla.ph/media/98742/conversions/Palengke-Tips-w1024.webp"
@@ -19,11 +19,11 @@
             <div class="absolute inset-0"
                 style="background: linear-gradient(
                     to right,
-                    #059669 0%,
-                    #059669 30%,
-                    rgba(5,150,105,0.85) 45%,
-                    rgba(5,150,105,0.4) 65%,
-                    rgba(5,150,105,0.1) 80%,
+                    var(--brand-600) 0%,
+                    var(--brand-600) 30%,
+                    oklch(from var(--brand-600) l c h / 0.85) 45%,
+                    oklch(from var(--brand-600) l c h / 0.4) 65%,
+                    oklch(from var(--brand-600) l c h / 0.1) 80%,
                     transparent 100%
                 );"></div>
             <div class="absolute inset-0"
@@ -41,7 +41,7 @@
 
         <div class="relative z-10 mx-auto max-w-[1500px] px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
             <div class="max-w-2xl">
-                <span class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-50">
+                <span class="brand-hero-copy inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em]">
                     <i class="fa-solid fa-store"></i>
                     Customer storefront
                 </span>
@@ -50,7 +50,7 @@
                     A brighter market floor for your next suki run.
                 </h1>
 
-                <p class="mt-5 max-w-2xl text-base leading-8 text-emerald-50/90">
+                <p class="brand-hero-copy mt-5 max-w-2xl text-base leading-8">
                     Browse approved stalls, scan live listings faster, and move through the catalog in a storefront that feels open, welcoming, and easy to explore.
                 </p>
             </div>
@@ -62,7 +62,7 @@
             <div class="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 lg:px-8">
                 <div class="mb-6 flex items-end justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">
+                        <p class="brand-accent-text text-xs font-semibold uppercase tracking-[0.22em]">
                             Marketplace
                         </p>
                         <h2 class="brand-serif mt-1 text-2xl font-bold text-neutral-900 dark:text-zinc-100">
@@ -70,14 +70,14 @@
                         </h2>
                     </div>
                     <a href="{{ route('shop.vendors') }}"
-                        class="hidden text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400 sm:block">
+                        class="brand-accent-text-strong hidden text-sm font-medium hover:underline sm:block">
                         Browse all &rarr;
                     </a>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     @foreach ($popularVendors as $vendor)
-                        <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-emerald-200 hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
+                        <div class="brand-card-hover group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
                             <button
                                 type="button"
                                 aria-label="Follow {{ $vendor->store_name }}"
@@ -93,7 +93,7 @@
                                 </svg>
                             </button>
                             <a href="{{ route('shop.vendors.show', $vendor) }}" class="flex flex-1 flex-col">
-                                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-base font-bold text-emerald-700">
+                                <div class="brand-soft-surface mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-base font-bold">
                                     {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
                                 </div>
                                 <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900 dark:text-zinc-100">
@@ -103,7 +103,7 @@
                                     {{ $vendor->store_description }}
                                 </p>
                                 <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3 dark:border-white/10">
-                                    <span class="text-xs font-semibold text-emerald-700">
+                                    <span class="brand-accent-text-strong text-xs font-semibold">
                                         {{ $vendor->active_products_count }}
                                     </span>
                                     <span class="text-xs text-stone-400 dark:text-zinc-400">
@@ -228,7 +228,7 @@
                                             </span>
 
                                             @if ($product->stock_quantity > 0)
-                                                <span class="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
+                                                <span class="brand-accent-pill rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm">
                                                     {{ $product->stock_quantity }} left
                                                 </span>
                                             @else
@@ -243,10 +243,10 @@
                                 <div class="flex flex-1 flex-col p-6">
                                     <div class="flex items-start justify-between gap-3">
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">{{ $product->vendor->store_name }}</p>
+                                            <p class="brand-accent-text text-xs font-semibold uppercase tracking-[0.18em]">{{ $product->vendor->store_name }}</p>
                                             <a
                                                 href="{{ route('shop.vendors.show', $product->vendor) }}"
-                                                class="mt-1 inline-flex items-center gap-2 text-xs font-medium text-neutral-500 transition hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400"
+                                                class="brand-hover-text mt-1 inline-flex items-center gap-2 text-xs font-medium text-neutral-500 transition dark:text-zinc-400"
                                             >
                                                 Visit stall
                                                 <i class="fa-solid fa-arrow-right text-[10px]"></i>
@@ -255,7 +255,7 @@
                                         <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">PHP {{ number_format((float) $product->price, 2) }}</span>
                                     </div>
 
-                                    <a href="{{ route('shop.products.show', $product) }}" class="mt-3 block text-2xl font-semibold text-neutral-900 transition group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400">
+                                    <a href="{{ route('shop.products.show', $product) }}" class="brand-group-hover-text mt-3 block text-2xl font-semibold text-neutral-900 transition dark:text-zinc-100">
                                         {{ $product->name }}
                                     </a>
 

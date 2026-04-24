@@ -82,7 +82,7 @@ new #[Title('Profile settings')] class extends Component {
             <div class="settings-profile-hero">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
-                        <span class="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-600 text-2xl font-semibold text-white shadow-sm">
+                        <span class="brand-logo-badge flex h-20 w-20 items-center justify-center rounded-full text-2xl font-semibold shadow-sm">
                             {{ $user->initials() }}
                         </span>
 

@@ -5,7 +5,7 @@
     </head>
     <body class="brand-shell min-h-screen antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <div class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
-            <div class="pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"></div>
+            <div class="brand-glow-orb pointer-events-none absolute -right-16 top-0 h-56 w-56 rounded-full blur-3xl"></div>
             <div class="pointer-events-none absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-amber-300/10 blur-3xl"></div>
 
             <div class="relative z-10 flex w-full max-w-xl flex-col gap-6">

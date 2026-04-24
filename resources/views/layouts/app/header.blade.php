@@ -71,7 +71,7 @@
                             <a
                                 href="{{ $item['route'] }}"
                                 wire:navigate
-                                class="flex h-full items-center gap-2 border-b-2 px-5 text-sm transition-colors {{ request()->routeIs(...$item['patterns']) ? 'border-emerald-600 font-semibold text-emerald-700 dark:border-emerald-500 dark:text-emerald-400' : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-zinc-300 dark:hover:text-white' }}"
+                                class="flex h-full items-center gap-2 border-b-2 px-5 text-sm transition-colors {{ request()->routeIs(...$item['patterns']) ? 'nav-active font-semibold' : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-zinc-300 dark:hover:text-white' }}"
                             >
                                 <i class="{{ $item['icon'] }} text-sm"></i>
                                 <span>{{ $item['label'] }}</span>
@@ -86,7 +86,7 @@
                                 href="{{ $item['route'] }}"
                                 title="{{ $item['label'] }}"
                                 wire:navigate
-                                class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ request()->routeIs(...$item['patterns']) ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+                                class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ request()->routeIs(...$item['patterns']) ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
                             >
                                 <i class="{{ $item['icon'] }} text-sm"></i>
                             </a>
@@ -98,14 +98,14 @@
                     </div>
 
                     <details class="relative ml-auto flex items-center lg:hidden">
-                        <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:text-emerald-400 [&::-webkit-details-marker]:hidden">
+                        <summary class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
                             <i class="fa-solid fa-bars-staggered text-sm"></i>
                         </summary>
 
                         <div class="absolute right-0 top-[calc(100%+0.75rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40">
                             <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
                                 <div class="flex items-center gap-3">
-                                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-neutral-900 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl brand-logo-badge text-sm font-semibold text-white dark:dark dark:text-zinc-900">
                                         {{ $user->initials() }}
                                     </span>
                                     <div class="min-w-0">
@@ -124,7 +124,10 @@
                                     <a
                                         href="{{ $item['route'] }}"
                                         wire:navigate
-                                        class="flex items-center justify-between gap-3 rounded-[1.25rem] border px-4 py-3 text-sm font-semibold transition {{ request()->routeIs(...$item['patterns']) ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400' : 'border-stone-200 text-neutral-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-white/10 dark:text-zinc-100 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400' }}"
+                                        @class([
+                                            'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 px-4 py-3 text-sm font-semibold text-neutral-700 transition dark:border-white/10 dark:text-zinc-100',
+                                            'is-active' => request()->routeIs(...$item['patterns']),
+                                        ])
                                     >
                                         <span class="flex items-center gap-3">
                                             <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-neutral-700 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
@@ -159,7 +162,7 @@
                     </div>
 
                     <details class="relative ml-auto flex items-center sm:hidden">
-                        <summary class="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition hover:border-emerald-200 hover:text-emerald-700 marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:text-emerald-400 [&::-webkit-details-marker]:hidden">
+                        <summary class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
                             <i class="fa-solid fa-bars-staggered text-sm"></i>
                         </summary>
 

@@ -19,20 +19,18 @@
                     </a>
                 </div>
 
-
                 <div class="relative z-10">
-
                     <h1 class="brand-serif mb-5 text-5xl font-bold leading-tight text-white">
                         Your suki,<br>wherever you are.
                     </h1>
-                    <p class="max-w-sm text-base leading-8 text-neutral-300 dark:text-zinc-300">
+                    <p class="text-base leading-8 text-neutral-300 dark:text-zinc-300">
                         Browse fresh produce, seafood, and everyday market staples from verified local vendors — all in
                         one familiar, easy-to-navigate storefront.
                     </p>
                 </div>
 
                 <div class="relative z-10 border-t border-white/10 pt-6">
-                    <div class="max-w-md rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                    <div class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-300">
                             What awaits inside
                         </p>

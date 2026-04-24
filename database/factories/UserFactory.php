@@ -35,6 +35,7 @@ class UserFactory extends Factory
             'address' => null,
             'profile_image' => null,
             'is_active' => true,
+            'brand_color' => null,
             'remember_token' => Str::random(10),
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
