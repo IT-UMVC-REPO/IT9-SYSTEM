@@ -10,8 +10,13 @@ test('authenticated customers can view the storefront', function () {
     $vendor = VendorProfile::factory()->approved()->create([
         'store_name' => 'Nanay Cora Produce',
     ]);
-    $category = Category::factory()->create([
+    $vegetables = Category::factory()->topLevel()->create([
         'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $category = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
     ]);
     $product = Product::factory()
         ->for($vendor, 'vendor')
@@ -79,6 +84,77 @@ test('storefront shows only active products from approved vendors', function () 
         ->assertDontSee($rejectedProduct->name);
 });
 
+test('storefront shows only child categories with visible products in the category filter', function () {
+    $customer = User::factory()->create();
+    $approvedVendor = VendorProfile::factory()->approved()->create();
+    $pendingVendor = VendorProfile::factory()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $rootCrops = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Root Crops',
+        'slug' => 'root-crops',
+    ]);
+    $seasonalPicks = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Seasonal Picks',
+        'slug' => 'seasonal-picks',
+    ]);
+
+    Product::factory()
+        ->for($approvedVendor, 'vendor')
+        ->for($leafyGreens)
+        ->active()
+        ->create();
+
+    Product::factory()
+        ->for($approvedVendor, 'vendor')
+        ->for($rootCrops)
+        ->create();
+
+    Product::factory()
+        ->for($pendingVendor, 'vendor')
+        ->for($seasonalPicks)
+        ->active()
+        ->create();
+
+    $response = $this->actingAs($customer)->get(route('shop.home'));
+
+    $response->assertOk()
+        ->assertSee($vegetables->name)
+        ->assertSee($leafyGreens->name)
+        ->assertDontSee($rootCrops->name)
+        ->assertDontSee($seasonalPicks->name);
+});
+
+test('storefront renders the branded pagination controls', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+
+    Product::factory()
+        ->count(13)
+        ->for($vendor, 'vendor')
+        ->for($vegetables)
+        ->active()
+        ->create();
+
+    $response = $this->actingAs($customer)->get(route('shop.home'));
+
+    $response->assertOk()
+        ->assertSee('Storefront pagination', false)
+        ->assertSee('Browse more listings')
+        ->assertSee('Showing 1 to 12 of 13')
+        ->assertSee('results');
+});
+
 test('storefront search filters visible products by name and description', function () {
     $customer = User::factory()->create();
     $vendor = VendorProfile::factory()->approved()->create();
@@ -111,20 +187,45 @@ test('storefront search filters visible products by name and description', funct
 test('storefront category filter narrows the product listing', function () {
     $customer = User::factory()->create();
     $vendor = VendorProfile::factory()->approved()->create();
-    $vegetables = Category::factory()->create(['name' => 'Vegetables']);
-    $fruits = Category::factory()->create(['name' => 'Fruits']);
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $rootCrops = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Root Crops',
+        'slug' => 'root-crops',
+    ]);
+    $fruits = Category::factory()->topLevel()->create([
+        'name' => 'Fruits',
+        'slug' => 'fruits',
+    ]);
+    $tropicalFruits = Category::factory()->childOf($fruits)->create([
+        'name' => 'Tropical Fruits',
+        'slug' => 'tropical-fruits',
+    ]);
 
     $vegetableProduct = Product::factory()
         ->for($vendor, 'vendor')
-        ->for($vegetables)
+        ->for($leafyGreens)
         ->active()
         ->create([
             'name' => 'Eggplant',
         ]);
+    $secondVegetableProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($rootCrops)
+        ->active()
+        ->create([
+            'name' => 'Sweet Potato',
+        ]);
 
     $fruitProduct = Product::factory()
         ->for($vendor, 'vendor')
-        ->for($fruits)
+        ->for($tropicalFruits)
         ->active()
         ->create([
             'name' => 'Mango',
@@ -136,7 +237,48 @@ test('storefront category filter narrows the product listing', function () {
 
     $response->assertOk()
         ->assertSee($vegetableProduct->name)
+        ->assertSee($secondVegetableProduct->name)
         ->assertDontSee($fruitProduct->name);
+});
+
+test('storefront leaf category filter narrows the product listing to the selected subcategory', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create();
+    $vegetables = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $leafyGreens = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Leafy Greens',
+        'slug' => 'leafy-greens',
+    ]);
+    $rootCrops = Category::factory()->childOf($vegetables)->create([
+        'name' => 'Root Crops',
+        'slug' => 'root-crops',
+    ]);
+
+    $leafyProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($leafyGreens)
+        ->active()
+        ->create([
+            'name' => 'Pechay',
+        ]);
+    $rootCropProduct = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($rootCrops)
+        ->active()
+        ->create([
+            'name' => 'Cassava',
+        ]);
+
+    $response = $this->actingAs($customer)->get(route('shop.home', [
+        'category' => $leafyGreens->id,
+    ]));
+
+    $response->assertOk()
+        ->assertSee($leafyProduct->name)
+        ->assertDontSee($rootCropProduct->name);
 });
 
 test('customers can open a visible product detail page', function () {
@@ -145,8 +287,13 @@ test('customers can open a visible product detail page', function () {
         'store_name' => 'Bajada Seafood Stall',
         'store_description' => 'Fresh seafood for your daily meals.',
     ]);
-    $category = Category::factory()->create([
+    $seafood = Category::factory()->topLevel()->create([
         'name' => 'Seafood',
+        'slug' => 'seafood',
+    ]);
+    $category = Category::factory()->childOf($seafood)->create([
+        'name' => 'Fresh Fish',
+        'slug' => 'fresh-fish',
     ]);
     $product = Product::factory()
         ->for($vendor, 'vendor')

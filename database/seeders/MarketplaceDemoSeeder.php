@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\MarketCategory;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -28,22 +29,6 @@ use Illuminate\Support\Str;
 
 class MarketplaceDemoSeeder extends Seeder
 {
-    /**
-     * @var list<array{name: string, description: string}>
-     */
-    private const CATEGORY_FIXTURES = [
-        ['name' => 'Vegetables', 'description' => 'Fresh local vegetables and leafy staples.'],
-        ['name' => 'Fruits', 'description' => 'Seasonal fruits for snacking and smoothies.'],
-        ['name' => 'Snacks', 'description' => 'Ready-to-eat treats and quick bites.'],
-        ['name' => 'Seafood', 'description' => 'Fresh and frozen seafood selections.'],
-        ['name' => 'Meat', 'description' => 'Daily-cut pork, chicken, and beef options.'],
-        ['name' => 'Dairy', 'description' => 'Milk, eggs, cheese, and chilled essentials.'],
-        ['name' => 'Bakery', 'description' => 'Fresh bread, pastries, and baked goods.'],
-        ['name' => 'Beverages', 'description' => 'Cold drinks, juices, and pantry sips.'],
-        ['name' => 'Pantry Staples', 'description' => 'Rice, condiments, canned goods, and basics.'],
-        ['name' => 'Frozen Goods', 'description' => 'Freezer-friendly meals and ingredients.'],
-    ];
-
     /**
      * Run the database seeds.
      */
@@ -81,13 +66,32 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedCategories(): Collection
     {
-        return collect(self::CATEGORY_FIXTURES)
-            ->map(function (array $categoryData): Category {
-                return Category::query()->firstOrCreate(
-                    ['name' => $categoryData['name']],
+        $topLevelCategories = collect(MarketCategory::topLevelCases())
+            ->mapWithKeys(function (MarketCategory $marketCategory): array {
+                $category = Category::query()->updateOrCreate(
+                    ['slug' => $marketCategory->value],
                     [
-                        'description' => $categoryData['description'],
-                        'image' => $this->placeholderImage($categoryData['name']),
+                        'parent_id' => null,
+                        'name' => $marketCategory->label(),
+                        'description' => $marketCategory->description(),
+                        'image' => $marketCategory->imageUrl(),
+                    ],
+                );
+
+                return [$marketCategory->value => $category];
+            });
+
+        return collect(MarketCategory::leafCases())
+            ->map(function (MarketCategory $marketCategory) use ($topLevelCategories): Category {
+                $parentCategory = $topLevelCategories->get($marketCategory->parent()?->value);
+
+                return Category::query()->updateOrCreate(
+                    ['slug' => $marketCategory->value],
+                    [
+                        'parent_id' => $parentCategory?->id,
+                        'name' => $marketCategory->label(),
+                        'description' => $marketCategory->description(),
+                        'image' => $marketCategory->imageUrl(),
                     ],
                 );
             })

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MarketCategory;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -147,6 +148,10 @@ test('favorites are unique per customer and vendor', function () {
 test('database seeder provisions a large marketplace dataset', function () {
     $this->seed();
 
+    $marketCategoryCount = count(MarketCategory::cases());
+    $topLevelCategoryCount = count(MarketCategory::topLevelCases());
+    $leafCategoryCount = count(MarketCategory::leafCases());
+    $expectedProductCount = ($leafCategoryCount * 3) + (14 * 10);
     $stableVendor = User::query()
         ->with('vendorProfile')
         ->where('email', 'vendor@example.com')
@@ -160,6 +165,9 @@ test('database seeder provisions a large marketplace dataset', function () {
         ->join('products', 'products.id', '=', 'order_items.product_id')
         ->whereColumn('orders.vendor_id', '!=', 'products.vendor_id')
         ->exists();
+    $productsAssignedToParentCategories = Product::query()
+        ->whereHas('category.children')
+        ->exists();
 
     expect(User::query()->where('email', 'admin@example.com')->first()?->role)->toBe(UserRole::Admin)
         ->and($stableVendor->role)->toBe(UserRole::Vendor)
@@ -169,8 +177,11 @@ test('database seeder provisions a large marketplace dataset', function () {
         ->and(User::query()->count())->toBe(95)
         ->and(VendorProfile::query()->count())->toBe(19)
         ->and(VendorProfile::query()->approved()->count())->toBe(15)
-        ->and(Category::query()->count())->toBe(10)
-        ->and(Product::query()->count())->toBe(170)
+        ->and(Category::query()->count())->toBe($marketCategoryCount)
+        ->and(Category::query()->whereNull('parent_id')->count())->toBe($topLevelCategoryCount)
+        ->and(Category::query()->whereNotNull('parent_id')->count())->toBe($leafCategoryCount)
+        ->and(Category::query()->whereNull('slug')->exists())->toBeFalse()
+        ->and(Product::query()->count())->toBe($expectedProductCount)
         ->and(Cart::query()->count())->toBe(30)
         ->and($cartItemsCount)->toBeGreaterThanOrEqual(60)
         ->and($cartItemsCount)->toBeLessThanOrEqual(150)
@@ -185,7 +196,8 @@ test('database seeder provisions a large marketplace dataset', function () {
         ->and($favoritesCount)->toBeLessThanOrEqual(135)
         ->and(Order::query()->doesntHave('orderItems')->exists())->toBeFalse()
         ->and(Order::query()->doesntHave('payment')->exists())->toBeFalse()
-        ->and($mismatchedOrderItems)->toBeFalse();
+        ->and($mismatchedOrderItems)->toBeFalse()
+        ->and($productsAssignedToParentCategories)->toBeFalse();
 });
 
 test('database seeder is rerun safe for baseline records', function () {
@@ -207,6 +219,11 @@ test('database seeder is rerun safe for baseline records', function () {
         ->groupBy('order_id')
         ->havingRaw('COUNT(*) > 1')
         ->exists();
+    $duplicateCategorySlugs = DB::table('categories')
+        ->select('slug')
+        ->groupBy('slug')
+        ->havingRaw('COUNT(*) > 1')
+        ->exists();
 
     expect(Role::query()->count())->toBe(3)
         ->and(Role::query()->where('name', 'admin')->count())->toBe(1)
@@ -216,7 +233,9 @@ test('database seeder is rerun safe for baseline records', function () {
         ->and(User::query()->where('email', 'vendor@example.com')->count())->toBe(1)
         ->and(User::query()->where('email', 'test@example.com')->count())->toBe(1)
         ->and(VendorProfile::query()->where('store_name', 'Fresh Vendor Market')->count())->toBe(1)
-        ->and(Category::query()->count())->toBe(10)
+        ->and(Category::query()->count())->toBe(count(MarketCategory::cases()))
+        ->and(Category::query()->whereNull('slug')->exists())->toBeFalse()
+        ->and($duplicateCategorySlugs)->toBeFalse()
         ->and($duplicateVendorProfiles)->toBeFalse()
         ->and($duplicateCarts)->toBeFalse()
         ->and($duplicatePayments)->toBeFalse();

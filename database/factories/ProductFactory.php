@@ -22,7 +22,7 @@ class ProductFactory extends Factory
     {
         return [
             'vendor_id' => VendorProfile::factory()->approved(),
-            'category_id' => Category::factory(),
+            'category_id' => Category::factory()->standalone(),
             'name' => fake()->words(3, true),
             'description' => fake()->paragraph(),
             'price' => fake()->randomFloat(2, 50, 500),

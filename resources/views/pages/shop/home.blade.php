@@ -1,9 +1,5 @@
 ﻿<x-layouts::app :title="__('SukiMarket Storefront')">
     @php
-        $selectedCategoryName = $selectedCategory !== null
-            ? $categories->firstWhere('id', $selectedCategory)?->name
-            : null;
-
         $filterSummary = match (true) {
             $searchTerm !== '' && $selectedCategory !== null => 'You are narrowing the market by keyword and category for a faster shortlist.',
             $searchTerm !== '' => 'Keyword search is spotlighting listings that match what you are craving today.',
@@ -146,9 +142,16 @@
                         <select name="category" class="brand-select">
                             <option value="">All categories</option>
                             @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>
-                                    {{ $category->name }}
-                                </option>
+                                <optgroup label="{{ $category->name }}">
+                                    <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>
+                                        All {{ $category->name }}
+                                    </option>
+                                    @foreach ($category->children as $childCategory)
+                                        <option value="{{ $childCategory->id }}" @selected($selectedCategory === $childCategory->id)>
+                                            - {{ $childCategory->name }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
                             @endforeach
                         </select>
                     </div>
@@ -260,7 +263,7 @@
 
                     @if ($products->hasPages())
                         <div class="mt-8">
-                            {{ $products->links() }}
+                            {{ $products->onEachSide(1)->links('layouts.app.paginate') }}
                         </div>
                     @endif
                 @else

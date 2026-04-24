@@ -15,13 +15,34 @@ class ShopController extends Controller
     public function index(Request $request): View
     {
         $searchTerm = $request->string('search')->trim()->toString();
-        $selectedCategory = $request->integer('category');
+        $selectedCategoryId = $request->integer('category');
+        $selectedCategory = $selectedCategoryId > 0
+            ? Category::query()
+                ->with([
+                    'children:id,parent_id',
+                    'parent:id,name',
+                ])
+                ->find($selectedCategoryId)
+            : null;
+        $categoryFilterIds = $selectedCategory === null
+            ? collect()
+            : $selectedCategory->children
+                ->pluck('id')
+                ->push($selectedCategory->getKey())
+                ->unique()
+                ->values();
+        $visibleProducts = fn (Builder $query): Builder => $query
+            ->active()
+            ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved());
+        $visibleChildCategories = function ($query) use ($visibleProducts): void {
+            $query->whereHas('products', $visibleProducts);
+        };
 
         $products = Product::query()
             ->visibleToCustomers()
             ->when(
-                $selectedCategory > 0,
-                fn (Builder $query): Builder => $query->where('category_id', $selectedCategory),
+                $selectedCategory !== null,
+                fn (Builder $query): Builder => $query->whereIn('category_id', $categoryFilterIds),
             )
             ->search($searchTerm)
             ->latest()
@@ -29,15 +50,12 @@ class ShopController extends Controller
             ->withQueryString();
 
         $categories = Category::query()
-            ->whereHas('products', function (Builder $query): void {
-                $query
-                    ->active()
-                    ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved());
-            })
-            ->withCount(['products' => function (Builder $query): void {
-                $query
-                    ->active()
-                    ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved());
+            ->parents()
+            ->whereHas('children', $visibleChildCategories)
+            ->with(['children' => function ($query) use ($visibleChildCategories): void {
+                $visibleChildCategories($query);
+
+                $query->orderBy('name');
             }])
             ->orderBy('name')
             ->get();
@@ -57,7 +75,8 @@ class ShopController extends Controller
             'categories' => $categories,
             'products' => $products,
             'searchTerm' => $searchTerm,
-            'selectedCategory' => $selectedCategory > 0 ? $selectedCategory : null,
+            'selectedCategory' => $selectedCategory?->id,
+            'selectedCategoryName' => $selectedCategory?->name,
             'popularVendors' => $popularVendors,
         ]);
     }

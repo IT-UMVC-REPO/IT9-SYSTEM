@@ -98,6 +98,6 @@ class Product extends Model
         return $query
             ->active()
             ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved())
-            ->with(['vendor.user', 'category']);
+            ->with(['vendor.user', 'category.parent']);
     }
 }
