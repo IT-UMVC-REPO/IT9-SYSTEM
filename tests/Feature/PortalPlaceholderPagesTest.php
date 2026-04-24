@@ -3,10 +3,11 @@
 use App\Models\User;
 use App\Models\VendorProfile;
 
-test('customer placeholder pages render minimal tbd shells', function (string $routeName, array $parameters, string $heading) {
+test('customer placeholder pages render minimal tbd shells', function (string $routeName, array|Closure $parameters, string $heading) {
     $user = User::factory()->create();
+    $resolvedParameters = $parameters instanceof Closure ? $parameters() : $parameters;
 
-    $response = $this->actingAs($user)->get(route($routeName, $parameters));
+    $response = $this->actingAs($user)->get(route($routeName, $resolvedParameters));
 
     $response->assertOk()
         ->assertSee($heading)
@@ -20,6 +21,8 @@ test('customer placeholder pages render minimal tbd shells', function (string $r
     ['shop.orders', [], 'Order history'],
     ['shop.orders.show', ['orderReference' => 'sample-order'], 'Order detail'],
     ['shop.favorites', [], 'Favourites'],
+    ['shop.vendors', [], 'Market stalls'],
+    ['shop.vendors.show', fn (): array => ['vendorProfile' => VendorProfile::factory()->approved()->create()], 'Vendor profile'],
     ['vendor.registration', [], 'Vendor registration'],
 ]);
 
@@ -91,3 +94,11 @@ test('shared message placeholders render for customers and vendors', function (c
         },
     ],
 ]);
+
+test('pending vendor storefront placeholder returns a not found response', function () {
+    $user = User::factory()->create();
+    $vendorProfile = VendorProfile::factory()->create();
+
+    $this->actingAs($user)->get(route('shop.vendors.show', $vendorProfile))
+        ->assertNotFound();
+});

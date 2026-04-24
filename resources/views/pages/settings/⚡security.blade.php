@@ -71,87 +71,120 @@ new #[Title('Security settings')] class extends Component {
 }; ?>
 
 <section class="w-full settings-page">
-    @include('partials.settings-heading')
+    <div class="settings-shell mx-auto max-w-[1500px] space-y-8">
+        @include('partials.settings-heading')
 
-    <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
+        <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
-        <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <flux:input
-                wire:model="current_password"
-                :label="__('Current password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                viewable
-            />
-            <flux:input
-                wire:model="password"
-                :label="__('New password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                viewable
-            />
-            <flux:input
-                wire:model="password_confirmation"
-                :label="__('Confirm password')"
-                type="password"
-                required
-                autocomplete="new-password"
-                viewable
-            />
+        <x-pages::settings.layout :heading="__('Security')" :subheading="__('Protect your account and manage sign-in safeguards')">
+            <section class="settings-section-card">
+                <div class="flex items-start gap-4">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        <i class="fa-solid fa-key text-lg"></i>
+                    </span>
 
-            <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">
-                    {{ __('Save') }}
-                </flux:button>
-            </div>
-        </form>
-
-        @if ($canManageTwoFactor)
-            <section class="mt-12">
-                <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
-
-                <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
-                    @if ($twoFactorEnabled)
-                        <div class="space-y-4">
-                            <flux:text>
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
-                            </flux:text>
-
-                            <div class="flex justify-start">
-                                <flux:button
-                                    variant="danger"
-                                    wire:click="disable"
-                                >
-                                    {{ __('Disable 2FA') }}
-                                </flux:button>
-                            </div>
-
-                            <livewire:pages::settings.two-factor.recovery-codes :$requiresConfirmation />
-                        </div>
-                    @else
-                        <div class="space-y-4">
-                            <flux:text variant="subtle">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
-                            </flux:text>
-
-                            <flux:modal.trigger name="two-factor-setup-modal">
-                                <flux:button
-                                    variant="primary"
-                                    wire:click="$dispatch('start-two-factor-setup')"
-                                >
-                                    {{ __('Enable 2FA') }}
-                                </flux:button>
-                            </flux:modal.trigger>
-
-                            <livewire:pages::settings.two-factor-setup-modal :requires-confirmation="$requiresConfirmation" />
-                        </div>
-                    @endif
+                    <div>
+                        <h3 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Update password') }}</h3>
+                        <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                            {{ __('Keep your account protected with a long, unique password that is easy to store in a trusted password manager.') }}
+                        </p>
+                    </div>
                 </div>
+
+                <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
+                    <flux:input
+                        wire:model="current_password"
+                        :label="__('Current password')"
+                        type="password"
+                        required
+                        autocomplete="current-password"
+                        viewable
+                    />
+                    <flux:input
+                        wire:model="password"
+                        :label="__('New password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        viewable
+                    />
+                    <flux:input
+                        wire:model="password_confirmation"
+                        :label="__('Confirm password')"
+                        type="password"
+                        required
+                        autocomplete="new-password"
+                        viewable
+                    />
+
+                    <div class="flex items-center gap-4">
+                        <flux:button variant="primary" type="submit" data-test="update-password-button">
+                            {{ __('Save') }}
+                        </flux:button>
+                    </div>
+                </form>
             </section>
-        @endif
-    </x-pages::settings.layout>
+
+            @if ($canManageTwoFactor)
+                <section class="settings-section-card">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            <i class="fa-solid fa-shield-halved text-lg"></i>
+                        </span>
+
+                        <div class="flex-1">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <h3 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Two-factor authentication') }}</h3>
+                                    <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                        {{ __('Add an extra layer of sign-in protection so your SukiMarket account is harder to access without your device.') }}
+                                    </p>
+                                </div>
+
+                                <span class="settings-role-badge self-start">{{ $twoFactorEnabled ? __('Enabled') : __('Not enabled') }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col space-y-6 text-sm" wire:cloak>
+                        @if ($twoFactorEnabled)
+                            <div class="space-y-4">
+                                <p class="text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
+                                </p>
+
+                                <div class="flex justify-start">
+                                    <flux:button
+                                        variant="danger"
+                                        wire:click="disable"
+                                    >
+                                        {{ __('Disable 2FA') }}
+                                    </flux:button>
+                                </div>
+
+                                <livewire:pages::settings.two-factor.recovery-codes :$requiresConfirmation />
+                            </div>
+                        @else
+                            <div class="space-y-4">
+                                <p class="text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
+                                </p>
+
+                                <flux:modal.trigger name="two-factor-setup-modal">
+                                    <flux:button
+                                        variant="primary"
+                                        wire:click="$dispatch('start-two-factor-setup')"
+                                    >
+                                        {{ __('Enable 2FA') }}
+                                    </flux:button>
+                                </flux:modal.trigger>
+
+                                <livewire:pages::settings.two-factor-setup-modal :requires-confirmation="$requiresConfirmation" />
+                            </div>
+                        @endif
+                    </div>
+                </section>
+            @endif
+        </x-pages::settings.layout>
+    </div>
 </section>

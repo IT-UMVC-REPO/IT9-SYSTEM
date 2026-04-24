@@ -58,30 +58,30 @@
     </section>
 
     @if ($popularVendors->isNotEmpty())
-        <div class="border-b border-stone-200 bg-white">
+        <div class="border-b border-stone-200 bg-white dark:border-white/10 dark:bg-zinc-900/80">
             <div class="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 lg:px-8">
                 <div class="mb-6 flex items-end justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">
                             Marketplace
                         </p>
-                        <h2 class="brand-serif mt-1 text-2xl font-bold text-neutral-900">
+                        <h2 class="brand-serif mt-1 text-2xl font-bold text-neutral-900 dark:text-zinc-100">
                             Popular vendors this week
                         </h2>
                     </div>
-                    <a href="{{ route('shop.home') }}"
-                        class="hidden text-sm font-medium text-emerald-700 hover:underline sm:block">
+                    <a href="{{ route('shop.vendors') }}"
+                        class="hidden text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400 sm:block">
                         Browse all &rarr;
                     </a>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     @foreach ($popularVendors as $vendor)
-                        <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-emerald-200 hover:shadow-md">
+                        <div class="group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-emerald-200 hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
                             <button
                                 type="button"
                                 aria-label="Follow {{ $vendor->store_name }}"
-                                class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-400 transition hover:border-rose-300 hover:text-rose-500"
+                                class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-400 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
                                 onclick="this.classList.toggle('!text-rose-500'); this.classList.toggle('!border-rose-400'); this.classList.toggle('!bg-rose-50');"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -92,23 +92,25 @@
                                         3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
                                 </svg>
                             </button>
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-base font-bold text-emerald-700">
-                                {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
-                            </div>
-                            <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900">
-                                {{ $vendor->store_name }}
-                            </p>
-                            <p class="mt-1 flex-1 line-clamp-2 text-xs leading-5 text-neutral-400">
-                                {{ $vendor->store_description }}
-                            </p>
-                            <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3">
-                                <span class="text-xs font-semibold text-emerald-700">
-                                    {{ $vendor->active_products_count }}
-                                </span>
-                                <span class="text-xs text-stone-400">
-                                    {{ Str::plural('listing', $vendor->active_products_count) }}
-                                </span>
-                            </div>
+                            <a href="{{ route('shop.vendors.show', $vendor) }}" class="flex flex-1 flex-col">
+                                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-base font-bold text-emerald-700">
+                                    {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
+                                </div>
+                                <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900 dark:text-zinc-100">
+                                    {{ $vendor->store_name }}
+                                </p>
+                                <p class="mt-1 flex-1 line-clamp-2 text-xs leading-5 text-neutral-400 dark:text-zinc-400">
+                                    {{ $vendor->store_description }}
+                                </p>
+                                <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3 dark:border-white/10">
+                                    <span class="text-xs font-semibold text-emerald-700">
+                                        {{ $vendor->active_products_count }}
+                                    </span>
+                                    <span class="text-xs text-stone-400 dark:text-zinc-400">
+                                        {{ Str::plural('listing', $vendor->active_products_count) }}
+                                    </span>
+                                </div>
+                            </a>
                         </div>
                     @endforeach
                 </div>
@@ -118,12 +120,12 @@
 
     <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <section class="grid gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
-            <aside class="self-start scrollbar-none xl:sticky xl:top-[76px] xl:max-h-[calc(100vh-76px)] xl:overflow-y-auto">
+            <aside class="self-start scrollbar-none xl:sticky xl:top-[76px]">
                 <form method="GET" action="{{ route('shop.home') }}"
                     class="brand-panel space-y-5 p-5">
 
                     <div>
-                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                             Search
                         </label>
                         <input
@@ -136,7 +138,7 @@
                     </div>
 
                     <div>
-                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                             Category
                         </label>
                         <select name="category" class="brand-select">
@@ -157,7 +159,7 @@
                     </div>
 
                     <div>
-                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                             Max price (PHP)
                         </label>
                         <select name="max_price" class="brand-select">
@@ -171,7 +173,7 @@
                     </div>
 
                     <div>
-                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                             Sort by
                         </label>
                         <select name="sort" class="brand-select">
@@ -195,7 +197,7 @@
 
             <section>
                 <div class="mb-6 flex items-center justify-between">
-                    <p class="text-sm font-semibold text-stone-500">
+                    <p class="text-sm font-semibold text-stone-500 dark:text-zinc-400">
                         {{ $products->total() }} {{ Str::plural('product', $products->total()) }}
                         {{ $selectedCategoryName ? 'in '.$selectedCategoryName : 'available' }}
                     </p>
@@ -209,18 +211,19 @@
                 @if ($products->isNotEmpty())
                     <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($products as $product)
-                            <article class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+                            <article class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900">
                                 <a href="{{ route('shop.products.show', $product) }}" class="block">
-                                    <div class="relative aspect-[5/4] overflow-hidden bg-stone-100">
+                                    <div class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
                                         <img
                                             src="{{ $product->image }}"
                                             alt="{{ $product->name }}"
+                                            onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
                                             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                                             loading="lazy"
                                         >
 
                                         <div class="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-                                            <span class="rounded-full bg-white/92 px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-sm">
+                                            <span class="rounded-full bg-white/92 px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-sm dark:bg-zinc-900/90 dark:text-zinc-100">
                                                 {{ $product->category->name }}
                                             </span>
 
@@ -238,16 +241,25 @@
                                 </a>
 
                                 <div class="flex flex-1 flex-col p-6">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">{{ $product->vendor->store_name }}</p>
-                                        <span class="text-sm font-semibold text-neutral-900">PHP {{ number_format((float) $product->price, 2) }}</span>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">{{ $product->vendor->store_name }}</p>
+                                            <a
+                                                href="{{ route('shop.vendors.show', $product->vendor) }}"
+                                                class="mt-1 inline-flex items-center gap-2 text-xs font-medium text-neutral-500 transition hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400"
+                                            >
+                                                Visit stall
+                                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                            </a>
+                                        </div>
+                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">PHP {{ number_format((float) $product->price, 2) }}</span>
                                     </div>
 
-                                    <a href="{{ route('shop.products.show', $product) }}" class="mt-3 block text-2xl font-semibold text-neutral-900 transition group-hover:text-emerald-700">
+                                    <a href="{{ route('shop.products.show', $product) }}" class="mt-3 block text-2xl font-semibold text-neutral-900 transition group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400">
                                         {{ $product->name }}
                                     </a>
 
-                                    <p class="mt-3 line-clamp-3 text-sm leading-7 text-neutral-500">
+                                    <p class="mt-3 line-clamp-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                                         {{ $product->description }}
                                     </p>
 
@@ -268,11 +280,11 @@
                     @endif
                 @else
                     <div class="brand-panel px-6 py-14 text-center">
-                        <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400">
+                        <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                             <i class="fa-solid fa-magnifying-glass text-xl"></i>
                         </span>
-                        <h3 class="brand-serif mt-5 text-2xl font-bold text-neutral-900">No matching market finds yet</h3>
-                        <p class="mx-auto mt-2 max-w-md text-sm leading-7 text-neutral-500">
+                        <h3 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">No matching market finds yet</h3>
+                        <p class="mx-auto mt-2 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                             Try a different keyword or category to discover more approved listings.
                         </p>
                         @if ($searchTerm !== '' || $selectedCategory !== null)

@@ -5,7 +5,7 @@
     @include('partials.head')
 </head>
 
-<body class="brand-shell min-h-screen antialiased">
+<body class="brand-shell min-h-screen antialiased dark:bg-zinc-950 dark:text-zinc-100">
     <div class="mx-auto flex min-h-screen max-w-7xl items-stretch p-4 sm:p-6 lg:p-8">
         <div class="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)]">
             <section
@@ -13,7 +13,7 @@
                 <div class="absolute -right-16 top-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"></div>
                 <div class="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-amber-300/10 blur-3xl"></div>
 
-                <div class="bg-white p-4 rounded-lg inline-flex items-center gap-2 self-start">
+                <div class="inline-flex items-center gap-2 self-start rounded-lg border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900/80">
                     <a href="{{ route('home') }}" class="relative z-10 flex items-center gap-3" wire:navigate>
                         <x-app-logo class="h-9 w-auto" />
                     </a>
@@ -25,7 +25,7 @@
                     <h1 class="brand-serif mb-5 text-5xl font-bold leading-tight text-white">
                         Your suki,<br>wherever you are.
                     </h1>
-                    <p class="max-w-sm text-base leading-8 text-neutral-300">
+                    <p class="max-w-sm text-base leading-8 text-neutral-300 dark:text-zinc-300">
                         Browse fresh produce, seafood, and everyday market staples from verified local vendors — all in
                         one familiar, easy-to-navigate storefront.
                     </p>

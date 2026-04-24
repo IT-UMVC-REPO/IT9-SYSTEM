@@ -31,7 +31,10 @@ test('authenticated customers can view the storefront', function () {
     $response = $this->actingAs($customer)->get(route('shop.home'));
 
     $response->assertOk()
+        ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false)
         ->assertSee('A brighter market floor for your next suki run.')
+        ->assertSee(route('shop.vendors'), false)
+        ->assertSee(route('shop.vendors.show', $vendor), false)
         ->assertSee($product->name)
         ->assertSee($vendor->store_name)
         ->assertSee($category->name);
@@ -313,7 +316,49 @@ test('customers can open a visible product detail page', function () {
         ->assertSee($vendor->store_name)
         ->assertSee($vendor->store_description)
         ->assertSee($category->name)
-        ->assertSee('8');
+        ->assertSee('8')
+        ->assertSee('Bring this stall to your cart')
+        ->assertSee('Message vendor')
+        ->assertSee('Cash on delivery')
+        ->assertSee('GCash & Maya')
+        ->assertSee('Vendor support');
+});
+
+test('sold out product detail keeps support actions while replacing purchase controls', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Nanay Tess Fish Stall',
+        'store_description' => 'Fresh catch and ready-to-cook seafood.',
+    ]);
+    $seafood = Category::factory()->topLevel()->create([
+        'name' => 'Seafood',
+        'slug' => 'seafood',
+    ]);
+    $category = Category::factory()->childOf($seafood)->create([
+        'name' => 'Shellfish',
+        'slug' => 'shellfish',
+    ]);
+    $product = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($category)
+        ->active()
+        ->create([
+            'name' => 'Fresh Mussels',
+            'stock_quantity' => 0,
+        ]);
+
+    $response = $this->actingAs($customer)->get(route('shop.products.show', $product));
+
+    $response->assertOk()
+        ->assertSee('Bring this stall to your cart')
+        ->assertSee('Sold out &mdash; check back soon', false)
+        ->assertSee('Browse similar '.$category->name)
+        ->assertDontSee('Add to cart')
+        ->assertDontSee('Buy now')
+        ->assertSee('Message vendor')
+        ->assertSee('Cash on delivery')
+        ->assertSee('GCash & Maya')
+        ->assertSee('Vendor support');
 });
 
 test('invisible products return not found on the detail page', function () {

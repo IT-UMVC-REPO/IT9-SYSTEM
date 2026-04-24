@@ -137,7 +137,7 @@ class MarketplaceDemoSeeder extends Seeder
             [
                 'store_name' => 'Fresh Vendor Market',
                 'store_description' => 'Daily market goods from an approved vendor.',
-                'store_image' => $this->placeholderImage('Fresh Vendor Market'),
+                'store_image' => $this->marketImage('vendor'),
                 'status' => VendorStatus::Approved,
                 'rejection_reason' => null,
                 'approved_at' => now(),
@@ -266,7 +266,7 @@ class MarketplaceDemoSeeder extends Seeder
                         ),
                         'price' => $price,
                         'stock_quantity' => 40 + ($categoryIndex * 4) + ($productIndex * 6),
-                        'image' => $this->placeholderImage($productName),
+                        'image' => $this->marketImage(Str::lower($category->name)),
                         'status' => ProductStatus::Active,
                     ],
                 );
@@ -583,12 +583,37 @@ class MarketplaceDemoSeeder extends Seeder
         return sprintf('%s-%s', Str::upper($paymentMethod->value), Str::lower((string) Str::ulid()));
     }
 
-    private function placeholderImage(string $label): string
+    private function marketImage(string $keyword): string
     {
-        return sprintf(
-            'https://placehold.co/640x640/png?text=%s',
-            rawurlencode($label),
-        );
+        $photoIds = [
+            'vegetables' => 'photo-1540420773420-3366772f4999',
+            'leafy' => 'photo-1576045057995-568f588f82fb',
+            'seafood' => 'photo-1510130387422-82bed34b37e9',
+            'meat' => 'photo-1607623814075-e51df1bdc82f',
+            'fruit' => 'photo-1519996529931-28324d5a630e',
+            'rice' => 'photo-1536304993881-ff6e9eefa2a6',
+            'eggs' => 'photo-1518569656558-1f25e69d2221',
+            'dairy' => 'photo-1607863680198-23d4b2565df0',
+            'spices' => 'photo-1596040033229-a9821ebd058d',
+            'dried' => 'photo-1589881133595-a3c085cb731d',
+            'frozen' => 'photo-1584568694244-14fbdf83bd30',
+            'sweets' => 'photo-1563805042-7684c019e1cb',
+            'vendor' => 'photo-1555939594-58d7cb561ad1',
+            'market' => 'photo-1555939594-58d7cb561ad1',
+        ];
+
+        $normalizedKeyword = Str::lower($keyword);
+
+        foreach ($photoIds as $needle => $photoId) {
+            if (Str::contains($normalizedKeyword, $needle)) {
+                return sprintf(
+                    'https://images.unsplash.com/%s?w=640&h=640&fit=crop&auto=format',
+                    $photoId,
+                );
+            }
+        }
+
+        return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=640&h=640&fit=crop&auto=format';
     }
 
     private function randomOrderStatus(): OrderStatus

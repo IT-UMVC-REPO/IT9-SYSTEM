@@ -124,26 +124,26 @@ new class extends Component {
 
 <flux:modal
     name="two-factor-setup-modal"
-    class="max-w-md md:min-w-md"
+    class="max-w-2xl md:min-w-[42rem]"
     @close="closeModal"
 >
-        <div class="space-y-6">
+        <div class="space-y-6 rounded-[1.75rem] border border-stone-200 bg-white/95 p-6 shadow-xl dark:border-white/10 dark:bg-zinc-900/95 sm:p-8">
             <div class="flex flex-col items-center space-y-4">
-                <div class="p-0.5 w-auto rounded-full border border-stone-100 dark:border-stone-600 bg-white dark:bg-stone-800 shadow-sm">
-                    <div class="p-2.5 rounded-full border border-stone-200 dark:border-stone-600 overflow-hidden bg-stone-100 dark:bg-stone-200 relative">
-                        <div class="flex items-stretch absolute inset-0 w-full h-full divide-x [&>div]:flex-1 divide-stone-200 dark:divide-stone-300 justify-around opacity-50">
+                <div class="w-auto rounded-full border border-stone-200 bg-white p-0.5 shadow-sm dark:border-white/10 dark:bg-zinc-900">
+                    <div class="relative overflow-hidden rounded-full border border-stone-200 bg-stone-100 p-2.5 dark:border-white/10 dark:bg-zinc-100">
+                        <div class="absolute inset-0 flex h-full w-full items-stretch justify-around divide-x divide-stone-200 opacity-50 [&>div]:flex-1 dark:divide-stone-300">
                             @for ($i = 1; $i <= 5; $i++)
                                 <div></div>
                             @endfor
                         </div>
 
-                        <div class="flex flex-col items-stretch absolute w-full h-full divide-y [&>div]:flex-1 inset-0 divide-stone-200 dark:divide-stone-300 justify-around opacity-50">
+                        <div class="absolute inset-0 flex h-full w-full flex-col items-stretch justify-around divide-y divide-stone-200 opacity-50 [&>div]:flex-1 dark:divide-stone-300">
                             @for ($i = 1; $i <= 5; $i++)
                                 <div></div>
                             @endfor
                         </div>
 
-                        <flux:icon.qr-code class="relative z-20 dark:text-accent-foreground"/>
+                        <flux:icon.qr-code class="relative z-20 text-neutral-900 dark:text-accent-foreground"/>
                     </div>
                 </div>
 
@@ -155,7 +155,7 @@ new class extends Component {
 
             @if ($showVerificationStep)
                 <div class="space-y-6">
-                    <div class="flex flex-col items-center space-y-3 justify-center">
+                    <div class="flex flex-col items-center justify-center space-y-3">
                         <flux:otp
                             name="code"
                             wire:model="code"
@@ -191,15 +191,15 @@ new class extends Component {
                 @enderror
 
                 <div class="flex justify-center">
-                    <div class="relative w-64 overflow-hidden border rounded-lg border-stone-200 dark:border-stone-700 aspect-square">
+                    <div class="relative aspect-square w-64 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
                         @empty($qrCodeSvg)
-                            <div class="absolute inset-0 flex items-center justify-center bg-white dark:bg-stone-700 animate-pulse">
+                            <div class="absolute inset-0 flex animate-pulse items-center justify-center bg-white dark:bg-zinc-900">
                                 <flux:icon.loading/>
                             </div>
                         @else
                             <div x-data class="flex items-center justify-center h-full p-4">
                                 <div
-                                    class="bg-white p-3 rounded"
+                                    class="rounded bg-white p-3"
                                     :style="($flux.appearance === 'dark' || ($flux.appearance === 'system' && $flux.dark)) ? 'filter: invert(1) brightness(1.5)' : ''"
                                 >
                                     {!! $qrCodeSvg !!}
@@ -222,8 +222,8 @@ new class extends Component {
 
                 <div class="space-y-4">
                     <div class="relative flex items-center justify-center w-full">
-                        <div class="absolute inset-0 w-full h-px top-1/2 bg-stone-200 dark:bg-stone-600"></div>
-                        <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                        <div class="absolute inset-0 top-1/2 h-px w-full bg-stone-200 dark:bg-white/10"></div>
+                        <span class="relative bg-white px-2 text-sm text-stone-600 dark:bg-zinc-900 dark:text-zinc-400">
                             {{ __('or, enter the code manually') }}
                         </span>
                     </div>
@@ -243,9 +243,9 @@ new class extends Component {
                             }
                         }"
                     >
-                        <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
+                        <div class="flex w-full items-stretch rounded-xl border border-stone-200 bg-stone-50 dark:border-white/10 dark:bg-zinc-950">
                             @empty($manualSetupKey)
-                                <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
+                                <div class="flex w-full items-center justify-center bg-stone-100 p-3 dark:bg-zinc-900">
                                     <flux:icon.loading variant="mini"/>
                                 </div>
                             @else
@@ -253,12 +253,12 @@ new class extends Component {
                                     type="text"
                                     readonly
                                     value="{{ $manualSetupKey }}"
-                                    class="w-full p-3 bg-transparent outline-none text-stone-900 dark:text-stone-100"
+                                    class="w-full bg-transparent p-3 text-stone-900 outline-none dark:text-stone-100"
                                 />
 
                                 <button
                                     @click="copy()"
-                                    class="px-3 transition-colors border-l cursor-pointer border-stone-200 dark:border-stone-600"
+                                    class="cursor-pointer border-l border-stone-200 px-3 transition-colors dark:border-white/10"
                                 >
                                     <flux:icon.document-duplicate x-show="!copied" variant="outline"></flux:icon>
                                     <flux:icon.check

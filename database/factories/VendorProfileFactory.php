@@ -20,11 +20,21 @@ class VendorProfileFactory extends Factory
      */
     public function definition(): array
     {
+        $storeName = fake()->company();
+        $vendorPhotoUrls = [
+            'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=640&h=640&fit=crop&auto=format',
+            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=640&h=640&fit=crop&auto=format',
+            'https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=640&h=640&fit=crop&auto=format',
+            'https://images.unsplash.com/photo-1510130387422-82bed34b37e9?w=640&h=640&fit=crop&auto=format',
+            'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=640&h=640&fit=crop&auto=format',
+            'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=640&h=640&fit=crop&auto=format',
+        ];
+
         return [
             'user_id' => User::factory(),
-            'store_name' => fake()->company(),
+            'store_name' => $storeName,
             'store_description' => fake()->paragraph(),
-            'store_image' => fake()->imageUrl(640, 640, 'business', true),
+            'store_image' => fake()->randomElement($vendorPhotoUrls),
             'status' => VendorStatus::Pending,
             'rejection_reason' => null,
             'approved_at' => null,

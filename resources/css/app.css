@@ -48,6 +48,14 @@
         scroll-behavior: smooth;
     }
 
+    body {
+        @apply bg-[#fbf7f2] text-neutral-800 dark:bg-zinc-950 dark:text-zinc-100;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
     *,
     ::after,
     ::before,
@@ -65,20 +73,27 @@
             linear-gradient(180deg, #fbf7f2 0%, #f8f3ea 100%);
     }
 
+    .dark .brand-shell {
+        background:
+            radial-gradient(circle at top right, rgb(6 95 70 / 0.28), transparent 30%),
+            radial-gradient(circle at bottom left, rgb(39 39 42 / 0.9), transparent 34%),
+            linear-gradient(180deg, rgb(9 9 11) 0%, rgb(10 10 10) 100%);
+    }
+
     .brand-serif {
         font-family: var(--font-display);
     }
 
     .brand-panel {
-        @apply rounded-3xl border border-stone-200 bg-white/92 shadow-sm backdrop-blur-sm;
+        @apply rounded-3xl border border-stone-200 bg-white/92 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900/92;
     }
 
     .brand-panel-muted {
-        @apply rounded-3xl border border-stone-200/80 bg-stone-50/92 shadow-sm backdrop-blur-sm;
+        @apply rounded-3xl border border-stone-200/80 bg-stone-50/92 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-zinc-800/60;
     }
 
     .brand-kicker {
-        @apply inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700;
+        @apply inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400;
     }
 
     .brand-button-primary {
@@ -86,27 +101,77 @@
     }
 
     .brand-button-secondary {
-        @apply inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700;
+        @apply inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:border-emerald-500 dark:hover:text-emerald-400;
     }
 
     .brand-input {
-        @apply w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm text-neutral-900 outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200;
+        @apply w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm text-neutral-900 outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500;
     }
 
     .brand-select {
-        @apply w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm text-neutral-900 outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200;
+        @apply w-full rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 text-sm text-neutral-900 outline-hidden transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-100;
     }
 
     .brand-badge {
-        @apply inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-neutral-600;
+        @apply inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300;
     }
 
     .brand-floating-card {
-        @apply rounded-3xl border border-stone-200 bg-white p-5 shadow-xl;
+        @apply rounded-3xl border border-stone-200 bg-white p-5 shadow-xl dark:border-white/10 dark:bg-zinc-900;
     }
 
     .brand-link {
-        @apply inline-flex items-center gap-2 text-sm font-medium text-neutral-500 transition hover:text-emerald-700;
+        @apply inline-flex items-center gap-2 text-sm font-medium text-neutral-500 transition hover:text-emerald-700 dark:text-zinc-400 dark:hover:text-emerald-400;
+    }
+
+    .settings-sidebar {
+        @apply rounded-[1.75rem] border border-stone-200/80 bg-white/90 p-5 shadow-xl shadow-stone-950/5 backdrop-blur-sm;
+    }
+
+    .settings-content-panel {
+        @apply rounded-[1.75rem] border border-stone-200/80 bg-white/92 p-6 shadow-xl shadow-stone-950/5 backdrop-blur-sm sm:p-8;
+    }
+
+    .settings-intro {
+        @apply flex flex-col gap-6 rounded-[1.75rem] border border-white/60 bg-white/75 p-6 shadow-sm backdrop-blur-sm lg:flex-row lg:items-end lg:justify-between;
+    }
+
+    .settings-intro-card {
+        @apply rounded-[1.5rem] border border-stone-200/80 bg-white/85 p-5 shadow-sm backdrop-blur-sm;
+    }
+
+    .settings-profile-hero {
+        @apply rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5 shadow-sm sm:p-6;
+    }
+
+    .settings-section-card {
+        @apply rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5 shadow-sm sm:p-6;
+    }
+
+    .settings-danger-zone {
+        @apply rounded-[1.5rem] border border-rose-200 bg-rose-50/80 p-6;
+    }
+
+    .settings-role-badge {
+        @apply inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700;
+    }
+
+    .settings-nav-item {
+        @apply flex items-center gap-3 rounded-[1.25rem] border border-transparent px-4 py-3 text-sm font-medium text-stone-600 transition;
+    }
+
+    .settings-nav-item:hover,
+    .settings-nav-item.is-active {
+        @apply border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm;
+    }
+
+    .settings-nav-icon {
+        @apply flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-stone-500 shadow-sm transition;
+    }
+
+    .settings-nav-item:hover .settings-nav-icon,
+    .settings-nav-item.is-active .settings-nav-icon {
+        @apply bg-emerald-100 text-emerald-700;
     }
 }
 
@@ -176,10 +241,20 @@ select:focus[data-flux-control] {
     color: var(--color-zinc-900) !important;
 }
 
+.dark .brand-panel [data-flux-label] {
+    color: var(--color-zinc-100) !important;
+}
+
 .brand-panel [data-flux-control] {
     color: var(--color-zinc-900) !important;
     background-color: #fff !important;
     border-color: var(--color-zinc-200) !important;
+}
+
+.dark .brand-panel [data-flux-control] {
+    color: var(--color-zinc-100) !important;
+    background-color: rgb(39 39 42) !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
 }
 
 .brand-panel [data-flux-error] {
@@ -190,14 +265,28 @@ select:focus[data-flux-control] {
     color: var(--color-zinc-500) !important;
 }
 
+.dark .brand-panel [data-flux-description] {
+    color: var(--color-zinc-400) !important;
+}
+
 .brand-panel [data-flux-heading],
 .brand-panel [data-flux-subheading],
 .brand-panel [data-flux-text] {
     color: var(--color-zinc-900) !important;
 }
 
+.dark .brand-panel [data-flux-heading],
+.dark .brand-panel [data-flux-subheading],
+.dark .brand-panel [data-flux-text] {
+    color: var(--color-zinc-100) !important;
+}
+
 .brand-panel a {
     color: #059669;
+}
+
+.dark .brand-panel a {
+    color: #34d399;
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -217,34 +306,135 @@ select:focus[data-flux-control] {
 ::-webkit-scrollbar-thumb:hover { background: #059669; }
 * { scrollbar-width: thin; scrollbar-color: #a8c5a0 transparent; }
 
+.settings-page .settings-shell {
+    border-color: rgb(255 255 255 / 0.65);
+    background:
+        radial-gradient(circle at top right, rgb(16 185 129 / 0.12), transparent 30%),
+        radial-gradient(circle at bottom left, rgb(245 158 11 / 0.12), transparent 26%),
+        linear-gradient(180deg, rgb(255 255 255 / 0.76), rgb(251 247 242 / 0.92));
+    box-shadow: 0 32px 100px -56px rgb(15 23 42 / 0.45);
+}
+
+.dark .settings-page .settings-shell {
+    border-color: rgb(255 255 255 / 0.08);
+    background:
+        radial-gradient(circle at top right, rgb(16 185 129 / 0.16), transparent 26%),
+        radial-gradient(circle at bottom left, rgb(245 158 11 / 0.1), transparent 24%),
+        linear-gradient(180deg, rgb(24 24 27 / 0.96), rgb(10 10 10 / 0.98));
+    box-shadow: none;
+}
+
+.dark .settings-page .settings-intro,
+.dark .settings-page .settings-intro-card,
+.dark .settings-page .settings-sidebar,
+.dark .settings-page .settings-content-panel,
+.dark .settings-page .settings-profile-hero,
+.dark .settings-page .settings-section-card {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(24 24 27 / 0.88);
+    box-shadow: none;
+}
+
+.dark .settings-page .settings-intro {
+    background:
+        radial-gradient(circle at top right, rgb(16 185 129 / 0.12), transparent 28%),
+        linear-gradient(180deg, rgb(39 39 42 / 0.98), rgb(24 24 27 / 0.98));
+}
+
+.dark .settings-page .settings-intro-card {
+    background-color: rgb(39 39 42 / 0.92);
+}
+
+.dark .settings-page .settings-danger-zone {
+    border-color: rgb(244 63 94 / 0.35);
+    background-color: rgb(76 5 25 / 0.35);
+}
+
+.dark .settings-page .brand-kicker,
+.dark .settings-page .settings-role-badge {
+    border-color: rgb(16 185 129 / 0.28);
+    background-color: rgb(16 185 129 / 0.14);
+    color: #86efac;
+}
+
+.dark .settings-page .settings-nav-item {
+    color: #d4d4d8;
+}
+
+.dark .settings-page .settings-nav-item:hover,
+.dark .settings-page .settings-nav-item.is-active {
+    border-color: rgb(16 185 129 / 0.28);
+    background-color: rgb(16 185 129 / 0.12);
+    color: #86efac;
+}
+
+.dark .settings-page .settings-nav-icon {
+    background-color: rgb(255 255 255 / 0.05);
+    color: #d4d4d8;
+    box-shadow: none;
+}
+
+.dark .settings-page .settings-nav-item:hover .settings-nav-icon,
+.dark .settings-page .settings-nav-item.is-active .settings-nav-icon {
+    background-color: rgb(16 185 129 / 0.16);
+    color: #86efac;
+}
+
+.dark .settings-page h1,
+.dark .settings-page h2,
+.dark .settings-page h3,
+.dark .settings-page [data-flux-label],
+.dark .settings-page [data-flux-heading] {
+    color: #f4f4f5 !important;
+}
+
 .settings-page [data-flux-label],
 .settings-page [data-flux-heading],
 .settings-page [data-flux-subheading],
-.settings-page [data-flux-text] {
+.settings-page [data-flux-text],
+.settings-page [data-flux-description] {
     color: #1c1917 !important;
 }
 
-.settings-page [data-flux-control] {
+.dark .settings-page [data-flux-subheading],
+.dark .settings-page [data-flux-text],
+.dark .settings-page [data-flux-description],
+.dark .settings-page p {
+    color: #a1a1aa !important;
+}
+
+.settings-page input[data-flux-control],
+.settings-page textarea[data-flux-control],
+.settings-page select[data-flux-control] {
     color: #1c1917 !important;
     background-color: #ffffff !important;
     border-color: #d6d3d1 !important;
 }
 
-.settings-page [data-flux-control]::placeholder {
+.dark .settings-page input[data-flux-control],
+.dark .settings-page textarea[data-flux-control],
+.dark .settings-page select[data-flux-control] {
+    color: #d4d4d8 !important;
+    background-color: #27272a !important;
+    border-color: rgb(255 255 255 / 0.1) !important;
+}
+
+.settings-page input[data-flux-control]::placeholder,
+.settings-page textarea[data-flux-control]::placeholder,
+.settings-page select[data-flux-control]::placeholder {
     color: #a8a29e !important;
+}
+
+.dark .settings-page input[data-flux-control]::placeholder,
+.dark .settings-page textarea[data-flux-control]::placeholder,
+.dark .settings-page select[data-flux-control]::placeholder {
+    color: #a1a1aa !important;
 }
 
 .settings-page [data-flux-error] {
     color: #dc2626 !important;
 }
 
-.settings-page [data-flux-navlist-item] {
-    color: #44403c !important;
-}
-
-.settings-page [data-flux-navlist-item][aria-current="page"],
-.settings-page [data-flux-navlist-item][data-current],
-.settings-page [data-flux-navlist-item]:hover {
-    color: #059669 !important;
-    background-color: #f0fdf4 !important;
+.dark .settings-page [data-flux-error] {
+    color: #fda4af !important;
 }

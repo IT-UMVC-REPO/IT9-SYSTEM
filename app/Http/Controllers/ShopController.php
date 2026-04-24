@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ProductStatus;
+use App\Enums\VendorStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\VendorProfile;
@@ -89,6 +90,22 @@ class ShopController extends Controller
 
         return view('pages.shop.show', [
             'product' => $product,
+        ]);
+    }
+
+    public function vendors(Request $request): View
+    {
+        return view('pages.shop.vendors', [
+            'vendors' => collect(),
+        ]);
+    }
+
+    public function vendor(VendorProfile $vendorProfile): View
+    {
+        abort_unless($vendorProfile->status === VendorStatus::Approved, 404);
+
+        return view('pages.shop.vendor-detail', [
+            'vendorProfile' => $vendorProfile,
         ]);
     }
 }

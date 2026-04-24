@@ -64,40 +64,69 @@ new #[Title('Profile settings')] class extends Component {
 }; ?>
 
 <section class="w-full settings-page">
-    @include('partials.settings-heading')
+    @php
+        $user = auth()->user();
+        $roleLabel = match ($user->effectiveMarketplaceRole()) {
+            \App\Enums\UserRole::Admin => 'Admin',
+            \App\Enums\UserRole::Vendor => 'Vendor',
+            \App\Enums\UserRole::Customer => 'Customer',
+        };
+    @endphp
 
-    <flux:heading class="sr-only">{{ __('Profile settings') }}</flux:heading>
+    <div class="settings-shell mx-auto max-w-[1500px] space-y-8">
+        @include('partials.settings-heading')
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
-        <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
+        <flux:heading class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-            <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+        <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your market identity and contact details')">
+            <div class="settings-profile-hero">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-4">
+                        <span class="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-600 text-2xl font-semibold text-white shadow-sm">
+                            {{ $user->initials() }}
+                        </span>
 
-                @if ($this->hasUnverifiedEmail)
-                    <div>
-                        <flux:text class="mt-4">
-                            {{ __('Your email address is unverified.') }}
-
-                            <flux:link class="text-sm cursor-pointer" wire:click.prevent="resendVerificationNotification">
-                                {{ __('Click here to re-send the verification email.') }}
-                            </flux:link>
-                        </flux:text>
-
+                        <div>
+                            <h2 class="brand-serif text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</h2>
+                            <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>
+                        </div>
                     </div>
-                @endif
+
+                    <span class="settings-role-badge self-start sm:self-center">{{ $roleLabel }}</span>
+                </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-profile-button">
-                    {{ __('Save') }}
-                </flux:button>
-            </div>
-        </form>
+            <form wire:submit="updateProfileInformation" class="space-y-6">
+                <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
-        @if ($this->showDeleteUser)
-            <livewire:pages::settings.delete-user-form />
-        @endif
-    </x-pages::settings.layout>
+                <div>
+                    <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+
+                    @if ($this->hasUnverifiedEmail)
+                        <div class="mt-4 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                            <flux:text class="text-sm">
+                                {{ __('Your email address is unverified.') }}
+
+                                <flux:link class="ml-1 cursor-pointer text-sm" wire:click.prevent="resendVerificationNotification">
+                                    {{ __('Click here to re-send the verification email.') }}
+                                </flux:link>
+                            </flux:text>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <flux:button variant="primary" type="submit" data-test="update-profile-button">
+                        {{ __('Save') }}
+                    </flux:button>
+                </div>
+            </form>
+
+            @if ($this->showDeleteUser)
+                <div class="settings-danger-zone">
+                    <livewire:pages::settings.delete-user-form />
+                </div>
+            @endif
+        </x-pages::settings.layout>
+    </div>
 </section>

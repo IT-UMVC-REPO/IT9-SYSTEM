@@ -23,6 +23,8 @@ Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer
 
 Route::middleware(['auth', 'role:customer'])->prefix('shop')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('home');
+    Route::get('/vendors', [ShopController::class, 'vendors'])->name('vendors');
+    Route::get('/vendors/{vendorProfile}', [ShopController::class, 'vendor'])->name('vendors.show');
     Route::get('/products/{product}', [ShopController::class, 'show'])->name('products.show');
     Route::view('/cart', 'pages.shop.cart')->name('cart');
     Route::view('/checkout', 'pages.shop.checkout')->name('checkout');
