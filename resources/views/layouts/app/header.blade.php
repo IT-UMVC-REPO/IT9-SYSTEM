@@ -17,7 +17,7 @@
         ];
         $homeNavigationItem = $navItem('Home', 'home', ['home'], 'fa-solid fa-house');
 
-        if ($user !== null) {
+        if ($user == null) {
             $effectiveMarketplaceRole = $user->effectiveMarketplaceRole();
 
             [$navigationItems, $quickActionItems, $portalSummary] = match ($effectiveMarketplaceRole) {
