@@ -348,7 +348,7 @@ fix/<short-description>                        e.g. fix/cart-vendor-constraint
 - **Pull** — downloading the latest changes from GitHub to your computer.
 - **Merge / Pull Request (PR)** — the process of combining your branch back into the shared codebase after review.
 
-The golden rule: **never work directly on `main` or `develop`.** Always create your own branch first.
+The golden rule: **never work directly on `main` or `devtest`.** Always create your own branch first.
 
 ---
 
