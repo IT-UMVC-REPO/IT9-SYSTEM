@@ -250,24 +250,6 @@ The `Notification` model and migration exist and the seeder already creates noti
 | N1 | Build a notification dropdown/panel in the header navbar — list unread `Notification` records for the authenticated user (title, message, type icon, timestamp), with a "Mark all as read" action that sets `is_read = true` on all | M | — | — | Not started |
 | N2 | Confirm that all real-flow notification-creation points fire correctly (vendor approval from Module B, order status changes from Module I, new messages from Module K) — add any missing `Notification::create()` calls | S | Modules B, I, K | — | Not started |
 | N3 | Pest tests — unread count is correct, mark-all-read clears the badge, notifications are user-scoped | S | N1, N2 | — | Not started |
-
----
-
-### Module O — Live Search
-
-The current storefront search is a full-page GET form reload. This module converts it to an instantaneous, no-redirect Livewire experience with debounced keyword input and reactive filter dropdowns. All existing `Product` scopes (`scopeSearch`, `scopeVisibleToCustomers`, `scopeActive`) and `Category` queries must be preserved exactly — only the delivery mechanism changes.
-
-| # | Task | Complexity | Depends on | Claimed by | Status |
-|---|---|---|---|---|---|
-| O1 | Convert `shop.home` from a plain controller action to a full Livewire page (`⚡home.blade.php`) with public properties `$search`, `$categoryId`, `$maxPrice`, and `$sort`, each decorated with `#[Url]` so the browser URL stays in sync. Move all query logic from `ShopController::index()` into a `#[Computed]` property `products()` | L | — | — | Not started |
-| O2 | Apply `wire:model.live.debounce.400ms="search"` to the keyword input; replace the GET form submit button with a Livewire `resetFilters()` action that sets all four properties back to their defaults | M | O1 | — | Not started |
-| O3 | Apply `wire:model.live` to the category, max price, and sort dropdowns so any change immediately re-runs the computed query | M | O1 | — | Not started |
-| O4 | Wrap the product grid and result count paragraph in `wire:loading.class="opacity-50 pointer-events-none"` to indicate loading during network round-trips | S | O1 | — | Not started |
-| O5 | Add a `#[Computed]` property `categories()` that replicates the existing parent/child visible-category query from `ShopController`. Do not inline or duplicate any scope logic inside the component | S | O1 | — | Not started |
-| O6 | Remove `ShopController::index()` and its `Route::get` binding once the Livewire page is confirmed working; replace with `Route::livewire('/', 'pages::shop.home')->name('shop.home')` in `routes/web.php` | S | O1, O2, O3 | — | Not started |
-| O7 | Pest tests: keyword search updates results without a redirect, category filter narrows listing, max price filter excludes products above threshold, clearing filters restores full visible listing, `#[Url]` properties hydrate correctly on direct URL navigation | M | O1, O2, O3 | — | Not started |
-
-
 ---
 
 ## Local devtestment Reference
