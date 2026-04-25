@@ -1,6 +1,6 @@
 # Contributing to SukiMarket
 
-SukiMarket is a Laravel 13 + Livewire 4 academic prototype built for the IT Professional Track 3 (IT9a/L) subject at the University of Mindanao. The project digitizes the Filipino wet market experience through a multi-role web platform serving customers, vendors, and an admin. This document is the team's living development roadmap — use it to track what has shipped, what is a confirmed placeholder, and what still needs to be built.
+SukiMarket is a Laravel 13 + Livewire 4 academic prototype built for the IT Professional Track 3 (IT9a/L) subject at the University of Mindanao. The project digitizes the Filipino wet market experience through a multi-role web platform serving customers, vendors, and an admin. This document is the team's living devtestment roadmap — use it to track what has shipped, what is a confirmed placeholder, and what still needs to be built.
 
 ---
 
@@ -25,7 +25,7 @@ The following features are confirmed working in the current codebase:
 
 1. Edit this file — find the task row you are taking on and replace `—` in **Claimed by** with your name.
 2. Update **Status** to `In progress`.
-3. When done and all tests pass, update **Status** to `Done` and open a pull request against `develop`.
+3. When done and all tests pass, update **Status** to `Done` and open a pull request against `devtest`.
 4. Run `composer test` locally before pushing — the CI pipeline runs the same check.
 
 ## Team Members
@@ -70,7 +70,7 @@ Every route below currently renders a minimal `TBD` placeholder shell (see `reso
 
 ---
 
-## Development Roadmap
+## devtestment Roadmap
 
 Each module below describes a self-contained unit of work. Tasks within a module should generally be completed in order. Complexity ratings: **S** = a few hours, **M** = a day or two, **L** = several days, **XL** = a week or more.
 
@@ -270,7 +270,7 @@ The current storefront search is a full-page GET form reload. This module conver
 
 ---
 
-## Local Development Reference
+## Local devtestment Reference
 
 ### Setup
 
@@ -365,11 +365,11 @@ git config --global user.email "your@email.com"
 
 ### Starting a new task
 
-**Step 1 — Make sure you are on `develop` and it is up to date.**
+**Step 1 — Make sure you are on `devtest` and it is up to date.**
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout devtest
+git pull origin devtest
 ```
 
 **Step 2 — Create your branch using the naming convention.**
@@ -413,13 +413,13 @@ git push
 
 ### Keeping your branch up to date
 
-While you are working, other teammates may merge their changes into `develop`. Pull those updates into your branch regularly so you don't fall too far behind:
+While you are working, other teammates may merge their changes into `devtest`. Pull those updates into your branch regularly so you don't fall too far behind:
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout devtest
+git pull origin devtest
 git checkout feature/E-product-crud
-git merge develop
+git merge devtest
 ```
 
 If Git shows a **merge conflict** (it will say `CONFLICT` in the output), see the Conflicts section below.
@@ -433,7 +433,7 @@ When your task is done and tests pass (`composer test`):
 1. Push your branch to GitHub one final time: `git push`
 2. Go to the GitHub repository in your browser.
 3. GitHub will show a yellow banner saying your branch was recently pushed — click **"Compare & pull request"**.
-4. Set the **base branch** to `develop` (not `main`).
+4. Set the **base branch** to `devtest` (not `main`).
 5. Write a short description of what you built or fixed.
 6. Submit the PR and let a teammate review it before it gets merged.
 
@@ -448,7 +448,7 @@ If you need to jump to a different branch temporarily:
 git stash
 
 # Switch to the other branch
-git checkout develop
+git checkout devtest
 
 # When you come back, restore your saved work
 git checkout feature/E-product-crud
@@ -468,7 +468,7 @@ Conflicted files will contain markers like this:
 Your version of the line
 =======
 Their version of the line
->>>>>>> develop
+>>>>>>> devtest
 ```
 
 To fix it:
@@ -521,15 +521,15 @@ git log --oneline -10
 
 ### Common mistake quick-fixes
 
-**"I committed to `develop` by accident instead of my branch"**
+**"I committed to `devtest` by accident instead of my branch"**
 
 ```bash
 # Copy the commit to a new branch first
 git checkout -b feature/my-actual-branch
 git push -u origin feature/my-actual-branch
 
-# Then undo the accidental commit on develop (your changes are NOT deleted)
-git checkout develop
+# Then undo the accidental commit on devtest (your changes are NOT deleted)
+git checkout devtest
 git reset --soft HEAD~1
 ```
 
