@@ -4,9 +4,7 @@
         class="brand-outline-hover flex items-center gap-2 rounded-full border border-stone-200 bg-white py-1 pl-1 pr-2 text-left shadow-sm transition dark:border-white/10 dark:bg-zinc-900/80"
         data-test="sidebar-menu-button"
     >
-        <span class="flex h-[34px] w-[34px] items-center justify-center rounded-full brand-logo-badge text-sm font-semibold text-white dark:text-zinc-900">
-            {{ auth()->user()->initials() }}
-        </span>
+        <x-user-avatar :user="auth()->user()" size="sm" />
 
         <i class="fa-solid fa-chevron-down text-xs text-stone-400 dark:text-zinc-400"></i>
     </button>

@@ -18,9 +18,7 @@
         <div class="settings-sidebar">
             <div class="rounded-[1.5rem] border border-stone-200/80 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-900/80">
                 <div class="flex items-center gap-4">
-                    <span class="brand-logo-badge flex h-16 w-16 items-center justify-center rounded-full text-xl font-semibold shadow-sm">
-                        {{ $user->initials() }}
-                    </span>
+                    <x-user-avatar :user="$user" size="xl" />
 
                     <div class="min-w-0">
                         <p class="truncate text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</p>

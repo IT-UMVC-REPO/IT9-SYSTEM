@@ -118,9 +118,7 @@
                         <div class="absolute right-0 top-[calc(100%+0.75rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40">
                             <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
                                 <div class="flex items-center gap-3">
-                                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl brand-logo-badge text-sm font-semibold text-white dark:dark dark:text-zinc-900">
-                                        {{ $user->initials() }}
-                                    </span>
+                                    <x-user-avatar :user="$user" size="lg" />
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</p>
                                         <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>

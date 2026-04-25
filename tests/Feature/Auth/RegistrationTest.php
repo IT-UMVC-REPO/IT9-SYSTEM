@@ -31,10 +31,43 @@ test('new users can register', function () {
 
     expect($user->role)->toBe(UserRole::Customer)
         ->and($user->is_active)->toBeTrue()
-        ->and($user->phone)->toBeNull()
-        ->and($user->address)->toBeNull()
         ->and($user->profile_image)->toBeNull()
         ->and($user->vendorProfile)->toBeNull();
+});
+
+test('new users can register with optional phone and address', function () {
+    $response = $this->post(route('register.store'), [
+        'name' => 'Maria Santos',
+        'email' => 'maria@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'phone' => '+63 912 345 6789',
+        'address' => '12 Tindalo St, Quezon City',
+    ]);
+
+    $response->assertSessionHasNoErrors()
+        ->assertRedirect(route('customer.dashboard', absolute: false));
+
+    $user = User::query()->where('email', 'maria@example.com')->firstOrFail();
+
+    expect($user->phone)->toBe('+63 912 345 6789')
+        ->and($user->address)->toBe('12 Tindalo St, Quezon City');
+});
+
+test('phone and address are optional during registration', function () {
+    $response = $this->post(route('register.store'), [
+        'name' => 'Juan Dela Cruz',
+        'email' => 'juan@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $user = User::query()->where('email', 'juan@example.com')->firstOrFail();
+
+    expect($user->phone)->toBeNull()
+        ->and($user->address)->toBeNull();
 });
 
 test('new users are redirected to their intended page after registration', function () {

@@ -25,6 +25,22 @@
                 placeholder="email@example.com"
             />
             <flux:input
+                name="phone"
+                :label="__('Phone number')"
+                :value="old('phone')"
+                type="tel"
+                autocomplete="tel"
+                placeholder="+63 9XX XXX XXXX"
+            />
+            <flux:input
+                name="address"
+                :label="__('Delivery address')"
+                :value="old('address')"
+                type="text"
+                autocomplete="street-address"
+                :placeholder="__('Street, barangay, city')"
+            />
+            <flux:input
                 name="password"
                 :label="__('Password')"
                 type="password"
