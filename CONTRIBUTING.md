@@ -332,3 +332,229 @@ Pending or rejected vendors do not get the vendor dashboard until they are appro
 feature/<module-letter>-<short-description>   e.g. feature/E-product-crud
 fix/<short-description>                        e.g. fix/cart-vendor-constraint
 ```
+
+---
+
+## Git Guide for the Team
+
+This section is for teammates who are new to Git or just need a quick reference. Read through it once — it covers everything you will need for day-to-day work on this project.
+
+---
+
+### Core concepts (read this first)
+
+- **Repository (repo)** — the project folder that Git is tracking, including all its history.
+- **Branch** — a separate copy of the code where you can work without affecting everyone else. Think of it as your personal draft.
+- **Commit** — a saved snapshot of your changes, like a checkpoint in a game.
+- **Push** — uploading your commits from your computer to GitHub.
+- **Pull** — downloading the latest changes from GitHub to your computer.
+- **Merge / Pull Request (PR)** — the process of combining your branch back into the shared codebase after review.
+
+The golden rule: **never work directly on `main` or `develop`.** Always create your own branch first.
+
+---
+
+### Initial setup (do this once)
+
+After cloning the repository, tell Git who you are:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your@email.com"
+```
+
+---
+
+### Starting a new task
+
+**Step 1 — Make sure you are on `develop` and it is up to date.**
+
+```bash
+git checkout develop
+git pull origin develop
+```
+
+**Step 2 — Create your branch using the naming convention.**
+
+```bash
+git checkout -b feature/E-product-crud
+```
+
+Replace `E-product-crud` with something that matches your actual task (see Branch Naming Convention above). You are now on your own branch and safe to work.
+
+---
+
+### Saving your work (committing)
+
+After making changes to files, save them as a commit:
+
+```bash
+git add .
+git commit -m "Add product listing table for vendor dashboard"
+```
+
+Write commit messages in plain English describing *what* you did. Commit often — small commits are easier to review and easier to undo if something goes wrong.
+
+---
+
+### Uploading your work to GitHub (pushing)
+
+The first time you push a new branch:
+
+```bash
+git push -u origin feature/E-product-crud
+```
+
+After that first push, you can just run:
+
+```bash
+git push
+```
+
+---
+
+### Keeping your branch up to date
+
+While you are working, other teammates may merge their changes into `develop`. Pull those updates into your branch regularly so you don't fall too far behind:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout feature/E-product-crud
+git merge develop
+```
+
+If Git shows a **merge conflict** (it will say `CONFLICT` in the output), see the Conflicts section below.
+
+---
+
+### Opening a Pull Request (PR)
+
+When your task is done and tests pass (`composer test`):
+
+1. Push your branch to GitHub one final time: `git push`
+2. Go to the GitHub repository in your browser.
+3. GitHub will show a yellow banner saying your branch was recently pushed — click **"Compare & pull request"**.
+4. Set the **base branch** to `develop` (not `main`).
+5. Write a short description of what you built or fixed.
+6. Submit the PR and let a teammate review it before it gets merged.
+
+---
+
+### Switching between branches
+
+If you need to jump to a different branch temporarily:
+
+```bash
+# Save any uncommitted work first
+git stash
+
+# Switch to the other branch
+git checkout develop
+
+# When you come back, restore your saved work
+git checkout feature/E-product-crud
+git stash pop
+```
+
+---
+
+### Handling merge conflicts
+
+A conflict happens when two people edited the same part of the same file. Git cannot decide which version to keep, so it asks you to choose.
+
+Conflicted files will contain markers like this:
+
+```
+<<<<<<< HEAD
+Your version of the line
+=======
+Their version of the line
+>>>>>>> develop
+```
+
+To fix it:
+
+1. Open the file in your editor.
+2. Delete the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`).
+3. Keep whichever version is correct (or combine both if needed).
+4. Save the file, then run:
+
+```bash
+git add .
+git commit -m "Resolve merge conflict in product blade"
+```
+
+If you are unsure which version to keep, ask a teammate before committing.
+
+---
+
+### Undoing mistakes
+
+| Situation | Command |
+|---|---|
+| Undo unsaved changes in one file | `git checkout -- filename.php` |
+| Undo all unsaved changes everywhere | `git checkout -- .` |
+| Undo the last commit but keep the changes | `git reset --soft HEAD~1` |
+| See what changed before committing | `git diff` |
+| See the list of your commits | `git log --oneline` |
+
+**Never use `git reset --hard` unless you are absolutely sure** — it permanently deletes uncommitted changes with no undo.
+
+---
+
+### Everyday command cheatsheet
+
+```bash
+# See the current state of your files
+git status
+
+# See what branch you are on and list all local branches
+git branch
+
+# Download the latest changes without switching branches
+git fetch origin
+
+# See a short log of recent commits
+git log --oneline -10
+```
+
+---
+
+### Common mistake quick-fixes
+
+**"I committed to `develop` by accident instead of my branch"**
+
+```bash
+# Copy the commit to a new branch first
+git checkout -b feature/my-actual-branch
+git push -u origin feature/my-actual-branch
+
+# Then undo the accidental commit on develop (your changes are NOT deleted)
+git checkout develop
+git reset --soft HEAD~1
+```
+
+**"I want to rename my branch"**
+
+```bash
+git branch -m old-branch-name new-branch-name
+git push origin -u new-branch-name
+git push origin --delete old-branch-name
+```
+
+**"I accidentally deleted a file"**
+
+```bash
+git checkout -- path/to/deleted-file.php
+```
+
+**"I pushed something and need to take it back"** — talk to a teammate first. Rewriting shared history can cause problems for everyone else on the project.
+
+---
+
+### When in doubt
+
+- Run `git status` — it almost always tells you exactly what to do next.
+- Ask a teammate. It is always safer to ask than to guess.
+- Do not force-push (`git push --force`) to any branch that others might be using.
