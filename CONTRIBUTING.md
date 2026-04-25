@@ -335,9 +335,7 @@ fix/<short-description>                        e.g. fix/cart-vendor-constraint
 
 ---
 
-## Git Guide for the Team
-
-This section is for teammates who are new to Git or just need a quick reference. Read through it once — it covers everything you will need for day-to-day work on this project.
+## Git Noire
 
 ---
 
