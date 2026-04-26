@@ -688,6 +688,49 @@ test('invisible products return not found on the detail page', function () {
     }
 });
 
+test('approved vendor storefront page renders vendor details and products', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Mercado Fresh Catch',
+        'store_description' => 'Seafood and fresh market staples every morning.',
+    ]);
+    $seafood = Category::factory()->topLevel()->create([
+        'name' => 'Seafood',
+        'slug' => 'seafood',
+    ]);
+    $fish = Category::factory()->childOf($seafood)->create([
+        'name' => 'Fresh Fish',
+        'slug' => 'fresh-fish',
+    ]);
+    $product = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($fish)
+        ->active()
+        ->create([
+            'name' => 'Blue Marlin Steak',
+        ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.vendors.show', $vendor))
+        ->assertOk()
+        ->assertSee($vendor->store_name)
+        ->assertSee($vendor->store_description)
+        ->assertSee($product->name)
+        ->assertSee('Message vendor')
+        ->assertSee('Available products');
+});
+
+test('pending vendor storefront page returns not found', function () {
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->create([
+        'store_name' => 'Still Pending Stall',
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.vendors.show', $vendor))
+        ->assertNotFound();
+});
+
 test('storefront shows an empty state when no visible products match the filters', function () {
     $customer = User::factory()->create();
     $vendor = VendorProfile::factory()->approved()->create();

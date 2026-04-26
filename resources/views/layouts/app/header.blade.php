@@ -9,6 +9,7 @@
         $quickActionItems = [];
         $portalSummary = null;
         $mobileNavigationItems = [];
+        $showNotificationBell = false;
         $navItem = fn (string $label, string $routeName, array $patterns, string $icon): array => [
             'label' => __($label),
             'route' => route($routeName),
@@ -39,6 +40,7 @@
                 \App\Enums\UserRole::Vendor => [
                     [
                         $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
+                        $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
                         $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
                         $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
@@ -59,6 +61,11 @@
                     __('Review approvals, users, and marketplace operations from the admin portal.'),
                 ],
             };
+
+            $showNotificationBell = in_array($effectiveMarketplaceRole, [
+                \App\Enums\UserRole::Customer,
+                \App\Enums\UserRole::Vendor,
+            ], true);
 
             $mobileNavigationItems = $effectiveMarketplaceRole === \App\Enums\UserRole::Customer
                 ? $navigationItems
@@ -110,6 +117,10 @@
                                 </a>
                             @endif
                         @endforeach
+
+                        @if ($showNotificationBell)
+                            <livewire:notifications.notification-bell :key="'header-notification-bell'" />
+                        @endif
                     </div>
 
                     <div class="hidden items-center lg:flex">

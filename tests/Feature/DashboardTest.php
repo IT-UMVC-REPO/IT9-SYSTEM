@@ -57,7 +57,7 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
             return $user;
         },
         'vendor.dashboard',
-        'Sales',
+        'Storefront',
     ],
     'admin' => [
         fn () => User::factory()->admin()->create(),

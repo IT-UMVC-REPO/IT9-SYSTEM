@@ -74,7 +74,8 @@
                     <livewire:cart.add-to-cart :product="$product" />
 
                     <a
-                        href="{{ route('messages.inbox') }}"
+                        href="{{ route('messages.conversation', ['conversationReference' => $product->vendor->user->id]) }}"
+                        wire:navigate
                         class="brand-card-hover block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
                     >
                         <span class="brand-accent-text-strong flex items-center gap-3">
@@ -82,7 +83,7 @@
                             <span class="font-semibold">Message vendor</span>
                         </span>
                         <p class="mt-3 text-sm text-neutral-500 dark:text-zinc-400">
-                            This will open a vendor conversation once messaging is live for approved storefronts.
+                            Ask about availability, delivery timing, or anything else before you place the order.
                         </p>
                     </a>
 

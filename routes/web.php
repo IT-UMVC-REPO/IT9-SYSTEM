@@ -1,11 +1,9 @@
 <?php
 
-use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PayMongoWebhookController;
 use App\Http\Controllers\ShopController;
-use App\Http\Controllers\VendorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,20 +19,20 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 });
 
-Route::middleware(['auth', 'role:customer'])->prefix('customer')->name('customer.')->group(function () {
-    Route::get('/dashboard', [CustomerController::class, 'index'])->name('dashboard');
+Route::middleware(['auth', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {
+    Route::livewire('/dashboard', 'pages::customer.dashboard')->name('dashboard');
 });
 
-Route::middleware(['auth', 'role:customer'])->prefix('shop')->name('shop.')->group(function () {
+Route::middleware(['auth', 'role:customer,vendor'])->prefix('shop')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('home');
-    Route::get('/vendors', [ShopController::class, 'vendors'])->name('vendors');
+    Route::livewire('/vendors', 'pages::shop.vendors')->name('vendors');
     Route::get('/vendors/{vendorProfile}', [ShopController::class, 'vendor'])->name('vendors.show');
     Route::get('/products/{product}', [ShopController::class, 'show'])->name('products.show');
     Route::livewire('/cart', 'pages::shop.cart')->name('cart');
     Route::livewire('/checkout', 'pages::shop.checkout')->name('checkout');
     Route::livewire('/orders', 'pages::shop.orders')->name('orders');
     Route::livewire('/orders/{orderReference}', 'pages::shop.order-detail')->name('orders.show');
-    Route::view('/favorites', 'pages.shop.favorites')->name('favorites');
+    Route::livewire('/favorites', 'pages::shop.favorites')->name('favorites');
 });
 
 Route::middleware(['auth'])->prefix('vendor')->name('vendor.')->group(function () {
@@ -42,27 +40,18 @@ Route::middleware(['auth'])->prefix('vendor')->name('vendor.')->group(function (
 });
 
 Route::middleware(['auth', 'role:customer,vendor'])->prefix('messages')->name('messages.')->group(function () {
-    foreach ([
-        ['/', 'pages.messages.inbox', 'inbox'],
-        ['/{conversationReference}', 'pages.messages.conversation', 'conversation'],
-    ] as [$uri, $view, $name]) {
-        Route::view($uri, $view)->name($name);
-    }
+    Route::livewire('/', 'pages::messages.inbox')->name('inbox');
+    Route::livewire('/{conversationReference}', 'pages::messages.conversation')->name('conversation');
 });
 
 Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
-    Route::get('/dashboard', [VendorController::class, 'index'])->name('dashboard');
+    Route::livewire('/dashboard', 'pages::vendor.dashboard')->name('dashboard');
     Route::livewire('/products', 'pages::vendor.products')->name('products');
     Route::livewire('/products/create', 'pages::vendor.product-create')->name('products.create');
     Route::livewire('/products/{product}/edit', 'pages::vendor.product-edit')->name('products.edit');
-
-    foreach ([
-        ['/orders', 'pages.vendor.orders', 'orders'],
-        ['/orders/{orderReference}', 'pages.vendor.order-detail', 'orders.show'],
-        ['/sales', 'pages.vendor.sales', 'sales'],
-    ] as [$uri, $view, $name]) {
-        Route::view($uri, $view)->name($name);
-    }
+    Route::livewire('/orders', 'pages::vendor.orders')->name('orders');
+    Route::livewire('/orders/{orderReference}', 'pages::vendor.order-detail')->name('orders.show');
+    Route::livewire('/sales', 'pages::vendor.sales')->name('sales');
 });
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -70,7 +59,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::livewire('/vendors', 'pages::admin.vendors')->name('vendors');
     Route::livewire('/vendors/{vendorProfile}', 'pages::admin.vendor-detail')->name('vendors.show');
     Route::livewire('/users', 'pages::admin.users')->name('users');
-    Route::view('/orders', 'pages.admin.orders')->name('orders');
+    Route::livewire('/orders', 'pages::admin.orders')->name('orders');
 });
 
 require __DIR__.'/settings.php';

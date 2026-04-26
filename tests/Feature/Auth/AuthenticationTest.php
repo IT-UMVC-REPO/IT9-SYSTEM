@@ -60,6 +60,21 @@ test('vendors are redirected to the vendor dashboard after login', function () {
     $this->assertAuthenticatedAs($user);
 });
 
+test('approved vendors can browse the storefront', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('shop.home'))
+        ->assertOk()
+        ->assertSee('A brighter market floor for your next suki run.');
+
+    $this->actingAs($user)
+        ->get(route('customer.dashboard'))
+        ->assertOk()
+        ->assertSee('Browse storefront');
+});
+
 test('inactive users can not authenticate using the login screen', function () {
     $user = User::factory()->inactive()->create();
 

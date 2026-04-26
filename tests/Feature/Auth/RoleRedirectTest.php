@@ -28,3 +28,18 @@ test('non approved vendors are redirected to the customer portal when visiting v
 
     $response->assertRedirect(route('customer.dashboard', absolute: false));
 });
+
+test('approved vendors can access customer shopping routes', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('customer.dashboard'))
+        ->assertOk()
+        ->assertSee('Browse storefront');
+
+    $this->actingAs($user)
+        ->get(route('shop.vendors'))
+        ->assertOk()
+        ->assertSee('Browse market stalls');
+});

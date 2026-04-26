@@ -1,0 +1,118 @@
+<?php
+
+use App\Events\MessageSent;
+use App\Models\Message;
+use App\Models\User;
+use Illuminate\Support\Facades\Event;
+use Livewire\Livewire;
+
+function createMarketplaceMessage(User $sender, User $receiver, string $content, array $overrides = []): Message
+{
+    return Message::query()->create(array_merge([
+        'sender_id' => $sender->getKey(),
+        'receiver_id' => $receiver->getKey(),
+        'order_id' => null,
+        'content' => $content,
+        'is_read' => false,
+        'created_at' => now(),
+    ], $overrides));
+}
+
+test('inbox shows threads the user is part of', function () {
+    $user = User::factory()->create();
+    $vendor = User::factory()->create([
+        'name' => 'Vendor Ramon',
+    ]);
+    $customer = User::factory()->create([
+        'name' => 'Buyer Lea',
+    ]);
+
+    createMarketplaceMessage($vendor, $user, 'Older vendor note', [
+        'created_at' => now()->subMinutes(20),
+    ]);
+    createMarketplaceMessage($user, $vendor, 'Latest vendor reply', [
+        'created_at' => now()->subMinutes(5),
+    ]);
+    createMarketplaceMessage($customer, $user, 'Can you confirm the order time?', [
+        'created_at' => now()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('messages.inbox'))
+        ->assertOk()
+        ->assertSee('Vendor Ramon')
+        ->assertSee('Buyer Lea')
+        ->assertSee('Latest vendor reply')
+        ->assertDontSee('Older vendor note');
+});
+
+test('inbox does not show other users threads', function () {
+    $user = User::factory()->create();
+    $otherA = User::factory()->create();
+    $otherB = User::factory()->create();
+
+    createMarketplaceMessage($otherA, $otherB, 'Private between others');
+
+    $this->actingAs($user)
+        ->get(route('messages.inbox'))
+        ->assertOk()
+        ->assertDontSee('Private between others');
+});
+
+test('sending a message creates a message record', function () {
+    Event::fake([MessageSent::class]);
+
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
+        ->set('newMessage', 'Can you confirm today\'s stock?')
+        ->call('send')
+        ->assertDispatched('message-sent');
+
+    expect(Message::query()
+        ->where('sender_id', $user->getKey())
+        ->where('receiver_id', $otherUser->getKey())
+        ->where('content', 'Can you confirm today\'s stock?')
+        ->exists())->toBeTrue();
+
+    Event::assertDispatched(MessageSent::class);
+});
+
+test('messages are marked read when the conversation is opened', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    $message = createMarketplaceMessage($otherUser, $user, 'Unread note from the vendor');
+
+    Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()]);
+
+    expect($message->fresh()->is_read)->toBeTrue();
+});
+
+test('users cannot message themselves', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('messages.conversation', ['conversationReference' => $user->getKey()]))
+        ->assertForbidden();
+});
+
+test('thread shows messages in chronological order', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    createMarketplaceMessage($user, $otherUser, 'First message', [
+        'created_at' => now()->subMinutes(15),
+    ]);
+    createMarketplaceMessage($otherUser, $user, 'Second message', [
+        'created_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('messages.conversation', ['conversationReference' => $otherUser->getKey()]))
+        ->assertOk()
+        ->assertSeeInOrder(['First message', 'Second message']);
+});
