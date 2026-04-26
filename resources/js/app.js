@@ -1,8 +1,6 @@
-import ApexCharts from 'apexcharts';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-window.ApexCharts = ApexCharts;
 window.Pusher = Pusher;
 window.Echo = null;
 

@@ -5,21 +5,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\VendorProfile;
-use Illuminate\Testing\TestResponse;
-
-function extractDashboardChartData(TestResponse $response, string $id): array
-{
-    $escapedId = preg_quote($id, '/');
-
-    preg_match('/<script type="application\/json" id="'.$escapedId.'".*?>(.*?)<\/script>/s', $response->getContent(), $matches);
-
-    expect($matches)->toHaveCount(2);
-
-    /** @var array<string, mixed> $decoded */
-    $decoded = json_decode(html_entity_decode($matches[1]), true, 512, JSON_THROW_ON_ERROR);
-
-    return $decoded;
-}
+use Livewire\Livewire;
 
 test('admin revenue chart data returns 30 labels and fills empty days with zeroes', function () {
     $admin = User::factory()->admin()->create();
@@ -33,9 +19,9 @@ test('admin revenue chart data returns 30 labels and fills empty days with zeroe
         'paid_at' => now(),
     ]);
 
-    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+    $this->actingAs($admin);
 
-    $chartData = extractDashboardChartData($response, 'admin-revenue-chart-data');
+    $chartData = Livewire::test('pages::admin.dashboard')->instance()->revenueChartData();
     $todayIndex = array_search(now()->format('M j'), $chartData['labels'], true);
 
     expect($chartData['labels'])->toHaveCount(30)
@@ -55,9 +41,9 @@ test('vendor status donut data matches actual vendor profile counts', function (
     ]);
     VendorProfile::factory()->rejected()->count(1)->create();
 
-    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+    $this->actingAs($admin);
 
-    $chartData = extractDashboardChartData($response, 'admin-vendor-status-chart-data');
+    $chartData = Livewire::test('pages::admin.dashboard')->instance()->vendorStatusChartData();
 
     expect($chartData['series'])->toBe([2, 3, 1])
         ->and($chartData['total'])->toBe(6);
@@ -72,9 +58,9 @@ test('user registration chart data matches the users created per day', function 
         'created_at' => now()->subDays(2),
     ]);
 
-    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+    $this->actingAs($admin);
 
-    $chartData = extractDashboardChartData($response, 'admin-user-registrations-chart-data');
+    $chartData = Livewire::test('pages::admin.dashboard')->instance()->userRegistrationChartData();
     $todayIndex = array_search(now()->format('M j'), $chartData['labels'], true);
     $twoDaysAgoIndex = array_search(now()->subDays(2)->format('M j'), $chartData['labels'], true);
 

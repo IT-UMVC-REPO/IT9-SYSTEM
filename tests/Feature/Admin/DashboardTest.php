@@ -60,6 +60,11 @@ test('admins can view the operational dashboard', function () {
         ->assertSee('Pending approvals')
         ->assertSee('Recent orders')
         ->assertSee('Platform health')
+        ->assertSee('chart.umd.min.js', false)
+        ->assertSee('x-ref="canvas"', false)
+        ->assertDontSee('createSukiApexChart', false)
+        ->assertDontSee('ApexCharts', false)
+        ->assertDontSee('application/json', false)
         ->assertSee($pendingVendor->store_name)
         ->assertSee($customer->name)
         ->assertSee($approvedVendor->store_name);

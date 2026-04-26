@@ -56,9 +56,7 @@ class PayMongoService
     {
         $secret = (string) config('services.paymongo.webhook_secret');
         $expectedSignature = hash_hmac('sha256', $payload, $secret);
-        $receivedSignature = str_contains($signature, '=')
-            ? substr($signature, strpos($signature, '=') + 1)
-            : $signature;
+        $receivedSignature = $this->extractWebhookSignature($signature);
 
         if ($secret === '' || ! hash_equals($expectedSignature, $receivedSignature)) {
             throw new RuntimeException('Invalid PayMongo webhook signature.');
@@ -72,6 +70,37 @@ class PayMongoService
         }
 
         return $decoded;
+    }
+
+    private function extractWebhookSignature(string $header): string
+    {
+        $trimmedHeader = trim($header);
+
+        if ($trimmedHeader === '') {
+            return '';
+        }
+
+        if (! str_contains($trimmedHeader, ',')) {
+            return str_starts_with($trimmedHeader, 'v1=')
+                ? substr($trimmedHeader, 3)
+                : (str_contains($trimmedHeader, '=') ? substr($trimmedHeader, strpos($trimmedHeader, '=') + 1) : $trimmedHeader);
+        }
+
+        $parts = array_map('trim', explode(',', $trimmedHeader));
+
+        foreach ($parts as $part) {
+            if (str_starts_with($part, 'v1=')) {
+                return substr($part, 3);
+            }
+        }
+
+        foreach ($parts as $part) {
+            if (str_contains($part, '=')) {
+                return substr($part, strpos($part, '=') + 1);
+            }
+        }
+
+        return $trimmedHeader;
     }
 
     private function createSource(

@@ -59,7 +59,10 @@ test('sales page renders for approved vendors', function () {
         ->get(route('vendor.sales'))
         ->assertOk()
         ->assertSee('Sales overview')
-        ->assertSee('Top products');
+        ->assertSee('Top products')
+        ->assertSee('chart.umd.min.js', false)
+        ->assertDontSee('createSukiApexChart', false)
+        ->assertDontSee('ApexCharts', false);
 });
 
 test('revenue totals only count delivered orders with paid payments', function () {

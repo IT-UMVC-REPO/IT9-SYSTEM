@@ -248,6 +248,46 @@ test('paymongo webhook marks the payment as paid and dispatches an order notific
     Queue::assertPushed(SendOrderNotificationJob::class, fn (SendOrderNotificationJob $job) => $job->orderId === $order->getKey() && $job->broadcastOrderStatus === true);
 });
 
+test('paymongo webhook accepts v1 signature from composite header format', function () {
+    Queue::fake();
+    Http::fake([
+        'https://api.paymongo.test/*' => Http::response([
+            'data' => ['id' => 'pay_test_123'],
+        ], 200),
+    ]);
+
+    config()->set('services.paymongo.base_url', 'https://api.paymongo.test');
+    config()->set('services.paymongo.secret_key', 'sk_test_123');
+    config()->set('services.paymongo.webhook_secret', 'whsec_test_123');
+
+    $customer = User::factory()->create();
+    $order = Order::factory()->for($customer, 'customer')->create([
+        'payment_method' => PaymentMethod::Gcash,
+        'payment_status' => PaymentStatus::Pending,
+    ]);
+    $payment = Payment::factory()->for($order)->create([
+        'method' => PaymentMethod::Gcash,
+        'reference_number' => 'src_composite_123',
+        'status' => PaymentStatus::Pending,
+        'amount' => 240,
+    ]);
+
+    $payload = json_encode([
+        'data' => [
+            'id' => 'src_composite_123',
+            'attributes' => ['type' => 'source.chargeable'],
+        ],
+    ], JSON_THROW_ON_ERROR);
+    $signature = hash_hmac('sha256', $payload, 'whsec_test_123');
+
+    $this->call('POST', route('webhooks.paymongo'), [], [], [], [
+        'HTTP_Paymongo-Signature' => 't=1714137600,v1='.$signature,
+    ], $payload)->assertOk();
+
+    expect($payment->fresh()->status)->toBe(PaymentStatus::Paid);
+    expect($order->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+});
+
 test('payment success return page renders the placed order', function () {
     $order = Order::factory()->create();
 

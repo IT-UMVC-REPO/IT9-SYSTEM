@@ -7,7 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use RuntimeException;
 
-#[Fillable(['sender_id', 'receiver_id', 'order_id', 'content', 'is_read', 'created_at'])]
+#[Fillable([
+    'sender_id',
+    'receiver_id',
+    'order_id',
+    'content',
+    'attachment_path',
+    'attachment_name',
+    'attachment_mime',
+    'attachment_size',
+    'is_read',
+    'created_at',
+])]
 class Message extends Model
 {
     public const UPDATED_AT = null;
@@ -31,6 +42,7 @@ class Message extends Model
         return [
             'is_read' => 'bool',
             'created_at' => 'immutable_datetime',
+            'attachment_size' => 'int',
         ];
     }
 

@@ -6,19 +6,26 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('Conversation')] class extends Component
 {
+    use WithFileUploads;
+
     public int $otherUserId;
 
     public ?int $linkedOrderId = null;
 
-    #[Validate('required|string|max:2000')]
+    #[Validate('nullable|string|max:2000')]
     public string $newMessage = '';
+
+    #[Validate('nullable|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg|extensions:jpg,jpeg,png,webp,gif,pdf,mp4,mov,mp3,wav,ogg')]
+    public $attachmentUpload = null;
 
     public function mount(string $conversationReference): void
     {
@@ -48,18 +55,52 @@ new #[Title('Conversation')] class extends Component
     {
         $this->validate();
 
-        $message = DB::transaction(function (): Message {
-            return Message::query()->create([
-                'sender_id' => auth()->id(),
-                'receiver_id' => $this->otherUserId,
-                'order_id' => $this->linkedOrderId,
-                'content' => $this->newMessage,
-            ]);
-        });
+        $trimmedMessage = trim($this->newMessage);
+
+        if ($trimmedMessage === '' && $this->attachmentUpload === null) {
+            $this->addError('newMessage', __('Write a message or attach a file before sending.'));
+
+            return;
+        }
+
+        $attachmentPath = null;
+        $attachmentName = null;
+        $attachmentMime = null;
+        $attachmentSize = null;
+
+        if ($this->attachmentUpload !== null) {
+            $attachmentPath = $this->attachmentUpload->store('message-attachments', 'public');
+            $attachmentName = $this->attachmentUpload->getClientOriginalName();
+            $attachmentMime = $this->attachmentUpload->getMimeType();
+            $attachmentSize = $this->attachmentUpload->getSize();
+        }
+
+        try {
+            $message = DB::transaction(function () use ($attachmentMime, $attachmentName, $attachmentPath, $attachmentSize, $trimmedMessage): Message {
+                return Message::query()->create([
+                    'sender_id' => auth()->id(),
+                    'receiver_id' => $this->otherUserId,
+                    'order_id' => $this->linkedOrderId,
+                    'content' => $trimmedMessage,
+                    'attachment_path' => $attachmentPath,
+                    'attachment_name' => $attachmentName,
+                    'attachment_mime' => $attachmentMime,
+                    'attachment_size' => $attachmentSize,
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            if ($attachmentPath !== null) {
+                Storage::disk('public')->delete($attachmentPath);
+            }
+
+            throw $exception;
+        }
 
         event(new MessageSent($message));
 
         $this->newMessage = '';
+        $this->attachmentUpload = null;
+        $this->resetValidation(['newMessage', 'attachmentUpload']);
 
         unset($this->threadMessages);
 
@@ -157,7 +198,7 @@ new #[Title('Conversation')] class extends Component
 };
 ?>
 
-<div wire:poll.5s="refreshThread" class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+<div wire:poll.5s="refreshThread" class="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-[1500px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
     <section class="flex items-start justify-between gap-4">
         <div>
             <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold" style="color: var(--brand-700);">
@@ -198,9 +239,9 @@ new #[Title('Conversation')] class extends Component
         </section>
     @endif
 
-    <section class="brand-panel flex min-h-[34rem] flex-col overflow-hidden">
+    <section class="brand-panel flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
-            class="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
+            class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
             x-data
             x-init="$el.scrollTop = $el.scrollHeight"
             @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
@@ -218,12 +259,54 @@ new #[Title('Conversation')] class extends Component
                                 @endunless
 
                                 <div
-                                    class="rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'text-white' : 'text-neutral-900 dark:text-zinc-100' }}"
-                                    style="{{ $isOwnMessage
-                                        ? 'background-color: var(--brand-600);'
-                                        : 'background-color: rgb(245 245 244);' }}"
+                                    class="rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}"
                                 >
-                                    {{ $message->content }}
+                                    <?php if (filled($message->content)): ?>
+                                        <p class="whitespace-pre-wrap break-words">{{ $message->content }}</p>
+                                    <?php endif; ?>
+
+                                    <?php if ($message->attachment_path): ?>
+                                        <?php $attachmentUrl = asset('storage/'.$message->attachment_path); ?>
+
+                                        <?php if (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'image/')): ?>
+                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="mt-2 block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                <img
+                                                    src="{{ $attachmentUrl }}"
+                                                    alt="{{ $message->attachment_name ?? __('Attached image') }}"
+                                                    class="max-h-72 w-full object-cover"
+                                                    loading="lazy"
+                                                >
+                                            </a>
+                                        <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'video/')): ?>
+                                            <div class="mt-2 overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                <video
+                                                    controls
+                                                    preload="metadata"
+                                                    class="max-h-72 w-full bg-black"
+                                                >
+                                                    <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
+                                                    {{ __('Your browser does not support the video tag.') }}
+                                                </video>
+                                            </div>
+                                        <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'audio/')): ?>
+                                            <div class="mt-2 rounded-2xl border px-3 py-2 {{ $isOwnMessage ? 'border-white/25 bg-white/10' : 'border-stone-300 bg-white/70 dark:border-zinc-600 dark:bg-zinc-700' }}">
+                                                <audio controls preload="metadata" class="w-full">
+                                                    <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
+                                                    {{ __('Your browser does not support the audio element.') }}
+                                                </audio>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <a
+                                            href="{{ $attachmentUrl }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}"
+                                        >
+                                            <i class="fa-solid fa-paperclip"></i>
+                                            <span class="truncate">{{ $message->attachment_name ?? __('Attachment') }}</span>
+                                        </a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -249,18 +332,45 @@ new #[Title('Conversation')] class extends Component
                     :label="__('Reply')"
                     rows="3"
                     :placeholder="__('Write your message here')"
+                    x-on:keydown.enter.prevent="$wire.send()"
                 />
 
-                <button
-                    type="submit"
-                    wire:loading.attr="disabled"
-                    wire:target="send"
-                    class="brand-button-primary h-full min-h-[3.5rem] w-full self-end"
-                >
-                    <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
-                    <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
-                </button>
+                <div class="flex h-full flex-col justify-end gap-2">
+                    <label for="conversation-attachment" class="brand-button-secondary inline-flex w-full cursor-pointer items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-paperclip text-xs"></i>
+                        {{ __('Attach file') }}
+                    </label>
+                    <input id="conversation-attachment" type="file" wire:model="attachmentUpload" class="sr-only">
+
+                    <button
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="send,attachmentUpload"
+                        class="brand-button-primary h-full min-h-[3.5rem] w-full self-end"
+                    >
+                        <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
+                        <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
+                    </button>
+                </div>
             </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+                <p class="text-xs text-neutral-500 dark:text-zinc-400">{{ __('Press Enter to send.') }}</p>
+
+                @if ($attachmentUpload)
+                    <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700 dark:bg-zinc-800 dark:text-zinc-200">
+                        <i class="fa-solid fa-file"></i>
+                        <span class="max-w-[12rem] truncate">{{ $attachmentUpload->getClientOriginalName() }}</span>
+                    </span>
+                @endif
+            </div>
+
+            @error('newMessage')
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
+            @error('attachmentUpload')
+                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
         </form>
     </section>
 </div>

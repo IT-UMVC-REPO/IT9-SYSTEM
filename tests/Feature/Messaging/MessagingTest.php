@@ -3,7 +3,9 @@
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 function createMarketplaceMessage(User $sender, User $receiver, string $content, array $overrides = []): Message
@@ -78,6 +80,55 @@ test('sending a message creates a message record', function () {
         ->exists())->toBeTrue();
 
     Event::assertDispatched(MessageSent::class);
+});
+
+test('sending a message with an attachment stores metadata', function () {
+    Storage::fake('public');
+    Event::fake([MessageSent::class]);
+
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $attachment = UploadedFile::fake()->create('market-note.pdf', 64, 'application/pdf');
+
+    Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
+        ->set('newMessage', '')
+        ->set('attachmentUpload', $attachment)
+        ->call('send')
+        ->assertHasNoErrors()
+        ->assertDispatched('message-sent');
+
+    $message = Message::query()
+        ->where('sender_id', $user->getKey())
+        ->where('receiver_id', $otherUser->getKey())
+        ->latest('id')
+        ->first();
+
+    expect($message)->not->toBeNull()
+        ->and($message->content)->toBe('')
+        ->and($message->attachment_name)->toBe('market-note.pdf')
+        ->and($message->attachment_path)->not->toBeNull()
+        ->and(Storage::disk('public')->exists($message->attachment_path))->toBeTrue();
+});
+
+test('sending a message rejects unsupported attachment types', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $attachment = UploadedFile::fake()->create('payload.exe', 64, 'application/octet-stream');
+
+    Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
+        ->set('newMessage', '')
+        ->set('attachmentUpload', $attachment)
+        ->call('send')
+        ->assertHasErrors(['attachmentUpload']);
+
+    expect(Message::query()
+        ->where('sender_id', $user->getKey())
+        ->where('receiver_id', $otherUser->getKey())
+        ->count())->toBe(0);
 });
 
 test('messages are marked read when the conversation is opened', function () {

@@ -8,6 +8,7 @@ use App\Jobs\SendOrderNotificationJob;
 use App\Models\Payment;
 use App\Services\PayMongoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -31,56 +32,70 @@ class PayMongoWebhookController extends Controller
         }
 
         $referenceNumber = (string) ($event['data']['id'] ?? '');
-        $payment = Payment::query()->where('reference_number', $referenceNumber)->first();
-
-        if ($payment === null) {
+        if ($referenceNumber === '') {
             return response('OK', 200);
         }
 
-        if ($payment->status === PaymentStatus::Paid) {
-            return response('OK', 200);
-        }
+        $lock = Cache::lock('paymongo:webhook:source:'.$referenceNumber, 10);
 
-        $order = $payment->order()->with('customer')->first();
-
-        if ($order === null) {
+        if (! $lock->get()) {
             return response('OK', 200);
         }
 
         try {
-            $this->payMongo->createPaymentFromSource(
-                $referenceNumber,
-                (int) round((float) $payment->amount * 100),
-                'Payment for order #'.$order->getKey(),
+            $payment = Payment::query()->where('reference_number', $referenceNumber)->first();
+
+            if ($payment === null) {
+                return response('OK', 200);
+            }
+
+            if ($payment->status === PaymentStatus::Paid) {
+                return response('OK', 200);
+            }
+
+            $order = $payment->order()->with('customer')->first();
+
+            if ($order === null) {
+                return response('OK', 200);
+            }
+
+            try {
+                $this->payMongo->createPaymentFromSource(
+                    $referenceNumber,
+                    (int) round((float) $payment->amount * 100),
+                    'Payment for order #'.$order->getKey(),
+                );
+            } catch (RuntimeException $exception) {
+                Log::error('Failed to convert PayMongo source into a payment.', [
+                    'payment_id' => $payment->getKey(),
+                    'reference_number' => $referenceNumber,
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                return response('Unable to process payment', 500);
+            }
+
+            $payment->forceFill([
+                'status' => PaymentStatus::Paid,
+                'paid_at' => now(),
+            ])->save();
+
+            $order->forceFill([
+                'payment_status' => PaymentStatus::Paid,
+            ])->save();
+
+            SendOrderNotificationJob::dispatch(
+                orderId: $order->getKey(),
+                userId: $order->customer_id,
+                title: 'Payment confirmed',
+                message: 'Payment confirmed for order #'.$order->getKey().'.',
+                type: NotificationType::OrderUpdate,
+                broadcastOrderStatus: true,
             );
-        } catch (RuntimeException $exception) {
-            Log::error('Failed to convert PayMongo source into a payment.', [
-                'payment_id' => $payment->getKey(),
-                'reference_number' => $referenceNumber,
-                'exception' => $exception->getMessage(),
-            ]);
 
-            return response('Unable to process payment', 500);
+            return response('OK', 200);
+        } finally {
+            $lock->release();
         }
-
-        $payment->forceFill([
-            'status' => PaymentStatus::Paid,
-            'paid_at' => now(),
-        ])->save();
-
-        $order->forceFill([
-            'payment_status' => PaymentStatus::Paid,
-        ])->save();
-
-        SendOrderNotificationJob::dispatch(
-            orderId: $order->getKey(),
-            userId: $order->customer_id,
-            title: 'Payment confirmed',
-            message: 'Payment confirmed for order #'.$order->getKey().'.',
-            type: NotificationType::OrderUpdate,
-            broadcastOrderStatus: true,
-        );
-
-        return response('OK', 200);
     }
 }

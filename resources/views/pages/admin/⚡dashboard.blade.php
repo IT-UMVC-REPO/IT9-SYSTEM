@@ -21,7 +21,6 @@ use Livewire\Component;
 new #[Title('Admin dashboard')] class extends Component {
     public function refreshDashboard(): void
     {
-        $this->dispatchChartUpdates();
     }
 
     #[Computed]
@@ -269,14 +268,6 @@ new #[Title('Admin dashboard')] class extends Component {
         ];
     }
 
-    private function dispatchChartUpdates(): void
-    {
-        $this->dispatch('chart-data-updated:admin-revenue', data: $this->revenueChartData);
-        $this->dispatch('chart-data-updated:admin-orders', data: $this->orderVolumeChartData);
-        $this->dispatch('chart-data-updated:admin-vendor-status', data: $this->vendorStatusChartData);
-        $this->dispatch('chart-data-updated:admin-user-registrations', data: $this->userRegistrationChartData);
-    }
-
     private function signedCount(int|float $value): string
     {
         $formatted = number_format(abs($value));
@@ -363,35 +354,92 @@ new #[Title('Admin dashboard')] class extends Component {
                 <p class="text-xl font-semibold text-neutral-900 dark:text-zinc-100">&#8369;{{ number_format($revenueChartData['total'], 2) }}</p>
             </div>
 
-            <figure
-                x-data="window.createSukiApexChart({
-                    type: 'area',
-                    height: 260,
-                    seriesName: 'Revenue',
-                    data: @js($revenueChartData),
-                    currency: true
-                })"
-                x-init="init()"
-                x-on:chart-data-updated:admin-revenue.window="update($event.detail.data)"
-                class="mt-6 overflow-hidden"
-            >
-                <figcaption class="sr-only">{{ __('Area chart showing platform revenue over the last 30 days.') }}</figcaption>
-                <script type="application/json" id="admin-revenue-chart-data" x-ref="data">@json($revenueChartData)</script>
+            @if (array_sum($revenueChartData['series']) === 0.0)
+                <div class="mt-6 flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    {{ __('No data yet for this period') }}
+                </div>
+            @else
+                <div
+                    x-data="{
+                        chart: null,
+                        init() {
+                            if (typeof Chart !== 'function') {
+                                return;
+                            }
 
-                @if (array_sum($revenueChartData['series']) === 0.0)
-                    <div class="flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                        {{ __('No data yet for this period') }}
-                    </div>
-                @else
-                    <x-chart
-                        id="admin-revenue-chart"
-                        x-ref="canvas"
-                        :height="260"
-                        role="img"
-                        :aria-label="__('Area chart showing platform revenue over the last 30 days')"
-                    />
-                @endif
-            </figure>
+                            const styles = getComputedStyle(document.documentElement);
+                            const isDark = document.documentElement.classList.contains('dark');
+                            const brand600 = styles.getPropertyValue('--brand-600').trim() || '#059669';
+                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
+                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+                            Chart.getChart(this.$refs.canvas)?.destroy();
+
+                            this.chart = new Chart(this.$refs.canvas, {
+                                type: 'line',
+                                data: {
+                                    labels: @js($revenueChartData['labels']),
+                                    datasets: [{
+                                        data: @js($revenueChartData['series']),
+                                        borderColor: brand600,
+                                        backgroundColor: 'rgba(5,150,105,0.08)',
+                                        fill: true,
+                                        tension: 0.4,
+                                        pointRadius: 0,
+                                        borderWidth: 2,
+                                    }],
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false,
+                                    },
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: {
+                                            displayColors: false,
+                                            callbacks: {
+                                                label: (ctx) => '₱' + Number(ctx.parsed.y ?? 0).toLocaleString('en-PH', {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                }),
+                                            },
+                                        },
+                                    },
+                                    scales: {
+                                        x: {
+                                            grid: { display: false },
+                                            ticks: {
+                                                color: labelColor,
+                                                maxTicksLimit: 8,
+                                            },
+                                        },
+                                        y: {
+                                            grid: { color: gridColor },
+                                            ticks: {
+                                                color: labelColor,
+                                                callback: (value) => '₱' + Number(value).toLocaleString('en-PH', {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0,
+                                                }),
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        },
+                        destroy() {
+                            this.chart?.destroy();
+                        },
+                    }"
+                    class="mt-6"
+                    style="height: 260px; position: relative;"
+                >
+                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Area chart showing platform revenue over the last 30 days') }}"></canvas>
+                </div>
+            @endif
         </article>
 
         <article class="brand-panel overflow-hidden p-5">
@@ -404,35 +452,81 @@ new #[Title('Admin dashboard')] class extends Component {
                 <p class="text-xl font-semibold text-neutral-900 dark:text-zinc-100">{{ number_format($orderVolumeChartData['total']) }}</p>
             </div>
 
-            <figure
-                x-data="window.createSukiApexChart({
-                    type: 'bar',
-                    height: 260,
-                    seriesName: 'Orders',
-                    data: @js($orderVolumeChartData),
-                    currency: false
-                })"
-                x-init="init()"
-                x-on:chart-data-updated:admin-orders.window="update($event.detail.data)"
-                class="mt-6 overflow-visible pb-2"
-            >
-                <figcaption class="sr-only">{{ __('Bar chart showing daily order volume over the last 14 days.') }}</figcaption>
-                <script type="application/json" id="admin-orders-chart-data" x-ref="data">@json($orderVolumeChartData)</script>
+            @if (array_sum($orderVolumeChartData['series']) === 0)
+                <div class="mt-6 flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    {{ __('No data yet for this period') }}
+                </div>
+            @else
+                <div
+                    x-data="{
+                        chart: null,
+                        init() {
+                            if (typeof Chart !== 'function') {
+                                return;
+                            }
 
-                @if (array_sum($orderVolumeChartData['series']) === 0)
-                    <div class="flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                        {{ __('No data yet for this period') }}
-                    </div>
-                @else
-                    <x-chart
-                        id="admin-orders-chart"
-                        x-ref="canvas"
-                        :height="260"
-                        role="img"
-                        :aria-label="__('Bar chart showing order volume over the last 14 days')"
-                    />
-                @endif
-            </figure>
+                            const styles = getComputedStyle(document.documentElement);
+                            const isDark = document.documentElement.classList.contains('dark');
+                            const brand600 = styles.getPropertyValue('--brand-600').trim() || '#059669';
+                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
+                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+                            Chart.getChart(this.$refs.canvas)?.destroy();
+
+                            this.chart = new Chart(this.$refs.canvas, {
+                                type: 'bar',
+                                data: {
+                                    labels: @js($orderVolumeChartData['labels']),
+                                    datasets: [{
+                                        data: @js($orderVolumeChartData['series']),
+                                        backgroundColor: brand600,
+                                        borderRadius: 10,
+                                        borderSkipped: false,
+                                    }],
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: {
+                                            displayColors: false,
+                                            callbacks: {
+                                                label: (ctx) => Number(ctx.parsed.y ?? 0).toLocaleString('en-PH'),
+                                            },
+                                        },
+                                    },
+                                    scales: {
+                                        x: {
+                                            grid: { display: false },
+                                            ticks: {
+                                                color: labelColor,
+                                                maxTicksLimit: 7,
+                                            },
+                                        },
+                                        y: {
+                                            beginAtZero: true,
+                                            grid: { color: gridColor },
+                                            ticks: {
+                                                color: labelColor,
+                                                precision: 0,
+                                                callback: (value) => Number(value).toLocaleString('en-PH'),
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        },
+                        destroy() {
+                            this.chart?.destroy();
+                        },
+                    }"
+                    class="mt-6"
+                    style="height: 260px; position: relative;"
+                >
+                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Bar chart showing order volume over the last 14 days') }}"></canvas>
+                </div>
+            @endif
         </article>
 
         <article class="brand-panel overflow-hidden p-5">
@@ -445,34 +539,67 @@ new #[Title('Admin dashboard')] class extends Component {
                 <p class="text-xl font-semibold text-neutral-900 dark:text-zinc-100">{{ number_format($vendorStatusChartData['total']) }}</p>
             </div>
 
-            <figure
-                x-data="window.createSukiApexChart({
-                    type: 'donut',
-                    height: 220,
-                    data: @js($vendorStatusChartData),
-                    colors: @js($vendorStatusChartData['colors'])
-                })"
-                x-init="init()"
-                x-on:chart-data-updated:admin-vendor-status.window="update($event.detail.data)"
-                class="mt-6 overflow-hidden"
-            >
-                <figcaption class="sr-only">{{ __('Donut chart showing the distribution of vendor application statuses.') }}</figcaption>
-                <script type="application/json" id="admin-vendor-status-chart-data" x-ref="data">@json($vendorStatusChartData)</script>
+            @if ($vendorStatusChartData['total'] === 0)
+                <div class="mt-6 flex h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    {{ __('No data yet for this period') }}
+                </div>
+            @else
+                <div
+                    x-data="{
+                        chart: null,
+                        init() {
+                            if (typeof Chart !== 'function') {
+                                return;
+                            }
 
-                @if ($vendorStatusChartData['total'] === 0)
-                    <div class="flex h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                        {{ __('No data yet for this period') }}
-                    </div>
-                @else
-                    <x-chart
-                        id="admin-vendor-status-chart"
-                        x-ref="canvas"
-                        :height="220"
-                        role="img"
-                        :aria-label="__('Donut chart showing vendor application statuses')"
-                    />
-                @endif
-            </figure>
+                            const isDark = document.documentElement.classList.contains('dark');
+                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
+
+                            Chart.getChart(this.$refs.canvas)?.destroy();
+
+                            this.chart = new Chart(this.$refs.canvas, {
+                                type: 'doughnut',
+                                data: {
+                                    labels: @js($vendorStatusChartData['labels']),
+                                    datasets: [{
+                                        data: @js($vendorStatusChartData['series']),
+                                        backgroundColor: @js($vendorStatusChartData['colors']),
+                                        borderWidth: 0,
+                                    }],
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    cutout: '68%',
+                                    plugins: {
+                                        legend: {
+                                            display: true,
+                                            position: 'bottom',
+                                            labels: {
+                                                color: labelColor,
+                                                usePointStyle: true,
+                                                boxWidth: 10,
+                                            },
+                                        },
+                                        tooltip: {
+                                            callbacks: {
+                                                label: (ctx) => `${ctx.label}: ${Number(ctx.parsed ?? 0).toLocaleString('en-PH')}`,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        },
+                        destroy() {
+                            this.chart?.destroy();
+                        },
+                    }"
+                    class="mt-6"
+                    style="height: 220px; position: relative;"
+                >
+                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Donut chart showing vendor application statuses') }}"></canvas>
+                </div>
+            @endif
         </article>
 
         <article class="brand-panel overflow-hidden p-5">
@@ -485,36 +612,81 @@ new #[Title('Admin dashboard')] class extends Component {
                 <p class="text-xl font-semibold text-neutral-900 dark:text-zinc-100">{{ number_format($userRegistrationChartData['total']) }}</p>
             </div>
 
-            <figure
-                x-data="window.createSukiApexChart({
-                    type: 'bar',
-                    height: 260,
-                    seriesName: 'Users',
-                    data: @js($userRegistrationChartData),
-                    colors: ['var(--brand-400)'],
-                    currency: false
-                })"
-                x-init="init()"
-                x-on:chart-data-updated:admin-user-registrations.window="update($event.detail.data)"
-                class="mt-6 overflow-visible pb-2"
-            >
-                <figcaption class="sr-only">{{ __('Bar chart showing new user registrations over the last 30 days.') }}</figcaption>
-                <script type="application/json" id="admin-user-registrations-chart-data" x-ref="data">@json($userRegistrationChartData)</script>
+            @if (array_sum($userRegistrationChartData['series']) === 0)
+                <div class="mt-6 flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    {{ __('No data yet for this period') }}
+                </div>
+            @else
+                <div
+                    x-data="{
+                        chart: null,
+                        init() {
+                            if (typeof Chart !== 'function') {
+                                return;
+                            }
 
-                @if (array_sum($userRegistrationChartData['series']) === 0)
-                    <div class="flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                        {{ __('No data yet for this period') }}
-                    </div>
-                @else
-                    <x-chart
-                        id="admin-user-registrations-chart"
-                        x-ref="canvas"
-                        :height="260"
-                        role="img"
-                        :aria-label="__('Bar chart showing new user registrations over the last 30 days')"
-                    />
-                @endif
-            </figure>
+                            const styles = getComputedStyle(document.documentElement);
+                            const isDark = document.documentElement.classList.contains('dark');
+                            const brand400 = styles.getPropertyValue('--brand-400').trim() || '#34d399';
+                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
+                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+
+                            Chart.getChart(this.$refs.canvas)?.destroy();
+
+                            this.chart = new Chart(this.$refs.canvas, {
+                                type: 'bar',
+                                data: {
+                                    labels: @js($userRegistrationChartData['labels']),
+                                    datasets: [{
+                                        data: @js($userRegistrationChartData['series']),
+                                        backgroundColor: brand400,
+                                        borderRadius: 10,
+                                        borderSkipped: false,
+                                    }],
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                        tooltip: {
+                                            displayColors: false,
+                                            callbacks: {
+                                                label: (ctx) => Number(ctx.parsed.y ?? 0).toLocaleString('en-PH'),
+                                            },
+                                        },
+                                    },
+                                    scales: {
+                                        x: {
+                                            grid: { display: false },
+                                            ticks: {
+                                                color: labelColor,
+                                                maxTicksLimit: 8,
+                                            },
+                                        },
+                                        y: {
+                                            beginAtZero: true,
+                                            grid: { color: gridColor },
+                                            ticks: {
+                                                color: labelColor,
+                                                precision: 0,
+                                                callback: (value) => Number(value).toLocaleString('en-PH'),
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        },
+                        destroy() {
+                            this.chart?.destroy();
+                        },
+                    }"
+                    class="mt-6"
+                    style="height: 260px; position: relative;"
+                >
+                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Bar chart showing new user registrations over the last 30 days') }}"></canvas>
+                </div>
+            @endif
         </article>
     </section>
 
@@ -620,243 +792,3 @@ new #[Title('Admin dashboard')] class extends Component {
         </div>
     </section>
 </div>
-
-@once
-    <script data-navigate-once>
-        if (!window.createSukiApexChart) {
-            window.createSukiApexChart = function (config) {
-                return {
-                    chart: null,
-                    currentData: config.data,
-                    appearanceListener: null,
-                    init() {
-                        this.render(this.currentData);
-
-                        this.appearanceListener = () => this.rebuild();
-                        window.addEventListener('flux:appearance-changed', this.appearanceListener);
-                    },
-                    theme() {
-                        const isDark = document.documentElement.classList.contains('dark');
-                        const styles = getComputedStyle(document.documentElement);
-
-                        return {
-                            isDark,
-                            brand600: styles.getPropertyValue('--brand-600').trim() || '#059669',
-                            brand400: styles.getPropertyValue('--brand-400').trim() || '#34d399',
-                            labelColor: isDark ? '#a1a1aa' : '#78716c',
-                            gridColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                            tooltipTheme: isDark ? 'dark' : 'light',
-                        };
-                    },
-                    hasData(data) {
-                        return Array.isArray(data?.series) && data.series.some((value) => Number(value) !== 0);
-                    },
-                    formatCurrency(value) {
-                        return '\u20B1' + Number(value || 0).toLocaleString('en-PH', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                        });
-                    },
-                    render(data) {
-                        this.currentData = data;
-
-                        if (!window.ApexCharts || !this.$refs.canvas || !this.hasData(data)) {
-                            return;
-                        }
-
-                        const theme = this.theme();
-                        const colors = config.colors?.length
-                            ? config.colors.map((color) => color.startsWith('var(') ? getComputedStyle(document.documentElement).getPropertyValue(color.replace('var(', '').replace(')', '')).trim() || color : color)
-                            : [theme.brand600];
-
-                        let options = {
-                            chart: {
-                                type: config.type,
-                                height: config.height,
-                                toolbar: { show: false },
-                                fontFamily: 'DM Sans, ui-sans-serif, system-ui, sans-serif',
-                                animations: { enabled: true, easing: 'easeinout', speed: 400 },
-                                background: 'transparent',
-                            },
-                            colors,
-                            dataLabels: { enabled: false },
-                            grid: {
-                                borderColor: theme.gridColor,
-                                padding: {
-                                    bottom: config.type === 'bar' ? 20 : 0,
-                                },
-                            },
-                            tooltip: { theme: theme.tooltipTheme, followCursor: false },
-                        };
-
-                        if (config.type === 'area') {
-                            options = {
-                                ...options,
-                                series: [{ name: config.seriesName, data: data.series }],
-                                stroke: { curve: 'smooth', width: 2 },
-                                fill: {
-                                    type: 'gradient',
-                                    gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 },
-                                },
-                                xaxis: {
-                                    categories: data.labels,
-                                    labels: {
-                                        rotate: -30,
-                                        style: { colors: theme.labelColor },
-                                    },
-                                },
-                                yaxis: {
-                                    labels: {
-                                        style: { colors: theme.labelColor },
-                                        formatter: (value) => this.formatCurrency(value),
-                                    },
-                                },
-                                tooltip: {
-                                    ...options.tooltip,
-                                    y: { formatter: (value) => this.formatCurrency(value) },
-                                },
-                            };
-                        }
-
-                        if (config.type === 'bar') {
-                            options = {
-                                ...options,
-                                series: [{ name: config.seriesName, data: data.series }],
-                                plotOptions: {
-                                    bar: { borderRadius: 6, columnWidth: '55%' },
-                                },
-                                xaxis: {
-                                    categories: data.labels,
-                                    tickAmount: 7,
-                                    labels: {
-                                        rotate: -45,
-                                        style: {
-                                            colors: theme.labelColor,
-                                            fontSize: '11px',
-                                        },
-                                    },
-                                },
-                                yaxis: {
-                                    labels: {
-                                        style: { colors: theme.labelColor },
-                                        formatter: (value) => Math.round(value),
-                                    },
-                                },
-                                tooltip: {
-                                    ...options.tooltip,
-                                    y: {
-                                        formatter: (value) => config.currency
-                                            ? this.formatCurrency(value)
-                                            : `${Math.round(value)} ${config.seriesName.toLowerCase()}`,
-                                    },
-                                },
-                            };
-                        }
-
-                        if (config.type === 'donut') {
-                            options = {
-                                ...options,
-                                series: data.series,
-                                labels: data.labels,
-                                legend: {
-                                    position: 'bottom',
-                                    fontFamily: 'DM Sans, ui-sans-serif, system-ui, sans-serif',
-                                    fontSize: '13px',
-                                    labels: { colors: theme.labelColor },
-                                },
-                                plotOptions: {
-                                    pie: {
-                                        donut: {
-                                            size: '68%',
-                                            labels: {
-                                                show: true,
-                                                total: {
-                                                    show: true,
-                                                    label: 'Total',
-                                                    formatter: (chart) => chart.globals.seriesTotals.reduce((total, value) => total + value, 0),
-                                                },
-                                            },
-                                        },
-                                    },
-                                },
-                                responsive: [{
-                                    breakpoint: 768,
-                                    options: {
-                                        legend: { position: 'bottom' },
-                                    },
-                                }],
-                            };
-                        }
-
-                        this.chart = new ApexCharts(this.$refs.canvas, options);
-                        this.chart.render();
-                    },
-                    update(data) {
-                        this.currentData = data;
-
-                        if (!this.chart) {
-                            this.rebuild();
-
-                            return;
-                        }
-
-                        const theme = this.theme();
-
-                        if (config.type === 'donut') {
-                            this.chart.updateOptions({
-                                labels: data.labels,
-                                colors: data.colors ?? config.colors,
-                                legend: { labels: { colors: theme.labelColor } },
-                                grid: { borderColor: theme.gridColor, padding: { bottom: 0 } },
-                            });
-                            this.chart.updateSeries(data.series);
-
-                            return;
-                        }
-
-                        this.chart.updateOptions({
-                            colors: config.colors ?? [theme.brand600],
-                            grid: {
-                                borderColor: theme.gridColor,
-                                padding: {
-                                    bottom: config.type === 'bar' ? 20 : 0,
-                                },
-                            },
-                            xaxis: {
-                                categories: data.labels,
-                                tickAmount: config.type === 'bar' ? 7 : undefined,
-                                labels: {
-                                    rotate: config.type === 'area' ? -30 : -45,
-                                    style: {
-                                        colors: theme.labelColor,
-                                        fontSize: config.type === 'bar' ? '11px' : undefined,
-                                    },
-                                },
-                            },
-                            yaxis: {
-                                labels: {
-                                    style: { colors: theme.labelColor },
-                                    formatter: (value) => config.currency ? this.formatCurrency(value) : Math.round(value),
-                                },
-                            },
-                        });
-
-                        this.chart.updateSeries([{ name: config.seriesName, data: data.series }]);
-                    },
-                    rebuild() {
-                        if (this.chart) {
-                            this.chart.destroy();
-                            this.chart = null;
-                        }
-
-                        if (!this.hasData(this.currentData) || !this.$refs.canvas) {
-                            return;
-                        }
-
-                        this.$nextTick(() => this.render(this.currentData));
-                    },
-                };
-            };
-        }
-    </script>
-@endonce
