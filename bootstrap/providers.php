@@ -2,8 +2,10 @@
 
 use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
+use App\Providers\TelescopeServiceProvider;
 
-return [
+return array_values(array_filter([
     AppServiceProvider::class,
     FortifyServiceProvider::class,
-];
+    app()->isLocal() ? TelescopeServiceProvider::class : null,
+]));

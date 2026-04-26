@@ -68,7 +68,9 @@
                 ];
         }
 
-        $logoHref = $user !== null ? $navigationItems[0]['route'] : route('home');
+        $logoHref = $user !== null && filled($navigationItems)
+            ? $navigationItems[0]['route']
+            : route('home');
     @endphp
     <body class="brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <header class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/70">
@@ -95,14 +97,18 @@
 
                     <div class="ml-auto mr-3 hidden items-center gap-1 lg:flex">
                         @foreach ($quickActionItems as $item)
-                            <a
-                                href="{{ $item['route'] }}"
-                                title="{{ $item['label'] }}"
-                                wire:navigate
-                                class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ request()->routeIs(...$item['patterns']) ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
-                            >
-                                <i class="{{ $item['icon'] }} text-sm"></i>
-                            </a>
+                            @if ($item['route'] === route('shop.cart'))
+                                <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'header-cart-badge'" />
+                            @else
+                                <a
+                                    href="{{ $item['route'] }}"
+                                    title="{{ $item['label'] }}"
+                                    wire:navigate
+                                    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ request()->routeIs(...$item['patterns']) ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+                                >
+                                    <i class="{{ $item['icon'] }} text-sm"></i>
+                                </a>
+                            @endif
                         @endforeach
                     </div>
 

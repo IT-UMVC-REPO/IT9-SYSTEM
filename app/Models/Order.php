@@ -76,4 +76,9 @@ class Order extends Model
         return $this->belongsToMany(Product::class, 'order_items')
             ->withPivot(['quantity', 'unit_price']);
     }
+
+    public function formattedTotal(): string
+    {
+        return 'PHP '.number_format((float) $this->total_amount, 2);
+    }
 }

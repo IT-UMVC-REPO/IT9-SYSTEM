@@ -40,4 +40,9 @@ class Notification extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function timeAgo(): string
+    {
+        return $this->created_at?->diffForHumans() ?? __('just now');
+    }
 }

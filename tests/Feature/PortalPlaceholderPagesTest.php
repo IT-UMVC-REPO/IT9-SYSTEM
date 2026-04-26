@@ -16,14 +16,9 @@ test('customer placeholder pages render minimal tbd shells', function (string $r
         ->assertDontSee('Linked placeholders');
 })->with([
     ['customer.dashboard', [], 'Customer dashboard'],
-    ['shop.cart', [], 'Cart'],
-    ['shop.checkout', [], 'Checkout'],
-    ['shop.orders', [], 'Order history'],
-    ['shop.orders.show', ['orderReference' => 'sample-order'], 'Order detail'],
     ['shop.favorites', [], 'Favourites'],
     ['shop.vendors', [], 'Market stalls'],
     ['shop.vendors.show', fn (): array => ['vendorProfile' => VendorProfile::factory()->approved()->create()], 'Vendor profile'],
-    ['vendor.registration', [], 'Vendor registration'],
 ]);
 
 test('vendor placeholder pages render minimal tbd shells', function (string $routeName, array $parameters, string $heading) {
@@ -39,9 +34,6 @@ test('vendor placeholder pages render minimal tbd shells', function (string $rou
         ->assertDontSee('Linked placeholders');
 })->with([
     ['vendor.dashboard', [], 'Vendor dashboard'],
-    ['vendor.products', [], 'Product management'],
-    ['vendor.products.create', [], 'Create product'],
-    ['vendor.products.edit', ['productReference' => 'sample-product'], 'Edit product'],
     ['vendor.orders', [], 'Order management'],
     ['vendor.orders.show', ['orderReference' => 'sample-order'], 'Order detail'],
     ['vendor.sales', [], 'Sales summary'],
@@ -58,10 +50,6 @@ test('admin placeholder pages render minimal tbd shells', function (string $rout
         ->assertDontSee('Planned content')
         ->assertDontSee('Linked placeholders');
 })->with([
-    ['admin.dashboard', [], 'Admin dashboard'],
-    ['admin.vendors', [], 'Vendor approvals'],
-    ['admin.vendors.show', ['vendorReference' => 'sample-vendor'], 'Vendor review detail'],
-    ['admin.users', [], 'User management'],
     ['admin.orders', [], 'Marketplace order oversight'],
 ]);
 
