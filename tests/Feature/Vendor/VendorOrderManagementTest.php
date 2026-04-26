@@ -143,13 +143,13 @@ test('customer notification is dispatched on status change', function () {
     });
 });
 
-test('cancel works for pending and confirmed orders', function (OrderStatus $status) {
+test('cancel works for pending orders', function () {
     Queue::fake();
 
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
     $tracked = createVendorManagedOrder($vendorProfile, [
-        'order_status' => $status,
+        'order_status' => OrderStatus::Pending,
     ]);
 
     Livewire::actingAs($vendorUser)
@@ -159,10 +159,7 @@ test('cancel works for pending and confirmed orders', function (OrderStatus $sta
     expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Cancelled);
 
     Queue::assertPushed(SendOrderNotificationJob::class);
-})->with([
-    OrderStatus::Pending,
-    OrderStatus::Confirmed,
-]);
+});
 
 test('cancel does not work for later order stages', function () {
     Queue::fake();
@@ -178,5 +175,22 @@ test('cancel does not work for later order stages', function () {
         ->call('cancelOrder');
 
     expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Preparing);
+    Queue::assertNothingPushed();
+});
+
+test('cancel does not work once the order is confirmed', function () {
+    Queue::fake();
+
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $tracked = createVendorManagedOrder($vendorProfile, [
+        'order_status' => OrderStatus::Confirmed,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.order-detail', ['orderReference' => (string) $tracked['order']->getKey()])
+        ->call('cancelOrder');
+
+    expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Confirmed);
     Queue::assertNothingPushed();
 });

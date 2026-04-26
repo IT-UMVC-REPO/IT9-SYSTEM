@@ -214,7 +214,7 @@ new #[Title('My products')] class extends Component {
         @if ($this->products->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->products as $product)
-                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel flex h-full flex-col overflow-hidden">
+                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel flex h-full flex-col p-5 sm:p-6">
                         <div class="overflow-hidden rounded-[1.5rem] bg-stone-100 dark:bg-zinc-800">
                             <img
                                 src="{{ $product->image_url }}"
@@ -223,7 +223,7 @@ new #[Title('My products')] class extends Component {
                             >
                         </div>
 
-                        <div class="flex flex-1 flex-col pt-5">
+                        <div class="mt-5 flex flex-1 flex-col">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <span class="brand-badge">{{ $product->category->name }}</span>
@@ -254,7 +254,7 @@ new #[Title('My products')] class extends Component {
                                 </span>
                             </div>
 
-                            <div class="mt-6 grid gap-3">
+                            <div class="mt-auto grid gap-3 pt-6">
                                 <button
                                     type="button"
                                     wire:click="toggleStatus({{ $product->id }})"
@@ -274,7 +274,7 @@ new #[Title('My products')] class extends Component {
                                         type="button"
                                         wire:click="deleteProduct({{ $product->id }})"
                                         wire:confirm="{{ __('Delete this listing? This action cannot be undone.') }}"
-                                        class="rounded-xl border border-rose-200 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                                        class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                     >
                                         {{ __('Delete') }}
                                     </button>

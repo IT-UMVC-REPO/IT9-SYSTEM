@@ -86,7 +86,7 @@ new #[Title('Vendor Order Detail')] class extends Component
     {
         $currentOrder = $this->order;
 
-        if (! in_array($currentOrder->order_status, [OrderStatus::Pending, OrderStatus::Confirmed], true)) {
+        if ($currentOrder->order_status !== OrderStatus::Pending) {
             Flux::toast(variant: 'warning', text: __('This order cannot be cancelled at this stage.'));
 
             return;
@@ -286,7 +286,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                         </button>
                     @endif
 
-                    @if (in_array($this->order->order_status, [OrderStatus::Pending, OrderStatus::Confirmed], true))
+                    @if ($this->order->order_status === OrderStatus::Pending)
                         <button
                             type="button"
                             wire:click="cancelOrder"

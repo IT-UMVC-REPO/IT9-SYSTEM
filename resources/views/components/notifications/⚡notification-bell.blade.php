@@ -52,6 +52,20 @@ new class extends Component
         Flux::toast(variant: 'success', text: __('All notifications marked as read.'));
     }
 
+    public function markAsRead(int $notificationId): void
+    {
+        abort_unless(auth()->check(), 403);
+
+        Notification::query()
+            ->whereKey($notificationId)
+            ->where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        unset($this->unreadCount);
+        unset($this->notifications);
+    }
+
     #[Computed]
     public function unreadCount(): int
     {
@@ -75,7 +89,7 @@ new class extends Component
         return Notification::query()
             ->where('user_id', auth()->id())
             ->latest('created_at')
-            ->limit(10)
+            ->limit(5)
             ->get();
     }
 
@@ -101,9 +115,11 @@ new class extends Component
 };
 ?>
 
-<flux:dropdown x-data align="end">
+<div x-data="{ open: false }" class="relative">
     <button
         type="button"
+        x-on:click="open = !open"
+        x-bind:aria-expanded="open.toString()"
         class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
         title="{{ __('Notifications') }}"
         aria-label="{{ __('Notifications') }}"
@@ -117,7 +133,13 @@ new class extends Component
         @endif
     </button>
 
-    <div class="brand-floating-card mt-3 w-[22rem] space-y-4 p-0">
+    <div
+        x-cloak
+        x-show="open"
+        x-transition.origin.top.right
+        x-on:click.outside="open = false"
+        class="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900"
+    >
         <div class="flex items-center justify-between border-b border-stone-200 px-5 py-4 dark:border-white/10">
             <div>
                 <p class="brand-kicker !mb-0">{{ __('Updates') }}</p>
@@ -137,11 +159,13 @@ new class extends Component
             </button>
         </div>
 
-        <div class="max-h-[28rem] space-y-2 overflow-y-auto px-3 pb-3">
+        <div class="max-h-96 space-y-2 overflow-y-auto px-3 py-3">
             @forelse ($this->notifications as $notification)
-                <article
+                <button
+                    type="button"
+                    wire:click="markAsRead({{ $notification->id }})"
                     wire:key="header-notification-{{ $notification->id }}"
-                    class="rounded-2xl border px-4 py-3 transition"
+                    class="w-full rounded-2xl border px-4 py-3 text-left transition"
                     style="{{ $notification->is_read
                         ? 'border-color: rgb(231 229 228); background-color: rgba(255,255,255,0.72);'
                         : 'border-color: var(--brand-200); background-color: color-mix(in oklab, var(--brand-50) 65%, white 35%);' }}"
@@ -153,20 +177,24 @@ new class extends Component
 
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-3">
-                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $notification->title }}</p>
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $notification->title }}</p>
+                                    <p class="mt-1 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
+                                        {{ Str::limit($notification->message, 84) }}
+                                    </p>
+                                </div>
 
                                 @if (! $notification->is_read)
                                     <span class="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: var(--brand-600);"></span>
                                 @endif
                             </div>
 
-                            <p class="mt-1 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
-                                {{ Str::limit($notification->message, 88) }}
-                            </p>
-                            <p class="mt-2 text-xs font-medium text-neutral-400 dark:text-zinc-500">{{ $notification->timeAgo() }}</p>
+                            <div class="mt-3 flex items-center justify-end">
+                                <p class="text-xs font-medium text-neutral-400 dark:text-zinc-500">{{ $notification->timeAgo() }}</p>
+                            </div>
                         </div>
                     </div>
-                </article>
+                </button>
             @empty
                 <div class="px-4 py-10 text-center">
                     <span class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-neutral-500 dark:text-zinc-400" style="background-color: color-mix(in oklab, var(--brand-50) 70%, white 30%);">
@@ -179,5 +207,17 @@ new class extends Component
                 </div>
             @endforelse
         </div>
+
+        <div class="border-t border-stone-200 px-5 py-4 dark:border-white/10">
+            <a
+                href="{{ route('notifications.index') }}"
+                wire:navigate
+                x-on:click="open = false"
+                class="inline-flex text-sm font-semibold"
+                style="color: var(--brand-700);"
+            >
+                {{ __('See all') }}
+            </a>
+        </div>
     </div>
-</flux:dropdown>
+</div>

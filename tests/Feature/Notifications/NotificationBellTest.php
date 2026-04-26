@@ -90,3 +90,35 @@ test('only the authenticated users notifications are shown', function () {
         ->assertSee('Your own alert')
         ->assertDontSee('Other user alert');
 });
+
+test('clicking a notification marks only that notification as read', function () {
+    $user = User::factory()->create();
+
+    $unread = Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Unread alert',
+        'message' => 'This should be marked read.',
+        'type' => NotificationType::System,
+        'is_read' => false,
+    ]);
+
+    $stillUnread = Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Keep unread',
+        'message' => 'This should stay unread.',
+        'type' => NotificationType::Message,
+        'is_read' => false,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('notifications.notification-bell')
+        ->call('markAsRead', $unread->getKey());
+
+    expect($unread->fresh()->is_read)->toBeTrue();
+    expect($stillUnread->fresh()->is_read)->toBeFalse();
+});
+
+test('notifications page placeholder requires authentication', function () {
+    $this->get(route('notifications.index'))
+        ->assertRedirect(route('login'));
+});

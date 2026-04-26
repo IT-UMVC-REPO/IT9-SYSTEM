@@ -17,6 +17,8 @@ Route::middleware('auth')->group(function () {
     Route::get('dashboard', function (Request $request) {
         return redirect()->route($request->user()->homeRoute(), $request->query());
     })->name('dashboard');
+
+    Route::view('/notifications', 'pages.notifications.index')->name('notifications.index');
 });
 
 Route::middleware(['auth', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {

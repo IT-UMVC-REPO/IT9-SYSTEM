@@ -407,27 +407,27 @@ new #[Title('Admin dashboard')] class extends Component {
             <figure
                 x-data="window.createSukiApexChart({
                     type: 'bar',
-                    height: 220,
+                    height: 260,
                     seriesName: 'Orders',
                     data: @js($orderVolumeChartData),
                     currency: false
                 })"
                 x-init="init()"
                 x-on:chart-data-updated:admin-orders.window="update($event.detail.data)"
-                class="mt-6 overflow-hidden"
+                class="mt-6 overflow-visible pb-2"
             >
                 <figcaption class="sr-only">{{ __('Bar chart showing daily order volume over the last 14 days.') }}</figcaption>
                 <script type="application/json" id="admin-orders-chart-data" x-ref="data">@json($orderVolumeChartData)</script>
 
                 @if (array_sum($orderVolumeChartData['series']) === 0)
-                    <div class="flex h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    <div class="flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
                         {{ __('No data yet for this period') }}
                     </div>
                 @else
                     <x-chart
                         id="admin-orders-chart"
                         x-ref="canvas"
-                        :height="220"
+                        :height="260"
                         role="img"
                         :aria-label="__('Bar chart showing order volume over the last 14 days')"
                     />
@@ -488,7 +488,7 @@ new #[Title('Admin dashboard')] class extends Component {
             <figure
                 x-data="window.createSukiApexChart({
                     type: 'bar',
-                    height: 220,
+                    height: 260,
                     seriesName: 'Users',
                     data: @js($userRegistrationChartData),
                     colors: ['var(--brand-400)'],
@@ -496,20 +496,20 @@ new #[Title('Admin dashboard')] class extends Component {
                 })"
                 x-init="init()"
                 x-on:chart-data-updated:admin-user-registrations.window="update($event.detail.data)"
-                class="mt-6 overflow-hidden"
+                class="mt-6 overflow-visible pb-2"
             >
                 <figcaption class="sr-only">{{ __('Bar chart showing new user registrations over the last 30 days.') }}</figcaption>
                 <script type="application/json" id="admin-user-registrations-chart-data" x-ref="data">@json($userRegistrationChartData)</script>
 
                 @if (array_sum($userRegistrationChartData['series']) === 0)
-                    <div class="flex h-[220px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                    <div class="flex h-[260px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
                         {{ __('No data yet for this period') }}
                     </div>
                 @else
                     <x-chart
                         id="admin-user-registrations-chart"
                         x-ref="canvas"
-                        :height="220"
+                        :height="260"
                         role="img"
                         :aria-label="__('Bar chart showing new user registrations over the last 30 days')"
                     />
@@ -680,7 +680,12 @@ new #[Title('Admin dashboard')] class extends Component {
                             },
                             colors,
                             dataLabels: { enabled: false },
-                            grid: { borderColor: theme.gridColor },
+                            grid: {
+                                borderColor: theme.gridColor,
+                                padding: {
+                                    bottom: config.type === 'bar' ? 20 : 0,
+                                },
+                            },
                             tooltip: { theme: theme.tooltipTheme, followCursor: false },
                         };
 
@@ -722,7 +727,14 @@ new #[Title('Admin dashboard')] class extends Component {
                                 },
                                 xaxis: {
                                     categories: data.labels,
-                                    labels: { style: { colors: theme.labelColor } },
+                                    tickAmount: 7,
+                                    labels: {
+                                        rotate: -45,
+                                        style: {
+                                            colors: theme.labelColor,
+                                            fontSize: '11px',
+                                        },
+                                    },
                                 },
                                 yaxis: {
                                     labels: {
@@ -795,7 +807,7 @@ new #[Title('Admin dashboard')] class extends Component {
                                 labels: data.labels,
                                 colors: data.colors ?? config.colors,
                                 legend: { labels: { colors: theme.labelColor } },
-                                grid: { borderColor: theme.gridColor },
+                                grid: { borderColor: theme.gridColor, padding: { bottom: 0 } },
                             });
                             this.chart.updateSeries(data.series);
 
@@ -804,12 +816,21 @@ new #[Title('Admin dashboard')] class extends Component {
 
                         this.chart.updateOptions({
                             colors: config.colors ?? [theme.brand600],
-                            grid: { borderColor: theme.gridColor },
+                            grid: {
+                                borderColor: theme.gridColor,
+                                padding: {
+                                    bottom: config.type === 'bar' ? 20 : 0,
+                                },
+                            },
                             xaxis: {
                                 categories: data.labels,
+                                tickAmount: config.type === 'bar' ? 7 : undefined,
                                 labels: {
-                                    rotate: config.type === 'area' ? -30 : 0,
-                                    style: { colors: theme.labelColor },
+                                    rotate: config.type === 'area' ? -30 : -45,
+                                    style: {
+                                        colors: theme.labelColor,
+                                        fontSize: config.type === 'bar' ? '11px' : undefined,
+                                    },
                                 },
                             },
                             yaxis: {

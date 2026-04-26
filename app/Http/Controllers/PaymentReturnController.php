@@ -11,7 +11,7 @@ class PaymentReturnController extends Controller
 {
     public function success(Request $request): View|RedirectResponse
     {
-        $orderId = $request->session()->get('pending_payment_order_id');
+        $orderId = $request->session()->pull('pending_payment_order_id');
         $order = $orderId === null
             ? null
             : Order::query()->with(['vendor:id,store_name'])->find($orderId);
@@ -28,7 +28,7 @@ class PaymentReturnController extends Controller
     public function failed(Request $request): View
     {
         return view('pages.shop.checkout-failed', [
-            'orderId' => $request->session()->get('pending_payment_order_id'),
+            'orderId' => $request->session()->pull('pending_payment_order_id'),
         ]);
     }
 }

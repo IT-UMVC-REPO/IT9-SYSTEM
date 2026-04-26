@@ -255,7 +255,8 @@ test('payment success return page renders the placed order', function () {
         ->get(route('shop.payment.success'))
         ->assertOk()
         ->assertSee('Order placed!')
-        ->assertSee('#'.str_pad((string) $order->getKey(), 6, '0', STR_PAD_LEFT));
+        ->assertSee('#'.str_pad((string) $order->getKey(), 6, '0', STR_PAD_LEFT))
+        ->assertSessionMissing('pending_payment_order_id');
 });
 
 test('payment failure return page renders a retry path', function () {
@@ -263,5 +264,6 @@ test('payment failure return page renders a retry path', function () {
         ->get(route('shop.payment.failed'))
         ->assertOk()
         ->assertSee('Payment was not completed')
-        ->assertSee('Try again');
+        ->assertSee('Try again')
+        ->assertSessionMissing('pending_payment_order_id');
 });

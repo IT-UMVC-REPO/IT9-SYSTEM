@@ -41,11 +41,7 @@ new #[Title('Conversation')] class extends Component
 
     public function handleIncomingMessage(): void
     {
-        $this->markMessagesAsRead();
-
-        unset($this->threadMessages);
-
-        $this->dispatch('message-sent');
+        $this->refreshThread(shouldScroll: true);
     }
 
     public function send(): void
@@ -68,6 +64,18 @@ new #[Title('Conversation')] class extends Component
         unset($this->threadMessages);
 
         $this->dispatch('message-sent');
+    }
+
+    public function refreshThread(bool $shouldScroll = false): void
+    {
+        $this->markMessagesAsRead();
+
+        unset($this->threadMessages);
+        unset($this->linkedOrder);
+
+        if ($shouldScroll) {
+            $this->dispatch('message-sent');
+        }
     }
 
     #[Computed]
@@ -149,7 +157,7 @@ new #[Title('Conversation')] class extends Component
 };
 ?>
 
-<div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+<div wire:poll.5s="refreshThread" class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex items-start justify-between gap-4">
         <div>
             <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold" style="color: var(--brand-700);">
