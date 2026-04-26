@@ -82,9 +82,9 @@ Customers who want to sell must be able to submit a vendor application from `ven
 
 | # | Task | Complexity | Depends on | Claimed by | Status |
 |---|---|---|---|---|---|
-| A1 | Build the vendor registration Livewire page (`vendor.registration`) — collect store name, description, and store image (upload to `public` disk); on submit, create a `VendorProfile` with `Pending` status linked to the authenticated user | M | — | — | Not started |
-| A2 | After successful submission, redirect the vendor user to a dedicated "pending approval" message screen instead of the customer dashboard | S | A1 | — | Not started |
-| A3 | Pest tests for the registration form — validation rules, successful submission creates correct `VendorProfile` record, duplicate submission is prevented | S | A1 | — | Not started |
+| A1 | Build the vendor registration Livewire page (`vendor.registration`) — collect store name, description, and store image (upload to `public` disk); on submit, create a `VendorProfile` with `Pending` status linked to the authenticated user | M | — | TRISHA LLANO | Not started |
+| A2 | After successful submission, redirect the vendor user to a dedicated "pending approval" message screen instead of the customer dashboard | S | A1 | TRISHA LLANO | Not started |
+| A3 | Pest tests for the registration form — validation rules, successful submission creates correct `VendorProfile` record, duplicate submission is prevented | S | A1 | TRISHA LLANO | Not started |
 
 ---
 
