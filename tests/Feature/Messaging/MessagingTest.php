@@ -167,3 +167,16 @@ test('thread shows messages in chronological order', function () {
         ->assertOk()
         ->assertSeeInOrder(['First message', 'Second message']);
 });
+
+test('conversation header links to customer profile when other user is a customer', function () {
+    $vendor = User::factory()->vendor()->create();
+    $customer = User::factory()->create([
+        'name' => 'Customer Link Target',
+    ]);
+
+    $this->actingAs($vendor)
+        ->get(route('messages.conversation', ['conversationReference' => $customer->getKey()]))
+        ->assertOk()
+        ->assertSee('Customer Link Target')
+        ->assertSee(route('shop.customers.show', $customer), false);
+});

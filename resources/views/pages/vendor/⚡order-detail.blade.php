@@ -300,12 +300,37 @@ new #[Title('Vendor Order Detail')] class extends Component
                     @endif
 
                     <a
+                        href="{{ route('shop.customers.show', $this->order->customer_id) }}"
+                        wire:navigate
+                        class="brand-button-secondary w-full"
+                    >
+                        {{ __('View customer profile') }}
+                    </a>
+
+                    <a
                         href="{{ route('messages.conversation', ['conversationReference' => $this->order->customer_id, 'order' => $this->order->id]) }}"
                         wire:navigate
                         class="brand-button-secondary w-full"
                     >
                         {{ __('Message customer') }}
                     </a>
+
+                    <flux:modal.trigger name="report-user">
+                        <flux:button
+                            variant="ghost"
+                            type="button"
+                            class="w-full justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                        >
+                            <i class="fa-solid fa-flag text-xs"></i>
+                            {{ __('Report this customer') }}
+                        </flux:button>
+                    </flux:modal.trigger>
+
+                    <livewire:report.report-modal
+                        :reported-user-id="$this->order->customer_id"
+                        reporter-role="vendor"
+                        :order-id="$this->orderId"
+                    />
                 </div>
             </section>
         </aside>

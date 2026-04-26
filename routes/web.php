@@ -29,6 +29,7 @@ Route::middleware(['auth', 'role:customer,vendor'])->prefix('shop')->name('shop.
     Route::get('/', [ShopController::class, 'index'])->name('home');
     Route::livewire('/vendors', 'pages::shop.vendors')->name('vendors');
     Route::get('/vendors/{vendorProfile}', [ShopController::class, 'vendor'])->name('vendors.show');
+    Route::get('/customers/{user}', [ShopController::class, 'customer'])->name('customers.show');
     Route::get('/products/{product}', [ShopController::class, 'show'])->name('products.show');
     Route::livewire('/cart', 'pages::shop.cart')->name('cart');
     Route::livewire('/checkout', 'pages::shop.checkout')->name('checkout');
@@ -53,6 +54,7 @@ Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->g
     Route::livewire('/products/{product}/edit', 'pages::vendor.product-edit')->name('products.edit');
     Route::livewire('/orders', 'pages::vendor.orders')->name('orders');
     Route::livewire('/orders/{orderReference}', 'pages::vendor.order-detail')->name('orders.show');
+    Route::livewire('/valued-customers', 'pages::vendor.valued-customers')->name('valued-customers');
     Route::livewire('/sales', 'pages::vendor.sales')->name('sales');
 });
 
@@ -61,7 +63,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::livewire('/vendors', 'pages::admin.vendors')->name('vendors');
     Route::livewire('/vendors/{vendorProfile}', 'pages::admin.vendor-detail')->name('vendors.show');
     Route::livewire('/users', 'pages::admin.users')->name('users');
+    Route::livewire('/users/{user}', 'pages::admin.user-profile')->name('users.show');
     Route::livewire('/orders', 'pages::admin.orders')->name('orders');
+    Route::livewire('/reports', 'pages::admin.reports')->name('reports');
 });
 
 require __DIR__.'/settings.php';

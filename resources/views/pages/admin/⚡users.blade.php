@@ -6,8 +6,6 @@ use App\Models\User;
 use App\Models\VendorProfile;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -26,10 +24,6 @@ new #[Title('User management')] class extends Component {
     #[Url(except: '')]
     public string $statusFilter = '';
 
-    public ?int $selectedUserId = null;
-
-    public ?int $selectedUserLastActivity = null;
-
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -45,14 +39,6 @@ new #[Title('User management')] class extends Component {
         $this->resetPage();
     }
 
-    public function showProfile(int $userId): void
-    {
-        $user = $this->resolveUser($userId);
-
-        $this->selectedUserId = $user->getKey();
-        $this->selectedUserLastActivity = $this->lastActivityFor($user->getKey());
-    }
-
     public function toggleActiveStatus(int $userId): void
     {
         $user = $this->resolveUser($userId);
@@ -66,10 +52,6 @@ new #[Title('User management')] class extends Component {
         $user->forceFill([
             'is_active' => ! $user->is_active,
         ])->save();
-
-        if ($this->selectedUserId === $user->getKey()) {
-            $this->selectedUserLastActivity = $this->lastActivityFor($user->getKey());
-        }
 
         Flux::toast(
             variant: $user->is_active ? 'success' : 'warning',
@@ -122,21 +104,6 @@ new #[Title('User management')] class extends Component {
         ];
     }
 
-    #[Computed]
-    public function selectedUser(): ?User
-    {
-        if ($this->selectedUserId === null) {
-            return null;
-        }
-
-        return User::query()
-            ->with([
-                'vendorProfile:id,user_id,store_name,status,approved_at',
-            ])
-            ->withCount('orders')
-            ->find($this->selectedUserId);
-    }
-
     public function paginationView(): string
     {
         return 'layouts.app.livewire-paginate';
@@ -148,15 +115,6 @@ new #[Title('User management')] class extends Component {
             ->with('vendorProfile:id,user_id,store_name,status,approved_at')
             ->withCount('orders')
             ->findOrFail($userId);
-    }
-
-    private function lastActivityFor(int $userId): ?int
-    {
-        $lastActivity = DB::table('sessions')
-            ->where('user_id', $userId)
-            ->max('last_activity');
-
-        return $lastActivity !== null ? (int) $lastActivity : null;
     }
 }; ?>
 
@@ -271,15 +229,9 @@ new #[Title('User management')] class extends Component {
 
                                 <flux:table.cell align="end">
                                     <div class="flex justify-end gap-2">
-                                        <flux:modal.trigger name="view-user-profile">
-                                            <button
-                                                type="button"
-                                                wire:click="showProfile({{ $user->id }})"
-                                                class="brand-button-secondary"
-                                            >
-                                                {{ __('View profile') }}
-                                            </button>
-                                        </flux:modal.trigger>
+                                        <a href="{{ route('admin.users.show', $user) }}" wire:navigate class="brand-button-secondary">
+                                            {{ __('View profile') }}
+                                        </a>
 
                                         @if ($user->is_active)
                                             <flux:button
@@ -336,15 +288,9 @@ new #[Title('User management')] class extends Component {
                         </div>
 
                         <div class="mt-4 grid gap-2 sm:grid-cols-2">
-                            <flux:modal.trigger name="view-user-profile">
-                                <button
-                                    type="button"
-                                    wire:click="showProfile({{ $user->id }})"
-                                    class="brand-button-secondary"
-                                >
-                                    {{ __('View profile') }}
-                                </button>
-                            </flux:modal.trigger>
+                            <a href="{{ route('admin.users.show', $user) }}" wire:navigate class="brand-button-secondary text-center">
+                                {{ __('View profile') }}
+                            </a>
 
                             @if ($user->is_active)
                                 <flux:button
@@ -389,85 +335,4 @@ new #[Title('User management')] class extends Component {
             </div>
         @endif
     </section>
-
-    <flux:modal name="view-user-profile" class="max-w-2xl">
-        <div class="space-y-6 rounded-[1.75rem] border border-stone-200 bg-white/95 p-6 shadow-xl dark:border-white/10 dark:bg-zinc-900/95">
-            @if ($this->selectedUser !== null)
-                <div class="flex items-start gap-4">
-                    <x-user-avatar :user="$this->selectedUser" size="xl" />
-
-                    <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="brand-serif truncate text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->selectedUser->name }}</h2>
-                            <span class="settings-role-badge">{{ ucfirst($this->selectedUser->role->value) }}</span>
-                        </div>
-
-                        <p class="mt-2 truncate text-sm text-neutral-500 dark:text-zinc-400">{{ $this->selectedUser->email }}</p>
-                        <p class="mt-2 text-sm text-neutral-600 dark:text-zinc-300">
-                            {{ $this->selectedUser->is_active ? __('Account is active') : __('Account is inactive') }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <article class="brand-panel-muted p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Phone') }}</p>
-                        <p class="mt-3 text-sm text-neutral-700 dark:text-zinc-300">{{ $this->selectedUser->phone ?: __('Not provided') }}</p>
-                    </article>
-
-                    <article class="brand-panel-muted p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Orders placed') }}</p>
-                        <p class="mt-3 text-sm text-neutral-700 dark:text-zinc-300">{{ number_format($this->selectedUser->orders_count) }}</p>
-                    </article>
-
-                    <article class="brand-panel-muted p-4 sm:col-span-2">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Address') }}</p>
-                        <p class="mt-3 text-sm text-neutral-700 dark:text-zinc-300">{{ $this->selectedUser->address ?: __('Not provided') }}</p>
-                    </article>
-
-                    <article class="brand-panel-muted p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Registered') }}</p>
-                        <p class="mt-3 text-sm text-neutral-700 dark:text-zinc-300">{{ $this->selectedUser->created_at->format('M j, Y g:i A') }}</p>
-                    </article>
-
-                    <article class="brand-panel-muted p-4">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Last recorded session') }}</p>
-                        <p class="mt-3 text-sm text-neutral-700 dark:text-zinc-300">
-                            {{ $selectedUserLastActivity !== null ? Carbon::createFromTimestamp($selectedUserLastActivity)->diffForHumans() : __('Not tracked') }}
-                        </p>
-                    </article>
-
-                    @if ($this->selectedUser->vendorProfile !== null)
-                        <article class="brand-panel-muted p-4 sm:col-span-2">
-                            <div class="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Vendor profile') }}</p>
-                                    <h3 class="mt-2 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->selectedUser->vendorProfile->store_name }}</h3>
-                                </div>
-
-                                <span @class([
-                                    'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]',
-                                    'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' => $this->selectedUser->vendorProfile->status === VendorStatus::Pending,
-                                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' => $this->selectedUser->vendorProfile->status === VendorStatus::Approved,
-                                    'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' => $this->selectedUser->vendorProfile->status === VendorStatus::Rejected,
-                                ])>
-                                    {{ ucfirst($this->selectedUser->vendorProfile->status->value) }}
-                                </span>
-                            </div>
-
-                            <p class="mt-3 text-sm text-neutral-600 dark:text-zinc-300">
-                                {{ $this->selectedUser->vendorProfile->approved_at !== null
-                                    ? __('Approved :date', ['date' => $this->selectedUser->vendorProfile->approved_at->format('M j, Y')])
-                                    : __('Awaiting final review or reapplication changes.') }}
-                            </p>
-                        </article>
-                    @endif
-                </div>
-            @else
-                <div class="rounded-[1.5rem] border border-dashed border-stone-200 p-8 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                    {{ __('Select a user to view their profile details.') }}
-                </div>
-            @endif
-        </div>
-    </flux:modal>
 </div>

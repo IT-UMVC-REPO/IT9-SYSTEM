@@ -209,8 +209,17 @@ new #[Title('Conversation')] class extends Component
             <div class="mt-4 flex items-center gap-4">
                 <x-user-avatar :user="$this->otherUser" size="lg" />
                 <div>
-                    <p class="brand-kicker !mb-0">{{ __('Conversation') }}</p>
-                    <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
+                    @if ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
+                        <a
+                            href="{{ route('shop.customers.show', $this->otherUser) }}"
+                            wire:navigate
+                            class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
+                        >
+                            {{ $this->otherUser->name }}
+                        </a>
+                    @else
+                        <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
+                    @endif
                 </div>
             </div>
         </div>

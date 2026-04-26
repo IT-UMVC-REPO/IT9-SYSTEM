@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ProductStatus;
+use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Models\Favorite;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
+use App\Models\VendorCustomerStar;
 use App\Models\VendorProfile;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 
 class ShopController extends Controller
 {
@@ -60,9 +65,9 @@ class ShopController extends Controller
             ->active()
             ->count();
 
-        $isFavorited = auth()->check()
+        $isFavorited = Auth::check()
             ? Favorite::query()
-                ->where('customer_id', auth()->id())
+                ->where('customer_id', Auth::id())
                 ->where('vendor_id', $vendorProfile->getKey())
                 ->exists()
             : false;
@@ -72,6 +77,43 @@ class ShopController extends Controller
             'products' => $products,
             'activeProductCount' => $activeProductCount,
             'isFavorited' => $isFavorited,
+        ]);
+    }
+
+    public function customer(User $user): View
+    {
+        $user->loadMissing('vendorProfile:id,user_id,status');
+        abort_if($user->effectiveMarketplaceRole() !== UserRole::Customer, 404);
+
+        $ordersPlacedCount = Order::query()
+            ->where('customer_id', $user->getKey())
+            ->count();
+
+        /** @var User $viewer */
+        $viewer = Auth::user()->loadMissing('vendorProfile:id,user_id,status');
+        $viewerRole = $viewer->effectiveMarketplaceRole();
+        $canVendorStar = $viewerRole === UserRole::Vendor;
+
+        $sharedOrderCount = $canVendorStar
+            ? Order::query()
+                ->where('customer_id', $user->getKey())
+                ->where('vendor_id', $viewer->vendorProfile?->getKey())
+                ->count()
+            : 0;
+
+        $isStarredByVendor = $canVendorStar
+            ? VendorCustomerStar::query()
+                ->where('vendor_user_id', $viewer->getKey())
+                ->where('customer_id', $user->getKey())
+                ->exists()
+            : false;
+
+        return view('pages.shop.customer-detail', [
+            'customer' => $user,
+            'ordersPlacedCount' => $ordersPlacedCount,
+            'sharedOrderCount' => $sharedOrderCount,
+            'canVendorStar' => $canVendorStar,
+            'isStarredByVendor' => $isStarredByVendor,
         ]);
     }
 }

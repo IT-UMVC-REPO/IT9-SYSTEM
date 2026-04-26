@@ -115,6 +115,7 @@ new #[Title('Vendor Dashboard')] class extends Component
                 {{ __('Add product') }}
             </a>
             <a href="{{ route('vendor.orders') }}" wire:navigate class="brand-button-secondary">{{ __('View all orders') }}</a>
+            <a href="{{ route('vendor.valued-customers') }}" wire:navigate class="brand-button-secondary">{{ __('Valued customers') }}</a>
             <a href="{{ route('vendor.sales') }}" wire:navigate class="brand-button-secondary">{{ __('Sales overview') }}</a>
         </div>
     </section>

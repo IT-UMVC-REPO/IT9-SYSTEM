@@ -51,6 +51,25 @@
                     >
                         {{ __('Message vendor') }}
                     </a>
+
+                    @if (auth()->user()?->effectiveMarketplaceRole()->value === 'customer')
+                        <flux:modal.trigger name="report-user">
+                            <flux:button
+                                variant="ghost"
+                                type="button"
+                                class="mt-3 w-full justify-center border border-white/15 bg-white/5 text-rose-100 hover:bg-rose-500/10 hover:text-white dark:text-rose-200"
+                            >
+                                <i class="fa-solid fa-flag text-xs"></i>
+                                {{ __('Report this vendor') }}
+                            </flux:button>
+                        </flux:modal.trigger>
+
+                        <livewire:report.report-modal
+                            :reported-user-id="$vendorProfile->user_id"
+                            reporter-role="customer"
+                            :order-id="null"
+                        />
+                    @endif
                 </div>
             </div>
         </div>

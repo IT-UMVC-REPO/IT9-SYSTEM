@@ -56,6 +56,7 @@
                         $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
                         $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
+                        $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
                     ],
                     [],
                     __('Review approvals, users, and marketplace operations from the admin portal.'),
