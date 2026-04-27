@@ -69,10 +69,12 @@ Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->g
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
 
+    Route::get('/users', [AdminController::class, 'users'])->name('users');
+    Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUserStatus'])->name('users.toggle');
+    
     foreach ([
         ['/vendors', 'pages.admin.vendors', 'vendors'],
         ['/vendors/{vendorReference}', 'pages.admin.vendor-detail', 'vendors.show'],
-        ['/users', 'pages.admin.users', 'users'],
         ['/orders', 'pages.admin.orders', 'orders'],
     ] as [$uri, $view, $name]) {
         Route::view($uri, $view)->name($name);
