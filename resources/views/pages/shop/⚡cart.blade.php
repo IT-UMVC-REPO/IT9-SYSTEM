@@ -90,6 +90,24 @@ new #[Title('Cart')] class extends Component {
     }
 
     #[Computed]
+    public function groupedCartItems(): Collection
+    {
+        return $this->cartItems->groupBy(
+            fn (CartItem $item): int => $item->product->vendor_id,
+        );
+    }
+
+    #[Computed]
+    public function vendorSubtotals(): Collection
+    {
+        return $this->groupedCartItems->map(
+            fn (Collection $items): float => (float) $items->sum(
+                fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+            ),
+        );
+    }
+
+    #[Computed]
     public function subtotal(): float
     {
         return (float) $this->cartItems->sum(
@@ -112,104 +130,138 @@ new #[Title('Cart')] class extends Component {
         <span class="brand-kicker">{{ __('Your basket') }}</span>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Cart') }}</h1>
         <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Review your market picks, adjust quantities, and keep everything ready for checkout with one vendor at a time.') }}
+            {{ __('Review your market picks, adjust quantities, and keep every stall in one shared basket before checkout.') }}
         </p>
     </section>
 
-    @if ($this->cartItems->isNotEmpty())
+    @if ($this->groupedCartItems->isNotEmpty())
         <section class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
-            <div class="space-y-4">
-                @foreach ($this->cartItems as $item)
-                    <article
-                        wire:key="cart-item-{{ $item->id }}"
-                        class="brand-panel flex flex-col gap-5 p-5 transition duration-200 dark:border-white/10 dark:bg-zinc-900"
-                        wire:loading.class="opacity-60"
-                        wire:target="updateQuantity,removeItem"
-                    >
-                        <div class="flex flex-col gap-5 md:flex-row md:items-center">
-                            <a
-                                href="{{ route('shop.products.show', $item->product) }}"
-                                wire:navigate
-                                class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800"
-                            >
-                                <img
-                                    src="{{ $item->product->image }}"
-                                    alt="{{ $item->product->name }}"
-                                    class="h-full w-full object-cover"
-                                >
-                            </a>
+            <div class="space-y-6">
+                @foreach ($this->groupedCartItems as $vendorId => $items)
+                    @php($vendor = $items->first()->product->vendor)
 
-                            <div class="min-w-0 flex-1">
-                                <a
-                                    href="{{ route('shop.products.show', $item->product) }}"
-                                    wire:navigate
-                                    class="brand-group-hover-text text-lg font-semibold text-neutral-900 transition dark:text-zinc-100"
-                                >
-                                    {{ $item->product->name }}
-                                </a>
-                                <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ $item->product->vendor->store_name }}</p>
-                                <span class="mt-3 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-neutral-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300">
-                                    {{ $item->product->category->name }}
-                                </span>
+                    <section wire:key="cart-vendor-{{ $vendorId }}" class="space-y-4">
+                        <div class="brand-panel-muted flex flex-col gap-4 rounded-[2rem] p-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
+                                    <img
+                                        src="{{ $vendor->store_image_url }}"
+                                        alt="{{ $vendor->store_name }}"
+                                        class="h-full w-full object-cover"
+                                        onerror="this.src='https://placehold.co/320x320/e7e5e4/9ca3af?text=Store'"
+                                    >
+                                </div>
+
+                                <div class="space-y-1">
+                                    <p class="brand-kicker !mb-0">{{ __('Vendor section') }}</p>
+                                    <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h2>
+                                    <p class="text-sm text-neutral-500 dark:text-zinc-400">
+                                        {{ trans_choice(':count item|:count items', $items->count(), ['count' => $items->count()]) }}
+                                    </p>
+                                </div>
                             </div>
 
-                            <div class="grid gap-4 md:min-w-[15rem] md:justify-items-end">
-                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('₱:amount each', ['amount' => number_format((float) $item->product->price, 2)]) }}
+                            <div class="rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-3 text-sm dark:border-white/10 dark:bg-zinc-900">
+                                <p class="text-neutral-500 dark:text-zinc-400">{{ __('Vendor subtotal') }}</p>
+                                <p class="mt-1 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
+                                    {{ __('₱:amount', ['amount' => number_format((float) $this->vendorSubtotals->get($vendorId, 0), 2)]) }}
                                 </p>
-
-                                <div class="flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        wire:click="updateQuantity({{ $item->id }}, {{ max(1, $item->quantity - 1) }})"
-                                        wire:loading.attr="disabled"
-                                        class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                                        @disabled($item->quantity <= 1)
-                                        aria-label="{{ __('Decrease quantity') }}"
-                                    >
-                                        <span aria-hidden="true">-</span>
-                                    </button>
-
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="{{ max(1, $item->product->stock_quantity) }}"
-                                        value="{{ $item->quantity }}"
-                                        wire:change="updateQuantity({{ $item->id }}, $event.target.value)"
-                                        class="brand-stepper-input"
-                                        aria-label="{{ __('Quantity for :product', ['product' => $item->product->name]) }}"
-                                    >
-
-                                    <button
-                                        type="button"
-                                        wire:click="updateQuantity({{ $item->id }}, {{ min(max(1, $item->product->stock_quantity), $item->quantity + 1) }})"
-                                        wire:loading.attr="disabled"
-                                        class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                                        @disabled($item->quantity >= $item->product->stock_quantity)
-                                        aria-label="{{ __('Increase quantity') }}"
-                                    >
-                                        <span aria-hidden="true">+</span>
-                                    </button>
-                                </div>
-
-                                <div class="flex items-center gap-4">
-                                    <p class="text-base font-semibold text-neutral-900 dark:text-zinc-100">
-                                        {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        wire:click="removeItem({{ $item->id }})"
-                                        wire:confirm="{{ __('Remove this item from your cart?') }}"
-                                        wire:loading.attr="disabled"
-                                        class="text-sm font-medium text-rose-500 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
-                                    >
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
                             </div>
                         </div>
-                    </article>
+
+                        @foreach ($items as $item)
+                            <article
+                                wire:key="cart-item-{{ $item->id }}"
+                                class="brand-panel flex flex-col gap-5 p-5 transition duration-200 dark:border-white/10 dark:bg-zinc-900"
+                                wire:loading.class="opacity-60"
+                                wire:target="updateQuantity,removeItem"
+                            >
+                                <div class="flex flex-col gap-5 md:flex-row md:items-center">
+                                    <a
+                                        href="{{ route('shop.products.show', $item->product) }}"
+                                        wire:navigate
+                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800"
+                                    >
+                                        <img
+                                            src="{{ $item->product->image }}"
+                                            alt="{{ $item->product->name }}"
+                                            class="h-full w-full object-cover"
+                                        >
+                                    </a>
+
+                                    <div class="min-w-0 flex-1">
+                                        <a
+                                            href="{{ route('shop.products.show', $item->product) }}"
+                                            wire:navigate
+                                            class="brand-group-hover-text text-lg font-semibold text-neutral-900 transition dark:text-zinc-100"
+                                        >
+                                            {{ $item->product->name }}
+                                        </a>
+                                        <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ $item->product->vendor->store_name }}</p>
+                                        <span class="mt-3 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-neutral-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300">
+                                            {{ $item->product->category->name }}
+                                        </span>
+                                    </div>
+
+                                    <div class="grid gap-4 md:min-w-[15rem] md:justify-items-end">
+                                        <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                                            {{ __('₱:amount each', ['amount' => number_format((float) $item->product->price, 2)]) }}
+                                        </p>
+
+                                        <div class="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                wire:click="updateQuantity({{ $item->id }}, {{ max(1, $item->quantity - 1) }})"
+                                                wire:loading.attr="disabled"
+                                                class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
+                                                @disabled($item->quantity <= 1)
+                                                aria-label="{{ __('Decrease quantity') }}"
+                                            >
+                                                <span aria-hidden="true">-</span>
+                                            </button>
+
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="{{ max(1, $item->product->stock_quantity) }}"
+                                                value="{{ $item->quantity }}"
+                                                wire:change="updateQuantity({{ $item->id }}, $event.target.value)"
+                                                class="brand-stepper-input"
+                                                aria-label="{{ __('Quantity for :product', ['product' => $item->product->name]) }}"
+                                            >
+
+                                            <button
+                                                type="button"
+                                                wire:click="updateQuantity({{ $item->id }}, {{ min(max(1, $item->product->stock_quantity), $item->quantity + 1) }})"
+                                                wire:loading.attr="disabled"
+                                                class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
+                                                @disabled($item->quantity >= $item->product->stock_quantity)
+                                                aria-label="{{ __('Increase quantity') }}"
+                                            >
+                                                <span aria-hidden="true">+</span>
+                                            </button>
+                                        </div>
+
+                                        <div class="flex items-center gap-4">
+                                            <p class="text-base font-semibold text-neutral-900 dark:text-zinc-100">
+                                                {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                            </p>
+
+                                            <button
+                                                type="button"
+                                                wire:click="removeItem({{ $item->id }})"
+                                                wire:confirm="{{ __('Remove this item from your cart?') }}"
+                                                wire:loading.attr="disabled"
+                                                class="text-sm font-medium text-rose-500 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+                                            >
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        @endforeach
+                    </section>
                 @endforeach
             </div>
 
@@ -220,32 +272,50 @@ new #[Title('Cart')] class extends Component {
                         <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Ready for checkout') }}</h2>
                     </div>
 
-                    <div class="space-y-3">
-                        @foreach ($this->cartItems as $item)
-                            <div wire:key="cart-summary-item-{{ $item->id }}" class="flex items-center justify-between gap-3 text-sm">
-                                <div class="min-w-0">
-                                    <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                    <p class="text-neutral-500 dark:text-zinc-400">{{ __(':qty × ₱:amount', [
-                                        'qty' => $item->quantity,
-                                        'amount' => number_format((float) $item->product->price, 2),
-                                    ]) }}</p>
+                    <div class="space-y-4">
+                        @foreach ($this->groupedCartItems as $vendorId => $items)
+                            @php($vendor = $items->first()->product->vendor)
+
+                            <section wire:key="cart-summary-vendor-{{ $vendorId }}" class="space-y-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</p>
+                                    <p class="text-xs font-medium uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ __('Vendor') }}</p>
                                 </div>
-                                <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
-                                </p>
-                            </div>
+
+                                @foreach ($items as $item)
+                                    <div wire:key="cart-summary-item-{{ $item->id }}" class="flex items-center justify-between gap-3 text-sm">
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
+                                            <p class="text-neutral-500 dark:text-zinc-400">{{ __(':qty × ₱:amount', [
+                                                'qty' => $item->quantity,
+                                                'amount' => number_format((float) $item->product->price, 2),
+                                            ]) }}</p>
+                                        </div>
+                                        <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
+                                            {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                        </p>
+                                    </div>
+                                @endforeach
+
+                                <div class="flex items-center justify-between gap-4 border-t border-stone-200 pt-3 text-sm dark:border-white/10">
+                                    <span class="font-medium text-neutral-500 dark:text-zinc-400">{{ __('Vendor subtotal') }}</span>
+                                    <span class="font-semibold text-neutral-900 dark:text-zinc-100">
+                                        {{ __('₱:amount', ['amount' => number_format((float) $this->vendorSubtotals->get($vendorId, 0), 2)]) }}
+                                    </span>
+                                </div>
+                            </section>
                         @endforeach
                     </div>
 
                     <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
                         <div class="flex items-center justify-between gap-4">
-                            <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Subtotal') }}</span>
+                            <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Grand total') }}</span>
                             <span class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">
                                 {{ __('₱:amount', ['amount' => number_format($this->subtotal, 2)]) }}
                             </span>
                         </div>
                         <p class="mt-3 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
-                            {{ __('Delivery fees are agreed with the vendor.') }}
+                            {{ __('Delivery fees are agreed with each vendor.') }}
                         </p>
                     </div>
 

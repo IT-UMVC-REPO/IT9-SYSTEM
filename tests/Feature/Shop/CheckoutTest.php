@@ -16,30 +16,43 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
-function seedCheckoutCart(User $customer, int $quantity = 1, array $productOverrides = []): array
+function makeCheckoutProduct(array $overrides = []): Product
 {
-    $vendor = $productOverrides['vendor'] ?? VendorProfile::factory()->approved()->create();
-    $category = $productOverrides['category'] ?? Category::factory()->standalone()->create();
+    $vendor = $overrides['vendor'] ?? VendorProfile::factory()->approved()->create();
+    $category = $overrides['category'] ?? Category::factory()->standalone()->create();
 
-    unset($productOverrides['vendor'], $productOverrides['category']);
+    unset($overrides['vendor'], $overrides['category']);
 
-    $product = Product::factory()
+    return Product::factory()
         ->for($vendor, 'vendor')
         ->for($category)
         ->active()
         ->create(array_merge([
             'price' => 120,
             'stock_quantity' => 8,
-        ], $productOverrides));
+        ], $overrides));
+}
 
-    $cart = Cart::factory()->for($customer, 'customer')->create();
+function addCheckoutItem(Cart $cart, int $quantity = 1, array $productOverrides = []): array
+{
+    $product = makeCheckoutProduct($productOverrides);
     $cartItem = CartItem::query()->create([
         'cart_id' => $cart->getKey(),
         'product_id' => $product->getKey(),
         'quantity' => $quantity,
     ]);
 
-    return compact('vendor', 'category', 'product', 'cart', 'cartItem');
+    return compact('product', 'cartItem');
+}
+
+function seedCheckoutCart(User $customer, int $quantity = 1, array $productOverrides = []): array
+{
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+
+    return array_merge(
+        ['cart' => $cart],
+        addCheckoutItem($cart, $quantity, $productOverrides),
+    );
 }
 
 test('empty cart redirects to the cart page', function () {
@@ -50,7 +63,7 @@ test('empty cart redirects to the cart page', function () {
         ->assertRedirect(route('shop.cart'));
 });
 
-test('checkout with cash on delivery creates order records, decrements stock, clears cart, and redirects to order detail', function () {
+test('checkout with cash on delivery creates order records, decrements stock, clears cart, and redirects to orders list', function () {
     Queue::fake();
 
     $customer = User::factory()->create([
@@ -66,13 +79,12 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
 
     $component->call('placeOrder');
 
-    $order = Order::query()->with(['orderItems', 'payment'])->first();
+    $order = Order::query()->with(['orderItems', 'payment'])->sole();
 
-    $component->assertRedirect(route('shop.orders.show', ['orderReference' => $order->getKey()]));
+    $component->assertRedirect(route('shop.orders'));
 
-    expect($order)->not->toBeNull();
     expect($order->customer_id)->toBe($customer->getKey());
-    expect($order->vendor_id)->toBe($seeded['vendor']->getKey());
+    expect($order->vendor_id)->toBe($seeded['product']->vendor_id);
     expect((float) $order->total_amount)->toBe(240.0);
     expect($order->payment_method)->toBe(PaymentMethod::Cod);
     expect($order->payment_status)->toBe(PaymentStatus::Pending);
@@ -84,6 +96,7 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
     expect($order->payment)->not->toBeNull();
     expect($order->payment->method)->toBe(PaymentMethod::Cod);
 
+    Queue::assertPushed(SendOrderNotificationJob::class, 1);
     Queue::assertPushed(SendOrderNotificationJob::class, fn (SendOrderNotificationJob $job) => $job->orderId === $order->getKey());
 });
 
@@ -111,6 +124,95 @@ test('checkout validates stock before creating an order', function () {
         ->assertHasErrors(["cart.{$seeded['cartItem']->getKey()}"]);
 
     expect(Order::query()->count())->toBe(0);
+});
+
+test('multi vendor cod checkout creates one order per vendor, decrements stock, and clears all cart items', function () {
+    Queue::fake();
+
+    $customer = User::factory()->create([
+        'address' => '88 Bankerohan Road, Davao City',
+    ]);
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+    $firstVendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Lina Greens',
+    ]);
+    $secondVendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Ben Fresh Catch',
+    ]);
+
+    $firstSeeded = addCheckoutItem($cart, quantity: 2, productOverrides: [
+        'vendor' => $firstVendor,
+        'price' => 120,
+        'stock_quantity' => 8,
+    ]);
+    $secondSeeded = addCheckoutItem($cart, quantity: 1, productOverrides: [
+        'vendor' => $secondVendor,
+        'price' => 75,
+        'stock_quantity' => 5,
+    ]);
+
+    $component = Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', '88 Bankerohan Road, Davao City')
+        ->set('notes', 'Leave by the front gate.')
+        ->set('payment_method', 'cod');
+
+    $component->call('placeOrder');
+
+    $orders = Order::query()->with(['orderItems', 'payment'])->orderBy('vendor_id')->get();
+
+    $component->assertRedirect(route('shop.orders'));
+
+    expect($orders)->toHaveCount(2);
+    expect($orders->pluck('vendor_id')->all())->toBe([
+        $firstVendor->getKey(),
+        $secondVendor->getKey(),
+    ]);
+    expect($orders->pluck('payment_method')->all())->toBe([
+        PaymentMethod::Cod,
+        PaymentMethod::Cod,
+    ]);
+    expect($orders->pluck('payment_status')->all())->toBe([
+        PaymentStatus::Pending,
+        PaymentStatus::Pending,
+    ]);
+    expect($orders->pluck('total_amount')->map(fn ($amount) => (float) $amount)->all())->toBe([
+        240.0,
+        75.0,
+    ]);
+    expect($orders->pluck('orderItems')->map->sum('quantity')->all())->toBe([2, 1]);
+    expect(Payment::query()->count())->toBe(2);
+    expect($cart->fresh()->cartItems()->count())->toBe(0);
+    expect((float) $firstSeeded['product']->fresh()->stock_quantity)->toBe(6.0);
+    expect((float) $secondSeeded['product']->fresh()->stock_quantity)->toBe(4.0);
+
+    Queue::assertPushed(SendOrderNotificationJob::class, 2);
+});
+
+test('multi vendor checkout with digital payment shows a warning and blocks submission', function () {
+    $customer = User::factory()->create([
+        'address' => '11 Victoria Plaza, Davao City',
+    ]);
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+
+    addCheckoutItem($cart, quantity: 1, productOverrides: [
+        'vendor' => VendorProfile::factory()->approved()->create(),
+    ]);
+    addCheckoutItem($cart, quantity: 2, productOverrides: [
+        'vendor' => VendorProfile::factory()->approved()->create(),
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', '11 Victoria Plaza, Davao City')
+        ->set('payment_method', 'gcash')
+        ->call('placeOrder')
+        ->assertDispatched('toast-show');
+
+    expect(Order::query()->count())->toBe(0);
+    expect(Payment::query()->count())->toBe(0);
+    expect($cart->fresh()->cartItems()->count())->toBe(2);
+    expect(session('pending_payment_order_id'))->toBeNull();
 });
 
 test('gcash checkout creates a paymongo source and redirects away', function () {
@@ -151,9 +253,8 @@ test('gcash checkout creates a paymongo source and redirects away', function () 
         ->call('placeOrder')
         ->assertRedirect('https://checkout.paymongo.test/src_test_123');
 
-    $payment = Payment::query()->first();
+    $payment = Payment::query()->sole();
 
-    expect($payment)->not->toBeNull();
     expect($payment->method)->toBe(PaymentMethod::Gcash);
     expect($payment->reference_number)->toBe('src_test_123');
     expect(session('pending_payment_order_id'))->toBe($payment->order_id);

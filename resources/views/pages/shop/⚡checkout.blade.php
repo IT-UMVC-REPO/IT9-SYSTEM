@@ -4,6 +4,7 @@ use App\Concerns\OrderValidationRules;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Enums\ProductStatus;
 use App\Enums\VendorStatus;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Cart;
@@ -14,7 +15,6 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Services\PayMongoService;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -46,9 +46,19 @@ new #[Title('Checkout')] class extends Component {
     {
         $validated = $this->validate($this->orderRules());
         $customer = auth()->user();
+        $paymentMethod = PaymentMethod::from($validated['payment_method']);
+
+        if ($paymentMethod !== PaymentMethod::Cod && $this->groupedCartItems->count() > 1) {
+            Flux::toast(
+                variant: 'warning',
+                text: __('Digital payments are only available for single-vendor orders right now. Switch to Cash on Delivery to place this mixed-vendor cart.'),
+            );
+
+            return null;
+        }
 
         try {
-            $checkoutState = DB::transaction(function () use ($validated, $customer): array {
+            $checkoutState = DB::transaction(function () use ($validated, $customer, $paymentMethod): array {
                 $cart = Cart::query()
                     ->where('customer_id', $customer->getKey())
                     ->lockForUpdate()
@@ -76,8 +86,6 @@ new #[Title('Checkout')] class extends Component {
                     ->keyBy('id');
 
                 $validationMessages = [];
-                $vendorId = null;
-                $totalAmount = 0.0;
                 $resolvedItems = collect();
 
                 foreach ($cartItems as $cartItem) {
@@ -89,16 +97,20 @@ new #[Title('Checkout')] class extends Component {
                         continue;
                     }
 
-                    if ($product->status !== \App\Enums\ProductStatus::Active) {
+                    if ($product->status !== ProductStatus::Active) {
                         $validationMessages["cart.{$cartItem->getKey()}"] = __(':product is no longer active.', [
                             'product' => $product->name,
                         ]);
+
+                        continue;
                     }
 
                     if ($product->vendor->status !== VendorStatus::Approved) {
                         $validationMessages["cart.{$cartItem->getKey()}"] = __(':product is no longer available from this vendor.', [
                             'product' => $product->name,
                         ]);
+
+                        continue;
                     }
 
                     if ($product->stock_quantity < $cartItem->quantity) {
@@ -106,20 +118,16 @@ new #[Title('Checkout')] class extends Component {
                             'count' => $product->stock_quantity,
                             'product' => $product->name,
                         ]);
-                    }
 
-                    if ($vendorId !== null && $vendorId !== $product->vendor_id) {
-                        $validationMessages["cart.{$cartItem->getKey()}"] = __('Checkout only supports one vendor at a time.');
+                        continue;
                     }
-
-                    $vendorId ??= $product->vendor_id;
-                    $lineTotal = (float) $product->price * $cartItem->quantity;
-                    $totalAmount += $lineTotal;
 
                     $resolvedItems->push([
-                        'product_id' => $product->getKey(),
+                        'cart_item' => $cartItem,
+                        'product' => $product,
                         'quantity' => $cartItem->quantity,
                         'unit_price' => (float) $product->price,
+                        'line_total' => (float) $product->price * $cartItem->quantity,
                     ]);
                 }
 
@@ -127,52 +135,79 @@ new #[Title('Checkout')] class extends Component {
                     throw \Illuminate\Validation\ValidationException::withMessages($validationMessages);
                 }
 
-                $paymentMethod = PaymentMethod::from($validated['payment_method']);
+                $groupedItems = $resolvedItems->groupBy(
+                    fn (array $resolvedItem): int => $resolvedItem['product']->vendor_id,
+                );
 
-                $order = Order::query()->create([
-                    'customer_id' => $customer->getKey(),
-                    'vendor_id' => $vendorId,
-                    'total_amount' => $totalAmount,
-                    'payment_method' => $paymentMethod,
-                    'payment_status' => PaymentStatus::Pending,
-                    'order_status' => OrderStatus::Pending,
-                    'delivery_address' => $validated['delivery_address'],
-                    'notes' => blank($validated['notes'] ?? null) ? null : $validated['notes'],
-                ]);
-
-                foreach ($resolvedItems as $resolvedItem) {
-                    OrderItem::query()->create([
-                        'order_id' => $order->getKey(),
-                        'product_id' => $resolvedItem['product_id'],
-                        'quantity' => $resolvedItem['quantity'],
-                        'unit_price' => $resolvedItem['unit_price'],
-                    ]);
-
-                    $product = $products->get($resolvedItem['product_id']);
-                    $product->decrement('stock_quantity', $resolvedItem['quantity']);
+                if ($paymentMethod !== PaymentMethod::Cod && $groupedItems->count() > 1) {
+                    throw new \DomainException('Digital payments require a single vendor.');
                 }
 
-                $payment = Payment::query()->create([
-                    'order_id' => $order->getKey(),
-                    'method' => $paymentMethod,
-                    'reference_number' => null,
-                    'status' => PaymentStatus::Pending,
-                    'amount' => $totalAmount,
-                    'paid_at' => null,
-                    'created_at' => now(),
-                ]);
+                $createdOrderIds = [];
+
+                foreach ($groupedItems as $vendorId => $vendorItems) {
+                    $vendorTotal = (float) $vendorItems->sum('line_total');
+
+                    $order = Order::query()->create([
+                        'customer_id' => $customer->getKey(),
+                        'vendor_id' => (int) $vendorId,
+                        'total_amount' => $vendorTotal,
+                        'payment_method' => $paymentMethod,
+                        'payment_status' => PaymentStatus::Pending,
+                        'order_status' => OrderStatus::Pending,
+                        'delivery_address' => $validated['delivery_address'],
+                        'notes' => blank($validated['notes'] ?? null) ? null : $validated['notes'],
+                    ]);
+
+                    foreach ($vendorItems as $resolvedItem) {
+                        OrderItem::query()->create([
+                            'order_id' => $order->getKey(),
+                            'product_id' => $resolvedItem['product']->getKey(),
+                            'quantity' => $resolvedItem['quantity'],
+                            'unit_price' => $resolvedItem['unit_price'],
+                        ]);
+
+                        $resolvedItem['product']->decrement('stock_quantity', $resolvedItem['quantity']);
+                    }
+
+                    Payment::query()->create([
+                        'order_id' => $order->getKey(),
+                        'method' => $paymentMethod,
+                        'reference_number' => null,
+                        'status' => PaymentStatus::Pending,
+                        'amount' => $vendorTotal,
+                        'paid_at' => null,
+                        'created_at' => now(),
+                    ]);
+
+                    if ($paymentMethod === PaymentMethod::Cod) {
+                        SendOrderNotificationJob::dispatch(
+                            orderId: $order->getKey(),
+                            userId: $customer->getKey(),
+                            title: 'Order placed',
+                            message: 'Your order #'.$order->getKey().' has been placed and is awaiting vendor confirmation.',
+                        );
+                    }
+
+                    $createdOrderIds[] = $order->getKey();
+                }
 
                 $cart->cartItems()->delete();
 
                 return [
-                    'order_id' => $order->getKey(),
-                    'payment_id' => $payment->getKey(),
+                    'order_ids' => $createdOrderIds,
                     'payment_method' => $paymentMethod->value,
-                    'total_amount' => $totalAmount,
                 ];
             }, attempts: 5);
         } catch (\Illuminate\Validation\ValidationException $exception) {
             throw $exception;
+        } catch (\DomainException $exception) {
+            Flux::toast(
+                variant: 'warning',
+                text: __('Digital payments are only available for single-vendor orders right now. Switch to Cash on Delivery to place this mixed-vendor cart.'),
+            );
+
+            return null;
         } catch (\RuntimeException $exception) {
             Flux::toast(variant: 'warning', text: __('Your cart is empty. Add items before checking out.'));
             $this->redirectRoute('shop.cart', navigate: true);
@@ -189,35 +224,32 @@ new #[Title('Checkout')] class extends Component {
             return null;
         }
 
-        $order = Order::query()->findOrFail($checkoutState['order_id']);
-        $payment = Payment::query()->findOrFail($checkoutState['payment_id']);
         $paymentMethod = PaymentMethod::from($checkoutState['payment_method']);
+        $createdOrderIds = $checkoutState['order_ids'];
 
         if ($paymentMethod === PaymentMethod::Cod) {
-            SendOrderNotificationJob::dispatch(
-                orderId: $order->getKey(),
-                userId: $customer->getKey(),
-                title: 'Order placed',
-                message: 'Your order #'.$order->getKey().' has been placed and is awaiting vendor confirmation.',
-            );
+            Flux::toast(variant: 'success', text: $this->placedOrderMessage(count($createdOrderIds)));
 
-            Flux::toast(variant: 'success', text: __('Order placed. You can now track it from your orders list.'));
-
-            $this->redirectRoute('shop.orders.show', ['orderReference' => $order->getKey()], navigate: true);
+            $this->redirectRoute('shop.orders', navigate: true);
 
             return null;
         }
+
+        $order = Order::query()
+            ->with('payment')
+            ->findOrFail($createdOrderIds[0]);
+        $payment = $order->payment;
 
         session(['pending_payment_order_id' => $order->getKey()]);
 
         try {
             $source = $this->digitalSourceFor(
                 method: $paymentMethod,
-                totalAmount: $checkoutState['total_amount'],
+                totalAmount: (float) $order->total_amount,
                 order: $order,
             );
 
-            $payment->update([
+            $payment?->update([
                 'reference_number' => data_get($source, 'data.id'),
             ]);
 
@@ -257,6 +289,24 @@ new #[Title('Checkout')] class extends Component {
     public function cartItems(): Collection
     {
         return $this->cart?->cartItems ?? collect();
+    }
+
+    #[Computed]
+    public function groupedCartItems(): Collection
+    {
+        return $this->cartItems->groupBy(
+            fn (CartItem $item): int => $item->product->vendor_id,
+        );
+    }
+
+    #[Computed]
+    public function vendorSubtotals(): Collection
+    {
+        return $this->groupedCartItems->map(
+            fn (Collection $items): float => (float) $items->sum(
+                fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+            ),
+        );
     }
 
     #[Computed]
@@ -323,6 +373,13 @@ new #[Title('Checkout')] class extends Component {
 
         session()->forget('pending_payment_order_id');
     }
+
+    private function placedOrderMessage(int $orderCount): string
+    {
+        return trans_choice('{1} 1 order placed successfully.|[2,*] :count orders placed successfully.', $orderCount, [
+            'count' => $orderCount,
+        ]);
+    }
 }; ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -330,7 +387,7 @@ new #[Title('Checkout')] class extends Component {
         <span class="brand-kicker">{{ __('Final step') }}</span>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Checkout') }}</h1>
         <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Confirm your delivery details, review your stall order, and choose how you want to pay.') }}
+            {{ __('Confirm your delivery details, review each vendor section, and choose how you want to pay.') }}
         </p>
     </section>
 
@@ -401,6 +458,13 @@ new #[Title('Checkout')] class extends Component {
                         </label>
                     @endforeach
                 </div>
+
+                @if ($this->groupedCartItems->count() > 1)
+                    <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                        <p class="font-semibold">{{ __('Mixed-vendor cart') }}</p>
+                        <p class="mt-1">{{ __('Cash on Delivery is currently the only payment option when your basket includes multiple vendors.') }}</p>
+                    </div>
+                @endif
             </div>
 
             <button
@@ -422,37 +486,64 @@ new #[Title('Checkout')] class extends Component {
                 </div>
 
                 <div class="space-y-4">
-                    @foreach ($this->cartItems as $item)
-                        <div wire:key="checkout-item-{{ $item->id }}" class="flex items-center gap-3">
-                            <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
-                                <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover">
+                    @foreach ($this->groupedCartItems as $vendorId => $items)
+                        @php($vendor = $items->first()->product->vendor)
+
+                        <section wire:key="checkout-vendor-{{ $vendorId }}" class="space-y-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</p>
+                                    <p class="text-xs uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ __('Vendor section') }}</p>
+                                </div>
+                                <div class="h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
+                                    <img
+                                        src="{{ $vendor->store_image_url }}"
+                                        alt="{{ $vendor->store_name }}"
+                                        class="h-full w-full object-cover"
+                                        onerror="this.src='https://placehold.co/320x320/e7e5e4/9ca3af?text=Store'"
+                                    >
+                                </div>
                             </div>
 
-                            <div class="min-w-0 flex-1">
-                                <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                <p class="text-sm text-neutral-500 dark:text-zinc-400">{{ $item->product->vendor->store_name }}</p>
-                                <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __(':qty x ₱:amount', [
-                                    'qty' => $item->quantity,
-                                    'amount' => number_format((float) $item->product->price, 2),
-                                ]) }}</p>
-                            </div>
+                            @foreach ($items as $item)
+                                <div wire:key="checkout-item-{{ $item->id }}" class="flex items-center gap-3">
+                                    <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
+                                        <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover">
+                                    </div>
 
-                            <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
-                            </p>
-                        </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
+                                        <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __(':qty × ₱:amount', [
+                                            'qty' => $item->quantity,
+                                            'amount' => number_format((float) $item->product->price, 2),
+                                        ]) }}</p>
+                                    </div>
+
+                                    <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                                        {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                    </p>
+                                </div>
+                            @endforeach
+
+                            <div class="flex items-center justify-between gap-4 border-t border-stone-200 pt-3 text-sm dark:border-white/10">
+                                <span class="font-medium text-neutral-500 dark:text-zinc-400">{{ __('Vendor subtotal') }}</span>
+                                <span class="font-semibold text-neutral-900 dark:text-zinc-100">
+                                    {{ __('₱:amount', ['amount' => number_format((float) $this->vendorSubtotals->get($vendorId, 0), 2)]) }}
+                                </span>
+                            </div>
+                        </section>
                     @endforeach
                 </div>
 
                 <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
                     <div class="flex items-center justify-between gap-4">
-                        <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Subtotal') }}</span>
+                        <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Grand total') }}</span>
                         <span class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">
                             {{ __('₱:amount', ['amount' => number_format($this->orderTotal, 2)]) }}
                         </span>
                     </div>
                     <p class="mt-3 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
-                        {{ __('Delivery fees are agreed with the vendor.') }}
+                        {{ __('Delivery fees are agreed with each vendor.') }}
                     </p>
                 </div>
             </div>

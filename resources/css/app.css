@@ -538,11 +538,11 @@ select:focus[data-flux-control] {
     color: var(--color-zinc-100) !important;
 }
 
-.brand-panel a {
+.brand-panel a:not(.brand-button-primary):not(.brand-button-secondary) {
     color: var(--brand-600);
 }
 
-.dark .brand-panel a {
+.dark .brand-panel a:not(.brand-button-primary):not(.brand-button-secondary) {
     color: var(--brand-400);
 }
 

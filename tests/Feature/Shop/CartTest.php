@@ -67,7 +67,7 @@ test('adding the same product again increases quantity and caps at stock', funct
     )->toBe(5);
 });
 
-test('adding a product from another vendor dispatches a conflict event', function () {
+test('adding items from multiple vendors to the cart is allowed', function () {
     $customer = User::factory()->create();
     $firstVendor = VendorProfile::factory()->approved()->create([
         'store_name' => 'Nanay Lina Greens',
@@ -93,42 +93,18 @@ test('adding a product from another vendor dispatches a conflict event', functio
 
     Livewire::actingAs($customer)
         ->test('cart.add-to-cart', ['product' => $secondProduct])
-        ->call('addToCart')
-        ->assertDispatched('cart-vendor-conflict');
-
-    expect($cart->fresh()->cartItems()->count())->toBe(1);
-    expect($cart->fresh()->cartItems()->first()->product_id)->toBe($firstProduct->getKey());
-});
-
-test('clear cart and add replaces items from another vendor', function () {
-    $customer = User::factory()->create();
-    $firstVendor = VendorProfile::factory()->approved()->create();
-    $secondVendor = VendorProfile::factory()->approved()->create();
-    $firstProduct = makeCartProduct([
-        'vendor' => $firstVendor,
-        'stock_quantity' => 6,
-    ]);
-    $secondProduct = makeCartProduct([
-        'vendor' => $secondVendor,
-        'stock_quantity' => 6,
-    ]);
-
-    $cart = Cart::factory()->for($customer, 'customer')->create();
-    CartItem::query()->create([
-        'cart_id' => $cart->getKey(),
-        'product_id' => $firstProduct->getKey(),
-        'quantity' => 2,
-    ]);
-
-    Livewire::actingAs($customer)
-        ->test('cart.add-to-cart', ['product' => $secondProduct])
         ->set('quantity', '3')
-        ->call('clearCartAndAdd')
+        ->call('addToCart')
         ->assertDispatched('cart-updated');
 
-    expect($cart->fresh()->cartItems()->count())->toBe(1);
-    expect($cart->fresh()->cartItems()->first()->product_id)->toBe($secondProduct->getKey());
-    expect($cart->fresh()->cartItems()->first()->quantity)->toBe(3);
+    $cartItems = $cart->fresh()->cartItems()->orderBy('id')->get();
+
+    expect($cartItems)->toHaveCount(2);
+    expect($cartItems->pluck('product_id')->all())->toBe([
+        $firstProduct->getKey(),
+        $secondProduct->getKey(),
+    ]);
+    expect($cartItems->pluck('quantity')->all())->toBe([2, 3]);
 });
 
 test('customers can remove items from the cart page', function () {
@@ -179,11 +155,17 @@ test('empty cart shows the empty state', function () {
         ->assertSee('Browse the market');
 });
 
-test('cart badge reflects the live cart quantity', function () {
+test('cart badge reflects total quantity across vendors', function () {
     $customer = User::factory()->create();
     $cart = Cart::factory()->for($customer, 'customer')->create();
-    $firstProduct = makeCartProduct();
-    $secondProduct = makeCartProduct();
+    $firstVendor = VendorProfile::factory()->approved()->create();
+    $secondVendor = VendorProfile::factory()->approved()->create();
+    $firstProduct = makeCartProduct([
+        'vendor' => $firstVendor,
+    ]);
+    $secondProduct = makeCartProduct([
+        'vendor' => $secondVendor,
+    ]);
 
     CartItem::query()->create([
         'cart_id' => $cart->getKey(),

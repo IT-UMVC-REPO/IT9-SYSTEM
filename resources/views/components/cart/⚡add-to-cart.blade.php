@@ -15,12 +15,6 @@ new class extends Component {
 
     public string $quantity = '1';
 
-    public ?string $currentVendorName = null;
-
-    public ?string $newVendorName = null;
-
-    public bool $redirectToCartAfterConflict = false;
-
     public function mount(Product $product): void
     {
         abort_unless(Auth::check(), 403);
@@ -66,11 +60,9 @@ new class extends Component {
 
     public function addToCart(): void
     {
-        $this->redirectToCartAfterConflict = false;
-
         $result = $this->attemptCartMutation();
 
-        if ($result === 'conflict' || $result === 'unavailable') {
+        if ($result === 'unavailable') {
             return;
         }
 
@@ -86,55 +78,14 @@ new class extends Component {
 
     public function buyNow(): void
     {
-        $this->redirectToCartAfterConflict = true;
-
         $result = $this->attemptCartMutation();
 
-        if ($result === 'conflict' || $result === 'unavailable') {
+        if ($result === 'unavailable') {
             return;
         }
 
         $this->dispatch('cart-updated');
         $this->redirectRoute('shop.cart', navigate: true);
-    }
-
-    public function clearCartAndAdd(): void
-    {
-        $customer = Auth::user();
-        $product = $this->freshPurchasableProduct();
-
-        if ($product === null) {
-            return;
-        }
-
-        $cart = Cart::query()->firstOrCreate(
-            ['customer_id' => $customer->getKey()],
-            ['created_at' => now()],
-        );
-
-        $cart->cartItems()->delete();
-
-        $requestedQuantity = $this->normalizedRequestedQuantity($this->quantity, $product->stock_quantity);
-        $wasCapped = $this->storeCartItem($cart, $product, $requestedQuantity);
-
-        $this->product = $product;
-        $this->currentVendorName = null;
-        $this->newVendorName = null;
-
-        Flux::modal('cart-vendor-conflict')->close();
-
-        Flux::toast(
-            variant: $wasCapped ? 'warning' : 'success',
-            text: $wasCapped
-                ? __('Your cart was refreshed and the quantity was capped to the stock on hand.')
-                : __('Your cart was refreshed for this vendor.'),
-        );
-
-        $this->dispatch('cart-updated');
-
-        if ($this->redirectToCartAfterConflict) {
-            $this->redirectRoute('shop.cart', navigate: true);
-        }
     }
 
     private function attemptCartMutation(): string
@@ -150,25 +101,6 @@ new class extends Component {
             ['customer_id' => $customer->getKey()],
             ['created_at' => now()],
         );
-
-        $cart->loadMissing([
-            'cartItems.product.vendor:id,store_name',
-        ]);
-
-        $existingVendor = $cart->cartItems->first()?->product?->vendor;
-
-        if ($existingVendor !== null && $existingVendor->getKey() !== $product->vendor_id) {
-            $this->currentVendorName = $existingVendor->store_name;
-            $this->newVendorName = $product->vendor->store_name;
-
-            $this->dispatch(
-                'cart-vendor-conflict',
-                currentVendorName: $this->currentVendorName,
-                newVendorName: $this->newVendorName,
-            );
-
-            return 'conflict';
-        }
 
         $requestedQuantity = $this->normalizedRequestedQuantity($this->quantity, $product->stock_quantity);
         $wasCapped = $this->storeCartItem($cart, $product, $requestedQuantity);
@@ -235,11 +167,7 @@ new class extends Component {
     }
 }; ?>
 
-<div
-    x-data
-    x-on:cart-vendor-conflict.window="$flux.modal('cart-vendor-conflict').show()"
-    class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900"
->
+<div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Bring this stall to your cart') }}</h2>
     <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
@@ -259,7 +187,7 @@ new class extends Component {
                         type="button"
                         wire:click="decrementQuantity"
                         wire:loading.attr="disabled"
-                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow,clearCartAndAdd"
+                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                         @disabled((int) $quantity <= 1)
                         aria-label="{{ __('Decrease quantity') }}"
@@ -280,7 +208,7 @@ new class extends Component {
                         type="button"
                         wire:click="incrementQuantity"
                         wire:loading.attr="disabled"
-                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow,clearCartAndAdd"
+                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                         @disabled((int) $quantity >= $product->stock_quantity)
                         aria-label="{{ __('Increase quantity') }}"
@@ -295,28 +223,28 @@ new class extends Component {
                     type="button"
                     wire:click="addToCart"
                     wire:loading.attr="disabled"
-                    wire:target="addToCart,clearCartAndAdd"
+                    wire:target="addToCart"
                     class="brand-button-primary w-full"
                 >
-                    <span wire:loading.remove wire:target="addToCart,clearCartAndAdd">
+                    <span wire:loading.remove wire:target="addToCart">
                         <i class="fa-solid fa-cart-plus text-xs"></i>
                         {{ __('Add to cart') }}
                     </span>
-                    <span wire:loading wire:target="addToCart,clearCartAndAdd">{{ __('Adding...') }}</span>
+                    <span wire:loading wire:target="addToCart">{{ __('Adding...') }}</span>
                 </button>
 
                 <button
                     type="button"
                     wire:click="buyNow"
                     wire:loading.attr="disabled"
-                    wire:target="buyNow,clearCartAndAdd"
+                    wire:target="buyNow"
                     class="brand-button-secondary w-full"
                 >
-                    <span wire:loading.remove wire:target="buyNow,clearCartAndAdd">
+                    <span wire:loading.remove wire:target="buyNow">
                         <i class="fa-solid fa-bolt text-xs"></i>
                         {{ __('Buy now') }}
                     </span>
-                    <span wire:loading wire:target="buyNow,clearCartAndAdd">{{ __('Preparing checkout...') }}</span>
+                    <span wire:loading wire:target="buyNow">{{ __('Preparing checkout...') }}</span>
                 </button>
             </div>
         </div>
@@ -334,35 +262,4 @@ new class extends Component {
             </a>
         </div>
     @endif
-
-    <flux:modal name="cart-vendor-conflict" class="max-w-lg">
-        <div class="space-y-6 rounded-[1.5rem] border border-amber-200 bg-white/95 p-6 shadow-xl dark:border-amber-500/30 dark:bg-zinc-900/95">
-            <div class="space-y-2">
-                <flux:heading size="lg">{{ __('Switch vendors?') }}</flux:heading>
-                <flux:subheading>
-                    {{ __('Your cart already has items from :current. Adding from :new will clear the cart first.', [
-                        'current' => $currentVendorName ?? __('another vendor'),
-                        'new' => $newVendorName ?? $product->vendor->store_name,
-                    ]) }}
-                </flux:subheading>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <flux:modal.close>
-                    <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-                </flux:modal.close>
-
-                <flux:button
-                    type="button"
-                    wire:click="clearCartAndAdd"
-                    wire:loading.attr="disabled"
-                    wire:target="clearCartAndAdd"
-                    variant="primary"
-                >
-                    <span wire:loading.remove wire:target="clearCartAndAdd">{{ __('Clear and add') }}</span>
-                    <span wire:loading wire:target="clearCartAndAdd">{{ __('Clearing...') }}</span>
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
 </div>
