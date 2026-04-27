@@ -115,7 +115,7 @@ new class extends Component
 };
 ?>
 
-<div x-data="{ open: false }" class="relative">
+<div x-data="{ open: false }" x-on:keydown.escape.window="open = false" class="relative">
     <button
         type="button"
         x-on:click="open = !open"

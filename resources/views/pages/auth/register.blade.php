@@ -27,6 +27,7 @@
             <flux:input
                 name="phone"
                 :label="__('Phone number')"
+                :description="__('Optional — used for delivery coordination')"
                 :value="old('phone')"
                 type="tel"
                 autocomplete="tel"
@@ -35,6 +36,7 @@
             <flux:input
                 name="address"
                 :label="__('Delivery address')"
+                :description="__('Optional — you can update this later in profile settings')"
                 :value="old('address')"
                 type="text"
                 autocomplete="street-address"

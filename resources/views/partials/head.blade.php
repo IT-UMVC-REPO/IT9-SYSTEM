@@ -1,5 +1,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="{{ $metaDescription ?? __('SukiMarket — the digital Filipino wet market. Browse fresh produce, seafood, and daily goods from verified local vendors.') }}" />
+<meta property="og:title" content="{{ filled($title ?? null) ? $title.' - SukiMarket' : 'SukiMarket - Digital Palengke' }}" />
+<meta property="og:description" content="{{ $metaDescription ?? __('Browse fresh goods from verified local market vendors on SukiMarket.') }}" />
+<meta property="og:type" content="website" />
 
 <title>
     {{ filled($title ?? null) ? $title.' - '.'SukiMarket' : '' }}

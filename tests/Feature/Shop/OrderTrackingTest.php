@@ -103,9 +103,11 @@ test('order detail shows correct line items and totals', function () {
         ->assertOk()
         ->assertSee('Fresh Talong')
         ->assertSee('Pechay Bundle')
-        ->assertSee('PHP 255.00')
+        ->assertSee("\u{20B1}255.00")
+        ->assertSee('Back to orders')
         ->assertSee('Poblacion Market Lane, Davao City')
-        ->assertSee('Please leave at the guard house.');
+        ->assertSee('Please leave at the guard house.')
+        ->assertSee('View full message history in your inbox');
 });
 
 test('cancel order changes the status and dispatches a vendor notification job', function () {

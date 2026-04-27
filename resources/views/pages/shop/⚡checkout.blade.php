@@ -431,14 +431,14 @@ new #[Title('Checkout')] class extends Component {
                             <div class="min-w-0 flex-1">
                                 <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
                                 <p class="text-sm text-neutral-500 dark:text-zinc-400">{{ $item->product->vendor->store_name }}</p>
-                                <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __(':qty x PHP :amount', [
+                                <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __(':qty x ₱:amount', [
                                     'qty' => $item->quantity,
                                     'amount' => number_format((float) $item->product->price, 2),
                                 ]) }}</p>
                             </div>
 
                             <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                {{ __('PHP :amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
                             </p>
                         </div>
                     @endforeach
@@ -448,7 +448,7 @@ new #[Title('Checkout')] class extends Component {
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Subtotal') }}</span>
                         <span class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">
-                            {{ __('PHP :amount', ['amount' => number_format($this->orderTotal, 2)]) }}
+                            {{ __('₱:amount', ['amount' => number_format($this->orderTotal, 2)]) }}
                         </span>
                     </div>
                     <p class="mt-3 text-sm leading-6 text-neutral-500 dark:text-zinc-400">

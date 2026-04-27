@@ -1,8 +1,11 @@
 <?php
 
 use App\Enums\NotificationType;
+use App\Enums\ProductStatus;
 use App\Enums\VendorStatus;
+use App\Models\Category;
 use App\Models\Notification;
+use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Http\UploadedFile;
@@ -28,6 +31,8 @@ test('authenticated customers can see the vendor registration form', function ()
         ->get(route('vendor.registration'))
         ->assertOk()
         ->assertSee('Open your stall on SukiMarket')
+        ->assertSee('Sample products')
+        ->assertSee('Show the admin what your stall plans to sell')
         ->assertSee('Submit application');
 });
 
@@ -44,12 +49,22 @@ test('submitting valid data creates a pending vendor profile, stores the image, 
     Storage::fake('public');
 
     $customer = User::factory()->create();
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
 
     Livewire::actingAs($customer)
         ->test('pages::vendor.registration')
         ->set('store_name', 'Nanay Tess Greens')
         ->set('store_description', 'Fresh vegetables and market staples every morning.')
         ->set('storeImageUpload', UploadedFile::fake()->createWithContent('stall.png', vendorRegistrationPngFixture()))
+        ->set('sampleProducts.0.name', 'Fresh Okra Bundle')
+        ->set('sampleProducts.0.description', 'Fresh okra packed for the morning market crowd.')
+        ->set('sampleProducts.0.price', '95.50')
+        ->set('sampleProducts.0.stock_quantity', '12')
+        ->set('sampleProducts.0.categoryId', (string) $category->getKey())
+        ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('okra.png', vendorRegistrationPngFixture()))
         ->call('submit')
         ->assertRedirect(route('vendor.registration'));
 
@@ -63,6 +78,17 @@ test('submitting valid data creates a pending vendor profile, stores the image, 
     expect($vendorProfile->approved_at)->toBeNull();
 
     Storage::disk('public')->assertExists($vendorProfile->getRawOriginal('store_image'));
+
+    $product = Product::query()
+        ->where('vendor_id', $vendorProfile->getKey())
+        ->where('name', 'Fresh Okra Bundle')
+        ->first();
+
+    expect($product)->not->toBeNull();
+    expect($product->status)->toBe(ProductStatus::Inactive);
+    expect($product->category_id)->toBe($category->getKey());
+
+    Storage::disk('public')->assertExists($product->getRawOriginal('image'));
 
     $notification = Notification::query()
         ->where('user_id', $customer->getKey())
@@ -95,6 +121,8 @@ test('rejected vendors can reopen the form and reapply', function () {
     Storage::fake('public');
 
     Storage::disk('public')->put('store-images/old-stall.jpg', 'old-image');
+    Storage::disk('public')->put('product-images/old-product-1.jpg', 'old-product-1');
+    Storage::disk('public')->put('product-images/old-product-2.jpg', 'old-product-2');
 
     $vendor = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendor, 'user')->rejected()->create([
@@ -103,25 +131,80 @@ test('rejected vendors can reopen the form and reapply', function () {
         'store_image' => 'store-images/old-stall.jpg',
         'rejection_reason' => 'Please upload a clearer storefront photo and expand your description.',
     ]);
+    $oldCategory = Category::factory()->standalone()->create([
+        'name' => 'Seafood',
+        'slug' => 'seafood',
+    ]);
+    $newCategory = Category::factory()->standalone()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+    $existingProduct = Product::factory()->for($vendorProfile, 'vendor')->for($oldCategory)->create([
+        'name' => 'Old Galunggong Tray',
+        'description' => 'Older product copy.',
+        'image' => 'product-images/old-product-1.jpg',
+        'status' => ProductStatus::Inactive,
+    ]);
+    $removedProduct = Product::factory()->for($vendorProfile, 'vendor')->for($oldCategory)->create([
+        'name' => 'To Be Removed',
+        'image' => 'product-images/old-product-2.jpg',
+        'status' => ProductStatus::Inactive,
+    ]);
 
     Livewire::actingAs($vendor)
         ->test('pages::vendor.registration')
         ->assertSee('Please upload a clearer storefront photo and expand your description.')
         ->call('beginReapplication')
         ->assertSee('Refresh your vendor application')
+        ->assertSee('Submit reapplication')
+        ->assertSet('sampleProducts.0.name', 'Old Galunggong Tray')
+        ->assertSet('sampleProducts.1.name', 'To Be Removed')
+        ->call('removeSampleProduct', 1)
         ->set('store_name', 'Bagong Ani Market')
         ->set('store_description', 'Updated store details with a clearer market focus.')
         ->set('storeImageUpload', UploadedFile::fake()->createWithContent('new-stall.png', vendorRegistrationPngFixture()))
+        ->set('sampleProducts.0.name', 'Updated Galunggong Tray')
+        ->set('sampleProducts.0.description', 'Updated seafood copy with clearer details.')
+        ->set('sampleProducts.0.price', '210.00')
+        ->set('sampleProducts.0.stock_quantity', '9')
+        ->set('sampleProducts.0.categoryId', (string) $oldCategory->getKey())
+        ->call('addSampleProduct')
+        ->set('sampleProducts.1.name', 'Fresh Pechay Bundle')
+        ->set('sampleProducts.1.description', 'Leafy greens packed for same-day market runs.')
+        ->set('sampleProducts.1.price', '85.00')
+        ->set('sampleProducts.1.stock_quantity', '14')
+        ->set('sampleProducts.1.categoryId', (string) $newCategory->getKey())
+        ->set('sampleProductUploads.1', UploadedFile::fake()->createWithContent('pechay.png', vendorRegistrationPngFixture()))
         ->call('submit')
         ->assertRedirect(route('vendor.registration'));
 
     $vendorProfile->refresh();
+    $existingProduct->refresh();
 
     expect($vendorProfile->status)->toBe(VendorStatus::Pending);
     expect($vendorProfile->rejection_reason)->toBeNull();
     expect($vendorProfile->approved_at)->toBeNull();
     expect($vendorProfile->store_name)->toBe('Bagong Ani Market');
 
+    expect($existingProduct->name)->toBe('Updated Galunggong Tray');
+    expect($existingProduct->status)->toBe(ProductStatus::Inactive);
+    expect($existingProduct->getRawOriginal('image'))->toBe('product-images/old-product-1.jpg');
+    expect($existingProduct->category_id)->toBe($oldCategory->getKey());
+
+    $newProduct = Product::query()
+        ->where('vendor_id', $vendorProfile->getKey())
+        ->where('name', 'Fresh Pechay Bundle')
+        ->first();
+
+    expect($newProduct)->not->toBeNull();
+    expect($newProduct->status)->toBe(ProductStatus::Inactive);
+    expect($newProduct->category_id)->toBe($newCategory->getKey());
+
+    $this->assertModelMissing($removedProduct);
+
     Storage::disk('public')->assertMissing('store-images/old-stall.jpg');
     Storage::disk('public')->assertExists($vendorProfile->getRawOriginal('store_image'));
+    Storage::disk('public')->assertExists('product-images/old-product-1.jpg');
+    Storage::disk('public')->assertMissing('product-images/old-product-2.jpg');
+    Storage::disk('public')->assertExists($newProduct->getRawOriginal('image'));
 });

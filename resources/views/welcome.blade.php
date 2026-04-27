@@ -122,7 +122,7 @@
                                             <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</p>
                                             <p class="mt-1 text-xs text-neutral-400 dark:text-zinc-400">{{ $product->category?->name ?? 'Marketplace listing' }}</p>
                                         </div>
-                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">PHP {{ number_format((float) $product->price, 2) }}</span>
+                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">₱{{ number_format((float) $product->price, 2) }}</span>
                                     </li>
                                 @endforeach
                             </ul>

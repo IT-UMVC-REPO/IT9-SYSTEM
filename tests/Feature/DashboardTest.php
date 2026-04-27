@@ -75,3 +75,27 @@ test('customer header renders the home navigation link only once', function () {
 
     expect(substr_count($response->getContent(), '>Home<'))->toBe(1);
 });
+
+test('vendor and admin headers render the dashboard navigation label in both desktop and mobile menus', function (callable $makeUser, string $routeName) {
+    $user = $makeUser();
+
+    $response = $this->actingAs($user)->get(route($routeName));
+
+    $response->assertOk();
+
+    expect(substr_count($response->getContent(), '>Dashboard<'))->toBe(2);
+})->with([
+    'vendor' => [
+        function () {
+            $user = User::factory()->vendor()->create();
+            VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+            return $user;
+        },
+        'vendor.dashboard',
+    ],
+    'admin' => [
+        fn () => User::factory()->admin()->create(),
+        'admin.dashboard',
+    ],
+]);

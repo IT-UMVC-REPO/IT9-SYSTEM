@@ -156,7 +156,8 @@ test('storefront renders the branded pagination controls', function () {
 
     $response->assertOk()
         ->assertSee('Storefront pagination', false)
-        ->assertSee('Browse more listings')
+        ->assertSee('More results')
+        ->assertSee('Show filters')
         ->assertSee('Showing 1 to 12 of 13')
         ->assertSee('results');
 });
@@ -613,6 +614,7 @@ test('customers can open a visible product detail page', function () {
         ->create([
             'name' => 'Bangus',
             'description' => 'Cleaned and ready to cook.',
+            'price' => 188.75,
             'stock_quantity' => 8,
         ]);
 
@@ -625,6 +627,7 @@ test('customers can open a visible product detail page', function () {
         ->assertSee($vendor->store_description)
         ->assertSee($category->name)
         ->assertSee('8')
+        ->assertSee("\u{20B1}188.75")
         ->assertSee('Bring this stall to your cart')
         ->assertSee('Message vendor')
         ->assertSee('Cash on delivery')
@@ -708,6 +711,7 @@ test('approved vendor storefront page renders vendor details and products', func
         ->active()
         ->create([
             'name' => 'Blue Marlin Steak',
+            'price' => 420.50,
         ]);
 
     $this->actingAs($customer)
@@ -716,6 +720,7 @@ test('approved vendor storefront page renders vendor details and products', func
         ->assertSee($vendor->store_name)
         ->assertSee($vendor->store_description)
         ->assertSee($product->name)
+        ->assertSee("\u{20B1}420.50")
         ->assertSee('Message vendor')
         ->assertSee('Available products');
 });

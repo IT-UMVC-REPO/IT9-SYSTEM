@@ -213,6 +213,10 @@ new #[Title('Order Detail')] class extends Component {
     class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8"
 >
     <div class="flex flex-col gap-4">
+        <a href="{{ route('shop.orders') }}" wire:navigate class="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 brand-hover-text dark:text-zinc-400">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            {{ __('Back to orders') }}
+        </a>
         <span class="brand-kicker">{{ __('Order tracker') }}</span>
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="space-y-2">
@@ -271,9 +275,9 @@ new #[Title('Order Detail')] class extends Component {
 
                             <div class="flex flex-wrap items-center gap-5 text-sm text-neutral-500 dark:text-zinc-400">
                                 <span>{{ __('Qty :qty', ['qty' => $item->quantity]) }}</span>
-                                <span>{{ __('PHP :amount each', ['amount' => number_format((float) $item->unit_price, 2)]) }}</span>
+                                <span>{{ __('₱:amount each', ['amount' => number_format((float) $item->unit_price, 2)]) }}</span>
                                 <span class="font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('PHP :amount', ['amount' => number_format((float) $item->unit_price * $item->quantity, 2)]) }}
+                                    {{ __('₱:amount', ['amount' => number_format((float) $item->unit_price * $item->quantity, 2)]) }}
                                 </span>
                             </div>
                         </div>
@@ -369,6 +373,9 @@ new #[Title('Order Detail')] class extends Component {
                 >
                     {{ __('Message vendor') }}
                 </a>
+                <p class="mt-2 text-center text-xs text-neutral-400 dark:text-zinc-500">
+                    {{ __('View full message history in your inbox') }}
+                </p>
 
                 @if ($this->order->order_status === OrderStatus::Pending)
                     <button

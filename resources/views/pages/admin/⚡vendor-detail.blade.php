@@ -137,10 +137,10 @@ new #[Title('Vendor review')] class extends Component {
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
-                            {{ __('Store listings') }}
+                            {{ $vendorProfile->status === VendorStatus::Approved ? __('Store listings') : __('Sample products') }}
                         </p>
                         <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">
-                            {{ __('Current catalog') }}
+                            {{ $vendorProfile->status === VendorStatus::Approved ? __('Current catalog') : __('Proposed catalog') }}
                         </h2>
                     </div>
 
@@ -161,7 +161,7 @@ new #[Title('Vendor review')] class extends Component {
                         </article>
                     @empty
                         <div class="sm:col-span-2 xl:col-span-3 rounded-[1.5rem] border border-dashed border-stone-200 p-8 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
-                            {{ __('This vendor has no product listings yet.') }}
+                            {{ $vendorProfile->status === VendorStatus::Approved ? __('This vendor has no product listings yet.') : __('This application does not have sample products yet.') }}
                         </div>
                     @endforelse
                 </div>

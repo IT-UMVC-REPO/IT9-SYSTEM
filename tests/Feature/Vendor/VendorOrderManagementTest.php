@@ -81,6 +81,19 @@ test('vendor cannot view another vendors orders', function () {
         ->assertNotFound();
 });
 
+test('vendor order detail shows the back link and peso totals', function () {
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $tracked = createVendorManagedOrder($vendorProfile);
+
+    $this->actingAs($vendorUser)
+        ->get(route('vendor.orders.show', ['orderReference' => $tracked['order']->getKey()]))
+        ->assertOk()
+        ->assertSee('Back to order queue')
+        ->assertSee("\u{20B1}300.00")
+        ->assertSee("\u{20B1}150.00 each");
+});
+
 test('status advances correctly from pending to delivered', function () {
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();

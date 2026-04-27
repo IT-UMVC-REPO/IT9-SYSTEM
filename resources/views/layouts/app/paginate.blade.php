@@ -4,7 +4,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="brand-accent-text text-xs font-semibold uppercase tracking-[0.18em]">
-                    Browse more listings
+                    More results
                 </p>
                 <p class="mt-1 text-sm text-stone-500">
                     Showing {{ $paginator->firstItem() }} to {{ $paginator->lastItem() }} of {{ $paginator->total() }}

@@ -3,7 +3,9 @@
 use App\Enums\NotificationType;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
+use App\Models\Category;
 use App\Models\Notification;
+use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Livewire\Livewire;
@@ -57,6 +59,32 @@ test('admin vendor search filters by store name', function () {
         ->assertOk()
         ->assertSee($matchingVendor->store_name)
         ->assertDontSee($otherVendor->store_name);
+});
+
+test('pending vendor review shows submitted sample products', function () {
+    $admin = User::factory()->admin()->create();
+    $vendorUser = User::factory()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->create([
+        'store_name' => 'Proposed Palengke Stall',
+        'status' => VendorStatus::Pending,
+    ]);
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables',
+    ]);
+
+    Product::factory()->for($vendorProfile, 'vendor')->for($category)->create([
+        'name' => 'Sample Ampalaya Bundle',
+        'price' => 95.50,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.vendors.show', $vendorProfile))
+        ->assertOk()
+        ->assertSee('Sample products')
+        ->assertSee('Proposed catalog')
+        ->assertSee('Sample Ampalaya Bundle')
+        ->assertSee("\u{20B1}95.50");
 });
 
 test('approve sets correct fields, creates a notification, and updates the user role', function () {

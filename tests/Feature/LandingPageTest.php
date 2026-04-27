@@ -31,7 +31,7 @@ test('landing page shows a real approved vendor showcase when active listings ex
         ->assertSee('Featured market stall')
         ->assertSee($vendor->store_name)
         ->assertSee($product->name)
-        ->assertSee('PHP 89.50');
+        ->assertSee("\u{20B1}89.50");
 });
 
 test('landing page shows a clean fallback showcase when no approved vendor is available', function () {

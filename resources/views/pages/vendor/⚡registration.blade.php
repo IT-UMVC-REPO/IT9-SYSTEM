@@ -1,13 +1,19 @@
 <?php
 
+use App\Concerns\VendorProductValidationRules;
 use App\Enums\NotificationType;
+use App\Enums\ProductStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Events\NotificationCreated;
+use App\Models\Category;
 use App\Models\Notification;
+use App\Models\Product;
 use App\Models\VendorProfile;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -16,6 +22,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new #[Title('Vendor registration')] class extends Component {
+    use VendorProductValidationRules;
     use WithFileUploads;
 
     public string $store_name = '';
@@ -29,6 +36,26 @@ new #[Title('Vendor registration')] class extends Component {
     public ?string $currentStoreImage = null;
 
     public bool $showReapplicationForm = false;
+
+    /**
+     * @var array<int, array{
+     *     productId: int|null,
+     *     name: string,
+     *     description: string,
+     *     price: string,
+     *     stock_quantity: string,
+     *     categoryId: string,
+     *     status: string,
+     *     currentImage: string|null,
+     *     currentImageUrl: string|null
+     * }>
+     */
+    public array $sampleProducts = [];
+
+    /**
+     * @var array<int, mixed>
+     */
+    public array $sampleProductUploads = [];
 
     public function mount(): void
     {
@@ -46,6 +73,25 @@ new #[Title('Vendor registration')] class extends Component {
 
         $this->vendorProfileId = $user->vendorProfile?->getKey();
         $this->hydrateFormFromExistingProfile();
+    }
+
+    public function addSampleProduct(): void
+    {
+        $this->sampleProducts[] = $this->emptySampleProduct();
+    }
+
+    public function removeSampleProduct(int $index): void
+    {
+        if (! array_key_exists($index, $this->sampleProducts) || count($this->sampleProducts) === 1) {
+            return;
+        }
+
+        array_splice($this->sampleProducts, $index, 1);
+
+        if (array_key_exists($index, $this->sampleProductUploads)) {
+            unset($this->sampleProductUploads[$index]);
+            $this->sampleProductUploads = array_values($this->sampleProductUploads);
+        }
     }
 
     public function submit(): void
@@ -67,47 +113,46 @@ new #[Title('Vendor registration')] class extends Component {
             abort(403);
         }
 
-        $validated = $this->validate([
-            'store_name' => ['required', 'string', 'max:120'],
-            'store_description' => ['required', 'string', 'max:800'],
-            'storeImageUpload' => ['required', 'image', 'max:3072'],
-        ]);
+        $validated = $this->validate($this->vendorRegistrationRules());
+        $storedStoreImagePath = $this->storeImageUpload->store('store-images', 'public');
 
-        $storedImagePath = $this->storeImageUpload->store('store-images', 'public');
+        DB::transaction(function () use ($user, $vendorProfile, $validated, $storedStoreImagePath): void {
+            if ($vendorProfile !== null) {
+                $oldImagePath = $vendorProfile->getRawOriginal('store_image');
 
-        if ($vendorProfile !== null) {
-            $oldImagePath = $vendorProfile->getRawOriginal('store_image');
+                if (
+                    filled($oldImagePath)
+                    && ! Str::startsWith($oldImagePath, ['http://', 'https://', '//'])
+                    && Storage::disk('public')->exists($oldImagePath)
+                ) {
+                    Storage::disk('public')->delete($oldImagePath);
+                }
 
-            if (
-                filled($oldImagePath)
-                && ! Str::startsWith($oldImagePath, ['http://', 'https://', '//'])
-                && Storage::disk('public')->exists($oldImagePath)
-            ) {
-                Storage::disk('public')->delete($oldImagePath);
+                $vendorProfile->forceFill([
+                    'store_name' => $validated['store_name'],
+                    'store_description' => $validated['store_description'],
+                    'store_image' => $storedStoreImagePath,
+                    'status' => VendorStatus::Pending,
+                    'rejection_reason' => null,
+                    'approved_at' => null,
+                ])->save();
+            } else {
+                $vendorProfile = VendorProfile::query()->create([
+                    'user_id' => $user->getKey(),
+                    'store_name' => $validated['store_name'],
+                    'store_description' => $validated['store_description'],
+                    'store_image' => $storedStoreImagePath,
+                    'status' => VendorStatus::Pending,
+                    'rejection_reason' => null,
+                    'approved_at' => null,
+                ]);
             }
 
-            $vendorProfile->forceFill([
-                'store_name' => $validated['store_name'],
-                'store_description' => $validated['store_description'],
-                'store_image' => $storedImagePath,
-                'status' => VendorStatus::Pending,
-                'rejection_reason' => null,
-                'approved_at' => null,
-            ])->save();
-        } else {
-            $vendorProfile = VendorProfile::query()->create([
-                'user_id' => $user->getKey(),
-                'store_name' => $validated['store_name'],
-                'store_description' => $validated['store_description'],
-                'store_image' => $storedImagePath,
-                'status' => VendorStatus::Pending,
-                'rejection_reason' => null,
-                'approved_at' => null,
-            ]);
-        }
+            $this->syncSampleProducts($vendorProfile, $validated['sampleProducts']);
+            $this->vendorProfileId = $vendorProfile->getKey();
+            $this->currentStoreImage = $storedStoreImagePath;
+        });
 
-        $this->vendorProfileId = $vendorProfile->getKey();
-        $this->currentStoreImage = $storedImagePath;
         $this->storeImageUpload = null;
         $this->showReapplicationForm = false;
 
@@ -139,6 +184,17 @@ new #[Title('Vendor registration')] class extends Component {
     }
 
     #[Computed]
+    public function categoryGroups(): Collection
+    {
+        return Category::query()
+            ->leaves()
+            ->with('parent:id,name')
+            ->orderBy('name')
+            ->get()
+            ->groupBy(fn (Category $category) => $category->parent?->name ?? __('Other'));
+    }
+
+    #[Computed]
     public function currentVendorProfile(): ?VendorProfile
     {
         return $this->currentVendorProfileRecord();
@@ -147,13 +203,7 @@ new #[Title('Vendor registration')] class extends Component {
     #[Computed]
     public function currentStoreImageUrl(): ?string
     {
-        if (blank($this->currentStoreImage)) {
-            return null;
-        }
-
-        return Str::startsWith($this->currentStoreImage, ['http://', 'https://', '//'])
-            ? $this->currentStoreImage
-            : Storage::disk('public')->url($this->currentStoreImage);
+        return $this->storageUrlFor($this->currentStoreImage);
     }
 
     private function currentVendorProfileRecord(): ?VendorProfile
@@ -169,17 +219,156 @@ new #[Title('Vendor registration')] class extends Component {
         }
     }
 
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function vendorRegistrationRules(): array
+    {
+        $rules = [
+            'store_name' => ['required', 'string', 'max:120'],
+            'store_description' => ['required', 'string', 'max:800'],
+            'storeImageUpload' => ['required', 'image', 'max:3072'],
+            'sampleProducts' => ['required', 'array', 'min:1'],
+        ];
+
+        foreach (array_keys($this->sampleProducts) as $index) {
+            $rules["sampleProducts.{$index}.productId"] = ['nullable', 'integer'];
+            $rules["sampleProducts.{$index}.currentImage"] = ['nullable', 'string'];
+            $rules += $this->vendorProductRules(
+                prefix: "sampleProducts.{$index}",
+                imageField: "sampleProductUploads.{$index}",
+                requireImage: blank($this->sampleProducts[$index]['currentImage'] ?? null),
+            );
+        }
+
+        return $rules;
+    }
+
     private function hydrateFormFromExistingProfile(?VendorProfile $vendorProfile = null): void
     {
         $vendorProfile ??= $this->currentVendorProfileRecord();
 
         if ($vendorProfile === null) {
+            $this->sampleProducts = [$this->emptySampleProduct()];
+            $this->sampleProductUploads = [];
+
             return;
         }
 
         $this->store_name = $vendorProfile->store_name;
         $this->store_description = $vendorProfile->store_description;
         $this->currentStoreImage = $vendorProfile->getRawOriginal('store_image');
+        $this->sampleProducts = $vendorProfile->products()
+            ->with('category:id,name,parent_id')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Product $product): array => $this->sampleProductFormState($product))
+            ->all();
+        $this->sampleProductUploads = [];
+
+        if ($this->sampleProducts === []) {
+            $this->sampleProducts = [$this->emptySampleProduct()];
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $validatedProducts
+     */
+    private function syncSampleProducts(VendorProfile $vendorProfile, array $validatedProducts): void
+    {
+        $existingProducts = $vendorProfile->products()->get()->keyBy('id');
+        $retainedProductIds = [];
+
+        foreach (array_values($validatedProducts) as $index => $validatedProduct) {
+            $productId = isset($validatedProduct['productId']) ? (int) $validatedProduct['productId'] : null;
+            $product = $productId !== null ? $existingProducts->get($productId) : null;
+            $product ??= new Product();
+
+            $attributes = [
+                'vendor_id' => $vendorProfile->getKey(),
+                'category_id' => (int) $validatedProduct['categoryId'],
+                'name' => $validatedProduct['name'],
+                'description' => $validatedProduct['description'],
+                'price' => $validatedProduct['price'],
+                'stock_quantity' => (int) $validatedProduct['stock_quantity'],
+                'status' => ProductStatus::Inactive,
+            ];
+
+            $uploadedImage = $this->sampleProductUploads[$index] ?? null;
+
+            if ($uploadedImage !== null) {
+                if ($product->exists) {
+                    $this->deleteStoredPublicAsset($product->getRawOriginal('image'));
+                }
+
+                $attributes['image'] = $uploadedImage->store('product-images', 'public');
+            }
+
+            $product->forceFill($attributes)->save();
+            $retainedProductIds[] = $product->getKey();
+        }
+
+        foreach ($existingProducts->except($retainedProductIds) as $productToDelete) {
+            $this->deleteStoredPublicAsset($productToDelete->getRawOriginal('image'));
+            $productToDelete->delete();
+        }
+
+        $vendorProfile->unsetRelation('products');
+        $this->hydrateFormFromExistingProfile($vendorProfile);
+    }
+
+    private function emptySampleProduct(): array
+    {
+        return [
+            'productId' => null,
+            'name' => '',
+            'description' => '',
+            'price' => '',
+            'stock_quantity' => '0',
+            'categoryId' => '',
+            'status' => ProductStatus::Inactive->value,
+            'currentImage' => null,
+            'currentImageUrl' => null,
+        ];
+    }
+
+    private function sampleProductFormState(Product $product): array
+    {
+        return [
+            'productId' => $product->getKey(),
+            'name' => $product->name,
+            'description' => $product->description,
+            'price' => (string) $product->price,
+            'stock_quantity' => (string) $product->stock_quantity,
+            'categoryId' => (string) $product->category_id,
+            'status' => ProductStatus::Inactive->value,
+            'currentImage' => $product->getRawOriginal('image'),
+            'currentImageUrl' => $product->image_url,
+        ];
+    }
+
+    private function storageUrlFor(?string $path): ?string
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        return Str::startsWith($path, ['http://', 'https://', '//'])
+            ? $path
+            : Storage::disk('public')->url($path);
+    }
+
+    private function deleteStoredPublicAsset(?string $path): void
+    {
+        if (
+            blank($path)
+            || Str::startsWith($path, ['http://', 'https://', '//'])
+            || ! Storage::disk('public')->exists($path)
+        ) {
+            return;
+        }
+
+        Storage::disk('public')->delete($path);
     }
 }; ?>
 
@@ -246,7 +435,7 @@ new #[Title('Vendor registration')] class extends Component {
                             return;
                         }
 
-                        if (this.previewUrl) {
+                        if (this.previewUrl && this.previewUrl.startsWith('blob:')) {
                             URL.revokeObjectURL(this.previewUrl);
                         }
 
@@ -272,11 +461,11 @@ new #[Title('Vendor registration')] class extends Component {
                         {{ $showReapplicationForm ? __('Refresh your vendor application') : __('Open your stall on SukiMarket') }}
                     </h1>
                     <p class="text-base leading-8 text-neutral-500 dark:text-zinc-400">
-                        {{ __('Tell us about your store, upload a market-facing cover image, and we will review your application before you start listing products.') }}
+                        {{ __('Tell us about your store, upload a market-facing cover image, and add sample products so the admin team can review what your stall plans to sell.') }}
                     </p>
                 </div>
 
-                <form wire:submit="submit" class="mt-8 space-y-6">
+                <form wire:submit="submit" class="mt-8 space-y-8">
                     <div
                         class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 transition dark:border-white/10 dark:bg-zinc-800/60"
                         x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[color:oklch(from_var(--brand-50)_l_c_h_/_0.9)] dark:bg-zinc-800' : ''"
@@ -339,13 +528,188 @@ new #[Title('Vendor registration')] class extends Component {
                         required
                     />
 
+                    <section class="space-y-6 border-t border-stone-200 pt-8 dark:border-white/10">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <p class="brand-kicker !mb-0">{{ __('Sample products') }}</p>
+                                <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">
+                                    {{ __('Show the admin what your stall plans to sell') }}
+                                </h2>
+                                <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('Add at least one sample product. These stay inactive until your application is approved, but they give the review team a concrete picture of your catalog.') }}
+                                </p>
+                            </div>
+
+                            <button type="button" wire:click="addSampleProduct" class="brand-button-secondary">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                                {{ __('Add another sample product') }}
+                            </button>
+                        </div>
+
+                        @error('sampleProducts')
+                            <p class="text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                        @enderror
+
+                        <div class="space-y-6">
+                            @foreach ($sampleProducts as $index => $sampleProduct)
+                                <article
+                                    wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
+                                    class="rounded-[1.75rem] border border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60"
+                                >
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">
+                                                {{ __('Sample product #:number', ['number' => $loop->iteration]) }}
+                                            </p>
+                                            <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">
+                                                {{ __('This draft stays off the storefront until approval.') }}
+                                            </p>
+                                        </div>
+
+                                        @if (count($sampleProducts) > 1)
+                                            <button type="button" wire:click="removeSampleProduct({{ $index }})" class="text-sm font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200">
+                                                {{ __('Remove') }}
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    <div class="mt-6 grid gap-6 xl:grid-cols-[14rem_minmax(0,1fr)]">
+                                        <div
+                                            x-data="{
+                                                previewUrl: @js($sampleProduct['currentImageUrl']),
+                                                handleFile(event) {
+                                                    const file = event.target.files[0];
+
+                                                    if (! file) {
+                                                        return;
+                                                    }
+
+                                                    if (this.previewUrl && this.previewUrl.startsWith('blob:')) {
+                                                        URL.revokeObjectURL(this.previewUrl);
+                                                    }
+
+                                                    this.previewUrl = URL.createObjectURL(file);
+                                                }
+                                            }"
+                                        >
+                                            <input
+                                                id="sample-product-image-{{ $index }}"
+                                                type="file"
+                                                wire:model="sampleProductUploads.{{ $index }}"
+                                                x-on:change="handleFile($event)"
+                                                accept="image/*"
+                                                class="sr-only"
+                                            >
+
+                                            <template x-if="previewUrl">
+                                                <div class="space-y-4">
+                                                    <img
+                                                        x-bind:src="previewUrl"
+                                                        alt="{{ __('Sample product preview') }}"
+                                                        class="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
+                                                    >
+
+                                                    <label for="sample-product-image-{{ $index }}" class="brand-button-secondary w-full cursor-pointer">
+                                                        {{ __('Choose a different image') }}
+                                                    </label>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!previewUrl">
+                                                <label for="sample-product-image-{{ $index }}" class="flex cursor-pointer flex-col items-center justify-center gap-4 rounded-[1.5rem] border-2 border-dashed border-stone-200 bg-white px-4 py-10 text-center dark:border-white/10 dark:bg-zinc-900/80">
+                                                    <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
+                                                        <i class="fa-solid fa-camera text-sm"></i>
+                                                    </span>
+                                                    <div class="space-y-2">
+                                                        <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                                                            {{ __('Upload product image') }}
+                                                        </p>
+                                                        <p class="text-xs leading-6 text-neutral-500 dark:text-zinc-400">
+                                                            {{ __('Use the kind of photo customers should expect to see later in your catalog.') }}
+                                                        </p>
+                                                    </div>
+                                                </label>
+                                            </template>
+
+                                            @error("sampleProductUploads.$index")
+                                                <p class="mt-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div class="space-y-4">
+                                            <flux:input
+                                                name="sampleProducts.{{ $index }}.name"
+                                                wire:model="sampleProducts.{{ $index }}.name"
+                                                :label="__('Product name')"
+                                                type="text"
+                                                required
+                                            />
+
+                                            <flux:textarea
+                                                name="sampleProducts.{{ $index }}.description"
+                                                wire:model="sampleProducts.{{ $index }}.description"
+                                                :label="__('Description')"
+                                                rows="4"
+                                                required
+                                            />
+
+                                            <div class="grid gap-4 sm:grid-cols-2">
+                                                <div class="relative">
+                                                    <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+                                                    <flux:input
+                                                        name="sampleProducts.{{ $index }}.price"
+                                                        wire:model="sampleProducts.{{ $index }}.price"
+                                                        :label="__('Price')"
+                                                        type="number"
+                                                        inputmode="decimal"
+                                                        step="0.01"
+                                                        min="0.01"
+                                                        class="pl-8"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <flux:input
+                                                    name="sampleProducts.{{ $index }}.stock_quantity"
+                                                    wire:model="sampleProducts.{{ $index }}.stock_quantity"
+                                                    :label="__('Stock quantity')"
+                                                    type="number"
+                                                    min="0"
+                                                    step="1"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <flux:select
+                                                name="sampleProducts.{{ $index }}.categoryId"
+                                                wire:model="sampleProducts.{{ $index }}.categoryId"
+                                                :label="__('Category')"
+                                                placeholder="{{ __('Choose a category') }}"
+                                            >
+                                                @foreach ($this->categoryGroups as $parentName => $categories)
+                                                    <optgroup label="{{ $parentName }}">
+                                                        @foreach ($categories as $category)
+                                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </flux:select>
+                                        </div>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    </section>
+
                     <button
                         type="submit"
                         wire:loading.attr="disabled"
-                        wire:target="submit,storeImageUpload"
+                        wire:target="submit,storeImageUpload,sampleProductUploads"
                         class="brand-button-primary w-full"
                     >
-                        <span wire:loading.remove wire:target="submit">{{ __('Submit application') }}</span>
+                        <span wire:loading.remove wire:target="submit">
+                            {{ $showReapplicationForm ? __('Submit reapplication') : __('Submit application') }}
+                        </span>
                         <span wire:loading wire:target="submit">{{ __('Submitting...') }}</span>
                     </button>
                 </form>
@@ -384,6 +748,7 @@ new #[Title('Vendor registration')] class extends Component {
                         <li>{{ __('Use a store name customers will recognize in the market.') }}</li>
                         <li>{{ __('Describe your stall clearly so shoppers know what to expect.') }}</li>
                         <li>{{ __('Upload an image that represents how your storefront looks today.') }}</li>
+                        <li>{{ __('Add sample products that clearly represent the items you plan to list after approval.') }}</li>
                     </ul>
                 </div>
             </aside>

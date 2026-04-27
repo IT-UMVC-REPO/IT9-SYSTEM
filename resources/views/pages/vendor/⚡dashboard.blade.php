@@ -54,7 +54,7 @@ new #[Title('Vendor Dashboard')] class extends Component
             ],
             [
                 'label' => __('Total revenue'),
-                'value' => __('PHP :amount', [
+                'value' => __('₱:amount', [
                     'amount' => number_format((float) Payment::query()
                         ->where('status', PaymentStatus::Paid)
                         ->whereHas('order', fn ($query) => $query->where('vendor_id', $vendorId))

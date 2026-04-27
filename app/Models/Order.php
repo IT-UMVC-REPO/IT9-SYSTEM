@@ -79,6 +79,6 @@ class Order extends Model
 
     public function formattedTotal(): string
     {
-        return 'PHP '.number_format((float) $this->total_amount, 2);
+        return '₱'.number_format((float) $this->total_amount, 2);
     }
 }

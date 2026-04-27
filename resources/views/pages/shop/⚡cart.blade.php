@@ -155,7 +155,7 @@ new #[Title('Cart')] class extends Component {
 
                             <div class="grid gap-4 md:min-w-[15rem] md:justify-items-end">
                                 <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('PHP :amount each', ['amount' => number_format((float) $item->product->price, 2)]) }}
+                                    {{ __('₱:amount each', ['amount' => number_format((float) $item->product->price, 2)]) }}
                                 </p>
 
                                 <div class="flex items-center gap-3">
@@ -194,7 +194,7 @@ new #[Title('Cart')] class extends Component {
 
                                 <div class="flex items-center gap-4">
                                     <p class="text-base font-semibold text-neutral-900 dark:text-zinc-100">
-                                        {{ __('PHP :amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                        {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
                                     </p>
 
                                     <button
@@ -225,13 +225,13 @@ new #[Title('Cart')] class extends Component {
                             <div wire:key="cart-summary-item-{{ $item->id }}" class="flex items-center justify-between gap-3 text-sm">
                                 <div class="min-w-0">
                                     <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                    <p class="text-neutral-500 dark:text-zinc-400">{{ __(':qty × PHP :amount', [
+                                    <p class="text-neutral-500 dark:text-zinc-400">{{ __(':qty × ₱:amount', [
                                         'qty' => $item->quantity,
                                         'amount' => number_format((float) $item->product->price, 2),
                                     ]) }}</p>
                                 </div>
                                 <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('PHP :amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                    {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
                                 </p>
                             </div>
                         @endforeach
@@ -241,7 +241,7 @@ new #[Title('Cart')] class extends Component {
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ __('Subtotal') }}</span>
                             <span class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">
-                                {{ __('PHP :amount', ['amount' => number_format($this->subtotal, 2)]) }}
+                                {{ __('₱:amount', ['amount' => number_format($this->subtotal, 2)]) }}
                             </span>
                         </div>
                         <p class="mt-3 text-sm leading-6 text-neutral-500 dark:text-zinc-400">

@@ -5,6 +5,7 @@
     </head>
     @php
         $user = auth()->user();
+        $effectiveMarketplaceRole = null;
         $navigationItems = [];
         $quickActionItems = [];
         $portalSummary = null;
@@ -90,7 +91,7 @@
                 @auth
                     <div class="hidden flex-1 items-stretch justify-center lg:flex">
                         @foreach ($navigationItems as $item)
-                          @if (!$loop->first)
+                          @if (! ($loop->first && $effectiveMarketplaceRole === \App\Enums\UserRole::Customer))
                             <a
                                 href="{{ $item['route'] }}"
                                 wire:navigate
@@ -128,8 +129,14 @@
                         <x-desktop-user-menu />
                     </div>
 
-                    <details class="relative ml-auto flex items-center lg:hidden">
-                        <summary class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
+                    <details
+                        x-data="{ open: false }"
+                        x-bind:open="open"
+                        x-on:click.outside="open = false"
+                        x-on:livewire:navigate.window="open = false"
+                        class="relative ml-auto flex items-center lg:hidden"
+                    >
+                        <summary @click.prevent="open = !open" class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
                             <i class="fa-solid fa-bars-staggered text-sm"></i>
                         </summary>
 
@@ -190,8 +197,14 @@
                         </a>
                     </div>
 
-                    <details class="relative ml-auto flex items-center sm:hidden">
-                        <summary class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
+                    <details
+                        x-data="{ open: false }"
+                        x-bind:open="open"
+                        x-on:click.outside="open = false"
+                        x-on:livewire:navigate.window="open = false"
+                        class="relative ml-auto flex items-center sm:hidden"
+                    >
+                        <summary @click.prevent="open = !open" class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
                             <i class="fa-solid fa-bars-staggered text-sm"></i>
                         </summary>
 

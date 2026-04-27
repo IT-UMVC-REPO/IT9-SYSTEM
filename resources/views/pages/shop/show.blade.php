@@ -39,7 +39,7 @@
 
                 <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
                     <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">Market price</p>
-                    <p class="mt-3 text-4xl font-semibold text-white">PHP {{ number_format((float) $product->price, 2) }}</p>
+                    <p class="mt-3 text-4xl font-semibold text-white">₱{{ number_format((float) $product->price, 2) }}</p>
 
                     <div class="mt-6 flex flex-wrap gap-3">
                         <span class="rounded-full border border-white/15 bg-white/12 px-3 py-1.5 text-xs font-semibold text-white">

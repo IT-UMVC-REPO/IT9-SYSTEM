@@ -168,8 +168,26 @@ new class extends Component {
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="grid gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <aside class="self-start scrollbar-none xl:sticky xl:top-[76px]">
-            <div class="brand-panel space-y-5 p-5">
+        <aside
+            x-data="{ filtersOpen: false, isDesktop: window.innerWidth >= 1280 }"
+            x-on:resize.window="isDesktop = window.innerWidth >= 1280; if (isDesktop) { filtersOpen = false; }"
+            class="self-start scrollbar-none xl:sticky xl:top-[76px]"
+        >
+            <button
+                type="button"
+                x-on:click="filtersOpen = !filtersOpen"
+                class="brand-button-secondary mb-3 w-full xl:hidden"
+            >
+                <i class="fa-solid fa-sliders text-xs"></i>
+                <span x-text="filtersOpen ? @js(__('Hide filters')) : @js(__('Show filters'))">{{ __('Show filters') }}</span>
+            </button>
+
+            <div
+                x-cloak
+                x-show="isDesktop || filtersOpen"
+                x-transition
+                class="brand-panel space-y-5 p-5"
+            >
                 <div>
                     <label for="storefront-search" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                         Search
@@ -207,7 +225,7 @@ new class extends Component {
 
                 <div>
                     <label for="storefront-max-price" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
-                        Max price (PHP)
+                        Max price (₱)
                     </label>
                     <select id="storefront-max-price" wire:model.change.live="maxPrice" class="brand-select">
                         <option value="">Any price</option>
@@ -316,7 +334,7 @@ new class extends Component {
                                                 <i class="fa-solid fa-arrow-right text-[10px]"></i>
                                             </a>
                                         </div>
-                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">PHP {{ number_format((float) $product->price, 2) }}</span>
+                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">₱{{ number_format((float) $product->price, 2) }}</span>
                                     </div>
 
                                     <a href="{{ route('shop.products.show', $product) }}" class="brand-group-hover-text mt-3 block text-2xl font-semibold text-neutral-900 transition dark:text-zinc-100">

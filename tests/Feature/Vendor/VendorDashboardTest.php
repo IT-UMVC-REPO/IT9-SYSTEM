@@ -102,7 +102,7 @@ test('kpi counts reflect actual vendor data', function () {
         ->assertSee('Total products')
         ->assertSee('Active products')
         ->assertSee('Pending orders')
-        ->assertSee('PHP 340.00')
+        ->assertSee("\u{20B1}340.00")
         ->assertSee('Low Stock Okra')
         ->assertSee($deliveredOrder->customer->name);
 });

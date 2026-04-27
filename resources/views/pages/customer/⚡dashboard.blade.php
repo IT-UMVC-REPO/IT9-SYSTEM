@@ -162,7 +162,7 @@ new #[Title('Customer Dashboard')] class extends Component
                     {{ trans_choice(':count item is still waiting in your cart.|:count items are still waiting in your cart.', $this->cartSummary['count'], ['count' => $this->cartSummary['count']]) }}
                 </p>
                 <p class="mt-4 text-2xl font-semibold text-neutral-900 dark:text-zinc-100">
-                    {{ __('PHP :amount', ['amount' => number_format($this->cartSummary['subtotal'], 2)]) }}
+                    {{ __('₱:amount', ['amount' => number_format($this->cartSummary['subtotal'], 2)]) }}
                 </p>
                 <a href="{{ route('shop.checkout') }}" wire:navigate class="brand-button-primary mt-5 w-full">
                     {{ __('Continue to checkout') }}

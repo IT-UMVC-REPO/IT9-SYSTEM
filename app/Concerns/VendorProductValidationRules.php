@@ -12,20 +12,22 @@ trait VendorProductValidationRules
     /**
      * @return array<string, array<int, ValidationRule|array<mixed>|string>>
      */
-    protected function vendorProductRules(bool $requireImage = true): array
+    protected function vendorProductRules(string $prefix = '', string $imageField = 'productImageUpload', bool $requireImage = true): array
     {
+        $qualifiedKey = static fn (string $key): string => $prefix !== '' ? $prefix.'.'.$key : $key;
+
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string', 'max:1000'],
-            'price' => ['required', 'numeric', 'min:0.01'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
-            'categoryId' => [
+            $qualifiedKey('name') => ['required', 'string', 'max:255'],
+            $qualifiedKey('description') => ['required', 'string', 'max:1000'],
+            $qualifiedKey('price') => ['required', 'numeric', 'min:0.01'],
+            $qualifiedKey('stock_quantity') => ['required', 'integer', 'min:0'],
+            $qualifiedKey('categoryId') => [
                 'required',
                 'integer',
                 Rule::in(Category::query()->leaves()->pluck('id')->all()),
             ],
-            'status' => ['required', Rule::enum(ProductStatus::class)],
-            'productImageUpload' => array_values(array_filter([
+            $qualifiedKey('status') => ['required', Rule::enum(ProductStatus::class)],
+            $imageField => array_values(array_filter([
                 $requireImage ? 'required' : 'nullable',
                 'image',
                 'max:3072',
