@@ -9,9 +9,9 @@
     <div class="mx-auto flex min-h-screen max-w-7xl items-stretch p-4 sm:p-6 lg:p-8">
         <div class="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)]">
             <section
-                class="relative hidden overflow-hidden rounded-[2rem] bg-neutral-950 p-8 text-white shadow-xl lg:flex lg:flex-col lg:justify-between">
-                <div class="absolute -right-16 top-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl"></div>
-                <div class="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-amber-300/10 blur-3xl"></div>
+                class="relative hidden overflow-hidden rounded-[2rem] bg-[linear-gradient(160deg,var(--brand-700)_0%,var(--brand-900)_100%)] p-8 text-white shadow-xl lg:flex lg:flex-col lg:justify-between">
+                <div class="absolute -right-16 top-0 h-56 w-56 rounded-full bg-[oklch(from_var(--brand-400)_l_c_h_/_0.22)] blur-3xl"></div>
+                <div class="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-[oklch(from_var(--brand-200)_l_c_h_/_0.22)] blur-3xl"></div>
 
                 <div class="inline-flex items-center gap-2 self-start rounded-lg border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900/80">
                     <a href="{{ route('home') }}" class="relative z-10 flex items-center gap-3" wire:navigate>

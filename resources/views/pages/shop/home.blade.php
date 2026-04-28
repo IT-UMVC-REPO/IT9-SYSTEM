@@ -1,7 +1,7 @@
 ﻿<x-layouts::app :title="__('SukiMarket Storefront')">
     <section class="relative min-h-[420px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0 z-0">
-            {{-- Swap this to public/imgs/palengke-hero.webp when a dedicated local palengke hero photo is added. --}}
+          
             <img
                 src="{{ asset('imgs/sukimarket.webp') }}"
                 alt=""

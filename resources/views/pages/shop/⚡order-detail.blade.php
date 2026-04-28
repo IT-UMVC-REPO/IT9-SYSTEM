@@ -199,7 +199,7 @@ new #[Title('Order Detail')] class extends Component {
 <section
     x-data="{
         init() {
-            if (!window.Echo || !@js(filled(config('broadcasting.connections.pusher.key')))) {
+            if (!window.Echo || !@js(filled(config('broadcasting.connections.reverb.key')))) {
                 return;
             }
 

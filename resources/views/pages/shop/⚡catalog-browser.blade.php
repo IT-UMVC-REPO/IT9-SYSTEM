@@ -167,7 +167,7 @@ new class extends Component {
 }; ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-    <section class="grid gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
+    <section class="grid items-start gap-8 xl:grid-cols-[20rem_minmax(0,1fr)] 2xl:grid-cols-[22rem_minmax(0,1fr)]">
         <aside
             x-data="{ filtersOpen: false, isDesktop: window.innerWidth >= 1280 }"
             x-on:resize.window="isDesktop = window.innerWidth >= 1280; if (isDesktop) { filtersOpen = false; }"
@@ -186,9 +186,10 @@ new class extends Component {
                 x-cloak
                 x-show="isDesktop || filtersOpen"
                 x-transition
-                class="brand-panel space-y-5 p-5"
+                class="brand-panel flex flex-col gap-5 p-5"
             >
-                <div>
+                <div class="space-y-5">
+                    <div>
                     <label for="storefront-search" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                         Search
                     </label>
@@ -200,9 +201,9 @@ new class extends Component {
                         autocomplete="off"
                         class="brand-input"
                     >
-                </div>
+                    </div>
 
-                <div>
+                    <div>
                     <label for="storefront-category" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                         Category
                     </label>
@@ -221,9 +222,9 @@ new class extends Component {
                             </optgroup>
                         @endforeach
                     </select>
-                </div>
+                    </div>
 
-                <div>
+                    <div>
                     <label for="storefront-max-price" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                         Max price (₱)
                     </label>
@@ -235,9 +236,9 @@ new class extends Component {
                         <option value="500">Under &#8369;500</option>
                         <option value="1000">Under &#8369;1,000</option>
                     </select>
-                </div>
+                    </div>
 
-                <div>
+                    <div>
                     <label for="storefront-sort" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
                         Sort by
                     </label>
@@ -247,49 +248,48 @@ new class extends Component {
                         <option value="price_desc">Price: high to low</option>
                         <option value="name_asc">Name: A&ndash;Z</option>
                     </select>
+                    </div>
+
+                    @if ($this->hasActiveFilters)
+                        <div class="pt-1">
+                            <button
+                                type="button"
+                                wire:click="clearFilters"
+                                wire:loading.attr="disabled"
+                                wire:target="clearFilters"
+                                class="brand-button-secondary w-full"
+                            >
+                                Clear filters
+                            </button>
+                        </div>
+                    @endif
                 </div>
 
-                @if ($this->hasActiveFilters)
-                    <div class="pt-1">
-                        <button
-                            type="button"
-                            wire:click="clearFilters"
-                            wire:loading.attr="disabled"
-                            wire:target="clearFilters"
-                            class="brand-button-secondary w-full"
-                        >
-                            Clear filters
-                        </button>
-                    </div>
-                @endif
-            </div>
-        </aside>
-
-        <section id="storefront-results">
-            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+                <div class="mt-auto border-t border-stone-200 pt-4 dark:border-white/10">
                     <p class="text-sm font-semibold text-stone-500 dark:text-zinc-400">
                         {{ $this->products->total() }} {{ Str::plural('product', $this->products->total()) }}
                         {{ $this->selectedCategoryName ? 'in '.$this->selectedCategoryName : 'available' }}
                     </p>
                     <p class="sr-only" aria-live="polite">{{ $this->filterSummary }}</p>
                 </div>
+            </div>
+        </aside>
 
+        <section id="storefront-results">
+            <div
+                class="transition duration-200"
+                wire:loading.class="opacity-60"
+                wire:target="search,selectedCategory,maxPrice,sort,clearFilters,gotoPage,previousPage,nextPage"
+            >
                 <p
-                    class="hidden items-center gap-2 text-xs font-medium text-stone-500 dark:text-zinc-400"
+                    class="mb-4 hidden items-center gap-2 text-xs font-medium text-stone-500 dark:text-zinc-400"
                     wire:loading.flex
                     wire:target="search,selectedCategory,maxPrice,sort,clearFilters,gotoPage,previousPage,nextPage"
                 >
                     <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
                     Updating listings...
                 </p>
-            </div>
 
-            <div
-                class="transition duration-200"
-                wire:loading.class="opacity-60"
-                wire:target="search,selectedCategory,maxPrice,sort,clearFilters,gotoPage,previousPage,nextPage"
-            >
                 @if ($this->products->isNotEmpty())
                     <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($this->products as $product)

@@ -199,7 +199,131 @@ new #[Title('Conversation')] class extends Component
 };
 ?>
 
-<div wire:poll.5s="refreshThread" class="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-[1500px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+<div
+    wire:poll.5s="refreshThread"
+    x-data="window.conversationVideoCall({
+        authUserId: @js((int) auth()->id()),
+        conversationKey: @js(Message::conversationKey($otherUserId)),
+        otherUserId: @js($otherUserId),
+        otherUserName: @js($this->otherUser->name),
+        reverbEnabled: @js(filled(config('broadcasting.connections.reverb.key'))),
+        routes: {
+            initiate: @js(route('calls.initiate')),
+            signal: @js(route('calls.signal', ['call' => '__CALL_ID__'])),
+            answer: @js(route('calls.answer', ['call' => '__CALL_ID__'])),
+            decline: @js(route('calls.decline', ['call' => '__CALL_ID__'])),
+            end: @js(route('calls.end', ['call' => '__CALL_ID__'])),
+        },
+    })"
+    x-init="init()"
+    x-on:beforeunload.window="disposeOnLeave()"
+    x-on:livewire:navigating.window="disposeOnLeave()"
+    class="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-[1500px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8"
+>
+    <div
+        wire:ignore
+        x-cloak
+        x-show="isOverlayVisible()"
+        x-transition.opacity
+        class="fixed inset-0 z-[70] bg-neutral-950/95 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8"
+    >
+        <div class="mx-auto flex h-full max-w-7xl flex-col gap-6">
+            <section class="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-white/10 bg-white/6 px-5 py-4 text-white shadow-2xl shadow-black/35">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">{{ __('Video call') }}</p>
+                    <h2 class="brand-serif mt-2 text-3xl font-bold text-white" x-text="otherUserName"></h2>
+                    <p class="mt-2 text-sm text-white/70" x-text="statusMessage || 'Waiting to connect...'"></p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <template x-if="callStatus === 'incoming'">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button type="button" x-on:click="acceptCall()" class="brand-button-primary inline-flex items-center gap-2">
+                                <i class="fa-solid fa-phone text-sm"></i>
+                                {{ __('Accept') }}
+                            </button>
+
+                            <button
+                                type="button"
+                                x-on:click="declineCall()"
+                                class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"
+                            >
+                                <i class="fa-solid fa-phone-slash text-sm"></i>
+                                {{ __('Decline') }}
+                            </button>
+                        </div>
+                    </template>
+
+                    <template x-if="callStatus === 'active'">
+                        <button
+                            type="button"
+                            x-on:click="endCall()"
+                            class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"
+                        >
+                            <i class="fa-solid fa-phone-slash text-sm"></i>
+                            {{ __('End call') }}
+                        </button>
+                    </template>
+
+                    <template x-if="callStatus === 'calling'">
+                        <button
+                            type="button"
+                            x-on:click="endCall('Call cancelled.')"
+                            class="inline-flex items-center gap-2 rounded-[1.25rem] border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/15"
+                        >
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                            {{ __('Cancel call') }}
+                        </button>
+                    </template>
+                </div>
+            </section>
+
+            <div class="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <section class="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-2xl shadow-black/40">
+                    <video id="conversation-call-remote-video" autoplay playsinline class="h-full min-h-[20rem] w-full object-cover"></video>
+
+                    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10"></div>
+
+                    <div class="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur">
+                        <span class="h-2.5 w-2.5 rounded-full bg-emerald-400" :class="callStatus === 'calling' || callStatus === 'incoming' ? 'animate-pulse' : ''"></span>
+                        <span x-text="callStatus === 'calling' ? 'Calling...' : (callStatus === 'incoming' ? 'Incoming call' : 'Live call')"></span>
+                    </div>
+
+                    <div class="absolute inset-x-0 bottom-0 p-6">
+                        <div class="rounded-[1.5rem] border border-white/10 bg-black/40 px-5 py-4 backdrop-blur">
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">{{ __('Connection') }}</p>
+                            <p class="mt-3 text-sm leading-7 text-white/80" x-text="statusMessage || 'Waiting for the other participant.'"></p>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="grid gap-6 lg:grid-rows-[auto_minmax(0,1fr)]">
+                    <section class="overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 backdrop-blur">
+                        <div class="border-b border-white/10 px-5 py-4">
+                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">{{ __('Local preview') }}</p>
+                            <p class="mt-2 text-sm text-white/75">{{ __('Your camera and microphone stay in this browser.') }}</p>
+                        </div>
+
+                        <video id="conversation-call-local-video" autoplay muted playsinline class="aspect-[4/5] w-full bg-black object-cover"></video>
+                    </section>
+
+                    <section class="rounded-[2rem] border border-white/10 bg-white/6 p-5 text-white/80 backdrop-blur">
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">{{ __('Call status') }}</p>
+                        <p class="mt-3 text-base leading-7" x-text="statusMessage || 'Camera and audio will connect as soon as both participants join.'"></p>
+
+                        <template x-if="callStatus === 'calling'">
+                            <p class="mt-4 text-sm leading-7 text-white/65">{{ __('Keep this window open while the other person answers.') }}</p>
+                        </template>
+
+                        <template x-if="callStatus === 'incoming'">
+                            <p class="mt-4 text-sm leading-7 text-white/65">{{ __('Accept to share your camera and microphone for this conversation.') }}</p>
+                        </template>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="grid min-h-[calc(100vh-6.5rem)] gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <aside class="hidden lg:block">
             <div class="space-y-4 lg:sticky lg:top-24">
@@ -224,29 +348,42 @@ new #[Title('Conversation')] class extends Component
                         {{ __('All conversations') }}
                     </a>
 
-                    <div class="mt-4 flex items-center gap-4">
-                        <x-user-avatar :user="$this->otherUser" size="lg" />
-                        <div>
-                            @if (auth()->user()?->effectiveMarketplaceRole() === UserRole::Admin)
-                                <a
-                                    href="{{ route('admin.users.show', $this->otherUser) }}"
-                                    wire:navigate
-                                    class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
-                                >
-                                    {{ $this->otherUser->name }}
-                                </a>
-                            @elseif ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
-                                <a
-                                    href="{{ route('shop.customers.show', $this->otherUser) }}"
-                                    wire:navigate
-                                    class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
-                                >
-                                    {{ $this->otherUser->name }}
-                                </a>
-                            @else
-                                <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
-                            @endif
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <x-user-avatar :user="$this->otherUser" size="lg" />
+                            <div>
+                                @if (auth()->user()?->effectiveMarketplaceRole() === UserRole::Admin)
+                                    <a
+                                        href="{{ route('admin.users.show', $this->otherUser) }}"
+                                        wire:navigate
+                                        class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
+                                    >
+                                        {{ $this->otherUser->name }}
+                                    </a>
+                                @elseif ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
+                                    <a
+                                        href="{{ route('shop.customers.show', $this->otherUser) }}"
+                                        wire:navigate
+                                        class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
+                                    >
+                                        {{ $this->otherUser->name }}
+                                    </a>
+                                @else
+                                    <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
+                                @endif
+                            </div>
                         </div>
+
+                        <button
+                            type="button"
+                            x-on:click="startCall()"
+                            x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()"
+                            class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                            title="Start video call"
+                        >
+                            <i class="fa-solid fa-video text-sm"></i>
+                            {{ __('Video call') }}
+                        </button>
                     </div>
                 </div>
             </section>

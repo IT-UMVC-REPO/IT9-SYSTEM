@@ -58,11 +58,23 @@
 
 @layer base {
     html {
+        font-family: var(--font-sans);
         scroll-behavior: smooth;
     }
 
     body {
         @apply bg-[#fbf7f2] text-neutral-800 dark:bg-zinc-950 dark:text-zinc-100;
+        font-family: var(--font-sans);
+    }
+
+    body,
+    button,
+    input,
+    optgroup,
+    option,
+    select,
+    textarea {
+        font-family: inherit;
     }
 
     [x-cloak] {
@@ -94,7 +106,7 @@
     }
 
     .brand-serif {
-        font-family: var(--font-display);
+        font-family: var(--font-sans);
     }
 
     .brand-panel {
