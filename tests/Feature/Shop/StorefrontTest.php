@@ -635,6 +635,67 @@ test('customers can open a visible product detail page', function () {
         ->assertSee('Vendor support');
 });
 
+test('vendors can open a visible product detail page without purchase controls', function () {
+    $vendorViewer = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorViewer, 'user')->approved()->create();
+
+    $productVendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Harbor Catch',
+        'store_description' => 'Fresh fish, shellfish, and coastal favorites.',
+    ]);
+    $category = Category::factory()->topLevel()->create([
+        'name' => 'Seafood',
+        'slug' => 'seafood-vendor-view',
+    ]);
+    $product = Product::factory()
+        ->for($productVendor, 'vendor')
+        ->for($category)
+        ->active()
+        ->create([
+            'name' => 'Tuna Belly',
+            'stock_quantity' => 10,
+        ]);
+
+    $this->actingAs($vendorViewer)
+        ->get(route('shop.products.show', $product))
+        ->assertOk()
+        ->assertSee($product->name)
+        ->assertSee('Switch to customer mode')
+        ->assertSee('Customer mode')
+        ->assertDontSee('Browsing as vendor')
+        ->assertDontSee('Bring this stall to your cart')
+        ->assertDontSee('Add to cart')
+        ->assertDontSee('Buy now')
+        ->assertSee('Message vendor');
+});
+
+test('approved vendors in customer mode can see purchase controls on product detail pages', function () {
+    $vendorViewer = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorViewer, 'user')->approved()->create();
+
+    $productVendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Market Harvest',
+    ]);
+    $category = Category::factory()->topLevel()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables-customer-mode',
+    ]);
+    $product = Product::factory()
+        ->for($productVendor, 'vendor')
+        ->for($category)
+        ->active()
+        ->create([
+            'name' => 'Pechay Bundle',
+        ]);
+
+    $this->actingAs($vendorViewer)
+        ->withSession(['marketplace_mode' => 'customer'])
+        ->get(route('shop.products.show', $product))
+        ->assertOk()
+        ->assertSee('Bring this stall to your cart')
+        ->assertDontSee('Switch to customer mode');
+});
+
 test('sold out product detail keeps support actions while replacing purchase controls', function () {
     $customer = User::factory()->create();
     $vendor = VendorProfile::factory()->approved()->create([
@@ -696,6 +757,7 @@ test('approved vendor storefront page renders vendor details and products', func
     $vendor = VendorProfile::factory()->approved()->create([
         'store_name' => 'Mercado Fresh Catch',
         'store_description' => 'Seafood and fresh market staples every morning.',
+        'vendor_address' => 'Stall 8, Agdao Public Market, Davao City',
     ]);
     $seafood = Category::factory()->topLevel()->create([
         'name' => 'Seafood',
@@ -719,6 +781,7 @@ test('approved vendor storefront page renders vendor details and products', func
         ->assertOk()
         ->assertSee($vendor->store_name)
         ->assertSee($vendor->store_description)
+        ->assertSee('Stall 8, Agdao Public Market, Davao City')
         ->assertSee($product->name)
         ->assertSee("\u{20B1}420.50")
         ->assertSee('Message vendor')

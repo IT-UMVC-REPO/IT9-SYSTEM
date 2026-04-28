@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['user_id', 'store_name', 'store_description', 'store_image', 'status', 'rejection_reason', 'approved_at', 'created_at'])]
+#[Fillable(['user_id', 'store_name', 'store_description', 'vendor_address', 'store_image', 'status', 'rejection_reason', 'approved_at', 'created_at'])]
 class VendorProfile extends Model
 {
     /** @use HasFactory<VendorProfileFactory> */

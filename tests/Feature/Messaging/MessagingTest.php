@@ -168,6 +168,32 @@ test('thread shows messages in chronological order', function () {
         ->assertSeeInOrder(['First message', 'Second message']);
 });
 
+test('conversation page shows the shared sidebar and highlights the active thread', function () {
+    $user = User::factory()->create();
+    $activeUser = User::factory()->create([
+        'name' => 'Active Conversation',
+    ]);
+    $secondUser = User::factory()->create([
+        'name' => 'Another Thread',
+    ]);
+
+    createMarketplaceMessage($activeUser, $user, 'Latest from the active thread', [
+        'created_at' => now()->subMinutes(2),
+    ]);
+    createMarketplaceMessage($secondUser, $user, 'A second thread preview', [
+        'created_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('messages.conversation', ['conversationReference' => $activeUser->getKey()]))
+        ->assertOk()
+        ->assertSee('All conversations')
+        ->assertSee('Active Conversation')
+        ->assertSee('Another Thread')
+        ->assertSee(route('messages.conversation', ['conversationReference' => $secondUser->getKey()]), false)
+        ->assertSee('aria-current="page"', false);
+});
+
 test('conversation header links to customer profile when other user is a customer', function () {
     $vendor = User::factory()->vendor()->create();
     $customer = User::factory()->create([
@@ -179,4 +205,24 @@ test('conversation header links to customer profile when other user is a custome
         ->assertOk()
         ->assertSee('Customer Link Target')
         ->assertSee(route('shop.customers.show', $customer), false);
+});
+
+test('admins can access messaging pages and link back to admin profiles', function () {
+    $admin = User::factory()->admin()->create();
+    $otherUser = User::factory()->create([
+        'name' => 'Reported Buyer',
+    ]);
+
+    createMarketplaceMessage($otherUser, $admin, 'Please review this conversation context.');
+
+    $this->actingAs($admin)
+        ->get(route('messages.inbox'))
+        ->assertOk()
+        ->assertSee('Reported Buyer');
+
+    $this->actingAs($admin)
+        ->get(route('messages.conversation', ['conversationReference' => $otherUser->getKey()]))
+        ->assertOk()
+        ->assertSee('Reported Buyer')
+        ->assertSee(route('admin.users.show', $otherUser), false);
 });

@@ -55,10 +55,8 @@ class PayMongoService
     public function constructWebhookEvent(string $payload, string $signature): array
     {
         $secret = (string) config('services.paymongo.webhook_secret');
-        $expectedSignature = hash_hmac('sha256', $payload, $secret);
-        $receivedSignature = $this->extractWebhookSignature($signature);
 
-        if ($secret === '' || ! hash_equals($expectedSignature, $receivedSignature)) {
+        if ($secret === '' || ! $this->isValidWebhookSignature($payload, $signature, $secret)) {
             throw new RuntimeException('Invalid PayMongo webhook signature.');
         }
 
@@ -72,35 +70,57 @@ class PayMongoService
         return $decoded;
     }
 
-    private function extractWebhookSignature(string $header): string
+    private function isValidWebhookSignature(string $payload, string $header, string $secret): bool
     {
         $trimmedHeader = trim($header);
 
         if ($trimmedHeader === '') {
-            return '';
+            return false;
         }
 
-        if (! str_contains($trimmedHeader, ',')) {
-            return str_starts_with($trimmedHeader, 'v1=')
-                ? substr($trimmedHeader, 3)
-                : (str_contains($trimmedHeader, '=') ? substr($trimmedHeader, strpos($trimmedHeader, '=') + 1) : $trimmedHeader);
+        $signatureParts = $this->extractWebhookSignatureParts($trimmedHeader);
+        $timestamp = $signatureParts['t'] ?? null;
+
+        if (! is_string($timestamp) || blank($timestamp)) {
+            return false;
         }
 
-        $parts = array_map('trim', explode(',', $trimmedHeader));
+        $signedPayload = $timestamp.'.'.$payload;
+        $expectedSignature = hash_hmac('sha256', $signedPayload, $secret);
 
-        foreach ($parts as $part) {
-            if (str_starts_with($part, 'v1=')) {
-                return substr($part, 3);
+        foreach (['li', 'te'] as $signatureKey) {
+            $receivedSignature = $signatureParts[$signatureKey] ?? null;
+
+            if (filled($receivedSignature) && hash_equals($expectedSignature, $receivedSignature)) {
+                return true;
             }
         }
 
+        return false;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractWebhookSignatureParts(string $header): array
+    {
+        $parts = array_map('trim', explode(',', $header));
+        $signatureParts = [];
+
         foreach ($parts as $part) {
-            if (str_contains($part, '=')) {
-                return substr($part, strpos($part, '=') + 1);
+            if (! str_contains($part, '=')) {
+                continue;
             }
+
+            [$key, $value] = array_map('trim', explode('=', $part, 2));
+            $signatureParts[$key] = $value;
         }
 
-        return $trimmedHeader;
+        if ($signatureParts === []) {
+            $signatureParts['raw'] = $header;
+        }
+
+        return $signatureParts;
     }
 
     private function createSource(

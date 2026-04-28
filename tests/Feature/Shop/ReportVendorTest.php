@@ -18,11 +18,34 @@ function createReportableVendor(): array
     return compact('customer', 'vendorUser', 'vendorProfile');
 }
 
+function createVendorReporterScenario(): array
+{
+    $reporterVendorUser = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($reporterVendorUser, 'user')->approved()->create();
+
+    $reportedVendorUser = User::factory()->vendor()->create();
+    $reportedVendorProfile = VendorProfile::factory()->for($reportedVendorUser, 'user')->approved()->create([
+        'store_name' => 'Fresh Valley Greens',
+    ]);
+
+    return compact('reporterVendorUser', 'reportedVendorUser', 'reportedVendorProfile');
+}
+
 test('report modal renders on vendor detail page for authenticated customers', function () {
     $scenario = createReportableVendor();
 
     $this->actingAs($scenario['customer'])
         ->get(route('shop.vendors.show', $scenario['vendorProfile']))
+        ->assertOk()
+        ->assertSee('Report this vendor')
+        ->assertSeeLivewire('report.report-modal');
+});
+
+test('report modal renders on vendor detail page for authenticated vendors', function () {
+    $scenario = createVendorReporterScenario();
+
+    $this->actingAs($scenario['reporterVendorUser'])
+        ->get(route('shop.vendors.show', $scenario['reportedVendorProfile']))
         ->assertOk()
         ->assertSee('Report this vendor')
         ->assertSeeLivewire('report.report-modal');
@@ -46,6 +69,28 @@ test('submitting a valid reason and description creates an open report record', 
         'reporter_id' => $scenario['customer']->getKey(),
         'reported_user_id' => $scenario['vendorUser']->getKey(),
         'reason' => ReportReason::FraudOrScam->value,
+        'status' => ReportStatus::Open->value,
+    ]);
+});
+
+test('vendor can submit a report against another vendor', function () {
+    $scenario = createVendorReporterScenario();
+
+    Livewire::actingAs($scenario['reporterVendorUser'])
+        ->test('report.report-modal', [
+            'reportedUserId' => $scenario['reportedVendorUser']->getKey(),
+            'reporterRole' => 'vendor',
+        ])
+        ->set('reason', ReportReason::HarassmentOrAbuse->value)
+        ->set('description', 'Repeated abusive messages were sent in marketplace chat.')
+        ->call('submit')
+        ->assertHasNoErrors()
+        ->assertDispatched('report-submitted');
+
+    $this->assertDatabaseHas('reports', [
+        'reporter_id' => $scenario['reporterVendorUser']->getKey(),
+        'reported_user_id' => $scenario['reportedVendorUser']->getKey(),
+        'reason' => ReportReason::HarassmentOrAbuse->value,
         'status' => ReportStatus::Open->value,
     ]);
 });

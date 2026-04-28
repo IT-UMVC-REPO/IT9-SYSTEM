@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\VendorProfile;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -70,4 +71,38 @@ test('already verified user visiting verification link is redirected without fir
 
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     Event::assertNotDispatched(Verified::class);
+});
+
+test('unverified customers are redirected to the verification notice from protected marketplace routes', function () {
+    $user = User::factory()->unverified()->create();
+
+    foreach ([
+        route('dashboard'),
+        route('notifications.index'),
+        route('customer.dashboard'),
+        route('shop.home'),
+        route('messages.inbox'),
+        route('vendor.registration'),
+    ] as $protectedRoute) {
+        $this->actingAs($user)
+            ->get($protectedRoute)
+            ->assertRedirect(route('verification.notice', absolute: false));
+    }
+});
+
+test('unverified approved vendors are redirected to the verification notice from vendor routes', function () {
+    $user = User::factory()->vendor()->unverified()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('vendor.dashboard'))
+        ->assertRedirect(route('verification.notice', absolute: false));
+});
+
+test('unverified admins are redirected to the verification notice from admin routes', function () {
+    $user = User::factory()->admin()->unverified()->create();
+
+    $this->actingAs($user)
+        ->get(route('admin.dashboard'))
+        ->assertRedirect(route('verification.notice', absolute: false));
 });

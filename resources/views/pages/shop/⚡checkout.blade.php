@@ -253,7 +253,7 @@ new #[Title('Checkout')] class extends Component {
                 'reference_number' => data_get($source, 'data.id'),
             ]);
 
-            return redirect()->away((string) data_get($source, 'data.attributes.redirect.checkout_url'));
+            return redirect()->away($this->checkoutRedirectUrl($source));
         } catch (\RuntimeException $exception) {
             $this->restoreDigitalCheckout($order->getKey());
 
@@ -372,6 +372,21 @@ new #[Title('Checkout')] class extends Component {
         }, attempts: 5);
 
         session()->forget('pending_payment_order_id');
+    }
+
+    /**
+     * @param  array<string, mixed>  $source
+     */
+    private function checkoutRedirectUrl(array $source): string
+    {
+        $redirectUrl = data_get($source, 'data.attributes.redirect.checkout_url')
+            ?? data_get($source, 'data.attributes.checkout_url');
+
+        if (! is_string($redirectUrl) || blank($redirectUrl)) {
+            throw new \RuntimeException('PayMongo checkout URL missing from source response.');
+        }
+
+        return $redirectUrl;
     }
 
     private function placedOrderMessage(int $orderCount): string

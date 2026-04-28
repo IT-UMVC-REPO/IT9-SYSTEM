@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'reporter_role',
     'reason',
     'description',
+    'attachment_path',
     'status',
     'reviewed_by',
     'admin_notes',

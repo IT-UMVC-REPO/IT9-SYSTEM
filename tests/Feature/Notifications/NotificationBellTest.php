@@ -118,6 +118,35 @@ test('clicking a notification marks only that notification as read', function ()
     expect($stillUnread->fresh()->is_read)->toBeFalse();
 });
 
+test('notification bell renders stronger dark mode classes for read and unread items', function () {
+    $user = User::factory()->create();
+
+    Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Unread alert',
+        'message' => 'Needs stronger dark-mode contrast.',
+        'type' => NotificationType::OrderUpdate,
+        'is_read' => false,
+    ]);
+
+    Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Read alert',
+        'message' => 'Already read but still visible.',
+        'type' => NotificationType::System,
+        'is_read' => true,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('notifications.notification-bell')
+        ->assertSee('dark:bg-zinc-800', false)
+        ->assertSee('dark:border-[var(--brand-500)]', false)
+        ->assertSee('dark:bg-zinc-900', false)
+        ->assertSee('dark:text-zinc-300', false)
+        ->assertSee('dark:text-zinc-200', false)
+        ->assertSee('dark:text-[var(--brand-400)]', false);
+});
+
 test('notifications page placeholder requires authentication', function () {
     $this->get(route('notifications.index'))
         ->assertRedirect(route('login'));

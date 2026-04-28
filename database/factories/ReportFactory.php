@@ -35,6 +35,7 @@ class ReportFactory extends Factory
             'reporter_role' => 'customer',
             'reason' => fake()->randomElement(ReportReason::availableFor('customer')),
             'description' => fake()->optional()->sentence(),
+            'attachment_path' => null,
             'status' => ReportStatus::Open,
             'reviewed_by' => null,
             'admin_notes' => null,

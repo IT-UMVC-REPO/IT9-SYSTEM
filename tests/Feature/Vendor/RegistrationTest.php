@@ -101,6 +101,63 @@ test('submitting valid data creates a pending vendor profile, stores the image, 
     expect($notification->type)->toBe(NotificationType::System);
 });
 
+test('vendor address is saved during registration', function () {
+    Storage::fake('public');
+
+    $customer = User::factory()->create();
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables-address',
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::vendor.registration')
+        ->set('store_name', 'Stall with Address')
+        ->set('store_description', 'Fresh goods every morning.')
+        ->set('vendor_address', 'Stall 12, Bankerohan Market, Davao City')
+        ->set('storeImageUpload', UploadedFile::fake()->createWithContent('stall.png', vendorRegistrationPngFixture()))
+        ->set('sampleProducts.0.name', 'Fresh Sayote')
+        ->set('sampleProducts.0.description', 'Morning market stock.')
+        ->set('sampleProducts.0.price', '55.00')
+        ->set('sampleProducts.0.stock_quantity', '7')
+        ->set('sampleProducts.0.categoryId', (string) $category->getKey())
+        ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('sayote.png', vendorRegistrationPngFixture()))
+        ->call('submit');
+
+    $vendorProfile = VendorProfile::query()->where('user_id', $customer->getKey())->first();
+
+    expect($vendorProfile)->not->toBeNull()
+        ->and($vendorProfile->vendor_address)->toBe('Stall 12, Bankerohan Market, Davao City');
+});
+
+test('vendor address is optional during registration', function () {
+    Storage::fake('public');
+
+    $customer = User::factory()->create();
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Fruits',
+        'slug' => 'fruits-address',
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::vendor.registration')
+        ->set('store_name', 'No Address Stall')
+        ->set('store_description', 'Simple description.')
+        ->set('storeImageUpload', UploadedFile::fake()->createWithContent('stall.png', vendorRegistrationPngFixture()))
+        ->set('sampleProducts.0.name', 'Sweet Mango')
+        ->set('sampleProducts.0.description', 'Freshly delivered this morning.')
+        ->set('sampleProducts.0.price', '95.00')
+        ->set('sampleProducts.0.stock_quantity', '8')
+        ->set('sampleProducts.0.categoryId', (string) $category->getKey())
+        ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('mango.png', vendorRegistrationPngFixture()))
+        ->call('submit');
+
+    $vendorProfile = VendorProfile::query()->where('user_id', $customer->getKey())->first();
+
+    expect($vendorProfile)->not->toBeNull()
+        ->and($vendorProfile->vendor_address)->toBeNull();
+});
+
 test('customers with a pending vendor profile see the holding state instead of the form', function () {
     $customer = User::factory()->create();
 

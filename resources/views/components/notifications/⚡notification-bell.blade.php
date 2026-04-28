@@ -151,8 +151,7 @@ new class extends Component
                 wire:click="markAllAsRead"
                 wire:loading.attr="disabled"
                 wire:target="markAllAsRead"
-                class="text-xs font-semibold uppercase tracking-[0.18em]"
-                style="color: var(--brand-700);"
+                class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)] dark:hover:text-[var(--brand-300)]"
             >
                 <span wire:loading.remove wire:target="markAllAsRead">{{ __('Mark all as read') }}</span>
                 <span wire:loading wire:target="markAllAsRead">{{ __('Saving...') }}</span>
@@ -165,10 +164,11 @@ new class extends Component
                     type="button"
                     wire:click="markAsRead({{ $notification->id }})"
                     wire:key="header-notification-{{ $notification->id }}"
-                    class="w-full rounded-2xl border px-4 py-3 text-left transition"
-                    style="{{ $notification->is_read
-                        ? 'border-color: rgb(231 229 228); background-color: rgba(255,255,255,0.72);'
-                        : 'border-color: var(--brand-200); background-color: color-mix(in oklab, var(--brand-50) 65%, white 35%);' }}"
+                    @class([
+                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'border-[var(--brand-200)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800' => ! $notification->is_read,
+                        'border-stone-200 bg-white/72 dark:border-white/10 dark:bg-zinc-900' => $notification->is_read,
+                    ])
                 >
                     <div class="flex items-start gap-3">
                         <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm" style="{{ $this->notificationBadgeStyle($notification->type) }}">
@@ -178,8 +178,16 @@ new class extends Component
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $notification->title }}</p>
-                                    <p class="mt-1 text-sm leading-6 text-neutral-500 dark:text-zinc-400">
+                                    <p @class([
+                                        'truncate text-sm font-semibold',
+                                        'text-neutral-900 dark:text-zinc-100' => ! $notification->is_read,
+                                        'text-neutral-900 dark:text-zinc-200' => $notification->is_read,
+                                    ])>{{ $notification->title }}</p>
+                                    <p @class([
+                                        'mt-1 text-sm leading-6',
+                                        'text-neutral-600 dark:text-zinc-300' => ! $notification->is_read,
+                                        'text-neutral-500 dark:text-zinc-400' => $notification->is_read,
+                                    ])>
                                         {{ Str::limit($notification->message, 84) }}
                                     </p>
                                 </div>
@@ -213,8 +221,7 @@ new class extends Component
                 href="{{ route('notifications.index') }}"
                 wire:navigate
                 x-on:click="open = false"
-                class="inline-flex text-sm font-semibold"
-                style="color: var(--brand-700);"
+                class="inline-flex text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)] dark:hover:text-[var(--brand-300)]"
             >
                 {{ __('See all') }}
             </a>

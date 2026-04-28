@@ -120,6 +120,8 @@
                             @endif
                         @endforeach
 
+                        <livewire:mode-toggle :key="'header-mode-toggle'" />
+
                         @if ($showNotificationBell)
                             <livewire:notifications.notification-bell :key="'header-notification-bell'" />
                         @endif
@@ -156,6 +158,8 @@
                             </div>
 
                             <div class="grid gap-2 p-4">
+                                <livewire:mode-toggle :full-width="true" :key="'mobile-mode-toggle'" />
+
                                 @foreach ($mobileNavigationItems as $item)
                                     <a
                                         href="{{ $item['route'] }}"
@@ -229,6 +233,16 @@
                 @endauth
             </nav>
         </header>
+
+        @auth
+            @if (auth()->user()->role === \App\Enums\UserRole::Vendor && auth()->user()->hasApprovedVendorProfile() && session('marketplace_mode') === 'customer')
+                <div class="sticky top-[52px] z-40 border-b border-[var(--brand-200)] bg-[var(--brand-50)] py-2 text-[var(--brand-700)] dark:border-[var(--brand-500)] dark:bg-zinc-900 dark:text-[var(--brand-200)]">
+                    <div class="mx-auto flex max-w-[1500px] items-center justify-center gap-3 px-4 text-center text-xs font-semibold sm:px-6 lg:px-8">
+                        <span>{{ __('You are browsing in customer mode.') }}</span>
+                    </div>
+                </div>
+            @endif
+        @endauth
 
         {{ $slot }}
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\Order;
@@ -199,187 +200,214 @@ new #[Title('Conversation')] class extends Component
 ?>
 
 <div wire:poll.5s="refreshThread" class="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-[1500px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-    <section class="flex items-start justify-between gap-4">
-        <div>
-            <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold" style="color: var(--brand-700);">
-                <i class="fa-solid fa-arrow-left text-xs"></i>
-                {{ __('Back to inbox') }}
-            </a>
-
-            <div class="mt-4 flex items-center gap-4">
-                <x-user-avatar :user="$this->otherUser" size="lg" />
+    <div class="grid min-h-[calc(100vh-6.5rem)] gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <aside class="hidden lg:block">
+            <div class="space-y-4 lg:sticky lg:top-24">
                 <div>
-                    @if ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
-                        <a
-                            href="{{ route('shop.customers.show', $this->otherUser) }}"
-                            wire:navigate
-                            class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
-                        >
-                            {{ $this->otherUser->name }}
-                        </a>
-                    @else
-                        <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </section>
-
-    @if ($this->linkedOrder !== null)
-        <section class="brand-panel-muted p-5">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="brand-kicker !mb-0">{{ __('Linked order') }}</p>
-                    <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
-                        {{ __('Order #:number', ['number' => str_pad((string) $this->linkedOrder->id, 6, '0', STR_PAD_LEFT)]) }}
-                    </h2>
-                    <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">
-                        {{ __('Status: :status', ['status' => \Illuminate\Support\Str::headline($this->linkedOrder->order_status->value)]) }}
-                    </p>
+                    <span class="brand-kicker">{{ __('Conversations') }}</span>
+                    <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('All threads') }}</h2>
                 </div>
 
-                <p class="text-sm text-neutral-500 dark:text-zinc-400">
-                    {{ __('Customer: :customer - Vendor: :vendor', [
-                        'customer' => $this->linkedOrder->customer->name,
-                        'vendor' => $this->linkedOrder->vendor->user->name,
-                    ]) }}
-                </p>
+                <livewire:messages.conversation-sidebar :active-conversation-user-id="$otherUserId" :key="'conversation-sidebar-'.$otherUserId" />
             </div>
-        </section>
-    @endif
+        </aside>
 
-    <section class="brand-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div
-            class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
-            x-data
-            x-init="$el.scrollTop = $el.scrollHeight"
-            @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
-        >
-            @forelse ($this->threadMessages as $message)
-                @php($isOwnMessage = $message->sender_id === auth()->id())
-                    <div
-                        wire:key="conversation-message-{{ $message->id }}"
-                        class="flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}"
+        <div class="flex min-h-0 flex-col gap-6">
+            <section class="flex items-start justify-between gap-4">
+                <div>
+                    <a
+                        href="{{ route('messages.inbox') }}"
+                        wire:navigate
+                        class="inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-400)] lg:hidden"
                     >
-                        <div class="max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }} flex flex-col gap-2">
-                            <div class="flex items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
-                                @unless ($isOwnMessage)
-                                    <x-user-avatar :user="$message->sender" size="sm" />
-                                @endunless
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                        {{ __('All conversations') }}
+                    </a>
 
-                                <div
-                                    class="rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}"
+                    <div class="mt-4 flex items-center gap-4">
+                        <x-user-avatar :user="$this->otherUser" size="lg" />
+                        <div>
+                            @if (auth()->user()?->effectiveMarketplaceRole() === UserRole::Admin)
+                                <a
+                                    href="{{ route('admin.users.show', $this->otherUser) }}"
+                                    wire:navigate
+                                    class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
                                 >
-                                    <?php if (filled($message->content)): ?>
-                                        <p class="whitespace-pre-wrap break-words">{{ $message->content }}</p>
-                                    <?php endif; ?>
-
-                                    <?php if ($message->attachment_path): ?>
-                                        <?php $attachmentUrl = asset('storage/'.$message->attachment_path); ?>
-
-                                        <?php if (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'image/')): ?>
-                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="mt-2 block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
-                                                <img
-                                                    src="{{ $attachmentUrl }}"
-                                                    alt="{{ $message->attachment_name ?? __('Attached image') }}"
-                                                    class="max-h-72 w-full object-cover"
-                                                    loading="lazy"
-                                                >
-                                            </a>
-                                        <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'video/')): ?>
-                                            <div class="mt-2 overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
-                                                <video
-                                                    controls
-                                                    preload="metadata"
-                                                    class="max-h-72 w-full bg-black"
-                                                >
-                                                    <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
-                                                    {{ __('Your browser does not support the video tag.') }}
-                                                </video>
-                                            </div>
-                                        <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'audio/')): ?>
-                                            <div class="mt-2 rounded-2xl border px-3 py-2 {{ $isOwnMessage ? 'border-white/25 bg-white/10' : 'border-stone-300 bg-white/70 dark:border-zinc-600 dark:bg-zinc-700' }}">
-                                                <audio controls preload="metadata" class="w-full">
-                                                    <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
-                                                    {{ __('Your browser does not support the audio element.') }}
-                                                </audio>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <a
-                                            href="{{ $attachmentUrl }}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}"
-                                        >
-                                            <i class="fa-solid fa-paperclip"></i>
-                                            <span class="truncate">{{ $message->attachment_name ?? __('Attachment') }}</span>
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-
-                            <p class="px-1 text-xs text-neutral-400 dark:text-zinc-500">{{ $message->timeAgo() }}</p>
+                                    {{ $this->otherUser->name }}
+                                </a>
+                            @elseif ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
+                                <a
+                                    href="{{ route('shop.customers.show', $this->otherUser) }}"
+                                    wire:navigate
+                                    class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]"
+                                >
+                                    {{ $this->otherUser->name }}
+                                </a>
+                            @else
+                                <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->otherUser->name }}</h1>
+                            @endif
                         </div>
                     </div>
-            @empty
-                <div class="flex h-full min-h-80 items-center justify-center rounded-[1.75rem] border border-dashed border-stone-200 px-6 py-12 text-center dark:border-white/10">
-                    <div>
-                        <span class="brand-kicker">{{ __('No messages yet') }}</span>
-                        <p class="mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                            {{ __('Start the conversation here to coordinate availability, pickup timing, or order questions.') }}
+                </div>
+            </section>
+
+            @if ($this->linkedOrder !== null)
+                <section class="brand-panel-muted p-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="brand-kicker !mb-0">{{ __('Linked order') }}</p>
+                            <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
+                                {{ __('Order #:number', ['number' => str_pad((string) $this->linkedOrder->id, 6, '0', STR_PAD_LEFT)]) }}
+                            </h2>
+                            <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">
+                                {{ __('Status: :status', ['status' => \Illuminate\Support\Str::headline($this->linkedOrder->order_status->value)]) }}
+                            </p>
+                        </div>
+
+                        <p class="text-sm text-neutral-500 dark:text-zinc-400">
+                            {{ __('Customer: :customer - Vendor: :vendor', [
+                                'customer' => $this->linkedOrder->customer->name,
+                                'vendor' => $this->linkedOrder->vendor->user->name,
+                            ]) }}
                         </p>
                     </div>
+                </section>
+            @endif
+
+            <section class="brand-panel flex min-h-0 flex-1 flex-col overflow-hidden">
+                <div
+                    class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
+                    x-data
+                    x-init="$el.scrollTop = $el.scrollHeight"
+                    @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
+                >
+                    @forelse ($this->threadMessages as $message)
+                        @php($isOwnMessage = $message->sender_id === auth()->id())
+                            <div
+                                wire:key="conversation-message-{{ $message->id }}"
+                                class="flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}"
+                            >
+                                <div class="max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }} flex flex-col gap-2">
+                                    <div class="flex items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
+                                        @unless ($isOwnMessage)
+                                            <x-user-avatar :user="$message->sender" size="sm" />
+                                        @endunless
+
+                                        <div
+                                            class="rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}"
+                                        >
+                                            <?php if (filled($message->content)): ?>
+                                                <p class="whitespace-pre-wrap break-words">{{ $message->content }}</p>
+                                            <?php endif; ?>
+
+                                            <?php if ($message->attachment_path): ?>
+                                                <?php $attachmentUrl = asset('storage/'.$message->attachment_path); ?>
+
+                                                <?php if (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'image/')): ?>
+                                                    <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="mt-2 block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                        <img
+                                                            src="{{ $attachmentUrl }}"
+                                                            alt="{{ $message->attachment_name ?? __('Attached image') }}"
+                                                            class="max-h-72 w-full object-cover"
+                                                            loading="lazy"
+                                                        >
+                                                    </a>
+                                                <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'video/')): ?>
+                                                    <div class="mt-2 overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                        <video
+                                                            controls
+                                                            preload="metadata"
+                                                            class="max-h-72 w-full bg-black"
+                                                        >
+                                                            <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
+                                                            {{ __('Your browser does not support the video tag.') }}
+                                                        </video>
+                                                    </div>
+                                                <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'audio/')): ?>
+                                                    <div class="mt-2 rounded-2xl border px-3 py-2 {{ $isOwnMessage ? 'border-white/25 bg-white/10' : 'border-stone-300 bg-white/70 dark:border-zinc-600 dark:bg-zinc-700' }}">
+                                                        <audio controls preload="metadata" class="w-full">
+                                                            <source src="{{ $attachmentUrl }}" type="{{ $message->attachment_mime }}">
+                                                            {{ __('Your browser does not support the audio element.') }}
+                                                        </audio>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <a
+                                                    href="{{ $attachmentUrl }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}"
+                                                >
+                                                    <i class="fa-solid fa-paperclip"></i>
+                                                    <span class="truncate">{{ $message->attachment_name ?? __('Attachment') }}</span>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <p class="px-1 text-xs text-neutral-400 dark:text-zinc-500">{{ $message->timeAgo() }}</p>
+                                </div>
+                            </div>
+                    @empty
+                        <div class="flex h-full min-h-80 items-center justify-center rounded-[1.75rem] border border-dashed border-stone-200 px-6 py-12 text-center dark:border-white/10">
+                            <div>
+                                <span class="brand-kicker">{{ __('No messages yet') }}</span>
+                                <p class="mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('Start the conversation here to coordinate availability, pickup timing, or order questions.') }}
+                                </p>
+                            </div>
+                        </div>
+                    @endforelse
                 </div>
-            @endforelse
+
+                <form wire:submit="send" class="border-t border-stone-200 p-5 dark:border-white/10 sm:p-6">
+                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_9rem]">
+                        <flux:textarea
+                            wire:model="newMessage"
+                            :label="__('Reply')"
+                            rows="3"
+                            :placeholder="__('Write your message here')"
+                            x-on:keydown.enter.prevent="$wire.send()"
+                        />
+
+                        <div class="flex h-full flex-col justify-end gap-2">
+                            <label for="conversation-attachment" class="brand-button-secondary inline-flex w-full cursor-pointer items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-paperclip text-xs"></i>
+                                {{ __('Attach file') }}
+                            </label>
+                            <input id="conversation-attachment" type="file" wire:model="attachmentUpload" class="sr-only">
+
+                            <button
+                                type="submit"
+                                wire:loading.attr="disabled"
+                                wire:target="send,attachmentUpload"
+                                class="brand-button-primary h-full min-h-[3.5rem] w-full self-end"
+                            >
+                                <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
+                                <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        <p class="text-xs text-neutral-500 dark:text-zinc-400">{{ __('Press Enter to send.') }}</p>
+
+                        @if ($attachmentUpload)
+                            <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                <i class="fa-solid fa-file"></i>
+                                <span class="max-w-[12rem] truncate">{{ $attachmentUpload->getClientOriginalName() }}</span>
+                            </span>
+                        @endif
+                    </div>
+
+                    @error('newMessage')
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                    @error('attachmentUpload')
+                        <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </form>
+            </section>
         </div>
-
-        <form wire:submit="send" class="border-t border-stone-200 p-5 dark:border-white/10 sm:p-6">
-            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_9rem]">
-                <flux:textarea
-                    wire:model="newMessage"
-                    :label="__('Reply')"
-                    rows="3"
-                    :placeholder="__('Write your message here')"
-                    x-on:keydown.enter.prevent="$wire.send()"
-                />
-
-                <div class="flex h-full flex-col justify-end gap-2">
-                    <label for="conversation-attachment" class="brand-button-secondary inline-flex w-full cursor-pointer items-center justify-center gap-2 text-sm">
-                        <i class="fa-solid fa-paperclip text-xs"></i>
-                        {{ __('Attach file') }}
-                    </label>
-                    <input id="conversation-attachment" type="file" wire:model="attachmentUpload" class="sr-only">
-
-                    <button
-                        type="submit"
-                        wire:loading.attr="disabled"
-                        wire:target="send,attachmentUpload"
-                        class="brand-button-primary h-full min-h-[3.5rem] w-full self-end"
-                    >
-                        <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
-                        <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-                <p class="text-xs text-neutral-500 dark:text-zinc-400">{{ __('Press Enter to send.') }}</p>
-
-                @if ($attachmentUpload)
-                    <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700 dark:bg-zinc-800 dark:text-zinc-200">
-                        <i class="fa-solid fa-file"></i>
-                        <span class="max-w-[12rem] truncate">{{ $attachmentUpload->getClientOriginalName() }}</span>
-                    </span>
-                @endif
-            </div>
-
-            @error('newMessage')
-                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
-            @enderror
-            @error('attachmentUpload')
-                <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
-            @enderror
-        </form>
-    </section>
+    </div>
 </div>

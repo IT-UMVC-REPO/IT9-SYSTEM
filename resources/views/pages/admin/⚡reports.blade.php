@@ -2,9 +2,7 @@
 
 use App\Enums\ReportStatus;
 use App\Models\Report;
-use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -22,10 +20,6 @@ new #[Title('User Reports')] class extends Component
     #[Url(except: '')]
     public string $search = '';
 
-    public ?int $reviewingReportId = null;
-
-    public string $reviewAdminNotes = '';
-
     public function updatedStatus(): void
     {
         $this->resetPage();
@@ -36,39 +30,14 @@ new #[Title('User Reports')] class extends Component
         $this->resetPage();
     }
 
-    public function startReview(int $reportId): void
-    {
-        $this->reviewingReportId = $reportId;
-        $this->reviewAdminNotes = '';
-    }
-
-    public function cancelReview(): void
-    {
-        $this->reset('reviewingReportId', 'reviewAdminNotes');
-    }
-
-    public function submitReview(): void
-    {
-        if ($this->reviewingReportId === null) {
-            return;
-        }
-
-        $validated = $this->validate([
-            'reviewAdminNotes' => ['nullable', 'string', 'max:1500'],
-        ]);
-
-        $this->markReviewed($this->reviewingReportId, $validated['reviewAdminNotes'] ?? '');
-    }
-
     #[Computed]
     public function reports(): LengthAwarePaginator
     {
         return Report::query()
             ->with([
-                'reporter:id,name',
-                'reportedUser:id,name',
+                'reporter:id,name,profile_image',
+                'reportedUser:id,name,profile_image',
                 'reviewer:id,name',
-                'order:id',
             ])
             ->when(
                 $this->status !== 'all',
@@ -109,61 +78,18 @@ new #[Title('User Reports')] class extends Component
         ];
     }
 
-    public function markReviewed(int $reportId, string $adminNotes = ''): void
-    {
-        $report = Report::query()->findOrFail($reportId);
-
-        if ($report->status !== ReportStatus::Open) {
-            Flux::toast(variant: 'warning', text: __('This report has already been handled.'));
-
-            return;
-        }
-
-        $notes = trim($adminNotes);
-
-        DB::transaction(function () use ($report, $notes): void {
-            $report->forceFill([
-                'status' => ReportStatus::Reviewed,
-                'reviewed_by' => auth()->id(),
-                'reviewed_at' => now(),
-                'admin_notes' => filled($notes) ? $notes : null,
-            ])->save();
-        });
-
-        unset($this->reports, $this->counts);
-
-        $this->reset('reviewingReportId', 'reviewAdminNotes');
-
-        Flux::modal('review-report')->close();
-        Flux::toast(variant: 'success', text: __('Report marked as reviewed.'));
-    }
-
-    public function dismiss(int $reportId): void
-    {
-        $report = Report::query()->findOrFail($reportId);
-
-        if ($report->status !== ReportStatus::Open) {
-            Flux::toast(variant: 'warning', text: __('This report has already been handled.'));
-
-            return;
-        }
-
-        DB::transaction(function () use ($report): void {
-            $report->forceFill([
-                'status' => ReportStatus::Dismissed,
-                'reviewed_by' => auth()->id(),
-                'reviewed_at' => now(),
-            ])->save();
-        });
-
-        unset($this->reports, $this->counts);
-
-        Flux::toast(variant: 'warning', text: __('Report dismissed.'));
-    }
-
     public function paginationView(): string
     {
         return 'layouts.app.livewire-paginate';
+    }
+
+    public function reporterRoleBadgeClasses(string $role): string
+    {
+        return match ($role) {
+            'customer' => 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',
+            'vendor' => 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+            default => 'bg-stone-100 text-stone-700 dark:bg-zinc-800 dark:text-zinc-200',
+        };
     }
 
     public function statusBadgeClasses(ReportStatus $status): string
@@ -177,12 +103,19 @@ new #[Title('User Reports')] class extends Component
 };
 ?>
 
-<div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+<div wire:poll.10s class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4">
         <span class="brand-kicker">{{ __('Admin moderation') }}</span>
-        <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
-            {{ __('User reports') }}
-        </h1>
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+                {{ __('User reports') }}
+            </h1>
+
+            <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                <span class="flex h-2.5 w-2.5 rounded-full bg-current"></span>
+                {{ trans_choice(':count open case|:count open cases', $this->counts[ReportStatus::Open->value], ['count' => number_format($this->counts[ReportStatus::Open->value])]) }}
+            </span>
+        </div>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
             {{ __('Review customer and vendor reports, search the people involved, and keep a clear moderation record for marketplace disputes.') }}
         </p>
@@ -232,9 +165,7 @@ new #[Title('User Reports')] class extends Component
                     <flux:table.columns>
                         <flux:table.column>{{ __('Reporter') }}</flux:table.column>
                         <flux:table.column>{{ __('Reported user') }}</flux:table.column>
-                        <flux:table.column>{{ __('Role') }}</flux:table.column>
                         <flux:table.column>{{ __('Reason') }}</flux:table.column>
-                        <flux:table.column>{{ __('Order') }}</flux:table.column>
                         <flux:table.column>{{ __('Status') }}</flux:table.column>
                         <flux:table.column>{{ __('Submitted') }}</flux:table.column>
                         <flux:table.column align="end">{{ __('Actions') }}</flux:table.column>
@@ -242,51 +173,64 @@ new #[Title('User Reports')] class extends Component
 
                     <flux:table.rows>
                         @foreach ($this->reports as $report)
+                            @php($detailUrl = route('admin.reports.show', $report))
                             <flux:table.row :key="$report->id">
-                                <flux:table.cell>{{ $report->reporter->name }}</flux:table.cell>
-                                <flux:table.cell>{{ $report->reportedUser->name }}</flux:table.cell>
-                                <flux:table.cell>{{ Str::headline($report->reporter_role) }}</flux:table.cell>
-                                <flux:table.cell>{{ $report->reason->label() }}</flux:table.cell>
                                 <flux:table.cell>
-                                    @if ($report->order !== null)
-                                        {{ __('Order #:number', ['number' => str_pad((string) $report->order->id, 6, '0', STR_PAD_LEFT)]) }}
-                                    @else
-                                        <span class="text-sm text-neutral-500 dark:text-zinc-400">{{ __('Not linked') }}</span>
-                                    @endif
-                                </flux:table.cell>
-                                <flux:table.cell>
-                                    <span @class([
-                                        'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]',
-                                        $this->statusBadgeClasses($report->status),
-                                    ])>
-                                        {{ Str::headline($report->status->value) }}
-                                    </span>
-                                </flux:table.cell>
-                                <flux:table.cell>{{ $report->created_at->format('M j, Y g:i A') }}</flux:table.cell>
-                                <flux:table.cell align="end">
-                                    @if ($report->status === ReportStatus::Open)
-                                        <div class="flex items-center justify-end gap-2">
-                                            <flux:modal.trigger name="review-report">
-                                                <flux:button type="button" wire:click="startReview({{ $report->id }})">
-                                                    {{ __('Mark reviewed') }}
-                                                </flux:button>
-                                            </flux:modal.trigger>
+                                    <a href="{{ $detailUrl }}" wire:navigate class="flex items-center gap-3 rounded-2xl px-1 py-1 transition hover:bg-stone-50/70 dark:hover:bg-white/5">
+                                        <x-user-avatar :user="$report->reporter" size="sm" />
 
-                                            <flux:button
-                                                variant="ghost"
-                                                type="button"
-                                                wire:click="dismiss({{ $report->id }})"
-                                                wire:confirm="{{ __('Dismiss this report? This action will mark it as handled.') }}"
-                                                class="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
-                                            >
-                                                {{ __('Dismiss') }}
-                                            </flux:button>
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $report->reporter->name }}</p>
+                                            <span @class([
+                                                'mt-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]',
+                                                $this->reporterRoleBadgeClasses($report->reporter_role),
+                                            ])>
+                                                {{ Str::headline($report->reporter_role) }}
+                                            </span>
                                         </div>
-                                    @else
-                                        <div class="text-right text-sm text-neutral-500 dark:text-zinc-400">
-                                            {{ $report->reviewer?->name ? __('Handled by :name', ['name' => $report->reviewer->name]) : __('Handled') }}
+                                    </a>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <a href="{{ $detailUrl }}" wire:navigate class="flex items-center gap-3 rounded-2xl px-1 py-1 transition hover:bg-stone-50/70 dark:hover:bg-white/5">
+                                        <x-user-avatar :user="$report->reportedUser" size="sm" />
+
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $report->reportedUser->name }}</p>
+                                            <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">
+                                                {{ $report->reporter_role === 'customer' ? __('Vendor account') : __('Customer account') }}
+                                            </p>
                                         </div>
-                                    @endif
+                                    </a>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <a href="{{ $detailUrl }}" wire:navigate class="block rounded-2xl px-1 py-2 text-neutral-700 transition hover:bg-stone-50/70 hover:text-neutral-900 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-white">
+                                        {{ $report->reason->label() }}
+                                    </a>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <a href="{{ $detailUrl }}" wire:navigate class="inline-flex rounded-2xl px-1 py-2 transition hover:bg-stone-50/70 dark:hover:bg-white/5">
+                                        <span @class([
+                                            'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]',
+                                            $this->statusBadgeClasses($report->status),
+                                        ])>
+                                            {{ Str::headline($report->status->value) }}
+                                        </span>
+                                    </a>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <a href="{{ $detailUrl }}" wire:navigate class="block rounded-2xl px-1 py-2 text-neutral-700 transition hover:bg-stone-50/70 hover:text-neutral-900 dark:text-zinc-200 dark:hover:bg-white/5 dark:hover:text-white">
+                                        {{ $report->created_at->format('M j, Y g:i A') }}
+                                    </a>
+                                </flux:table.cell>
+
+                                <flux:table.cell align="end">
+                                    <a href="{{ $detailUrl }}" wire:navigate class="brand-button-secondary">
+                                        {{ $report->status === ReportStatus::Open ? __('Review case') : __('View case') }}
+                                    </a>
                                 </flux:table.cell>
                             </flux:table.row>
                         @endforeach
@@ -296,14 +240,26 @@ new #[Title('User Reports')] class extends Component
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->reports as $report)
-                    <article class="brand-panel p-5" wire:key="mobile-report-{{ $report->id }}">
+                    <a
+                        href="{{ route('admin.reports.show', $report) }}"
+                        wire:key="mobile-report-{{ $report->id }}"
+                        wire:navigate
+                        class="brand-panel block p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
                         <div class="flex items-start justify-between gap-4">
                             <div class="min-w-0">
-                                <p class="brand-kicker !mb-0">{{ Str::headline($report->reporter_role) }}</p>
-                                <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ $report->reporter->name }} {{ __('reported') }} {{ $report->reportedUser->name }}
-                                </h2>
-                                <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">{{ $report->reason->label() }}</p>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="brand-kicker !mb-0">{{ __('Reporter') }}</p>
+                                    <span @class([
+                                        'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]',
+                                        $this->reporterRoleBadgeClasses($report->reporter_role),
+                                    ])>
+                                        {{ Str::headline($report->reporter_role) }}
+                                    </span>
+                                </div>
+                                <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $report->reporter->name }}</h2>
+                                <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ __('Reported user: :name', ['name' => $report->reportedUser->name]) }}</p>
+                                <p class="mt-3 text-sm text-neutral-600 dark:text-zinc-300">{{ $report->reason->label() }}</p>
                             </div>
 
                             <span @class([
@@ -316,37 +272,16 @@ new #[Title('User Reports')] class extends Component
 
                         <div class="mt-4 grid gap-2 text-sm text-neutral-500 dark:text-zinc-400">
                             <p>{{ __('Submitted :date', ['date' => $report->created_at->format('M j, Y g:i A')]) }}</p>
-                            <p>
-                                {{ $report->order !== null
-                                    ? __('Linked to order #:number', ['number' => str_pad((string) $report->order->id, 6, '0', STR_PAD_LEFT)])
-                                    : __('No linked order') }}
-                            </p>
-
-                            @if (filled($report->admin_notes))
-                                <p>{{ __('Notes: :notes', ['notes' => $report->admin_notes]) }}</p>
-                            @endif
+                            <p>{{ $report->reviewer?->name ? __('Latest handler: :name', ['name' => $report->reviewer->name]) : __('Awaiting admin handling') }}</p>
                         </div>
 
-                        @if ($report->status === ReportStatus::Open)
-                            <div class="mt-5 flex flex-col gap-3">
-                                <flux:modal.trigger name="review-report">
-                                    <flux:button type="button" wire:click="startReview({{ $report->id }})" class="w-full">
-                                        {{ __('Mark reviewed') }}
-                                    </flux:button>
-                                </flux:modal.trigger>
-
-                                <flux:button
-                                    variant="ghost"
-                                    type="button"
-                                    wire:click="dismiss({{ $report->id }})"
-                                    wire:confirm="{{ __('Dismiss this report? This action will mark it as handled.') }}"
-                                    class="w-full justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
-                                >
-                                    {{ __('Dismiss') }}
-                                </flux:button>
-                            </div>
-                        @endif
-                    </article>
+                        <div class="mt-5">
+                            <span class="inline-flex items-center gap-2 text-sm font-semibold" style="color: var(--brand-700);">
+                                {{ __('Open case file') }}
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </span>
+                        </div>
+                    </a>
                 @endforeach
             </div>
 
@@ -369,34 +304,4 @@ new #[Title('User Reports')] class extends Component
             </div>
         @endif
     </section>
-
-    <flux:modal name="review-report" class="max-w-lg" wire:close="cancelReview">
-        <form wire:submit="submitReview" class="space-y-6 rounded-[1.5rem] border border-stone-200 bg-white/95 p-6 shadow-xl dark:border-white/10 dark:bg-zinc-900/95">
-            <div>
-                <flux:heading size="lg">{{ __('Mark report as reviewed') }}</flux:heading>
-                <flux:subheading>
-                    {{ __('Add optional notes so the moderation outcome is clear for the admin team.') }}
-                </flux:subheading>
-            </div>
-
-            <flux:textarea
-                wire:model="reviewAdminNotes"
-                :label="__('Admin notes')"
-                rows="5"
-                :placeholder="__('Add context for this moderation decision (optional).')"
-            />
-
-            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <flux:modal.close>
-                    <flux:button variant="filled" type="button">
-                        {{ __('Cancel') }}
-                    </flux:button>
-                </flux:modal.close>
-
-                <flux:button type="submit">
-                    {{ __('Mark reviewed') }}
-                </flux:button>
-            </div>
-        </form>
-    </flux:modal>
 </div>

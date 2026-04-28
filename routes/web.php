@@ -12,7 +12,7 @@ Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle'])-
 Route::get('/shop/payment/success', [PaymentReturnController::class, 'success'])->name('shop.payment.success');
 Route::get('/shop/payment/failed', [PaymentReturnController::class, 'failed'])->name('shop.payment.failed');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Shared portal entry point that forwards users to their role-specific home route.
     Route::get('dashboard', function (Request $request) {
         return redirect()->route($request->user()->homeRoute(), $request->query());
@@ -21,11 +21,11 @@ Route::middleware('auth')->group(function () {
     Route::view('/notifications', 'pages.notifications.index')->name('notifications.index');
 });
 
-Route::middleware(['auth', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {
     Route::livewire('/dashboard', 'pages::customer.dashboard')->name('dashboard');
 });
 
-Route::middleware(['auth', 'role:customer,vendor'])->prefix('shop')->name('shop.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('shop')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('home');
     Route::livewire('/vendors', 'pages::shop.vendors')->name('vendors');
     Route::get('/vendors/{vendorProfile}', [ShopController::class, 'vendor'])->name('vendors.show');
@@ -38,16 +38,16 @@ Route::middleware(['auth', 'role:customer,vendor'])->prefix('shop')->name('shop.
     Route::livewire('/favorites', 'pages::shop.favorites')->name('favorites');
 });
 
-Route::middleware(['auth'])->prefix('vendor')->name('vendor.')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('vendor')->name('vendor.')->group(function () {
     Route::livewire('/register', 'pages::vendor.registration')->name('registration');
 });
 
-Route::middleware(['auth', 'role:customer,vendor'])->prefix('messages')->name('messages.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('messages')->name('messages.')->group(function () {
     Route::livewire('/', 'pages::messages.inbox')->name('inbox');
     Route::livewire('/{conversationReference}', 'pages::messages.conversation')->name('conversation');
 });
 
-Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
     Route::livewire('/dashboard', 'pages::vendor.dashboard')->name('dashboard');
     Route::livewire('/products', 'pages::vendor.products')->name('products');
     Route::livewire('/products/create', 'pages::vendor.product-create')->name('products.create');
@@ -58,7 +58,7 @@ Route::middleware(['auth', 'role:vendor'])->prefix('vendor')->name('vendor.')->g
     Route::livewire('/sales', 'pages::vendor.sales')->name('sales');
 });
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin.dashboard')->name('dashboard');
     Route::livewire('/vendors', 'pages::admin.vendors')->name('vendors');
     Route::livewire('/vendors/{vendorProfile}', 'pages::admin.vendor-detail')->name('vendors.show');
@@ -66,6 +66,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::livewire('/users/{user}', 'pages::admin.user-profile')->name('users.show');
     Route::livewire('/orders', 'pages::admin.orders')->name('orders');
     Route::livewire('/reports', 'pages::admin.reports')->name('reports');
+    Route::livewire('/reports/{report}', 'pages::admin.report-detail')->name('reports.show');
 });
 
 require __DIR__.'/settings.php';

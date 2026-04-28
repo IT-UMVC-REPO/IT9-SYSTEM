@@ -52,7 +52,7 @@
                         {{ __('Message vendor') }}
                     </a>
 
-                    @if (auth()->user()?->effectiveMarketplaceRole()->value === 'customer')
+                    @if (in_array(auth()->user()?->effectiveMarketplaceRole()->value, ['customer', 'vendor'], true))
                         <flux:modal.trigger name="report-user">
                             <flux:button
                                 variant="ghost"
@@ -66,7 +66,7 @@
 
                         <livewire:report.report-modal
                             :reported-user-id="$vendorProfile->user_id"
-                            reporter-role="customer"
+                            :reporter-role="auth()->user()?->effectiveMarketplaceRole()->value"
                             :order-id="null"
                         />
                     @endif
@@ -146,6 +146,12 @@
                         <span class="text-neutral-500 dark:text-zinc-400">{{ __('Approved since') }}</span>
                         <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ optional($vendorProfile->approved_at)->format('M j, Y') }}</span>
                     </div>
+                    @if ($vendorProfile->vendor_address)
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="shrink-0 text-neutral-500 dark:text-zinc-400">{{ __('Stall address') }}</span>
+                            <span class="text-right font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendorProfile->vendor_address }}</span>
+                        </div>
+                    @endif
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-neutral-500 dark:text-zinc-400">{{ __('Active listings') }}</span>
                         <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ number_format($activeProductCount) }}</span>

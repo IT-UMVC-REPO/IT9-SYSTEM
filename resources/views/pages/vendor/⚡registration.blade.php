@@ -29,6 +29,8 @@ new #[Title('Vendor registration')] class extends Component {
 
     public string $store_description = '';
 
+    public string $vendor_address = '';
+
     public $storeImageUpload = null;
 
     public ?int $vendorProfileId = null;
@@ -131,6 +133,7 @@ new #[Title('Vendor registration')] class extends Component {
                 $vendorProfile->forceFill([
                     'store_name' => $validated['store_name'],
                     'store_description' => $validated['store_description'],
+                    'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
                     'store_image' => $storedStoreImagePath,
                     'status' => VendorStatus::Pending,
                     'rejection_reason' => null,
@@ -141,6 +144,7 @@ new #[Title('Vendor registration')] class extends Component {
                     'user_id' => $user->getKey(),
                     'store_name' => $validated['store_name'],
                     'store_description' => $validated['store_description'],
+                    'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
                     'store_image' => $storedStoreImagePath,
                     'status' => VendorStatus::Pending,
                     'rejection_reason' => null,
@@ -227,6 +231,7 @@ new #[Title('Vendor registration')] class extends Component {
         $rules = [
             'store_name' => ['required', 'string', 'max:120'],
             'store_description' => ['required', 'string', 'max:800'],
+            'vendor_address' => ['nullable', 'string', 'max:500'],
             'storeImageUpload' => ['required', 'image', 'max:3072'],
             'sampleProducts' => ['required', 'array', 'min:1'],
         ];
@@ -257,6 +262,7 @@ new #[Title('Vendor registration')] class extends Component {
 
         $this->store_name = $vendorProfile->store_name;
         $this->store_description = $vendorProfile->store_description;
+        $this->vendor_address = $vendorProfile->vendor_address ?? '';
         $this->currentStoreImage = $vendorProfile->getRawOriginal('store_image');
         $this->sampleProducts = $vendorProfile->products()
             ->with('category:id,name,parent_id')
@@ -527,6 +533,18 @@ new #[Title('Vendor registration')] class extends Component {
                         :placeholder="__('Tell customers what your stall is known for, what you sell, and what makes your store feel dependable.')"
                         required
                     />
+
+                    <div>
+                        <flux:textarea
+                            wire:model="vendor_address"
+                            :label="__('Vendor stall address')"
+                            rows="2"
+                            :placeholder="__('Stall number, market name, barangay, city (optional)')"
+                        />
+                        <p class="mt-1 text-xs text-neutral-500 dark:text-zinc-400">
+                            {{ __('Your stall address is shown to customers on your storefront page. Leave blank to hide it.') }}
+                        </p>
+                    </div>
 
                     <section class="space-y-6 border-t border-stone-200 pt-8 dark:border-white/10">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

@@ -1,5 +1,7 @@
 <x-layouts::app :title="$product->name">
     @php
+        $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value === 'customer';
+
         $availabilityClasses = $product->stock_quantity > 0
             ? 'brand-soft-surface border'
             : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300';
@@ -71,7 +73,20 @@
                 </div>
 
                 <div class="mt-5 space-y-4">
-                    <livewire:cart.add-to-cart :product="$product" />
+                    @if ($canPurchaseProduct)
+                        <livewire:cart.add-to-cart :product="$product" />
+                    @else
+                        <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
+                            <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Switch to customer mode') }}</h2>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                {{ __('You are browsing as a vendor. Switch to customer mode to add items to your cart and place orders.') }}
+                            </p>
+                            <div class="mt-5">
+                                <livewire:mode-toggle :full-width="true" :key="'product-mode-toggle'" />
+                            </div>
+                        </div>
+                    @endif
 
                     <a
                         href="{{ route('messages.conversation', ['conversationReference' => $product->vendor->user->id]) }}"

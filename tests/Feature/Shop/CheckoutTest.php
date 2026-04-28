@@ -260,6 +260,47 @@ test('gcash checkout creates a paymongo source and redirects away', function () 
     expect(session('pending_payment_order_id'))->toBe($payment->order_id);
 });
 
+test('maya checkout falls back to the legacy checkout_url field when redirect.checkout_url is missing', function () {
+    $customer = User::factory()->create([
+        'address' => '41 Quimpo Boulevard',
+    ]);
+    seedCheckoutCart($customer, quantity: 1);
+
+    app()->instance(PayMongoService::class, new class extends PayMongoService
+    {
+        public function createMayaSource(
+            int $amountInCentavos,
+            string $currency = 'PHP',
+            string $description = '',
+            string $successUrl = '',
+            string $failedUrl = '',
+        ): array {
+            expect($amountInCentavos)->toBe(12000);
+
+            return [
+                'data' => [
+                    'id' => 'src_maya_legacy',
+                    'attributes' => [
+                        'checkout_url' => 'https://checkout.paymongo.test/src_maya_legacy',
+                    ],
+                ],
+            ];
+        }
+    });
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', '41 Quimpo Boulevard')
+        ->set('payment_method', 'maya')
+        ->call('placeOrder')
+        ->assertRedirect('https://checkout.paymongo.test/src_maya_legacy');
+
+    $payment = Payment::query()->sole();
+
+    expect($payment->method)->toBe(PaymentMethod::Maya);
+    expect($payment->reference_number)->toBe('src_maya_legacy');
+});
+
 test('failed paymongo source creation restores the cart and removes the provisional order', function () {
     $customer = User::factory()->create([
         'address' => '101 Agdao Road',
@@ -303,8 +344,8 @@ test('paymongo webhook rejects an invalid signature', function () {
     ], JSON_THROW_ON_ERROR);
 
     $this->call('POST', route('webhooks.paymongo'), [], [], [], [
-        'HTTP_Paymongo-Signature' => 'invalid-signature',
-    ], $payload)->assertStatus(400);
+        'HTTP_Paymongo-Signature' => 't=1714137600,te=invalid,li=',
+    ], $payload)->assertBadRequest();
 });
 
 test('paymongo webhook marks the payment as paid and dispatches an order notification job', function () {
@@ -337,10 +378,11 @@ test('paymongo webhook marks the payment as paid and dispatches an order notific
             'attributes' => ['type' => 'source.chargeable'],
         ],
     ], JSON_THROW_ON_ERROR);
-    $signature = hash_hmac('sha256', $payload, 'whsec_test_123');
+    $timestamp = '1714137600';
+    $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
 
     $this->call('POST', route('webhooks.paymongo'), [], [], [], [
-        'HTTP_Paymongo-Signature' => $signature,
+        'HTTP_Paymongo-Signature' => "t={$timestamp},te={$signature},li=",
     ], $payload)->assertOk();
 
     expect($payment->fresh()->status)->toBe(PaymentStatus::Paid);
@@ -349,7 +391,7 @@ test('paymongo webhook marks the payment as paid and dispatches an order notific
     Queue::assertPushed(SendOrderNotificationJob::class, fn (SendOrderNotificationJob $job) => $job->orderId === $order->getKey() && $job->broadcastOrderStatus === true);
 });
 
-test('paymongo webhook accepts v1 signature from composite header format', function () {
+test('paymongo webhook accepts a live signature from the current composite header format', function () {
     Queue::fake();
     Http::fake([
         'https://api.paymongo.test/*' => Http::response([
@@ -379,10 +421,11 @@ test('paymongo webhook accepts v1 signature from composite header format', funct
             'attributes' => ['type' => 'source.chargeable'],
         ],
     ], JSON_THROW_ON_ERROR);
-    $signature = hash_hmac('sha256', $payload, 'whsec_test_123');
+    $timestamp = '1714137600';
+    $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_123');
 
     $this->call('POST', route('webhooks.paymongo'), [], [], [], [
-        'HTTP_Paymongo-Signature' => 't=1714137600,v1='.$signature,
+        'HTTP_Paymongo-Signature' => "t={$timestamp},te=,li={$signature}",
     ], $payload)->assertOk();
 
     expect($payment->fresh()->status)->toBe(PaymentStatus::Paid);
