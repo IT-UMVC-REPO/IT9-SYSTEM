@@ -108,8 +108,8 @@ Admins need visibility into all marketplace accounts and the ability to activate
 
 | # | Task | Complexity | Depends on | Claimed by | Status |
 |---|---|---|---|---|---|
-| C1 | Replace `admin.users` placeholder with a searchable, role-filterable paginated user table — columns: name, email, role, active status, registered date | M | — | — | Not started |
-| C2 | Add an activate / deactivate toggle that flips `User.is_active` — deactivated users cannot log in (already enforced by `FortifyServiceProvider::configureAuthentication`) | S | C1 | — | Not started |
+| C1 | Replace `admin.users` placeholder with a searchable, role-filterable paginated user table — columns: name, email, role, active status, registered date | M | — | — | DONE |
+| C2 | Add an activate / deactivate toggle that flips `User.is_active` — deactivated users cannot log in (already enforced by `FortifyServiceProvider::configureAuthentication`) | S | C1 | — | DONE |
 | C3 | Pest tests for user listing, search, role filter, and activation toggle | S | C1, C2 | — | Not started |
 
 ---
