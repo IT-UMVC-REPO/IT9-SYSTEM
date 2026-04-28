@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PayMongoWebhookController;
@@ -8,10 +9,21 @@ use App\Http\Controllers\VideoCallController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+$verificationThrottle = 'throttle:'.config('fortify.limiters.verification', '6,1');
+
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
 Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle'])->name('webhooks.paymongo');
 Route::get('/shop/payment/success', [PaymentReturnController::class, 'success'])->name('shop.payment.success');
 Route::get('/shop/payment/failed', [PaymentReturnController::class, 'failed'])->name('shop.payment.failed');
+
+Route::middleware(['auth', $verificationThrottle])->group(function () {
+    Route::get('/email/verify', [EmailVerificationController::class, 'show'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verifyLink'])
+        ->middleware('signed')
+        ->name('verification.verify');
+    Route::post('/email/verify/code', [EmailVerificationController::class, 'verify'])->name('verification.code.verify');
+    Route::post('/email/resend', [EmailVerificationController::class, 'resend'])->name('verification.send');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Shared portal entry point that forwards users to their role-specific home route.

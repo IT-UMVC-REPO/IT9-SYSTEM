@@ -31,7 +31,21 @@ test('authenticated users can initiate a call', function () {
         ->postJson(route('calls.initiate'), [
             'receiver_id' => $receiver->getKey(),
         ])
-        ->assertCreated();
+        ->assertCreated()
+        ->assertJsonStructure([
+            'id',
+            'caller_id',
+            'receiver_id',
+            'conversation_key',
+            'status',
+            'realtime_available',
+            'message',
+        ])
+        ->assertJsonPath('caller_id', $caller->getKey())
+        ->assertJsonPath('receiver_id', $receiver->getKey())
+        ->assertJsonPath('conversation_key', VideoCall::conversationKeyFor($caller->getKey(), $receiver->getKey()))
+        ->assertJsonPath('status', VideoCallStatus::Pending->value)
+        ->assertJsonPath('realtime_available', true);
 
     $call = VideoCall::query()->first();
 
@@ -53,7 +67,8 @@ test('users cannot call themselves', function () {
         ->postJson(route('calls.initiate'), [
             'receiver_id' => $user->getKey(),
         ])
-        ->assertForbidden();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('receiver_id');
 
     expect(VideoCall::query()->count())->toBe(0);
     Event::assertNotDispatched(VideoCallInitiated::class);

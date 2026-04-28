@@ -22,7 +22,14 @@ test('reset password link can be requested', function () {
 
     $this->post(route('password.request'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, ResetPassword::class);
+    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->subject)->toBe('Reset your SukiMarket password')
+            ->and($mailMessage->markdown)->toBe('emails.auth.reset-password');
+
+        return true;
+    });
 });
 
 test('reset password screen can be rendered', function () {

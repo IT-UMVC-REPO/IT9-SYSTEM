@@ -91,8 +91,25 @@ window.conversationVideoCall = (config) => ({
             this.reverbEnabled
             && window.Echo
             && window.SimplePeer
-            && navigator.mediaDevices?.getUserMedia,
+            && navigator.mediaDevices
+            && navigator.mediaDevices.getUserMedia,
         );
+    },
+
+    videoCallDisabledReason() {
+        if (!this.reverbEnabled) {
+            return 'Real-time features require the Reverb server to be running.';
+        }
+
+        if (!window.Echo || !window.SimplePeer) {
+            return 'Video calling is still loading. Please try again.';
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            return 'Video calling is not available in this browser.';
+        }
+
+        return 'Video calling is not available right now.';
     },
 
     isOverlayVisible() {
@@ -101,25 +118,37 @@ window.conversationVideoCall = (config) => ({
 
     async startCall() {
         if (!this.supportsVideoCalling()) {
-            this.cleanupCall('ended', 'Video calling is not available in this browser.');
+            this.cleanupCall('ended', this.videoCallDisabledReason());
 
             return;
         }
 
         try {
-            await this.ensureLocalStream();
-
             const payload = await this.requestJson(this.routes.initiate, {
                 receiver_id: this.otherUserId,
+            }, {
+                timeoutMs: 5000,
+                unavailableMessage: 'Could not reach the call server. Make sure the app server is running.',
             });
 
             this.callId = payload.id;
             this.callStatus = 'calling';
+            this.statusMessage = 'Preparing your camera...';
+
+            await this.ensureLocalStream();
             this.statusMessage = `Calling ${this.otherUserName}...`;
 
             this.initPeer(true);
-        } catch {
-            this.cleanupCall('ended', 'Unable to start the call.');
+        } catch (error) {
+            if (this.callId !== null) {
+                try {
+                    await this.requestJson(this.callRoute('end'));
+                } catch {
+                    // Ignore cleanup failures while already surfacing the original error.
+                }
+            }
+
+            this.cleanupCall('ended', this.callErrorMessage(error, 'Could not start the call. Please check your connection.'));
         }
     },
 
@@ -138,8 +167,8 @@ window.conversationVideoCall = (config) => ({
             this.flushPendingSignals();
 
             await this.requestJson(this.callRoute('answer'));
-        } catch {
-            this.cleanupCall('ended', 'Unable to answer the call.');
+        } catch (error) {
+            this.cleanupCall('ended', this.callErrorMessage(error, 'Could not answer the call. Please check your connection.'));
         }
     },
 
@@ -211,8 +240,8 @@ window.conversationVideoCall = (config) => ({
                 await this.requestJson(this.callRoute('signal'), {
                     signal_data: signalData,
                 });
-            } catch {
-                this.cleanupCall('ended', 'Unable to sync the call.');
+            } catch (error) {
+                this.cleanupCall('ended', this.callErrorMessage(error, 'Unable to sync the call.'));
             }
         });
 
@@ -325,27 +354,84 @@ window.conversationVideoCall = (config) => ({
         return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     },
 
-    async requestJson(url, body = null) {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                ...(body === null ? {} : { 'Content-Type': 'application/json' }),
-                'X-CSRF-TOKEN': this.csrfToken(),
-            },
-            body: body === null ? null : JSON.stringify(body),
-        });
+    async requestJson(url, body = null, options = {}) {
+        const {
+            timeoutMs = 5000,
+            unavailableMessage = 'Call server unavailable. Please try again later.',
+        } = options;
 
-        if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`);
+        let response;
+
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    ...(body === null ? {} : { 'Content-Type': 'application/json' }),
+                    'X-CSRF-TOKEN': this.csrfToken(),
+                },
+                body: body === null ? null : JSON.stringify(body),
+                signal: this.requestSignal(timeoutMs),
+            });
+        } catch (error) {
+            this.statusMessage = unavailableMessage;
+
+            throw new Error(unavailableMessage, { cause: error });
         }
 
         const contentType = response.headers.get('content-type') ?? '';
+        const payload = contentType.includes('application/json')
+            ? await response.json()
+            : null;
 
-        if (!contentType.includes('application/json')) {
-            return null;
+        if (!response.ok) {
+            const message = payload?.message ?? unavailableMessage;
+
+            this.statusMessage = message;
+
+            throw new Error(message);
         }
 
-        return await response.json();
+        if (payload?.realtime_available === false) {
+            const message = payload.message ?? unavailableMessage;
+
+            this.statusMessage = message;
+
+            throw new Error(message);
+        }
+
+        return payload;
+    },
+
+    requestSignal(timeoutMs) {
+        if (!timeoutMs) {
+            return undefined;
+        }
+
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+            return AbortSignal.timeout(timeoutMs);
+        }
+
+        const controller = new AbortController();
+
+        window.setTimeout(() => controller.abort(), timeoutMs);
+
+        return controller.signal;
+    },
+
+    callErrorMessage(error, fallbackMessage) {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+            return 'Camera and microphone access is required to use video calling.';
+        }
+
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+            return 'No camera or microphone was found for this device.';
+        }
+
+        if (error instanceof Error && error.message) {
+            return error.message;
+        }
+
+        return fallbackMessage;
     },
 
     setVideoSource(elementId, stream) {

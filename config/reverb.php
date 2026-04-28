@@ -10,6 +10,8 @@ return [
     | This option controls the default server used by Reverb to handle
     | incoming messages as well as broadcasting message to all your
     | connected clients. At this time only "reverb" is supported.
+    | Start the Reverb server with "php artisan reverb:start" whenever
+    | you need real-time messaging or video calling in local development.
     |
     */
 

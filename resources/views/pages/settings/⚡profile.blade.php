@@ -102,7 +102,7 @@ new #[Title('Profile settings')] class extends Component {
 
         $user->sendEmailVerificationNotification();
 
-        Flux::toast(text: __('A new verification link has been sent to your email address.'));
+        Flux::toast(text: __('A new verification code has been sent to your email address.'));
     }
 
     #[Computed]
@@ -237,7 +237,7 @@ new #[Title('Profile settings')] class extends Component {
                                     {{ __('Your email address is unverified.') }}
 
                                     <flux:link class="ml-1 cursor-pointer text-sm" wire:click.prevent="resendVerificationNotification">
-                                        {{ __('Click here to re-send the verification email.') }}
+                                        {{ __('Click here to send a new verification code.') }}
                                     </flux:link>
                                 </flux:text>
                             </div>

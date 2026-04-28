@@ -1,76 +1,151 @@
 <?php
 
+use App\Mail\EmailVerification;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\URL;
-use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Mail;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::emailVerification());
-});
+test('email verification screen can be rendered and queues a branded verification email when needed', function () {
+    Mail::fake();
 
-test('email verification screen can be rendered', function () {
-    $user = User::factory()->unverified()->create();
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => null,
+        'email_verification_code_expires_at' => null,
+    ]);
 
     $response = $this->actingAs($user)->get(route('verification.notice'));
 
+    $user->refresh();
+
     $response->assertOk()
+        ->assertSee('Verify your email')
+        ->assertSee($user->email)
         ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false);
+
+    expect($user->email_verification_code)->not->toBeNull()
+        ->and(strlen($user->email_verification_code))->toBe(6)
+        ->and($user->email_verification_code_expires_at)->not->toBeNull();
+
+    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+        return $mail->hasTo($user->email)
+            && $mail->hasSubject("Welcome to SukiMarket \u{2014} Verify your email")
+            && $mail->verificationCode === $user->email_verification_code;
+    });
 });
 
-test('email can be verified', function () {
-    $user = User::factory()->unverified()->create();
+test('already verified user visiting verification notice is redirected home', function () {
+    $user = User::factory()->create();
 
-    Event::fake();
+    $this->actingAs($user)
+        ->get(route('verification.notice'))
+        ->assertRedirect(route($user->homeRoute(), absolute: false));
+});
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
-    );
+test('email can be verified with a valid code', function () {
+    Event::fake([Verified::class]);
 
-    $response = $this->actingAs($user)->get($verificationUrl);
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $response = $this->actingAs($user)->post(route('verification.code.verify'), [
+        'code' => '123456',
+    ]);
+
+    $response->assertRedirect(route($user->homeRoute(), absolute: false))
+        ->assertSessionHas('status', 'email-verified');
+
+    $user->refresh();
+
+    expect($user->hasVerifiedEmail())->toBeTrue()
+        ->and($user->email_verification_code)->toBeNull()
+        ->and($user->email_verification_code_expires_at)->toBeNull();
 
     Event::assertDispatched(Verified::class);
-
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
 });
 
-test('email is not verified with invalid hash', function () {
-    $user = User::factory()->unverified()->create();
+test('email can be verified from the signed link', function () {
+    Event::fake([Verified::class]);
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')],
-    );
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->addMinutes(10),
+    ]);
 
-    $this->actingAs($user)->get($verificationUrl);
+    $response = $this->actingAs($user)->get($user->emailVerificationUrl());
+
+    $response->assertRedirect(route($user->homeRoute(), absolute: false))
+        ->assertSessionHas('status', 'email-verified');
+
+    $user->refresh();
+
+    expect($user->hasVerifiedEmail())->toBeTrue()
+        ->and($user->email_verification_code)->toBeNull()
+        ->and($user->email_verification_code_expires_at)->toBeNull();
+
+    Event::assertDispatched(Verified::class);
+});
+
+test('email is not verified with an invalid code', function () {
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->from(route('verification.notice'))
+        ->actingAs($user)
+        ->post(route('verification.code.verify'), [
+            'code' => '654321',
+        ])
+        ->assertRedirect(route('verification.notice', absolute: false))
+        ->assertSessionHasErrors('code');
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });
 
-test('already verified user visiting verification link is redirected without firing event again', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
+test('email is not verified with an expired code', function () {
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->subMinute(),
     ]);
 
-    Event::fake();
+    $this->from(route('verification.notice'))
+        ->actingAs($user)
+        ->post(route('verification.code.verify'), [
+            'code' => '123456',
+        ])
+        ->assertRedirect(route('verification.notice', absolute: false))
+        ->assertSessionHasErrors('code');
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
-    );
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+});
 
-    $this->actingAs($user)->get($verificationUrl)
-        ->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+test('users can resend verification emails', function () {
+    Mail::fake();
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    Event::assertNotDispatched(Verified::class);
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '111111',
+        'email_verification_code_expires_at' => now()->addMinute(),
+    ]);
+
+    $this->from(route('verification.notice'))
+        ->actingAs($user)
+        ->post(route('verification.send'))
+        ->assertRedirect(route('verification.notice', absolute: false))
+        ->assertSessionHas('status', 'verification-email-sent');
+
+    $user->refresh();
+
+    expect($user->email_verification_code)->not->toBe('111111')
+        ->and($user->email_verification_code_expires_at)->not->toBeNull();
+
+    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+        return $mail->hasTo($user->email)
+            && $mail->verificationCode === $user->email_verification_code;
+    });
 });
 
 test('unverified customers are redirected to the verification notice from protected marketplace routes', function () {

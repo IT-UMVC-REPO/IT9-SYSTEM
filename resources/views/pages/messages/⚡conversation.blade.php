@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -97,7 +98,11 @@ new #[Title('Conversation')] class extends Component
             throw $exception;
         }
 
-        event(new MessageSent($message));
+        try {
+            event(new MessageSent($message));
+        } catch (\Throwable $broadcastException) {
+            Log::warning('MessageSent broadcast failed (Reverb may be down): '.$broadcastException->getMessage());
+        }
 
         $this->newMessage = '';
         $this->attachmentUpload = null;
@@ -218,7 +223,7 @@ new #[Title('Conversation')] class extends Component
     x-init="init()"
     x-on:beforeunload.window="disposeOnLeave()"
     x-on:livewire:navigating.window="disposeOnLeave()"
-    class="mx-auto flex min-h-[calc(100vh-6.5rem)] max-w-[1500px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8"
+    class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8"
 >
     <div
         wire:ignore
@@ -324,20 +329,20 @@ new #[Title('Conversation')] class extends Component
         </div>
     </div>
 
-    <div class="grid min-h-[calc(100vh-6.5rem)] gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside class="hidden lg:block">
-            <div class="space-y-4 lg:sticky lg:top-24">
-                <div>
-                    <span class="brand-kicker">{{ __('Conversations') }}</span>
-                    <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('All threads') }}</h2>
-                </div>
+    <div class="mx-auto grid h-full w-full max-w-[1600px] min-h-0 gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <aside class="hidden lg:flex min-h-0 flex-col overflow-hidden">
+            <div class="shrink-0 pb-4">
+                <span class="brand-kicker">{{ __('Conversations') }}</span>
+                <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('All threads') }}</h2>
+            </div>
 
+            <div class="min-h-0 flex-1 overflow-hidden">
                 <livewire:messages.conversation-sidebar :active-conversation-user-id="$otherUserId" :key="'conversation-sidebar-'.$otherUserId" />
             </div>
         </aside>
 
-        <div class="flex min-h-0 flex-col gap-6">
-            <section class="flex items-start justify-between gap-4">
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden gap-4">
+            <section class="shrink-0 flex items-start justify-between gap-4">
                 <div>
                     <a
                         href="{{ route('messages.inbox') }}"
@@ -378,8 +383,9 @@ new #[Title('Conversation')] class extends Component
                             type="button"
                             x-on:click="startCall()"
                             x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()"
+                            x-bind:title="supportsVideoCalling() ? 'Start video call' : videoCallDisabledReason()"
+                            x-bind:class="supportsVideoCalling() ? '' : 'cursor-not-allowed opacity-50'"
                             class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                            title="Start video call"
                         >
                             <i class="fa-solid fa-video text-sm"></i>
                             {{ __('Video call') }}
@@ -389,7 +395,7 @@ new #[Title('Conversation')] class extends Component
             </section>
 
             @if ($this->linkedOrder !== null)
-                <section class="brand-panel-muted p-5">
+                <section class="brand-panel-muted shrink-0 p-5">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p class="brand-kicker !mb-0">{{ __('Linked order') }}</p>
@@ -413,7 +419,7 @@ new #[Title('Conversation')] class extends Component
 
             <section class="brand-panel flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
-                    class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
+                    class="flex-1 min-h-0 space-y-4 overflow-y-auto px-5 py-5 sm:px-6"
                     x-data
                     x-init="$el.scrollTop = $el.scrollHeight"
                     @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })"
@@ -424,17 +430,17 @@ new #[Title('Conversation')] class extends Component
                                 wire:key="conversation-message-{{ $message->id }}"
                                 class="flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}"
                             >
-                                <div class="max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }} flex flex-col gap-2">
+                                <div class="flex max-w-[85%] flex-col gap-2 sm:max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
                                     <div class="flex items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
                                         @unless ($isOwnMessage)
                                             <x-user-avatar :user="$message->sender" size="sm" />
                                         @endunless
 
                                         <div
-                                            class="rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}"
+                                            class="max-w-full overflow-hidden rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}"
                                         >
                                             <?php if (filled($message->content)): ?>
-                                                <p class="whitespace-pre-wrap break-words">{{ $message->content }}</p>
+                                                <p class="max-h-72 overflow-y-auto whitespace-pre-wrap break-all rounded-lg [overflow-wrap:anywhere]">{{ $message->content }}</p>
                                             <?php endif; ?>
 
                                             <?php if ($message->attachment_path): ?>
@@ -497,33 +503,37 @@ new #[Title('Conversation')] class extends Component
                     @endforelse
                 </div>
 
-                <form wire:submit="send" class="border-t border-stone-200 p-5 dark:border-white/10 sm:p-6">
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_9rem]">
-                        <flux:textarea
-                            wire:model="newMessage"
-                            :label="__('Reply')"
-                            rows="3"
-                            :placeholder="__('Write your message here')"
-                            x-on:keydown.enter.prevent="$wire.send()"
-                        />
-
-                        <div class="flex h-full flex-col justify-end gap-2">
-                            <label for="conversation-attachment" class="brand-button-secondary inline-flex w-full cursor-pointer items-center justify-center gap-2 text-sm">
-                                <i class="fa-solid fa-paperclip text-xs"></i>
-                                {{ __('Attach file') }}
-                            </label>
-                            <input id="conversation-attachment" type="file" wire:model="attachmentUpload" class="sr-only">
-
-                            <button
-                                type="submit"
-                                wire:loading.attr="disabled"
-                                wire:target="send,attachmentUpload"
-                                class="brand-button-primary h-full min-h-[3.5rem] w-full self-end"
-                            >
-                                <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
-                                <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
-                            </button>
+                <form wire:submit="send" class="shrink-0 border-t border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
+                    <div class="flex items-end gap-2">
+                        <div class="min-w-0 flex-1">
+                            <flux:textarea
+                                wire:model="newMessage"
+                                :label="__('Reply')"
+                                rows="1"
+                                :placeholder="__('Write your message here')"
+                                x-data="{ resize() { $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px' } }"
+                                x-init="resize()"
+                                x-on:input="resize()"
+                                x-on:keydown.enter.prevent="$wire.send()"
+                                style="min-height: 2.75rem; max-height: 10rem; overflow-y: auto; resize: none;"
+                            />
                         </div>
+
+                        <label for="conversation-attachment" class="brand-button-secondary inline-flex min-h-[2.75rem] shrink-0 cursor-pointer items-center justify-center gap-2 px-4 py-3 text-sm">
+                            <i class="fa-solid fa-paperclip text-xs"></i>
+                            {{ __('Attach') }}
+                        </label>
+                        <input id="conversation-attachment" type="file" wire:model="attachmentUpload" class="sr-only">
+
+                        <button
+                            type="submit"
+                            wire:loading.attr="disabled"
+                            wire:target="send,attachmentUpload"
+                            class="brand-button-primary min-h-[2.75rem] shrink-0 px-5 py-3"
+                        >
+                            <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
+                            <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
+                        </button>
                     </div>
 
                     <div class="mt-3 flex flex-wrap items-center gap-3">

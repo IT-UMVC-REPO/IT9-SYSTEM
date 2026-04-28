@@ -194,7 +194,7 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('verified users are redirected back to their portal home when requesting another verification email', function () {
+test('verified users are redirected back to their portal home when requesting another verification code', function () {
     $user = User::factory()->vendor()->create();
     VendorProfile::factory()->for($user, 'user')->approved()->create();
 

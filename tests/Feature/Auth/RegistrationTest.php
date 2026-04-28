@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\UserRole;
+use App\Mail\EmailVerification;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -85,4 +87,29 @@ test('new users are redirected to their intended page after registration', funct
         ->assertRedirect(route('shop.cart', absolute: false));
 
     $this->assertAuthenticated();
+});
+
+test('new users receive a branded verification email and land on the verification screen', function () {
+    Mail::fake();
+
+    $response = $this->followingRedirects()->post(route('register.store'), [
+        'name' => 'New OTP User',
+        'email' => 'otp-user@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $user = User::query()->where('email', 'otp-user@example.com')->firstOrFail();
+    $user->refresh();
+
+    $response->assertOk()
+        ->assertSee('Verify your email')
+        ->assertSee($user->email);
+
+    expect($user->email_verification_code)->not->toBeNull();
+
+    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+        return $mail->hasTo($user->email)
+            && $mail->verificationCode === $user->email_verification_code;
+    });
 });

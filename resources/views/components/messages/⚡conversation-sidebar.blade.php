@@ -43,10 +43,10 @@ new class extends Component
 };
 ?>
 
-<div wire:poll.15s class="contents">
+<div wire:poll.15s class="h-full">
     @if ($this->conversations->isNotEmpty())
-        <section class="brand-panel overflow-hidden p-3 sm:p-4">
-            <div class="space-y-2">
+        <section class="brand-panel flex h-full flex-col overflow-hidden p-3 sm:p-4">
+            <div class="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
                 @foreach ($this->conversations as $message)
                     @php($otherUser = $this->otherParticipant($message))
                     @php($isActiveConversation = $activeConversationUserId === $otherUser->getKey())
