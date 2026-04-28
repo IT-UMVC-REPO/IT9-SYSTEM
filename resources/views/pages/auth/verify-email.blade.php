@@ -1,30 +1,28 @@
 @php($user = auth()->user())
 
-<x-layouts::auth.card>
-    <div class="space-y-6">
-        <div class="space-y-3 text-center">
-            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Verify your email') }}</h1>
-            <p class="text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                {!! __('We sent a verification email to <strong class="font-semibold text-neutral-900 dark:text-zinc-100">:email</strong>. Use the button in that message to activate your account, or enter the 6-digit backup code from the same email below.', ['email' => e($user->email)]) !!}
-            </p>
+<x-layouts::auth :title="__('Verify your email')">
+    <div class="flex flex-col gap-5">
+        <div
+            class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/60 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <i class="fa-solid fa-envelope-open-text text-lg"></i>
         </div>
+        <x-auth-header :title="__('Verify your email')" :description="__('We sent a 6-digit code to :email. Enter it below or click the link in the email.', [
+            'email' => $user->email,
+        ])" />
 
         @if (session('status') === 'verification-email-sent')
-            <flux:text class="text-center font-medium !text-green-600 !dark:text-green-400">
+            <p class="text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
                 {{ __('A fresh verification email has been sent.') }}
-            </flux:text>
+            </p>
         @endif
 
-        <form method="POST" action="{{ route('verification.code.verify') }}" class="space-y-6">
+        <form method="POST" action="{{ route('verification.code.verify') }}" class="flex flex-col gap-4">
             @csrf
 
-            <div class="space-y-4">
-                <div class="flex justify-center">
-                    <flux:otp name="code" length="6" autofocus class="mx-auto" />
-                </div>
-
+            <div class="flex flex-col items-center gap-2">
+                <flux:otp name="code" length="6" autofocus class="mx-auto" />
                 @error('code')
-                    <flux:text color="red" class="text-center">{{ $message }}</flux:text>
+                    <flux:text color="red" class="text-center text-sm">{{ $message }}</flux:text>
                 @enderror
             </div>
 
@@ -32,32 +30,21 @@
                 {{ __('Verify email') }}
             </flux:button>
         </form>
-
-        <div class="space-y-4">
-            <div class="relative">
-                <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div class="w-full border-t border-stone-200 dark:border-white/10"></div>
-                </div>
-                <div class="relative flex justify-center">
-                    <span class="bg-white px-3 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-400 dark:bg-zinc-950 dark:text-zinc-500">
-                        {{ __('Need another email?') }}
-                    </span>
-                </div>
-            </div>
-
+        <hr class="border-t border-stone-200 dark:border-white/10" />
+        <div class="flex items-center justify-center gap-3 text-sm text-neutral-500 dark:text-zinc-400">
             <form method="POST" action="{{ route('verification.send') }}">
                 @csrf
-                <flux:button type="submit" variant="ghost" class="w-full">
-                    {{ __('Send another email') }}
-                </flux:button>
+                <button type="submit" class="font-medium underline hover:text-neutral-800 dark:hover:text-zinc-100">
+                    {{ __('Resend email') }}
+                </button>
+            </form>
+            <span aria-hidden="true">&middot;</span>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="font-medium underline hover:text-neutral-800 dark:hover:text-zinc-100">
+                    {{ __('Log out') }}
+                </button>
             </form>
         </div>
-
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <flux:button variant="ghost" type="submit" class="w-full text-sm cursor-pointer" data-test="logout-button">
-                {{ __('Log out') }}
-            </flux:button>
-        </form>
     </div>
-</x-layouts::auth.card>
+</x-layouts::auth>

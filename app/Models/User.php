@@ -62,7 +62,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $verificationCode = $this->refreshEmailVerificationCode();
 
-        Mail::to($this->email, $this->name)->queue(new EmailVerification(
+        Mail::to($this->email, $this->name)->send(new EmailVerification(
             user: $this,
             verificationUrl: $this->emailVerificationUrl(),
             verificationCode: $verificationCode,

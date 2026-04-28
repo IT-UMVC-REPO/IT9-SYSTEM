@@ -108,7 +108,7 @@ test('new users receive a branded verification email and land on the verificatio
 
     expect($user->email_verification_code)->not->toBeNull();
 
-    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+    Mail::assertSent(EmailVerification::class, function (EmailVerification $mail) use ($user) {
         return $mail->hasTo($user->email)
             && $mail->verificationCode === $user->email_verification_code;
     });
