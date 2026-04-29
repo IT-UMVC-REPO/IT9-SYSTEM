@@ -52,7 +52,7 @@ class EmailVerificationController extends Controller
     public function verify(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'code' => ['required', 'string', 'size:6'],
+            'code' => ['required', 'string', 'max:32'],
         ]);
 
         $user = $request->user();
@@ -61,11 +61,11 @@ class EmailVerificationController extends Controller
             return redirect()->route($user->homeRoute());
         }
 
-        $submittedCode = (string) $validated['code'];
+        $submittedCode = $this->normalizeVerificationCode((string) $validated['code']);
         $codeHasExpired = $user->email_verification_code_expires_at === null
             || ! $user->email_verification_code_expires_at->isFuture();
 
-        if ($user->email_verification_code !== $submittedCode || $codeHasExpired) {
+        if (! hash_equals((string) $user->email_verification_code, $submittedCode) || $codeHasExpired) {
             return back()->withErrors([
                 'code' => __('Invalid or expired code. Please request a new one.'),
             ]);
@@ -82,6 +82,11 @@ class EmailVerificationController extends Controller
         return redirect()
             ->route($user->homeRoute())
             ->with('status', 'email-verified');
+    }
+
+    private function normalizeVerificationCode(string $code): string
+    {
+        return preg_replace('/\D+/', '', $code) ?? '';
     }
 
     public function resend(Request $request): RedirectResponse

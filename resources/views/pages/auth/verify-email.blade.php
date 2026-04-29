@@ -20,7 +20,14 @@
             @csrf
 
             <div class="flex flex-col items-center gap-2">
-                <flux:otp name="code" length="6" autofocus class="mx-auto" />
+                <flux:otp
+                    name="code"
+                    length="6"
+                    mode="numeric"
+                    autocomplete="one-time-code"
+                    autofocus
+                    class="mx-auto"
+                />
                 @error('code')
                     <flux:text color="red" class="text-center text-sm">{{ $message }}</flux:text>
                 @enderror

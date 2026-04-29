@@ -168,7 +168,7 @@ class MarketplaceDemoSeeder extends Seeder
             ['user_id' => $vendorUser->id],
             [
                 'store_name' => self::STABLE_VENDOR_STORE_NAME,
-                'store_description' => 'Daily market goods from an approved vendor.',
+                'store_description' => 'Fresh produce, seafood, and daily essentials, sourced and stocked every morning for the neighborhood.',
                 'store_image' => $this->marketImage('vendor'),
                 'status' => VendorStatus::Approved,
                 'rejection_reason' => null,

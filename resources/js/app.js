@@ -18,6 +18,12 @@ window.Echo = new Echo({
 const videoCallResetDelay = 1800;
 const localVideoElementId = 'conversation-call-local-video';
 const remoteVideoElementId = 'conversation-call-remote-video';
+const videoCallIceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+];
 
 window.conversationVideoCall = (config) => ({
     authUserId: config.authUserId,
@@ -139,6 +145,8 @@ window.conversationVideoCall = (config) => ({
             this.statusMessage = `Calling ${this.otherUserName}...`;
 
             this.initPeer(true);
+            await new Promise((resolve) => window.setTimeout(resolve, 50));
+            this.flushPendingSignals();
         } catch (error) {
             if (this.callId !== null) {
                 try {
@@ -227,6 +235,9 @@ window.conversationVideoCall = (config) => ({
             initiator,
             stream: this.localStream,
             trickle: true,
+            config: {
+                iceServers: videoCallIceServers,
+            },
         });
 
         this.peer = peer;
@@ -298,10 +309,22 @@ window.conversationVideoCall = (config) => ({
             return this.localStream;
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-        });
+        let stream;
+
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true,
+            });
+        } catch (error) {
+            const message = error instanceof DOMException && error.name === 'NotAllowedError'
+                ? 'Camera or microphone access was denied. Please allow access in your browser settings and try again.'
+                : `Could not access camera or microphone: ${error instanceof Error && error.message ? error.message : 'Unknown browser error.'}`;
+
+            this.cleanupCall('ended', message);
+
+            throw new Error(message, { cause: error });
+        }
 
         this.localStream = stream;
         this.setVideoSource(localVideoElementId, stream);

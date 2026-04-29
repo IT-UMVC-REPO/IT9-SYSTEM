@@ -68,6 +68,26 @@ test('email can be verified with a valid code', function () {
     Event::assertDispatched(Verified::class);
 });
 
+test('email can be verified when a code is pasted with formatting', function () {
+    Event::fake([Verified::class]);
+
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $response = $this->actingAs($user)->post(route('verification.code.verify'), [
+        'code' => ' 123-456 ',
+    ]);
+
+    $response->assertRedirect(route($user->homeRoute(), absolute: false))
+        ->assertSessionHas('status', 'email-verified');
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+
+    Event::assertDispatched(Verified::class);
+});
+
 test('email can be verified from the signed link', function () {
     Event::fake([Verified::class]);
 

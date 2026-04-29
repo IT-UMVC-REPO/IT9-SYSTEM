@@ -43,12 +43,19 @@ class ProductFactory extends Factory
             'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=640&h=640&fit=crop&auto=format',
             'https://images.unsplash.com/photo-1584568694244-14fbdf83bd30?w=640&h=640&fit=crop&auto=format',
         ];
+        $productDescriptions = [
+            'Fresh %s selected for everyday market orders.',
+            'Quality %s prepared for reliable home cooking.',
+            'Market-ready %s stocked for today\'s shoppers.',
+            'Well-kept %s from trusted local suppliers.',
+            'Everyday %s chosen for freshness and good value.',
+        ];
 
         return [
             'vendor_id' => VendorProfile::factory()->approved(),
             'category_id' => Category::factory()->standalone(),
             'name' => $name,
-            'description' => fake()->paragraph(),
+            'description' => sprintf(fake()->randomElement($productDescriptions), $name),
             'price' => fake()->randomFloat(2, 50, 500),
             'stock_quantity' => fake()->numberBetween(0, 100),
             'image' => fake()->randomElement($foodPhotoUrls),

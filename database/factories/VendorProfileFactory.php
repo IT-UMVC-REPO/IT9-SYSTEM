@@ -29,11 +29,18 @@ class VendorProfileFactory extends Factory
             'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=640&h=640&fit=crop&auto=format',
             'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=640&h=640&fit=crop&auto=format',
         ];
+        $storeDescriptions = [
+            'Fresh market staples sourced early each morning for neighborhood shoppers.',
+            'Daily produce, pantry goods, and seasonal finds from trusted local suppliers.',
+            'Reliable wet-market favorites prepared for quick pickup and home cooking.',
+            'A neighborhood stall focused on fresh stock, fair prices, and friendly service.',
+            'Carefully selected seafood, meats, produce, and essentials for everyday meals.',
+        ];
 
         return [
             'user_id' => User::factory(),
             'store_name' => $storeName,
-            'store_description' => fake()->paragraph(),
+            'store_description' => fake()->randomElement($storeDescriptions),
             'store_image' => fake()->randomElement($vendorPhotoUrls),
             'status' => VendorStatus::Pending,
             'rejection_reason' => null,

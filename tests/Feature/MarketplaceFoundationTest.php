@@ -100,6 +100,16 @@ test('marketplace factories build related records with enum casts', function () 
         ->and($notification->user->is($customer))->toBeTrue();
 });
 
+test('marketplace factories use readable non lorem descriptions', function () {
+    $vendorProfile = VendorProfile::factory()->make();
+    $product = Product::factory()->make();
+
+    expect(strtolower($vendorProfile->store_description))->not->toContain('lorem ipsum')
+        ->and(strtolower($product->description))->not->toContain('lorem ipsum')
+        ->and($vendorProfile->store_description)->not->toBeEmpty()
+        ->and($product->description)->not->toBeEmpty();
+});
+
 test('marketplace unique constraints reject duplicate records for :dataset', function (Closure $assertDuplicateInsertFails) {
     $assertDuplicateInsertFails();
 })->with([

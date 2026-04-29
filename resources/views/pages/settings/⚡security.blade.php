@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Features;
-use Laravel\Fortify\Fortify;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -18,21 +17,19 @@ new #[Title('Security settings')] class extends Component {
     public string $password = '';
     public string $password_confirmation = '';
 
-    public bool $canManageTwoFactor;
+    public bool $canManageTwoFactor = false;
 
-    public bool $twoFactorEnabled;
+    public bool $twoFactorEnabled = false;
 
-    public bool $requiresConfirmation;
-    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
+    public bool $requiresConfirmation = false;
+    public function mount(): void
     {
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
 
         if ($this->canManageTwoFactor) {
-            if (Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
-                $disableTwoFactorAuthentication(auth()->user());
-            }
+            $user = auth()->user();
 
-            $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
+            $this->twoFactorEnabled = $user->hasEnabledTwoFactorAuthentication();
             $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
         }
     }

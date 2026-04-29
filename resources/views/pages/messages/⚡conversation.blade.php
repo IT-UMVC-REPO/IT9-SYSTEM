@@ -206,32 +206,36 @@ new #[Title('Conversation')] class extends Component
 
 <div
     wire:poll.5s="refreshThread"
-    x-data="window.conversationVideoCall({
-        authUserId: @js((int) auth()->id()),
-        conversationKey: @js(Message::conversationKey($otherUserId)),
-        otherUserId: @js($otherUserId),
-        otherUserName: @js($this->otherUser->name),
-        reverbEnabled: @js(filled(config('broadcasting.connections.reverb.key'))),
-        routes: {
-            initiate: @js(route('calls.initiate')),
-            signal: @js(route('calls.signal', ['call' => '__CALL_ID__'])),
-            answer: @js(route('calls.answer', ['call' => '__CALL_ID__'])),
-            decline: @js(route('calls.decline', ['call' => '__CALL_ID__'])),
-            end: @js(route('calls.end', ['call' => '__CALL_ID__'])),
-        },
-    })"
-    x-init="init()"
-    x-on:beforeunload.window="disposeOnLeave()"
-    x-on:livewire:navigating.window="disposeOnLeave()"
     class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8"
 >
     <div
-        wire:ignore
-        x-cloak
-        x-show="isOverlayVisible()"
-        x-transition.opacity
-        class="fixed inset-0 z-[70] bg-neutral-950/95 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8"
+        wire:key="conversation-video-call-{{ $otherUserId }}"
+        x-data="window.conversationVideoCall({
+            authUserId: @js((int) auth()->id()),
+            conversationKey: @js(Message::conversationKey($otherUserId)),
+            otherUserId: @js($otherUserId),
+            otherUserName: @js($this->otherUser->name),
+            reverbEnabled: @js(filled(config('broadcasting.connections.reverb.key'))),
+            routes: {
+                initiate: @js(route('calls.initiate')),
+                signal: @js(route('calls.signal', ['call' => '__CALL_ID__'])),
+                answer: @js(route('calls.answer', ['call' => '__CALL_ID__'])),
+                decline: @js(route('calls.decline', ['call' => '__CALL_ID__'])),
+                end: @js(route('calls.end', ['call' => '__CALL_ID__'])),
+            },
+        })"
+        x-init="init()"
+        x-on:beforeunload.window="disposeOnLeave()"
+        x-on:livewire:navigating.window="disposeOnLeave()"
+        class="contents"
     >
+        <div
+            wire:ignore
+            x-cloak
+            x-show="isOverlayVisible()"
+            x-transition.opacity
+            class="fixed inset-0 z-[70] bg-neutral-950/95 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8"
+        >
         <div class="mx-auto flex h-full max-w-7xl flex-col gap-6">
             <section class="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-white/10 bg-white/6 px-5 py-4 text-white shadow-2xl shadow-black/35">
                 <div>
@@ -381,6 +385,8 @@ new #[Title('Conversation')] class extends Component
 
                         <button
                             type="button"
+                            wire:ignore
+                            data-video-call-control
                             x-on:click="startCall()"
                             x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()"
                             x-bind:title="supportsVideoCalling() ? 'Start video call' : videoCallDisabledReason()"
@@ -555,6 +561,7 @@ new #[Title('Conversation')] class extends Component
                     @enderror
                 </form>
             </section>
+        </div>
         </div>
     </div>
 </div>

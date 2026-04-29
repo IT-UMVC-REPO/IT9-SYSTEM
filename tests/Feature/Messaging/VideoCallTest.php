@@ -153,3 +153,23 @@ test('third parties cannot signal on a call they are not part of', function () {
 
     Event::assertNotDispatched(VideoCallSignal::class);
 });
+
+test('video call client configures public stun servers and media permission feedback', function () {
+    $client = file_get_contents(resource_path('js/app.js'));
+
+    expect($client)
+        ->toContain('stun:stun.l.google.com:19302')
+        ->toContain('stun:stun1.l.google.com:19302')
+        ->toContain('iceServers: videoCallIceServers')
+        ->toContain('Camera or microphone access was denied')
+        ->toContain('this.flushPendingSignals();');
+});
+
+test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
+    $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
+
+    expect($conversation)
+        ->toContain('wire:key="conversation-video-call-{{ $otherUserId }}"')
+        ->toContain('x-data="window.conversationVideoCall({')
+        ->toMatch('/<button[\s\S]*wire:ignore[\s\S]*data-video-call-control[\s\S]*x-on:click="startCall\(\)"/');
+});
