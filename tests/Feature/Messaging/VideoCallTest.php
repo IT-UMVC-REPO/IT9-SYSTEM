@@ -162,14 +162,24 @@ test('video call client configures public stun servers and media permission feed
         ->toContain('stun:stun1.l.google.com:19302')
         ->toContain('iceServers: videoCallIceServers')
         ->toContain('Camera or microphone access was denied')
-        ->toContain('this.flushPendingSignals();');
+        ->toContain('this.flushPendingSignals();')
+        ->toContain('window.conversationVideoCallControl');
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
     $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
 
+    preg_match('/<button\s+type="button"[\s\S]*?data-video-call-control[\s\S]*?<\/button>/', $conversation, $videoCallButton);
+
     expect($conversation)
         ->toContain('wire:key="conversation-video-call-{{ $otherUserId }}"')
-        ->toContain('x-data="window.conversationVideoCall({')
-        ->toMatch('/<button[\s\S]*wire:ignore[\s\S]*data-video-call-control[\s\S]*x-on:click="startCall\(\)"/');
+        ->toContain('wire:ignore.self')
+        ->toContain('data-conversation-video-call')
+        ->toContain('x-init="$el.__conversationVideoCall = $data; init()"')
+        ->toContain('x-data="window.conversationVideoCall({');
+
+    expect($videoCallButton[0] ?? '')
+        ->toContain('x-data="window.conversationVideoCallControl()"')
+        ->toContain('x-on:click="startCall()"')
+        ->not->toContain('wire:ignore');
 });

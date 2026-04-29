@@ -1,3 +1,5 @@
+window.global = window.global ?? window;
+
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import SimplePeer from 'simple-peer';
@@ -46,6 +48,7 @@ window.conversationVideoCall = (config) => ({
         }
 
         this.initialized = true;
+        window.__conversationVideoCallInstance = this;
 
         window.Echo.private(`messaging.${this.conversationKey}`)
             .listen('.VideoCallInitiated', (event) => {
@@ -466,6 +469,31 @@ window.conversationVideoCall = (config) => ({
     },
 });
 
+window.conversationVideoCallControl = () => ({
+    manager() {
+        return (
+            this.$el.closest('[data-conversation-video-call]')?.__conversationVideoCall
+            ?? window.__conversationVideoCallInstance
+            ?? null
+        );  },
+
+    get callStatus() {
+        return this.manager()?.callStatus ?? 'idle';
+    },
+
+    supportsVideoCalling() {
+        return this.manager()?.supportsVideoCalling() ?? false;
+    },
+
+    videoCallDisabledReason() {
+        return this.manager()?.videoCallDisabledReason() ?? 'Video calling is still loading. Please try again.';
+    },
+
+    startCall() {
+        return this.manager()?.startCall();
+    },
+});
+
 document.addEventListener('brand-color-preview', (event) => {
     if (typeof event.detail !== 'string') {
         return;
@@ -477,3 +505,11 @@ document.addEventListener('brand-color-preview', (event) => {
 document.addEventListener('brand-color-persisted', () => {
     window.setTimeout(() => window.location.reload(), 1200);
 });
+
+/**
+ * Echo exposes an expressive API for subscribing to channels and listening
+ * for events that are broadcast by Laravel. Echo and event broadcasting
+ * allow your team to quickly build robust real-time web applications.
+ */
+
+import './echo';
