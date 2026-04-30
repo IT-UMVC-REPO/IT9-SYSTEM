@@ -8,13 +8,10 @@ window.Pusher = Pusher;
 window.SimplePeer = SimplePeer;
 
 window.Echo = new Echo({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT,
-    wssPort: import.meta.env.VITE_REVERB_PORT,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-    enabledTransports: ['ws', 'wss'],
+    broadcaster: 'pusher',
+    key: import.meta.env.VITE_PUSHER_APP_KEY,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+    forceTLS: true,
 });
 
 const videoCallResetDelay = 1800;
@@ -136,7 +133,7 @@ window.conversationVideoCall = (config) => ({
             const payload = await this.requestJson(this.routes.initiate, {
                 receiver_id: this.otherUserId,
             }, {
-                timeoutMs: 5000,
+                timeoutMs: 15000,
                 unavailableMessage: 'Could not reach the call server. Make sure the app server is running.',
             });
 
@@ -314,19 +311,25 @@ window.conversationVideoCall = (config) => ({
 
         let stream;
 
+        // try {
+        //     stream = await navigator.mediaDevices.getUserMedia({
+        //         video: true,
+        //         audio: true,
+        //     });
+        // } catch (error) {
+        //     const message = error instanceof DOMException && error.name === 'NotAllowedError'
+        //         ? 'Camera or microphone access was denied. Please allow access in your browser settings and try again.'
+        //         : `Could not access camera or microphone: ${error instanceof Error && error.message ? error.message : 'Unknown browser error.'}`;
+
+        //     this.cleanupCall('ended', message);
+
+        //     throw new Error(message, { cause: error });
+        // }
+
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: true,
-            });
-        } catch (error) {
-            const message = error instanceof DOMException && error.name === 'NotAllowedError'
-                ? 'Camera or microphone access was denied. Please allow access in your browser settings and try again.'
-                : `Could not access camera or microphone: ${error instanceof Error && error.message ? error.message : 'Unknown browser error.'}`;
-
-            this.cleanupCall('ended', message);
-
-            throw new Error(message, { cause: error });
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        } catch {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         }
 
         this.localStream = stream;
@@ -475,7 +478,8 @@ window.conversationVideoCallControl = () => ({
             this.$el.closest('[data-conversation-video-call]')?.__conversationVideoCall
             ?? window.__conversationVideoCallInstance
             ?? null
-        );  },
+        );
+    },
 
     get callStatus() {
         return this.manager()?.callStatus ?? 'idle';
@@ -512,4 +516,4 @@ document.addEventListener('brand-color-persisted', () => {
  * allow your team to quickly build robust real-time web applications.
  */
 
-import './echo';
+// import './echo';

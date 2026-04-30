@@ -197,7 +197,7 @@ new #[Title('Conversation')] class extends Component {
             conversationKey: @js(Message::conversationKey($otherUserId)),
             otherUserId: @js($otherUserId),
             otherUserName: @js($this->otherUser->name),
-            reverbEnabled: @js(filled(config('broadcasting.connections.reverb.key'))),
+            reverbEnabled: @js(filled(config('broadcasting.connections.pusher.app_id'))),
             routes: {
                 initiate: @js(route('calls.initiate')),
                 signal: @js(route('calls.signal', ['call' => '__CALL_ID__'])),
@@ -207,7 +207,8 @@ new #[Title('Conversation')] class extends Component {
             },
         })" x-init="$el.__conversationVideoCall = $data;
         init()" x-on:beforeunload.window="disposeOnLeave()"
-        x-on:livewire:navigating.window="disposeOnLeave()" class="contents">
+        x-on:livewire:navigating.window="disposeOnLeave()"
+        x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
             class="fixed inset-0 z-[70] bg-neutral-950/95 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8">
             <div class="mx-auto flex h-full max-w-7xl flex-col gap-6">
@@ -333,8 +334,7 @@ new #[Title('Conversation')] class extends Component {
             </aside>
 
             <div class="flex min-h-0 flex-1 flex-col overflow-hidden gap-4">
-                <section wire:ignore class="shrink-0 flex items-start justify-between gap-4">
-
+                <section class="shrink-0 flex items-start justify-between gap-4">
                     <div>
                         <a href="{{ route('messages.inbox') }}" wire:navigate
                             class="inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-400)] lg:hidden">
@@ -363,15 +363,16 @@ new #[Title('Conversation')] class extends Component {
                                     @endif
                                 </div>
                             </div>
-
-                            <button type="button" x-on:click="startCall()"
-                                x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()"
-                                x-bind:title="supportsVideoCalling() ? 'Start video call' : videoCallDisabledReason()"
-                                x-bind:class="supportsVideoCalling() ? '' : 'cursor-not-allowed opacity-50'"
-                                class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
-                                <i class="fa-solid fa-video text-sm"></i>
-                                {{ __('Video call') }}
-                            </button>
+                            <div wire:ignore>
+                                <button type="button" x-on:click="$dispatch('video-call-start')"
+                                    x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()"
+                                    x-bind:title="supportsVideoCalling() ? 'Start video call' : videoCallDisabledReason()"
+                                    x-bind:class="supportsVideoCalling() ? '' : 'cursor-not-allowed opacity-50'"
+                                    class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                                    <i class="fa-solid fa-video text-sm"></i>
+                                    {{ __('Video call') }}
+                                </button>
+                            </div>
                         </div>
                 </section>
 
@@ -483,8 +484,12 @@ new #[Title('Conversation')] class extends Component {
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
                                 <flux:textarea wire:model="newMessage" :label="__('Reply')" rows="1"
-                                    :placeholder="__('Write your message here')" x-data="{ resize() { $el.style.height = 'auto';
-                                            $el.style.height = $el.scrollHeight + 'px' } }"
+                                    :placeholder="__('Write your message here')" x-data="{
+                                        resize() {
+                                            $el.style.height = 'auto';
+                                            $el.style.height = $el.scrollHeight + 'px'
+                                        }
+                                    }"
                                     x-init="resize()" x-on:input="resize()"
                                     x-on:keydown.enter.prevent="$wire.send()"
                                     style="min-height: 2.75rem; max-height: 10rem; overflow-y: auto; resize: none;" />
