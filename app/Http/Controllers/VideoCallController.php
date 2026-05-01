@@ -14,6 +14,14 @@ use Illuminate\Validation\ValidationException;
 
 class VideoCallController extends Controller
 {
+    public function iceServers(Request $request): JsonResponse
+    {
+        return response()->json([
+            'ice_servers' => $this->iceServersFor($request),
+            'ice_transport_policy' => $this->iceTransportPolicy(),
+        ]);
+    }
+
     public function initiate(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -135,6 +143,100 @@ class VideoCallController extends Controller
     private function isParticipant(VideoCall $call, int $userId): bool
     {
         return in_array($userId, [$call->caller_id, $call->receiver_id], true);
+    }
+
+    /**
+     * @return array<int, array{urls: array<int, string>, username?: string, credential?: string}>
+     */
+    private function iceServersFor(Request $request): array
+    {
+        $iceServers = array_map(
+            static fn (string $url): array => ['urls' => [$url]],
+            $this->configuredUrls('stun_urls'),
+        );
+
+        $turnUrls = $this->configuredUrls('turn_urls');
+        $turnCredentials = $this->turnCredentials($request);
+
+        if ($turnUrls !== [] && $turnCredentials !== null) {
+            $iceServers[] = [
+                'urls' => $turnUrls,
+                ...$turnCredentials,
+            ];
+        }
+
+        return $iceServers;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function configuredUrls(string $key): array
+    {
+        $configuredValue = config("webrtc.{$key}", []);
+
+        if (is_string($configuredValue)) {
+            $configuredValue = explode(',', $configuredValue);
+        }
+
+        if (! is_array($configuredValue)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (mixed $url): string => $this->normalizeIceUrl(trim((string) $url), $key),
+            $configuredValue,
+        )));
+    }
+
+    private function normalizeIceUrl(string $url, string $key): string
+    {
+        if ($url === '' || preg_match('/^(stun|turns?):/i', $url) === 1) {
+            return $url;
+        }
+
+        return match ($key) {
+            'stun_urls' => 'stun:'.$url,
+            'turn_urls' => 'turn:'.$url,
+            default => $url,
+        };
+    }
+
+    /**
+     * @return array{username: string, credential: string}|null
+     */
+    private function turnCredentials(Request $request): ?array
+    {
+        $sharedSecret = (string) config('webrtc.turn_shared_secret', '');
+
+        if (filled($sharedSecret)) {
+            $ttl = max(60, (int) config('webrtc.turn_ttl', 3600));
+            $username = now()->addSeconds($ttl)->getTimestamp().':'.$request->user()->getKey();
+
+            return [
+                'username' => $username,
+                'credential' => base64_encode(hash_hmac('sha1', $username, $sharedSecret, true)),
+            ];
+        }
+
+        $username = config('webrtc.turn_username');
+        $credential = config('webrtc.turn_credential');
+
+        if (! filled($username) || ! filled($credential)) {
+            return null;
+        }
+
+        return [
+            'username' => (string) $username,
+            'credential' => (string) $credential,
+        ];
+    }
+
+    private function iceTransportPolicy(): string
+    {
+        $policy = (string) config('webrtc.ice_transport_policy', 'all');
+
+        return in_array($policy, ['all', 'relay'], true) ? $policy : 'all';
     }
 
     /**

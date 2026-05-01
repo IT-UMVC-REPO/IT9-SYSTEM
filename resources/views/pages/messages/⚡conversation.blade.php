@@ -190,6 +190,12 @@ new #[Title('Conversation')] class extends Component {
 };
 ?>
 
+@php
+    $broadcastConnection = config('broadcasting.default');
+    $broadcastConfig = config("broadcasting.connections.{$broadcastConnection}", []);
+    $realtimeEnabled = filled($broadcastConfig['key'] ?? null) && filled($broadcastConfig['app_id'] ?? null);
+@endphp
+
 <div wire:poll.5s="refreshThread" class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8">
     <div wire:key="conversation-video-call-{{ $otherUserId }}" wire:ignore.self data-conversation-video-call
         x-data="window.conversationVideoCall({
@@ -197,8 +203,9 @@ new #[Title('Conversation')] class extends Component {
             conversationKey: @js(Message::conversationKey($otherUserId)),
             otherUserId: @js($otherUserId),
             otherUserName: @js($this->otherUser->name),
-            reverbEnabled: @js(filled(config('broadcasting.connections.pusher.app_id'))),
+            realtimeEnabled: @js($realtimeEnabled),
             routes: {
+                iceServers: @js(route('calls.ice-servers')),
                 initiate: @js(route('calls.initiate')),
                 signal: @js(route('calls.signal', ['call' => '__CALL_ID__'])),
                 answer: @js(route('calls.answer', ['call' => '__CALL_ID__'])),
@@ -238,7 +245,7 @@ new #[Title('Conversation')] class extends Component {
                             </div>
                         </template>
 
-                        <template x-if="callStatus === 'active'">
+                        <template x-if="callStatus === 'active' || callStatus === 'connecting'">
                             <button type="button" x-on:click="endCall()"
                                 class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20">
                                 <i class="fa-solid fa-phone-slash text-sm"></i>
@@ -269,9 +276,9 @@ new #[Title('Conversation')] class extends Component {
                         <div
                             class="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur">
                             <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"
-                                :class="callStatus === 'calling' || callStatus === 'incoming' ? 'animate-pulse' : ''"></span>
+                                :class="callStatus === 'calling' || callStatus === 'incoming' || callStatus === 'connecting' ? 'animate-pulse' : ''"></span>
                             <span
-                                x-text="callStatus === 'calling' ? 'Calling...' : (callStatus === 'incoming' ? 'Incoming call' : 'Live call')"></span>
+                                x-text="callStatus === 'calling' ? 'Calling...' : (callStatus === 'incoming' ? 'Incoming call' : (callStatus === 'connecting' ? 'Connecting media' : 'Live call'))"></span>
                         </div>
 
                         <div class="absolute inset-x-0 bottom-0 p-6">
@@ -313,6 +320,11 @@ new #[Title('Conversation')] class extends Component {
                             <template x-if="callStatus === 'incoming'">
                                 <p class="mt-4 text-sm leading-7 text-white/65">
                                     {{ __('Accept to share your camera and microphone for this conversation.') }}</p>
+                            </template>
+
+                            <template x-if="callStatus === 'connecting'">
+                                <p class="mt-4 text-sm leading-7 text-white/65">
+                                    {{ __('The call was accepted. Keep this window open while the media connection finishes.') }}</p>
                             </template>
                         </section>
                     </div>
@@ -409,16 +421,16 @@ new #[Title('Conversation')] class extends Component {
                                 class="flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
                                 <div
                                     class="flex max-w-[85%] flex-col gap-2 sm:max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
-                                    <div class="flex items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
+                                    <div class="flex max-w-full items-start gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
                                         @unless ($isOwnMessage)
-                                            <x-user-avatar :user="$message->sender" size="sm" />
+                                            <x-user-avatar :user="$message->sender" size="sm" class="shrink-0" />
                                         @endunless
 
                                         <div
-                                            class="max-w-full overflow-hidden rounded-[1.5rem] px-4 py-3 text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}">
+                                            class="min-w-0 w-fit max-w-full overflow-hidden rounded-[1.5rem] px-4 py-3 text-left text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}">
                                             <?php if (filled($message->content)): ?>
                                             <p
-                                                class="max-h-72 overflow-y-auto whitespace-pre-wrap break-all rounded-lg [overflow-wrap:anywhere]">
+                                                class="max-h-72 overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                                                 {{ $message->content }}</p>
                                             <?php endif; ?>
 

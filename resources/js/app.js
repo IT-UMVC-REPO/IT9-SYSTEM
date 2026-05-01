@@ -2,45 +2,74 @@ window.global = window.global ?? window;
 
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
-import SimplePeer from 'simple-peer';
 
 window.Pusher = Pusher;
-window.SimplePeer = SimplePeer;
 
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-    forceTLS: true,
-});
+const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
+const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
+
+if (pusherKey) {
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: pusherKey,
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+        forceTLS: true,
+    });
+} else if (reverbKey) {
+    window.Echo = new Echo({
+        broadcaster: 'reverb',
+        key: reverbKey,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
+}
 
 const videoCallResetDelay = 1800;
+const videoCallConnectingWarningDelay = 10000;
+const videoCallConnectingTimeout = 30000;
 const localVideoElementId = 'conversation-call-local-video';
 const remoteVideoElementId = 'conversation-call-remote-video';
 const videoCallIceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: ['stun:stun.l.google.com:19302'] },
+    { urls: ['stun:stun1.l.google.com:19302'] },
+    { urls: ['stun:stun2.l.google.com:19302'] },
+    { urls: ['stun:stun3.l.google.com:19302'] },
 ];
+
+/**
+ * Strip large/unnecessary SDP lines to keep signal payloads small enough
+ * for Pusher's free-tier 10KB message limit.
+ */
+function stripSdp(sdp) {
+    return sdp.split('\n')
+        .filter(line => !line.startsWith('a=ssrc'))
+        .join('\n');
+}
 
 window.conversationVideoCall = (config) => ({
     authUserId: config.authUserId,
     conversationKey: config.conversationKey,
     otherUserId: config.otherUserId,
     otherUserName: config.otherUserName,
-    reverbEnabled: config.reverbEnabled,
+    realtimeEnabled: config.realtimeEnabled,
     routes: config.routes,
     callStatus: 'idle',
     callId: null,
     peer: null,
     localStream: null,
     pendingSignals: [],
+    iceServers: null,
+    iceTransportPolicy: 'all',
+    connectingWarningTimer: null,
+    connectingTimeoutTimer: null,
     statusMessage: '',
     initialized: false,
 
     init() {
-        if (this.initialized || !this.reverbEnabled || !window.Echo) {
+        if (this.initialized || !this.realtimeEnabled || !window.Echo) {
             return;
         }
 
@@ -75,14 +104,14 @@ window.conversationVideoCall = (config) => ({
                 }
 
                 if (event.status === 'active' && this.callStatus === 'calling') {
-                    this.statusMessage = `${this.otherUserName} joined the call.`;
-
+                    this.callStatus = 'connecting';
+                    this.statusMessage = `${this.otherUserName} accepted. Connecting media...`;
+                    this.startConnectionTimers();
                     return;
                 }
 
                 if (event.status === 'declined') {
                     this.cleanupCall('ended', `${this.otherUserName} declined the call.`);
-
                     return;
                 }
 
@@ -94,20 +123,19 @@ window.conversationVideoCall = (config) => ({
 
     supportsVideoCalling() {
         return Boolean(
-            this.reverbEnabled
+            this.realtimeEnabled
             && window.Echo
-            && window.SimplePeer
             && navigator.mediaDevices
             && navigator.mediaDevices.getUserMedia,
         );
     },
 
     videoCallDisabledReason() {
-        if (!this.reverbEnabled) {
-            return 'Real-time features require the Reverb server to be running.';
+        if (!this.realtimeEnabled) {
+            return 'Real-time calling is not configured for this app.';
         }
 
-        if (!window.Echo || !window.SimplePeer) {
+        if (!window.Echo) {
             return 'Video calling is still loading. Please try again.';
         }
 
@@ -125,7 +153,6 @@ window.conversationVideoCall = (config) => ({
     async startCall() {
         if (!this.supportsVideoCalling()) {
             this.cleanupCall('ended', this.videoCallDisabledReason());
-
             return;
         }
 
@@ -142,17 +169,18 @@ window.conversationVideoCall = (config) => ({
             this.statusMessage = 'Preparing your camera...';
 
             await this.ensureLocalStream();
+            this.statusMessage = 'Loading call connection settings...';
+            await this.loadIceConfiguration();
             this.statusMessage = `Calling ${this.otherUserName}...`;
 
             this.initPeer(true);
-            await new Promise((resolve) => window.setTimeout(resolve, 50));
             this.flushPendingSignals();
         } catch (error) {
             if (this.callId !== null) {
                 try {
                     await this.requestJson(this.callRoute('end'));
                 } catch {
-                    // Ignore cleanup failures while already surfacing the original error.
+                    // Ignore cleanup failures.
                 }
             }
 
@@ -167,14 +195,16 @@ window.conversationVideoCall = (config) => ({
 
         try {
             await this.ensureLocalStream();
+            this.statusMessage = 'Loading call connection settings...';
+            await this.loadIceConfiguration();
 
-            this.callStatus = 'active';
-            this.statusMessage = `Connecting to ${this.otherUserName}...`;
+            this.callStatus = 'connecting';
+            this.statusMessage = `Accepted. Connecting media with ${this.otherUserName}...`;
 
             this.initPeer(false);
             this.flushPendingSignals();
 
-            await this.requestJson(this.callRoute('answer'));
+            await this.requestJson(this.callRoute('answer'), null, { timeoutMs: 15000 });
         } catch (error) {
             this.cleanupCall('ended', this.callErrorMessage(error, 'Could not answer the call. Please check your connection.'));
         }
@@ -199,9 +229,9 @@ window.conversationVideoCall = (config) => ({
 
         if (activeCallId !== null) {
             try {
-                await this.requestJson(this.callRoute('end'));
+                await this.requestJson(this.callRoute('end'), null, { timeoutMs: 15000 });
             } catch {
-                // Ignore server cleanup failures and still release local media.
+                // Ignore server cleanup failures.
             }
         }
 
@@ -226,80 +256,276 @@ window.conversationVideoCall = (config) => ({
         this.cleanupCall('idle');
     },
 
+    async loadIceConfiguration() {
+        if (this.iceServers !== null) {
+            return;
+        }
+
+        const payload = await this.requestJson(this.routes.iceServers, null, {
+            method: 'GET',
+            timeoutMs: 15000,
+            unavailableMessage: 'Could not load call connection settings.',
+        });
+
+        this.iceServers = Array.isArray(payload?.ice_servers) && payload.ice_servers.length > 0
+            ? payload.ice_servers
+            : videoCallIceServers;
+        this.iceTransportPolicy = payload?.ice_transport_policy === 'relay' ? 'relay' : 'all';
+    },
+
     initPeer(initiator) {
         if (this.peer !== null || this.localStream === null) {
             return;
         }
 
-        const peer = new window.SimplePeer({
-            initiator,
-            stream: this.localStream,
-            trickle: true,
-            config: {
-                iceServers: videoCallIceServers,
-            },
+        const peer = new RTCPeerConnection({
+            iceServers: this.iceServers ?? videoCallIceServers,
+            iceTransportPolicy: this.iceTransportPolicy,
         });
 
         this.peer = peer;
+        this.startConnectionTimers();
 
-        peer.on('signal', async (signalData) => {
-            if (!this.callId) {
+        this.localStream.getTracks().forEach((track) => {
+            peer.addTrack(track, this.localStream);
+        });
+
+        peer.onicecandidate = async ({ candidate }) => {
+            if (!candidate || !this.callId || this.peer !== peer) {
                 return;
             }
+
+            console.log('ICE candidate size:', new Blob([JSON.stringify({ candidate: candidate.toJSON() })]).size, 'bytes');
 
             try {
                 await this.requestJson(this.callRoute('signal'), {
-                    signal_data: signalData,
-                });
+                    signal_data: {
+                        type: 'candidate',
+                        candidate: candidate.toJSON(),
+                    },
+                }, { timeoutMs: 15000 });
             } catch (error) {
-                this.cleanupCall('ended', this.callErrorMessage(error, 'Unable to sync the call.'));
+                if (this.peer === peer) {
+                    this.cleanupCall('ended', this.callErrorMessage(error, 'Unable to sync the call.'));
+                }
             }
-        });
+        };
 
-        peer.on('connect', () => {
-            this.callStatus = 'active';
-            this.statusMessage = 'Connected.';
-        });
+        peer.ontrack = (event) => {
+            if (this.peer !== peer || !event.streams[0]) {
+                return;
+            }
 
-        peer.on('stream', (remoteStream) => {
-            this.setVideoSource(remoteVideoElementId, remoteStream);
-            this.callStatus = 'active';
-            this.statusMessage = 'Connected.';
-        });
+            this.setVideoSource(remoteVideoElementId, event.streams[0]);
+            this.markPeerConnected();
+        };
 
-        peer.on('close', () => {
+        peer.oniceconnectionstatechange = () => {
             if (this.peer !== peer) {
                 return;
             }
 
-            void this.endCall();
-        });
+            if (peer.iceConnectionState === 'checking' && this.callStatus === 'connecting') {
+                this.statusMessage = `Connecting media with ${this.otherUserName}...`;
+            }
 
-        peer.on('error', () => {
-            if (this.peer !== peer) {
+            if (peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed') {
+                this.markPeerConnected();
+            }
+
+            if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
+                void this.endCall(this.connectionFailureMessage());
+            }
+        };
+
+        if (initiator) {
+            peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+                .then((offer) => peer.setLocalDescription(offer).then(() => offer))
+                .then((offer) => {
+                    if (this.peer !== peer || !this.callId) {
+                        return null;
+                    }
+
+                    const strippedSdp = stripSdp(offer.sdp);
+                    console.log('Outgoing offer SDP size:', new Blob([JSON.stringify({ type: offer.type, sdp: strippedSdp })]).size, 'bytes');
+
+                    return this.requestJson(this.callRoute('signal'), {
+                        signal_data: { type: offer.type, sdp: strippedSdp },
+                    }, { timeoutMs: 15000 });
+                })
+                .catch((error) => {
+                    if (this.peer === peer) {
+                        void this.endCall(this.callErrorMessage(error, 'Could not create call offer.'));
+                    }
+                });
+        }
+    },
+
+    markPeerConnected() {
+        this.clearConnectionTimers();
+        this.callStatus = 'active';
+        this.statusMessage = 'Connected.';
+    },
+
+    startConnectionTimers() {
+        this.clearConnectionTimers();
+
+        this.connectingWarningTimer = window.setTimeout(() => {
+            if (this.callStatus !== 'connecting') {
                 return;
             }
 
-            void this.endCall('Connection lost.');
+            this.statusMessage = this.usesTurnServers()
+                ? 'Still connecting media. Please keep this window open...'
+                : 'Still connecting media. Calls across different networks need TURN credentials in .env.';
+        }, videoCallConnectingWarningDelay);
+
+        this.connectingTimeoutTimer = window.setTimeout(() => {
+            if (this.callStatus !== 'connecting') {
+                return;
+            }
+
+            void this.endCall(this.connectionFailureMessage());
+        }, videoCallConnectingTimeout);
+    },
+
+    clearConnectionTimers() {
+        if (this.connectingWarningTimer !== null) {
+            window.clearTimeout(this.connectingWarningTimer);
+        }
+
+        if (this.connectingTimeoutTimer !== null) {
+            window.clearTimeout(this.connectingTimeoutTimer);
+        }
+
+        this.connectingWarningTimer = null;
+        this.connectingTimeoutTimer = null;
+    },
+
+    usesTurnServers() {
+        return (this.iceServers ?? []).some((server) => {
+            const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+
+            return urls.some((url) => typeof url === 'string' && url.startsWith('turn'));
         });
     },
 
+    connectionFailureMessage() {
+        if (!this.usesTurnServers()) {
+            return 'Could not establish the media connection. Add TURN credentials in .env for calls across different networks.';
+        }
+
+        return 'Could not establish the media connection. Please check your network and try again.';
+    },
+
     handleIncomingSignal(signalData) {
+        if (!signalData || typeof signalData !== 'object') {
+            return;
+        }
+
         if (this.peer === null) {
             this.pendingSignals.push(signalData);
+            return;
+        }
+
+        const peer = this.peer;
+
+        if (signalData.type === 'offer') {
+            console.log('Incoming offer SDP size:', new Blob([JSON.stringify(signalData)]).size, 'bytes');
+
+            void (async () => {
+                try {
+                    await peer.setRemoteDescription(new RTCSessionDescription(signalData));
+
+                    if (this.peer !== peer) {
+                        return;
+                    }
+
+                    const answer = await peer.createAnswer();
+                    await peer.setLocalDescription(answer);
+
+                    if (this.peer !== peer || !this.callId) {
+                        return;
+                    }
+
+                    const strippedSdp = stripSdp(answer.sdp);
+                    console.log('Outgoing answer SDP size:', new Blob([JSON.stringify({ type: answer.type, sdp: strippedSdp })]).size, 'bytes');
+
+                    await this.requestJson(this.callRoute('signal'), {
+                        signal_data: { type: answer.type, sdp: strippedSdp },
+                    }, { timeoutMs: 15000 });
+
+                    this.flushPendingSignals();
+                } catch (error) {
+                    if (this.peer === peer) {
+                        void this.endCall(this.callErrorMessage(error, 'Could not accept call offer.'));
+                    }
+                }
+            })();
 
             return;
         }
 
-        this.peer.signal(signalData);
+        if (signalData.type === 'answer') {
+            console.log('Incoming answer SDP size:', new Blob([JSON.stringify(signalData)]).size, 'bytes');
+
+            void (async () => {
+                try {
+                    await peer.setRemoteDescription(new RTCSessionDescription(signalData));
+
+                    if (this.peer === peer) {
+                        this.flushPendingSignals();
+                    }
+                } catch (error) {
+                    if (this.peer === peer) {
+                        void this.endCall(this.callErrorMessage(error, 'Could not process call answer.'));
+                    }
+                }
+            })();
+
+            return;
+        }
+
+        if (signalData.candidate) {
+            if (!peer.remoteDescription) {
+                this.pendingSignals.push(signalData);
+                return;
+            }
+
+            const candidate = signalData.type === 'candidate'
+                ? signalData.candidate
+                : signalData;
+
+            peer.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => { });
+        }
     },
 
     flushPendingSignals() {
         while (this.peer !== null && this.pendingSignals.length > 0) {
-            const signalData = this.pendingSignals.shift();
+            let signalData = this.pendingSignals[0];
+            let isSessionDescription = signalData?.type === 'offer' || signalData?.type === 'answer';
+
+            if (!this.peer.remoteDescription && !isSessionDescription) {
+                const sessionDescriptionIndex = this.pendingSignals.findIndex((pendingSignal) => (
+                    pendingSignal?.type === 'offer' || pendingSignal?.type === 'answer'
+                ));
+
+                if (sessionDescriptionIndex === -1) {
+                    return;
+                }
+
+                [signalData] = this.pendingSignals.splice(sessionDescriptionIndex, 1);
+                isSessionDescription = true;
+            } else {
+                this.pendingSignals.shift();
+            }
 
             if (signalData !== undefined) {
-                this.peer.signal(signalData);
+                this.handleIncomingSignal(signalData);
+            }
+
+            if (isSessionDescription) {
+                return;
             }
         }
     },
@@ -311,24 +537,13 @@ window.conversationVideoCall = (config) => ({
 
         let stream;
 
-        // try {
-        //     stream = await navigator.mediaDevices.getUserMedia({
-        //         video: true,
-        //         audio: true,
-        //     });
-        // } catch (error) {
-        //     const message = error instanceof DOMException && error.name === 'NotAllowedError'
-        //         ? 'Camera or microphone access was denied. Please allow access in your browser settings and try again.'
-        //         : `Could not access camera or microphone: ${error instanceof Error && error.message ? error.message : 'Unknown browser error.'}`;
-
-        //     this.cleanupCall('ended', message);
-
-        //     throw new Error(message, { cause: error });
-        // }
-
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        } catch {
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                throw error;
+            }
+
             stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         }
 
@@ -339,13 +554,13 @@ window.conversationVideoCall = (config) => ({
     },
 
     cleanupCall(nextStatus, message = '') {
-        const peer = this.peer;
+        this.clearConnectionTimers();
 
+        const peer = this.peer;
         this.peer = null;
 
         if (peer !== null) {
-            peer.removeAllListeners();
-            peer.destroy();
+            peer.close();
         }
 
         if (this.localStream !== null) {
@@ -354,6 +569,8 @@ window.conversationVideoCall = (config) => ({
 
         this.localStream = null;
         this.pendingSignals = [];
+        this.iceServers = null;
+        this.iceTransportPolicy = 'all';
         this.setVideoSource(localVideoElementId, null);
         this.setVideoSource(remoteVideoElementId, null);
 
@@ -385,6 +602,7 @@ window.conversationVideoCall = (config) => ({
 
     async requestJson(url, body = null, options = {}) {
         const {
+            method = 'POST',
             timeoutMs = 5000,
             unavailableMessage = 'Call server unavailable. Please try again later.',
         } = options;
@@ -393,17 +611,16 @@ window.conversationVideoCall = (config) => ({
 
         try {
             response = await fetch(url, {
-                method: 'POST',
+                method,
                 headers: {
                     ...(body === null ? {} : { 'Content-Type': 'application/json' }),
-                    'X-CSRF-TOKEN': this.csrfToken(),
+                    ...(method === 'GET' ? {} : { 'X-CSRF-TOKEN': this.csrfToken() }),
                 },
                 body: body === null ? null : JSON.stringify(body),
                 signal: this.requestSignal(timeoutMs),
             });
         } catch (error) {
             this.statusMessage = unavailableMessage;
-
             throw new Error(unavailableMessage, { cause: error });
         }
 
@@ -414,17 +631,13 @@ window.conversationVideoCall = (config) => ({
 
         if (!response.ok) {
             const message = payload?.message ?? unavailableMessage;
-
             this.statusMessage = message;
-
             throw new Error(message);
         }
 
         if (payload?.realtime_available === false) {
             const message = payload.message ?? unavailableMessage;
-
             this.statusMessage = message;
-
             throw new Error(message);
         }
 
@@ -441,15 +654,13 @@ window.conversationVideoCall = (config) => ({
         }
 
         const controller = new AbortController();
-
         window.setTimeout(() => controller.abort(), timeoutMs);
-
         return controller.signal;
     },
 
     callErrorMessage(error, fallbackMessage) {
         if (error instanceof DOMException && error.name === 'NotAllowedError') {
-            return 'Camera and microphone access is required to use video calling.';
+            return 'Camera or microphone access was denied. Please allow access in your browser settings and try again.';
         }
 
         if (error instanceof DOMException && error.name === 'NotFoundError') {
@@ -510,10 +721,4 @@ document.addEventListener('brand-color-persisted', () => {
     window.setTimeout(() => window.location.reload(), 1200);
 });
 
-/**
- * Echo exposes an expressive API for subscribing to channels and listening
- * for events that are broadcast by Laravel. Echo and event broadcasting
- * allow your team to quickly build robust real-time web applications.
- */
-
-// import './echo';
+import './echo';

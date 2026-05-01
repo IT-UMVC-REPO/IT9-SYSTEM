@@ -6,6 +6,7 @@ use App\Events\VideoCallSignal;
 use App\Events\VideoCallStatusChanged;
 use App\Models\User;
 use App\Models\VideoCall;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 
 function createVideoCallRecord(User $caller, User $receiver, array $overrides = []): VideoCall
@@ -134,6 +135,31 @@ test('caller can end a call', function () {
     Event::assertDispatched(VideoCallStatusChanged::class, fn (VideoCallStatusChanged $event) => $event->videoCall->is($call));
 });
 
+test('participants can send opaque peer signal payloads', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+    $call = createVideoCallRecord($caller, $receiver);
+    $signalData = [
+        'type' => 'offer',
+        'sdp' => 'v=0',
+    ];
+
+    Event::fake();
+
+    $this->actingAs($caller)
+        ->postJson(route('calls.signal', $call), [
+            'signal_data' => $signalData,
+        ])
+        ->assertSuccessful();
+
+    Event::assertDispatched(
+        VideoCallSignal::class,
+        fn (VideoCallSignal $event) => $event->videoCall->is($call)
+            && $event->senderId === $caller->getKey()
+            && $event->signalData === $signalData,
+    );
+});
+
 test('third parties cannot signal on a call they are not part of', function () {
     $caller = User::factory()->create();
     $receiver = User::factory()->create();
@@ -154,32 +180,122 @@ test('third parties cannot signal on a call they are not part of', function () {
     Event::assertNotDispatched(VideoCallSignal::class);
 });
 
-test('video call client configures public stun servers and media permission feedback', function () {
+test('guests cannot read call ice server configuration', function () {
+    $this->getJson(route('calls.ice-servers'))
+        ->assertUnauthorized();
+});
+
+test('authenticated users receive stun-only ice server configuration by default', function () {
+    config([
+        'webrtc.stun_urls' => [
+            'stun:stun.example.test:19302',
+            'stun:stun2.example.test:19302',
+        ],
+        'webrtc.turn_urls' => [],
+        'webrtc.turn_username' => null,
+        'webrtc.turn_credential' => null,
+        'webrtc.turn_shared_secret' => null,
+        'webrtc.ice_transport_policy' => 'all',
+    ]);
+
+    $response = $this->actingAs(User::factory()->create())
+        ->getJson(route('calls.ice-servers'))
+        ->assertSuccessful()
+        ->assertJsonCount(2, 'ice_servers')
+        ->assertJsonPath('ice_servers.0.urls.0', 'stun:stun.example.test:19302')
+        ->assertJsonPath('ice_servers.1.urls.0', 'stun:stun2.example.test:19302')
+        ->assertJsonPath('ice_transport_policy', 'all');
+
+    expect($response->json('ice_servers.0'))->not->toHaveKey('username')
+        ->and($response->json('ice_servers.1'))->not->toHaveKey('credential');
+});
+
+test('authenticated users receive static turn credentials when configured', function () {
+    config([
+        'webrtc.stun_urls' => ['stun.example.test:19302'],
+        'webrtc.turn_urls' => [
+            'turn.example.test:3478?transport=udp',
+            'turns:turn.example.test:5349?transport=tcp',
+        ],
+        'webrtc.turn_username' => 'static-user',
+        'webrtc.turn_credential' => 'static-secret',
+        'webrtc.turn_shared_secret' => null,
+        'webrtc.ice_transport_policy' => 'relay',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('calls.ice-servers'))
+        ->assertSuccessful()
+        ->assertJsonCount(2, 'ice_servers')
+        ->assertJsonPath('ice_servers.0.urls.0', 'stun:stun.example.test:19302')
+        ->assertJsonPath('ice_servers.1.urls.0', 'turn:turn.example.test:3478?transport=udp')
+        ->assertJsonPath('ice_servers.1.urls.1', 'turns:turn.example.test:5349?transport=tcp')
+        ->assertJsonPath('ice_servers.1.username', 'static-user')
+        ->assertJsonPath('ice_servers.1.credential', 'static-secret')
+        ->assertJsonPath('ice_transport_policy', 'relay');
+});
+
+test('shared-secret turn credentials are temporary and preferred over static credentials', function () {
+    Carbon::setTestNow('2026-05-01 10:00:00');
+
+    try {
+        $user = User::factory()->create();
+        $username = now()->addSeconds(600)->getTimestamp().':'.$user->getKey();
+        $credential = base64_encode(hash_hmac('sha1', $username, 'turn-shared-secret', true));
+
+        config([
+            'webrtc.stun_urls' => ['stun:stun.example.test:19302'],
+            'webrtc.turn_urls' => ['turn:turn.example.test:3478?transport=udp'],
+            'webrtc.turn_username' => 'static-user',
+            'webrtc.turn_credential' => 'static-secret',
+            'webrtc.turn_shared_secret' => 'turn-shared-secret',
+            'webrtc.turn_ttl' => 600,
+            'webrtc.ice_transport_policy' => 'all',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('calls.ice-servers'))
+            ->assertSuccessful()
+            ->assertJsonPath('ice_servers.1.urls.0', 'turn:turn.example.test:3478?transport=udp')
+            ->assertJsonPath('ice_servers.1.username', $username)
+            ->assertJsonPath('ice_servers.1.credential', $credential)
+            ->assertJsonPath('ice_transport_policy', 'all');
+    } finally {
+        Carbon::setTestNow();
+    }
+});
+
+test('video call client uses simple peer and server-provided ice configuration', function () {
     $client = file_get_contents(resource_path('js/app.js'));
 
     expect($client)
-        ->toContain('stun:stun.l.google.com:19302')
-        ->toContain('stun:stun1.l.google.com:19302')
-        ->toContain('iceServers: videoCallIceServers')
+        ->toContain("import Peer from '@thaunknown/simple-peer';")
+        ->toContain('new Peer({')
+        ->toContain('await this.loadIceConfiguration();')
+        ->toContain('signal_data: signalData')
+        ->toContain('trickle: false')
+        ->toContain('iceServers: this.iceServers ?? videoCallIceServers')
+        ->toContain('Calls across different networks need TURN credentials in .env.')
+        ->toContain('realtimeEnabled')
         ->toContain('Camera or microphone access was denied')
-        ->toContain('this.flushPendingSignals();')
-        ->toContain('window.conversationVideoCallControl');
+        ->toContain('window.conversationVideoCallControl')
+        ->not->toContain('RTCPeerConnection')
+        ->not->toContain('sanitizeIncomingSdp')
+        ->not->toContain('new RTCIceCandidate');
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
     $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
 
-    preg_match('/<button\s+type="button"[\s\S]*?data-video-call-control[\s\S]*?<\/button>/', $conversation, $videoCallButton);
-
     expect($conversation)
         ->toContain('wire:key="conversation-video-call-{{ $otherUserId }}"')
         ->toContain('wire:ignore.self')
         ->toContain('data-conversation-video-call')
-        ->toContain('x-init="$el.__conversationVideoCall = $data; init()"')
-        ->toContain('x-data="window.conversationVideoCall({');
-
-    expect($videoCallButton[0] ?? '')
-        ->toContain('x-data="window.conversationVideoCallControl()"')
-        ->toContain('x-on:click="startCall()"')
-        ->not->toContain('wire:ignore');
+        ->toContain('realtimeEnabled: @js($realtimeEnabled)')
+        ->toContain("iceServers: @js(route('calls.ice-servers'))")
+        ->toContain("callStatus === 'active' || callStatus === 'connecting'")
+        ->toContain('Connecting media')
+        ->toContain('x-data="window.conversationVideoCall({')
+        ->toContain('x-bind:disabled="callStatus !== \'idle\' || !supportsVideoCalling()"')
+        ->not->toContain('reverbEnabled');
 });

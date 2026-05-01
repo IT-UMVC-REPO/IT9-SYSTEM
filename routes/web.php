@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('m
 });
 
 Route::middleware(['auth', 'verified'])->prefix('api/calls')->name('calls.')->group(function () {
+    Route::get('/ice-servers', [VideoCallController::class, 'iceServers'])->name('ice-servers');
     Route::post('/initiate', [VideoCallController::class, 'initiate'])->name('initiate');
     Route::post('/{call}/signal', [VideoCallController::class, 'signal'])->name('signal');
     Route::post('/{call}/answer', [VideoCallController::class, 'answer'])->name('answer');
