@@ -141,12 +141,12 @@ new #[Title('Customer Dashboard')] class extends Component
             </p>
 
             <div class="mt-6 flex flex-wrap gap-3">
-                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary">
+                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary inline-flex items-center gap-2">
                     <i class="fa-solid fa-store text-xs"></i>
                     {{ __('Browse storefront') }}
                 </a>
 
-                <a href="{{ route('shop.orders') }}" wire:navigate class="brand-button-secondary">
+                <a href="{{ route('shop.orders') }}" wire:navigate class="brand-button-secondary inline-flex items-center gap-2">
                     <i class="fa-solid fa-bag-shopping text-xs"></i>
                     {{ __('View all orders') }}
                 </a>

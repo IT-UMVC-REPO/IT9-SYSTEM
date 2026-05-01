@@ -219,14 +219,14 @@ new #[Title('Vendor review')] class extends Component {
             </div>
 
             @if ($vendorProfile->status === VendorStatus::Pending)
-                <div class="mt-8 space-y-3">
-                    <button type="button" wire:click="approve" class="brand-button-primary w-full">
-                        {{ __('Approve') }}
-                    </button>
+                <div class="mt-8 grid grid-cols-2 gap-3">
+                    <flux:button type="button" variant="primary" wire:click="approve" class="h-11 w-full justify-center">
+                        {{ __('Approve vendor') }}
+                    </flux:button>
 
-                    <flux:modal.trigger name="reject-vendor-application">
-                        <flux:button variant="danger" type="button">
-                            {{ __('Reject') }}
+                    <flux:modal.trigger name="reject-vendor">
+                        <flux:button variant="danger" type="button" class="h-11 w-full justify-center">
+                            {{ __('Reject vendor') }}
                         </flux:button>
                     </flux:modal.trigger>
                 </div>
@@ -235,8 +235,8 @@ new #[Title('Vendor review')] class extends Component {
                     <flux:button
                         variant="danger"
                         type="button"
-                        wire:click="revokeApproval"
-                        wire:confirm="{{ __('Revoke this vendor approval and send them back to pending review?') }}"
+                        x-data
+                        x-on:click="$flux.modal('revoke-vendor-approval').show()"
                     >
                         {{ __('Revoke approval') }}
                     </flux:button>
@@ -245,26 +245,53 @@ new #[Title('Vendor review')] class extends Component {
         </aside>
     </section>
 
-    <flux:modal name="reject-vendor-application" class="max-w-lg">
-        <form wire:submit="reject" class="space-y-6 rounded-[1.5rem] border border-stone-200 bg-white/95 p-6 shadow-xl dark:border-white/10 dark:bg-zinc-900/95">
-            <div>
-                <flux:heading size="lg">{{ __('Reject application') }}</flux:heading>
-                <flux:subheading>
-                    {{ __('Add a clear reason so the vendor knows what needs to be corrected before reapplying.') }}
-                </flux:subheading>
+    <flux:modal name="revoke-vendor-approval" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Revoke approval?') }}</flux:heading>
+            <flux:text>{{ __('This vendor will return to pending review and lose access to vendor tools.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('revoke-vendor-approval').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="danger" wire:click="revokeApproval" x-on:click="$flux.modal('revoke-vendor-approval').close()">
+                    {{ __('Revoke approval') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal name="reject-vendor" class="max-w-md">
+        <div class="p-8 space-y-5">
+            <div class="space-y-1">
+                <flux:heading size="xl">{{ __('Reject application') }}</flux:heading>
+                <flux:text class="text-zinc-400">
+                    {{ __('Provide a reason so the vendor knows what to fix before reapplying.') }}
+                </flux:text>
             </div>
 
-            <flux:textarea wire:model="rejection_reason" :label="__('Reason for rejection')" rows="4" required />
+            <flux:field>
+                <flux:label>{{ __('Reason for rejection') }}</flux:label>
+                <flux:textarea
+                    wire:model="rejection_reason"
+                    rows="4"
+                    placeholder="{{ __('e.g. Incomplete business documents submitted.') }}"
+                    class="focus:ring-emerald-500"
+                    required
+                />
+                <flux:error name="rejection_reason" />
+            </flux:field>
 
-            <div class="flex justify-end gap-3">
-                <flux:modal.close>
-                    <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-                </flux:modal.close>
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('reject-vendor').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
 
-                <flux:button variant="danger" type="submit">
+                <flux:button variant="danger" wire:click="reject">
                     {{ __('Confirm rejection') }}
                 </flux:button>
             </div>
-        </form>
+        </div>
     </flux:modal>
 </div>

@@ -226,28 +226,30 @@ new #[Title('Edit product')] class extends Component {
 
             <flux:textarea wire:model="description" :label="__('Description')" rows="4" required />
 
-            <div class="relative">
-                <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="relative">
+                    <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+                    <flux:input
+                        wire:model="price"
+                        :label="__('Price')"
+                        type="number"
+                        inputmode="decimal"
+                        step="0.01"
+                        min="0.01"
+                        class="pl-8"
+                        required
+                    />
+                </div>
+
                 <flux:input
-                    wire:model="price"
-                    :label="__('Price')"
+                    wire:model="stock_quantity"
+                    :label="__('Stock quantity')"
                     type="number"
-                    inputmode="decimal"
-                    step="0.01"
-                    min="0.01"
-                    class="pl-8"
+                    min="0"
+                    step="1"
                     required
                 />
             </div>
-
-            <flux:input
-                wire:model="stock_quantity"
-                :label="__('Stock quantity')"
-                type="number"
-                min="0"
-                step="1"
-                required
-            />
 
             <flux:select wire:model="categoryId" :label="__('Category')" placeholder="{{ __('Choose a category') }}">
                 @foreach ($this->categoryGroups as $parentName => $categories)
@@ -259,29 +261,44 @@ new #[Title('Edit product')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:radio.group
-                wire:model="status"
-                :label="__('Publishing status')"
-                variant="cards"
-                class="grid gap-3"
-            >
-                <flux:radio :value="ProductStatus::Inactive->value">{{ __('Save as draft (inactive)') }}</flux:radio>
-                <flux:radio :value="ProductStatus::Active->value">{{ __('Publish immediately (active)') }}</flux:radio>
-            </flux:radio.group>
+            <div class="space-y-3">
+                <p class="text-sm font-medium text-neutral-900 dark:text-zinc-100">{{ __('Publishing status') }}</p>
 
-            <button
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
+                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Inactive->value }}" class="accent-emerald-500">
+                        <div>
+                            <p class="text-sm font-medium text-zinc-100">{{ __('Draft') }}</p>
+                            <p class="text-xs text-zinc-400">{{ __('Hidden from storefront') }}</p>
+                        </div>
+                    </label>
+
+                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
+                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Active->value }}" class="accent-emerald-500">
+                        <div>
+                            <p class="text-sm font-medium text-zinc-100">{{ __('Active') }}</p>
+                            <p class="text-xs text-zinc-400">{{ __('Visible to shoppers') }}</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <flux:button
+                variant="primary"
                 type="submit"
                 wire:loading.attr="disabled"
                 wire:target="update,productImageUpload"
-                class="brand-button-primary w-full"
+                class="w-full justify-center"
             >
                 <span wire:loading.remove wire:target="update">{{ __('Save changes') }}</span>
                 <span wire:loading wire:target="update">{{ __('Saving...') }}</span>
-            </button>
+            </flux:button>
 
-            <div class="border-t border-stone-200 pt-6 dark:border-white/10">
+            <div>
+                <hr class="my-4 border-zinc-800">
+
                 <flux:modal.trigger name="delete-product-listing">
-                    <flux:button variant="danger" type="button">
+                    <flux:button variant="danger" type="button" class="w-full justify-center">
                         {{ __('Delete listing') }}
                     </flux:button>
                 </flux:modal.trigger>

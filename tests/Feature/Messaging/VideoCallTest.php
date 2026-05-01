@@ -265,23 +265,43 @@ test('shared-secret turn credentials are temporary and preferred over static cre
     }
 });
 
-test('video call client uses simple peer and server-provided ice configuration', function () {
+test('video call signaling uses pusher echo credentials', function () {
+    $client = file_get_contents(resource_path('js/app.js'));
+    $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
+
+    expect($client)
+        ->toContain("broadcaster: 'pusher'")
+        ->toContain('VITE_PUSHER_APP_KEY')
+        ->toContain('VITE_PUSHER_APP_CLUSTER')
+        ->toContain('forceTLS: true')
+        ->not->toContain("broadcaster: 'reverb'")
+        ->not->toContain('VITE_REVERB_APP_KEY')
+        ->not->toContain("import './echo';")
+        ->and($conversation)
+        ->toContain("config('broadcasting.connections.pusher', [])")
+        ->not->toContain("config('broadcasting.connections.reverb.key')")
+        ->not->toContain('reverbEnabled');
+});
+
+test('video call client uses native rtc peer connection and server-provided ice configuration', function () {
     $client = file_get_contents(resource_path('js/app.js'));
 
     expect($client)
-        ->toContain("import Peer from '@thaunknown/simple-peer';")
-        ->toContain('new Peer({')
+        ->toContain('new RTCPeerConnection({')
         ->toContain('await this.loadIceConfiguration();')
-        ->toContain('signal_data: signalData')
-        ->toContain('trickle: false')
+        ->toContain("type: 'candidate'")
+        ->toContain('setRemoteDescription(new RTCSessionDescription')
+        ->toContain('new RTCIceCandidate')
         ->toContain('iceServers: this.iceServers ?? videoCallIceServers')
         ->toContain('Calls across different networks need TURN credentials in .env.')
         ->toContain('realtimeEnabled')
         ->toContain('Camera or microphone access was denied')
         ->toContain('window.conversationVideoCallControl')
-        ->not->toContain('RTCPeerConnection')
+        ->not->toContain("import Peer from '@thaunknown/simple-peer';")
+        ->not->toContain('new Peer({')
+        ->not->toContain('trickle: false')
         ->not->toContain('sanitizeIncomingSdp')
-        ->not->toContain('new RTCIceCandidate');
+        ->not->toContain('signal_data: signalData');
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {

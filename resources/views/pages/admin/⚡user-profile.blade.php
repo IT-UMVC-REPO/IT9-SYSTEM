@@ -75,8 +75,8 @@ new #[Title('User profile')] class extends Component {
                 <flux:button
                     variant="danger"
                     type="button"
-                    wire:click="toggleActiveStatus"
-                    wire:confirm="{{ __('Deactivate this account? They will be unable to log in.') }}"
+                    x-data
+                    x-on:click="$flux.modal('deactivate-user-profile').show()"
                     :disabled="auth()->id() === $user->id"
                 >
                     {{ __('Deactivate account') }}
@@ -88,6 +88,23 @@ new #[Title('User profile')] class extends Component {
             @endif
         </div>
     </section>
+
+    <flux:modal name="deactivate-user-profile" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Deactivate account?') }}</flux:heading>
+            <flux:text>{{ __('This user will be unable to log in until an admin reactivates the account.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('deactivate-user-profile').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="danger" wire:click="toggleActiveStatus" x-on:click="$flux.modal('deactivate-user-profile').close()">
+                    {{ __('Deactivate') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,0.8fr)]">
         <div class="space-y-6">

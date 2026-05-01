@@ -18,8 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
-            'webhooks/paymongo',
+        $middleware->trimStrings(except: [
+            'signal_data',
+            'sdp',
         ]);
 
         $middleware->redirectUsersTo(function (Request $request): string {

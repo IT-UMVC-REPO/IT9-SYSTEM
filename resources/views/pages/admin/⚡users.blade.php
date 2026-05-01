@@ -237,8 +237,8 @@ new #[Title('User management')] class extends Component {
                                             <flux:button
                                                 variant="danger"
                                                 type="button"
-                                                wire:click="toggleActiveStatus({{ $user->id }})"
-                                                wire:confirm="{{ __('Deactivate this account? They will be unable to log in.') }}"
+                                                x-data
+                                                x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').show()"
                                                 :disabled="auth()->id() === $user->id"
                                             >
                                                 {{ __('Deactivate') }}
@@ -296,8 +296,8 @@ new #[Title('User management')] class extends Component {
                                 <flux:button
                                     variant="danger"
                                     type="button"
-                                    wire:click="toggleActiveStatus({{ $user->id }})"
-                                    wire:confirm="{{ __('Deactivate this account? They will be unable to log in.') }}"
+                                    x-data
+                                    x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').show()"
                                     :disabled="auth()->id() === $user->id"
                                 >
                                     {{ __('Deactivate') }}
@@ -315,6 +315,25 @@ new #[Title('User management')] class extends Component {
                     </article>
                 @endforeach
             </div>
+
+            @foreach ($this->users as $user)
+                <flux:modal name="deactivate-user-{{ $user->id }}" class="max-w-sm" wire:key="deactivate-user-modal-{{ $user->id }}">
+                    <div class="p-6 space-y-4">
+                        <flux:heading size="lg">{{ __('Deactivate account?') }}</flux:heading>
+                        <flux:text>{{ __('This user will be unable to log in until an admin reactivates the account.') }}</flux:text>
+
+                        <div class="flex justify-end gap-3 pt-2">
+                            <flux:button variant="ghost" x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').close()">
+                                {{ __('Cancel') }}
+                            </flux:button>
+
+                            <flux:button variant="danger" wire:click="toggleActiveStatus({{ $user->id }})" x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').close()">
+                                {{ __('Deactivate') }}
+                            </flux:button>
+                        </div>
+                    </div>
+                </flux:modal>
+            @endforeach
 
             @if ($this->users->hasPages())
                 <div class="mt-8">

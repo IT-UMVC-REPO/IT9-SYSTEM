@@ -81,25 +81,60 @@ new class extends Component
 };
 ?>
 
-<button
-    type="button"
-    wire:click="{{ $isStarred ? 'unstar' : 'star' }}"
-    @if ($isStarred)
-        wire:confirm="{{ __('Remove this customer from your valued list?') }}"
-    @endif
-    wire:loading.attr="disabled"
-    class="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white text-sm shadow-sm transition dark:bg-zinc-900"
-    style="{{ $isStarred
-        ? 'border-color: var(--brand-300); background-color: color-mix(in oklab, var(--brand-100) 80%, white 20%); color: var(--brand-700);'
-        : 'border-color: rgb(231 229 228); color: rgb(120 113 108);' }}"
-    title="{{ $isStarred ? __('Unstar customer') : __('Star customer') }}"
-    aria-label="{{ $isStarred ? __('Unstar customer') : __('Star customer') }}"
->
-    <span wire:loading.remove wire:target="{{ $isStarred ? 'unstar' : 'star' }}">
-        <i class="{{ $isStarred ? 'fa-solid' : 'fa-regular' }} fa-star"></i>
-    </span>
+@php($modalName = 'confirm-unstar-customer-'.$customer->getKey())
 
-    <span wire:loading wire:target="{{ $isStarred ? 'unstar' : 'star' }}">
-        <i class="fa-solid fa-spinner animate-spin"></i>
-    </span>
-</button>
+<div class="inline-flex">
+    @if ($isStarred)
+        <button
+            type="button"
+            x-data
+            x-on:click="$flux.modal('{{ $modalName }}').show()"
+            wire:loading.attr="disabled"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--brand-300)] bg-[var(--brand-100)] text-sm text-[var(--brand-700)] shadow-sm transition hover:bg-[var(--brand-50)] disabled:cursor-not-allowed disabled:opacity-60 dark:border-[var(--brand-500)] dark:bg-zinc-800 dark:text-[var(--brand-200)]"
+            title="{{ __('Unstar customer') }}"
+            aria-label="{{ __('Unstar customer') }}"
+        >
+            <span wire:loading.remove wire:target="unstar">
+                <i class="fa-solid fa-star"></i>
+            </span>
+
+            <span wire:loading wire:target="unstar">
+                <i class="fa-solid fa-spinner animate-spin"></i>
+            </span>
+        </button>
+
+        <flux:modal name="{{ $modalName }}" class="max-w-sm">
+            <div class="p-6 space-y-4">
+                <flux:heading size="lg">{{ __('Remove customer?') }}</flux:heading>
+                <flux:text>{{ __('This customer will be removed from your valued list.') }}</flux:text>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <flux:button variant="ghost" x-on:click="$flux.modal('{{ $modalName }}').close()">
+                        {{ __('Cancel') }}
+                    </flux:button>
+
+                    <flux:button variant="danger" wire:click="unstar">
+                        {{ __('Remove') }}
+                    </flux:button>
+                </div>
+            </div>
+        </flux:modal>
+    @else
+        <button
+            type="button"
+            wire:click="star"
+            wire:loading.attr="disabled"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-sm text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            title="{{ __('Star customer') }}"
+            aria-label="{{ __('Star customer') }}"
+        >
+            <span wire:loading.remove wire:target="star">
+                <i class="fa-regular fa-star"></i>
+            </span>
+
+            <span wire:loading wire:target="star">
+                <i class="fa-solid fa-spinner animate-spin"></i>
+            </span>
+        </button>
+    @endif
+</div>

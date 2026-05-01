@@ -103,7 +103,7 @@ new #[Title('Admin dashboard')] class extends Component {
             ->with('user:id,name')
             ->where('status', VendorStatus::Pending)
             ->latest('created_at')
-            ->limit(5)
+            ->take(3)
             ->get();
     }
 
@@ -116,7 +116,7 @@ new #[Title('Admin dashboard')] class extends Component {
                 'vendor:id,store_name',
             ])
             ->latest('created_at')
-            ->limit(10)
+            ->take(3)
             ->get();
     }
 

@@ -572,15 +572,12 @@ new #[Title('Vendor registration')] class extends Component {
                             @foreach ($sampleProducts as $index => $sampleProduct)
                                 <article
                                     wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
-                                    class="rounded-[1.75rem] border border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60"
+                                    class="rounded-2xl border border-zinc-800 bg-zinc-900 p-8"
                                 >
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
                                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">
                                                 {{ __('Sample product #:number', ['number' => $loop->iteration]) }}
-                                            </p>
-                                            <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">
-                                                {{ __('This draft stays off the storefront until approval.') }}
                                             </p>
                                         </div>
 
@@ -591,7 +588,7 @@ new #[Title('Vendor registration')] class extends Component {
                                         @endif
                                     </div>
 
-                                    <div class="mt-6 grid gap-6 xl:grid-cols-[14rem_minmax(0,1fr)]">
+                                    <div class="mt-6 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
                                         <div
                                             x-data="{
                                                 previewUrl: @js($sampleProduct['currentImageUrl']),
@@ -624,7 +621,7 @@ new #[Title('Vendor registration')] class extends Component {
                                                     <img
                                                         x-bind:src="previewUrl"
                                                         alt="{{ __('Sample product preview') }}"
-                                                        class="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
+                                                        class="h-64 w-full rounded-xl object-cover"
                                                     >
 
                                                     <label for="sample-product-image-{{ $index }}" class="brand-button-secondary w-full cursor-pointer">
@@ -634,15 +631,15 @@ new #[Title('Vendor registration')] class extends Component {
                                             </template>
 
                                             <template x-if="!previewUrl">
-                                                <label for="sample-product-image-{{ $index }}" class="flex cursor-pointer flex-col items-center justify-center gap-4 rounded-[1.5rem] border-2 border-dashed border-stone-200 bg-white px-4 py-10 text-center dark:border-white/10 dark:bg-zinc-900/80">
-                                                    <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
+                                                <label for="sample-product-image-{{ $index }}" class="flex h-64 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-zinc-700 px-4 text-center">
+                                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800 text-zinc-300">
                                                         <i class="fa-solid fa-camera text-sm"></i>
                                                     </span>
                                                     <div class="space-y-2">
-                                                        <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                                                        <p class="text-sm font-semibold text-zinc-100">
                                                             {{ __('Upload product image') }}
                                                         </p>
-                                                        <p class="text-xs leading-6 text-neutral-500 dark:text-zinc-400">
+                                                        <p class="text-xs leading-6 text-zinc-400">
                                                             {{ __('Use the kind of photo customers should expect to see later in your catalog.') }}
                                                         </p>
                                                     </div>
@@ -667,7 +664,7 @@ new #[Title('Vendor registration')] class extends Component {
                                                 name="sampleProducts.{{ $index }}.description"
                                                 wire:model="sampleProducts.{{ $index }}.description"
                                                 :label="__('Description')"
-                                                rows="4"
+                                                rows="3"
                                                 required
                                             />
 
@@ -712,6 +709,8 @@ new #[Title('Vendor registration')] class extends Component {
                                                     </optgroup>
                                                 @endforeach
                                             </flux:select>
+
+                                            <flux:callout icon="information-circle" heading="{{ __('This draft stays off the storefront until approval.') }}" />
                                         </div>
                                     </div>
                                 </article>

@@ -18,7 +18,7 @@ new class extends Component {
 }; ?>
 
 <flux:modal name="delete-product-listing" class="max-w-lg">
-    <div class="space-y-6 rounded-[1.5rem] border border-rose-200 bg-white/95 p-6 shadow-xl dark:border-rose-500/30 dark:bg-zinc-900/95">
+    <div class="space-y-6 p-6">
         <div>
             <flux:heading size="lg">{{ __('Delete this listing?') }}</flux:heading>
             <flux:subheading>

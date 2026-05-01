@@ -44,27 +44,7 @@ test('approved vendors can access customer shopping routes', function () {
         ->assertSee('Browse market stalls');
 });
 
-test('approved vendor in customer mode is redirected to customer dashboard', function () {
-    $user = User::factory()->vendor()->create();
-    VendorProfile::factory()->for($user, 'user')->approved()->create();
-
-    $this->actingAs($user)
-        ->withSession(['marketplace_mode' => 'customer'])
-        ->get(route('dashboard'))
-        ->assertRedirect(route('customer.dashboard', absolute: false));
-});
-
-test('vendor in customer mode can access the cart page', function () {
-    $user = User::factory()->vendor()->create();
-    VendorProfile::factory()->for($user, 'user')->approved()->create();
-
-    $this->actingAs($user)
-        ->withSession(['marketplace_mode' => 'customer'])
-        ->get(route('shop.cart'))
-        ->assertOk();
-});
-
-test('vendor not in customer mode can still access the cart page shell', function () {
+test('approved vendor can access the cart page without switching roles', function () {
     $user = User::factory()->vendor()->create();
     VendorProfile::factory()->for($user, 'user')->approved()->create();
 

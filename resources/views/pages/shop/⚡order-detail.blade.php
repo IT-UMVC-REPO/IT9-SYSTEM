@@ -217,7 +217,9 @@ new #[Title('Order Detail')] class extends Component {
             <i class="fa-solid fa-arrow-left text-xs"></i>
             {{ __('Back to orders') }}
         </a>
-        <span class="brand-kicker">{{ __('Order tracker') }}</span>
+        <span class="inline-flex w-fit rounded-full border border-emerald-800/50 bg-emerald-950/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            {{ __('Order tracker') }}
+        </span>
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="space-y-2">
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
@@ -380,13 +382,30 @@ new #[Title('Order Detail')] class extends Component {
                 @if ($this->order->order_status === OrderStatus::Pending)
                     <button
                         type="button"
-                        wire:click="cancelOrder"
-                        wire:confirm="{{ __('Cancel this order? This cannot be undone.') }}"
+                        x-data
+                        x-on:click="$flux.modal('cancel-order').show()"
                         wire:loading.attr="disabled"
                         class="w-full rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:border-rose-500/30"
                     >
                         {{ __('Cancel order') }}
                     </button>
+
+                    <flux:modal name="cancel-order" class="max-w-sm">
+                        <div class="p-6 space-y-4">
+                            <flux:heading size="lg">{{ __('Cancel order?') }}</flux:heading>
+                            <flux:text>{{ __('This will stop the order before the vendor confirms it.') }}</flux:text>
+
+                            <div class="flex justify-end gap-3 pt-2">
+                                <flux:button variant="ghost" x-on:click="$flux.modal('cancel-order').close()">
+                                    {{ __('Keep order') }}
+                                </flux:button>
+
+                                <flux:button variant="danger" wire:click="cancelOrder" x-on:click="$flux.modal('cancel-order').close()">
+                                    {{ __('Cancel order') }}
+                                </flux:button>
+                            </div>
+                        </div>
+                    </flux:modal>
                 @endif
             </section>
         </aside>

@@ -80,7 +80,9 @@ new #[Title('Market Stalls')] class extends Component
         @if ($this->vendors->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->vendors as $vendor)
-                    <article wire:key="market-stall-{{ $vendor->id }}" class="brand-panel flex h-full flex-col overflow-hidden p-5">
+                    <article wire:key="market-stall-{{ $vendor->id }}" class="brand-panel relative flex h-full flex-col overflow-hidden p-5">
+                        <livewire:vendor.follow-button :vendor="$vendor" :overlay="true" :key="'vendor-directory-follow-button-'.$vendor->id" />
+
                         <div class="overflow-hidden rounded-[1.75rem] bg-stone-100 dark:bg-zinc-800">
                             <img
                                 src="{{ $vendor->store_image_url }}"
@@ -90,13 +92,9 @@ new #[Title('Market Stalls')] class extends Component
                         </div>
 
                         <div class="flex flex-1 flex-col pt-5">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="min-w-0">
-                                    <p class="brand-kicker !mb-0">{{ __('Approved stall') }}</p>
-                                    <h2 class="mt-3 truncate text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h2>
-                                </div>
-
-                                <livewire:vendor.follow-button :vendor="$vendor" :key="'vendor-directory-follow-button-'.$vendor->id" />
+                            <div class="min-w-0 pr-10">
+                                <p class="brand-kicker !mb-0">{{ __('Approved stall') }}</p>
+                                <h2 class="mt-3 truncate text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h2>
                             </div>
 
                             <p class="mt-4 line-clamp-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">

@@ -118,14 +118,20 @@
     }
 
     .brand-kicker {
-        @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em];
-        border-color: var(--brand-200);
-        background-color: var(--brand-50);
-        color: var(--brand-700);
+        @apply inline-flex self-start items-center gap-2 rounded-full border px-3.5 py-1 text-[10px] leading-none font-semibold uppercase tracking-[0.22em] transition-colors;
+        border-color: oklch(from var(--brand-400) l c h / 0.32);
+        background-color: oklch(from var(--brand-100) l c h / 0.6);
+        color: var(--brand-800);
+    }
+
+    .dark .brand-kicker {
+        border-color: oklch(from var(--brand-500) l c h / 0.35);
+        background-color: oklch(from var(--brand-500) l c h / 0.14);
+        color: var(--brand-200);
     }
 
     .brand-button-primary {
-        @apply inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition;
         background-color: var(--brand-600);
         color: var(--color-accent-foreground);
     }
@@ -135,7 +141,7 @@
     }
 
     .brand-button-secondary {
-        @apply inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100;
     }
 
     .brand-button-secondary:hover {
@@ -717,4 +723,9 @@ select:focus[data-flux-control] {
 
 .dark .settings-page [data-flux-error] {
     color: #fda4af !important;
+}
+
+:where(dialog, [role='dialog']) button[aria-label='Close'] {
+    top: 0.875rem !important;
+    right: 0.875rem !important;
 }

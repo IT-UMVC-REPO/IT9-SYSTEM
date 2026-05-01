@@ -101,6 +101,9 @@ test('vendors can create products with an uploaded image', function () {
 
     Livewire::actingAs($vendorUser)
         ->test('pages::vendor.product-create')
+        ->assertSee('Draft listings stay off the storefront until you publish them.')
+        ->assertSee('Hidden from storefront')
+        ->assertSee('Visible to shoppers')
         ->set('name', 'Pechay Bundle')
         ->set('description', 'Fresh pechay packed this morning.')
         ->set('price', '95.50')
@@ -152,6 +155,10 @@ test('edit form pre-populates and updates a product', function () {
 
     Livewire::actingAs($vendorUser)
         ->test('pages::vendor.product-edit', ['product' => $product])
+        ->assertSee('Save changes')
+        ->assertSee('Delete listing')
+        ->assertSee('Hidden from storefront')
+        ->assertSee('Visible to shoppers')
         ->assertSet('name', 'Bangus')
         ->assertSet('categoryId', (string) $leafCategory->getKey())
         ->set('name', 'Bangus Supreme')

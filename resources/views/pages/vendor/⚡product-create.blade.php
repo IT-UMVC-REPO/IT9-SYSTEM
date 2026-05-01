@@ -100,7 +100,7 @@ new #[Title('Create product')] class extends Component {
 
     <form
         wire:submit="save"
-        class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        class="grid gap-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-8 lg:grid-cols-[280px_minmax(0,1fr)]"
         x-data="{
             previewUrl: null,
             handleFile(event) {
@@ -118,8 +118,8 @@ new #[Title('Create product')] class extends Component {
             }
         }"
     >
-        <section class="brand-panel p-6 sm:p-8">
-            <div class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60">
+        <section class="space-y-3">
+            <div class="h-64 rounded-2xl border-2 border-dashed border-zinc-700 bg-zinc-950/50 p-4">
                 <input
                     x-ref="productImageInput"
                     id="product-image-upload"
@@ -131,29 +131,23 @@ new #[Title('Create product')] class extends Component {
                 >
 
                 <template x-if="previewUrl">
-                    <div class="space-y-4">
-                        <img
-                            x-bind:src="previewUrl"
-                            alt="{{ __('Product preview') }}"
-                            class="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
-                        >
-
-                        <label for="product-image-upload" class="brand-button-secondary w-full cursor-pointer">
-                            {{ __('Choose a different image') }}
-                        </label>
-                    </div>
+                    <img
+                        x-bind:src="previewUrl"
+                        alt="{{ __('Product preview') }}"
+                        class="h-full w-full rounded-xl object-cover"
+                    >
                 </template>
 
                 <template x-if="!previewUrl">
-                    <label for="product-image-upload" class="flex cursor-pointer flex-col items-center justify-center gap-4 py-12 text-center">
-                        <span class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-2xl">
+                    <label for="product-image-upload" class="flex h-full cursor-pointer flex-col items-center justify-center gap-4 text-center">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-800 text-zinc-300">
                             <i class="fa-solid fa-camera text-lg"></i>
                         </span>
                         <div class="space-y-2">
-                            <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                            <p class="text-sm font-semibold text-zinc-100">
                                 {{ __('Click to upload or drag here') }}
                             </p>
-                            <p class="text-sm text-neutral-500 dark:text-zinc-400">
+                            <p class="text-sm text-zinc-400">
                                 {{ __('Use a clean photo that matches what customers will receive from your stall.') }}
                             </p>
                         </div>
@@ -161,38 +155,49 @@ new #[Title('Create product')] class extends Component {
                 </template>
             </div>
 
+            <label
+                x-show="previewUrl"
+                x-cloak
+                for="product-image-upload"
+                class="brand-button-secondary w-full cursor-pointer"
+            >
+                {{ __('Choose a different image') }}
+            </label>
+
             @error('productImageUpload')
                 <p class="mt-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
             @enderror
         </section>
 
-        <section class="brand-panel space-y-6 p-6 sm:p-8">
+        <section class="space-y-4">
             <flux:input wire:model="name" :label="__('Product name')" type="text" required />
 
-            <flux:textarea wire:model="description" :label="__('Description')" rows="4" required />
+            <flux:textarea wire:model="description" :label="__('Description')" rows="3" required />
 
-            <div class="relative">
-                <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="relative">
+                    <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+                    <flux:input
+                        wire:model="price"
+                        :label="__('Price')"
+                        type="number"
+                        inputmode="decimal"
+                        step="0.01"
+                        min="0.01"
+                        class="pl-8"
+                        required
+                    />
+                </div>
+
                 <flux:input
-                    wire:model="price"
-                    :label="__('Price')"
+                    wire:model="stock_quantity"
+                    :label="__('Stock quantity')"
                     type="number"
-                    inputmode="decimal"
-                    step="0.01"
-                    min="0.01"
-                    class="pl-8"
+                    min="0"
+                    step="1"
                     required
                 />
             </div>
-
-            <flux:input
-                wire:model="stock_quantity"
-                :label="__('Stock quantity')"
-                type="number"
-                min="0"
-                step="1"
-                required
-            />
 
             <flux:select wire:model="categoryId" :label="__('Category')" placeholder="{{ __('Choose a category') }}">
                 @foreach ($this->categoryGroups as $parentName => $categories)
@@ -204,26 +209,40 @@ new #[Title('Create product')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:radio.group
-                wire:model="status"
-                :label="__('Publishing status')"
-                :description="__('Choose whether this listing should stay hidden as a draft or go live immediately.')"
-                variant="cards"
-                class="grid gap-3"
-            >
-                <flux:radio :value="ProductStatus::Inactive->value">{{ __('Save as draft (inactive)') }}</flux:radio>
-                <flux:radio :value="ProductStatus::Active->value">{{ __('Publish immediately (active)') }}</flux:radio>
-            </flux:radio.group>
+            <div class="space-y-3">
+                <p class="text-sm font-medium text-zinc-100">{{ __('Publishing status') }}</p>
 
-            <button
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
+                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Inactive->value }}" class="accent-emerald-500">
+                        <div>
+                            <p class="text-sm font-medium text-zinc-100">{{ __('Draft') }}</p>
+                            <p class="text-xs text-zinc-400">{{ __('Hidden from storefront') }}</p>
+                        </div>
+                    </label>
+
+                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
+                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Active->value }}" class="accent-emerald-500">
+                        <div>
+                            <p class="text-sm font-medium text-zinc-100">{{ __('Active') }}</p>
+                            <p class="text-xs text-zinc-400">{{ __('Visible to shoppers') }}</p>
+                        </div>
+                    </label>
+                </div>
+
+                <flux:callout icon="information-circle" heading="{{ __('Draft listings stay off the storefront until you publish them.') }}" />
+            </div>
+
+            <flux:button
+                variant="primary"
                 type="submit"
                 wire:loading.attr="disabled"
                 wire:target="save,productImageUpload"
-                class="brand-button-primary w-full"
+                class="w-full justify-center"
             >
                 <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
                 <span wire:loading wire:target="save">{{ __('Saving...') }}</span>
-            </button>
+            </flux:button>
         </section>
     </form>
 </div>

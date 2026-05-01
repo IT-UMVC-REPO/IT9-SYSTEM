@@ -14,6 +14,8 @@ new class extends Component
 
     public bool $isFollowing = false;
 
+    public bool $overlay = false;
+
     public function mount(VendorProfile $vendor): void
     {
         abort_unless(auth()->check(), 403);
@@ -76,25 +78,64 @@ new class extends Component
 };
 ?>
 
-<button
-    type="button"
-    wire:click="{{ $isFollowing ? 'unfollow' : 'follow' }}"
-    @if ($isFollowing)
-        wire:confirm="{{ __('Remove this stall from your favourites?') }}"
-    @endif
-    wire:loading.attr="disabled"
-    class="inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white text-sm shadow-sm transition dark:bg-zinc-900"
-    style="{{ $isFollowing
-        ? 'border-color: var(--brand-300); background-color: color-mix(in oklab, var(--brand-100) 80%, white 20%); color: var(--brand-700);'
-        : 'border-color: rgb(231 229 228); color: rgb(120 113 108);' }}"
-    title="{{ $isFollowing ? __('Unfollow stall') : __('Follow stall') }}"
-    aria-label="{{ $isFollowing ? __('Unfollow stall') : __('Follow stall') }}"
->
-    <span wire:loading.remove wire:target="{{ $isFollowing ? 'unfollow' : 'follow' }}">
-        <i class="{{ $isFollowing ? 'fa-solid' : 'fa-regular' }} fa-heart"></i>
-    </span>
+@php($modalName = 'confirm-unfollow-stall-'.$vendor->getKey())
 
-    <span wire:loading wire:target="{{ $isFollowing ? 'unfollow' : 'follow' }}">
-        <i class="fa-solid fa-spinner animate-spin"></i>
-    </span>
-</button>
+<div class="{{ $overlay ? 'absolute right-3 top-3 z-10' : 'inline-flex' }}">
+    @if ($isFollowing)
+        <button
+            type="button"
+            x-data
+            x-on:click="$flux.modal('{{ $modalName }}').show()"
+            wire:loading.attr="disabled"
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            title="{{ __('Unfollow stall') }}"
+            aria-label="{{ __('Unfollow stall') }}"
+        >
+            <span wire:loading.remove wire:target="unfollow">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="m9.653 16.915-.005-.003-.019-.01a20.759 20.759 0 0 1-1.162-.682 22.045 22.045 0 0 1-2.582-1.9C3.941 12.647 2 10.352 2 7.5A4.5 4.5 0 0 1 6.5 3c1.626 0 2.858.817 3.5 1.74A4.186 4.186 0 0 1 13.5 3 4.5 4.5 0 0 1 18 7.5c0 2.852-1.941 5.147-3.885 6.82a22.045 22.045 0 0 1-3.744 2.582l-.019.01-.005.003h-.002a.75.75 0 0 1-.69 0h-.002Z" />
+                </svg>
+            </span>
+
+            <span wire:loading wire:target="unfollow">
+                <i class="fa-solid fa-spinner animate-spin"></i>
+            </span>
+        </button>
+
+        <flux:modal name="{{ $modalName }}" class="max-w-sm">
+            <div class="p-6 space-y-4">
+                <flux:heading size="lg">{{ __('Remove stall?') }}</flux:heading>
+                <flux:text>{{ __('This stall will be removed from your favourites.') }}</flux:text>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <flux:button variant="ghost" x-on:click="$flux.modal('{{ $modalName }}').close()">
+                        {{ __('Cancel') }}
+                    </flux:button>
+
+                    <flux:button variant="danger" wire:click="unfollow">
+                        {{ __('Remove') }}
+                    </flux:button>
+                </div>
+            </div>
+        </flux:modal>
+    @else
+        <button
+            type="button"
+            wire:click="follow"
+            wire:loading.attr="disabled"
+            class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 shadow-sm transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+            title="{{ __('Follow stall') }}"
+            aria-label="{{ __('Follow stall') }}"
+        >
+            <span wire:loading.remove wire:target="follow">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.933 0-3.595 1.126-4.312 2.733-.717-1.607-2.379-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                </svg>
+            </span>
+
+            <span wire:loading wire:target="follow">
+                <i class="fa-solid fa-spinner animate-spin"></i>
+            </span>
+        </button>
+    @endif
+</div>

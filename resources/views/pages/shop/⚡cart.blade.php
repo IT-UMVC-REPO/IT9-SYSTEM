@@ -249,8 +249,8 @@ new #[Title('Cart')] class extends Component {
 
                                             <button
                                                 type="button"
-                                                wire:click="removeItem({{ $item->id }})"
-                                                wire:confirm="{{ __('Remove this item from your cart?') }}"
+                                                x-data
+                                                x-on:click="$flux.modal('remove-cart-item-{{ $item->id }}').show()"
                                                 wire:loading.attr="disabled"
                                                 class="text-sm font-medium text-rose-500 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
                                             >
@@ -258,6 +258,23 @@ new #[Title('Cart')] class extends Component {
                                             </button>
                                         </div>
                                     </div>
+
+                                    <flux:modal name="remove-cart-item-{{ $item->id }}" class="max-w-sm">
+                                        <div class="p-6 space-y-4">
+                                            <flux:heading size="lg">{{ __('Remove item?') }}</flux:heading>
+                                            <flux:text>{{ __('This product will be removed from your cart.') }}</flux:text>
+
+                                            <div class="flex justify-end gap-3 pt-2">
+                                                <flux:button variant="ghost" x-on:click="$flux.modal('remove-cart-item-{{ $item->id }}').close()">
+                                                    {{ __('Cancel') }}
+                                                </flux:button>
+
+                                                <flux:button variant="danger" wire:click="removeItem({{ $item->id }})" x-on:click="$flux.modal('remove-cart-item-{{ $item->id }}').close()">
+                                                    {{ __('Remove') }}
+                                                </flux:button>
+                                            </div>
+                                        </div>
+                                    </flux:modal>
                                 </div>
                             </article>
                         @endforeach

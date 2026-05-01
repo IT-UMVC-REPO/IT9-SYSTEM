@@ -272,13 +272,30 @@ new #[Title('My products')] class extends Component {
 
                                     <button
                                         type="button"
-                                        wire:click="deleteProduct({{ $product->id }})"
-                                        wire:confirm="{{ __('Delete this listing? This action cannot be undone.') }}"
+                                        x-data
+                                        x-on:click="$flux.modal('delete-vendor-product-{{ $product->id }}').show()"
                                         class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                     >
                                         {{ __('Delete') }}
                                     </button>
                                 </div>
+
+                                <flux:modal name="delete-vendor-product-{{ $product->id }}" class="max-w-sm">
+                                    <div class="p-6 space-y-4">
+                                        <flux:heading size="lg">{{ __('Delete listing?') }}</flux:heading>
+                                        <flux:text>{{ __('This listing and its image will be permanently removed.') }}</flux:text>
+
+                                        <div class="flex justify-end gap-3 pt-2">
+                                            <flux:button variant="ghost" x-on:click="$flux.modal('delete-vendor-product-{{ $product->id }}').close()">
+                                                {{ __('Cancel') }}
+                                            </flux:button>
+
+                                            <flux:button variant="danger" wire:click="deleteProduct({{ $product->id }})">
+                                                {{ __('Delete listing') }}
+                                            </flux:button>
+                                        </div>
+                                    </div>
+                                </flux:modal>
                             </div>
                         </div>
                     </article>

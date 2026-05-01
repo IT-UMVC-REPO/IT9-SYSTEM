@@ -123,7 +123,9 @@ new #[Title('My Orders')] class extends Component {
 
 <section class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <div class="flex flex-col gap-4">
-        <span class="brand-kicker">{{ __('Order tracking') }}</span>
+        <span class="inline-flex w-fit rounded-full border border-emerald-800/50 bg-emerald-950/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            {{ __('Order tracking') }}
+        </span>
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div class="space-y-2">
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('My orders') }}</h1>

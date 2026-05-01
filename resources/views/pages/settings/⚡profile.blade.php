@@ -211,12 +211,29 @@ new #[Title('Profile settings')] class extends Component {
                                 @if ($currentProfileImage && ! $profileImageUpload)
                                     <button
                                         type="button"
-                                        wire:click="removeProfileImage"
-                                        wire:confirm="{{ __('Remove your profile photo?') }}"
+                                        x-data
+                                        x-on:click="$flux.modal('remove-profile-photo').show()"
                                         class="text-xs font-medium text-rose-500 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
                                     >
                                         {{ __('Remove photo') }}
                                     </button>
+
+                                    <flux:modal name="remove-profile-photo" class="max-w-sm">
+                                        <div class="p-6 space-y-4">
+                                            <flux:heading size="lg">{{ __('Remove photo?') }}</flux:heading>
+                                            <flux:text>{{ __('Your profile will use the default avatar until you upload a new photo.') }}</flux:text>
+
+                                            <div class="flex justify-end gap-3 pt-2">
+                                                <flux:button variant="ghost" x-on:click="$flux.modal('remove-profile-photo').close()">
+                                                    {{ __('Cancel') }}
+                                                </flux:button>
+
+                                                <flux:button variant="danger" wire:click="removeProfileImage" x-on:click="$flux.modal('remove-profile-photo').close()">
+                                                    {{ __('Remove') }}
+                                                </flux:button>
+                                            </div>
+                                        </div>
+                                    </flux:modal>
                                 @endif
                             </div>
 

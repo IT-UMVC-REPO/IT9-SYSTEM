@@ -57,7 +57,7 @@ test('marketplace factories build related records with enum casts', function () 
     $order = Order::factory()->for($customer, 'customer')->create([
         'vendor_id' => $vendorProfile->id,
         'total_amount' => 99.90,
-        'payment_method' => PaymentMethod::Gcash,
+        'payment_method' => PaymentMethod::Cod,
     ]);
 
     $orderItem = OrderItem::query()->create([
@@ -69,7 +69,7 @@ test('marketplace factories build related records with enum casts', function () 
 
     $payment = Payment::factory()->for($order)->completed()->create([
         'amount' => $order->total_amount,
-        'method' => PaymentMethod::Gcash,
+        'method' => PaymentMethod::Cod,
     ]);
 
     $message = Message::query()->create([
@@ -89,7 +89,7 @@ test('marketplace factories build related records with enum casts', function () 
     expect($vendorProfile->fresh()->status)->toBe(VendorStatus::Approved)
         ->and($vendorProfile->user->role)->toBe(UserRole::Vendor)
         ->and($product->fresh()->status)->toBe(ProductStatus::Active)
-        ->and($order->fresh()->payment_method)->toBe(PaymentMethod::Gcash)
+        ->and($order->fresh()->payment_method)->toBe(PaymentMethod::Cod)
         ->and($order->payment_status)->toBe(PaymentStatus::Pending)
         ->and($order->order_status)->toBe(OrderStatus::Pending)
         ->and($payment->fresh()->status)->toBe(PaymentStatus::Paid)

@@ -405,16 +405,16 @@ new #[Title('Report detail')] class extends Component
                         variant="danger"
                         class="w-full justify-center"
                         type="button"
-                        wire:click="toggleReportedUserActiveStatus"
-                        wire:confirm="{{ __('Deactivate this account? Please confirm that you want to suspend the reported user from signing in.') }}"
+                        x-data
+                        x-on:click="$flux.modal('suspend-reported-user').show()"
                     >
                         {{ __('Suspend account') }}
                     </flux:button>
                 @else
                     <button
                         type="button"
-                        wire:click="toggleReportedUserActiveStatus"
-                        wire:confirm="{{ __('Reactivate this account? Please confirm that you want to restore sign-in access for the reported user.') }}"
+                        x-data
+                        x-on:click="$flux.modal('reactivate-reported-user').show()"
                         class="brand-button-primary w-full"
                     >
                         {{ __('Reactivate account') }}
@@ -450,8 +450,8 @@ new #[Title('Report detail')] class extends Component
                             variant="danger"
                             class="w-full justify-center"
                             type="button"
-                            wire:click="dismiss"
-                            wire:confirm="{{ __('Dismiss this report? This action will mark the case as handled.') }}"
+                            x-data
+                            x-on:click="$flux.modal('dismiss-report').show()"
                         >
                             {{ __('Dismiss report') }}
                         </flux:button>
@@ -466,8 +466,8 @@ new #[Title('Report detail')] class extends Component
 
                     <button
                         type="button"
-                        wire:click="reopen"
-                        wire:confirm="{{ __('Re-open this report and return it to the open queue?') }}"
+                        x-data
+                        x-on:click="$flux.modal('reopen-report').show()"
                         class="brand-button-primary mt-5 w-full"
                     >
                         {{ __('Re-open report') }}
@@ -476,4 +476,72 @@ new #[Title('Report detail')] class extends Component
             @endif
         </aside>
     </section>
+
+    <flux:modal name="suspend-reported-user" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Suspend account?') }}</flux:heading>
+            <flux:text>{{ __('The reported user will be unable to sign in until an admin restores access.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('suspend-reported-user').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="danger" wire:click="toggleReportedUserActiveStatus" x-on:click="$flux.modal('suspend-reported-user').close()">
+                    {{ __('Suspend') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal name="reactivate-reported-user" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Reactivate account?') }}</flux:heading>
+            <flux:text>{{ __('The reported user will be able to sign in again.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('reactivate-reported-user').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="primary" wire:click="toggleReportedUserActiveStatus" x-on:click="$flux.modal('reactivate-reported-user').close()">
+                    {{ __('Reactivate') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal name="dismiss-report" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Dismiss report?') }}</flux:heading>
+            <flux:text>{{ __('This case will be marked as handled.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('dismiss-report').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="danger" wire:click="dismiss">
+                    {{ __('Dismiss') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal name="reopen-report" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Re-open report?') }}</flux:heading>
+            <flux:text>{{ __('This report will return to the open moderation queue.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('reopen-report').close()">
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button variant="primary" wire:click="reopen">
+                    {{ __('Re-open') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

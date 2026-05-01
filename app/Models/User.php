@@ -168,16 +168,6 @@ class User extends Authenticatable implements MustVerifyEmail
             return UserRole::Admin;
         }
 
-        if (
-            $this->role === UserRole::Vendor
-            && $this->hasApprovedVendorProfile()
-            && (! app()->runningInConsole() || app()->runningUnitTests())
-            && request()->hasSession()
-            && session('marketplace_mode') === 'customer'
-        ) {
-            return UserRole::Customer;
-        }
-
         if ($this->role === UserRole::Vendor || $this->vendorProfile !== null) {
             return $this->hasApprovedVendorProfile()
                 ? UserRole::Vendor

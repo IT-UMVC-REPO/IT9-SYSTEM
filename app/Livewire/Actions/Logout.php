@@ -12,8 +12,6 @@ class Logout
      */
     public function __invoke()
     {
-        Session::forget('marketplace_mode');
-
         Auth::guard('web')->logout();
 
         Session::invalidate();

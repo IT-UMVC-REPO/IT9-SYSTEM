@@ -630,12 +630,11 @@ test('customers can open a visible product detail page', function () {
         ->assertSee("\u{20B1}188.75")
         ->assertSee('Bring this stall to your cart')
         ->assertSee('Message vendor')
-        ->assertSee('Cash on delivery')
-        ->assertSee('GCash & Maya')
-        ->assertSee('Vendor support');
+        ->assertDontSee('Digital payment options')
+        ->assertDontSee('Vendor support');
 });
 
-test('vendors can open a visible product detail page without purchase controls', function () {
+test('vendors can open a visible product detail page with purchase controls', function () {
     $vendorViewer = User::factory()->vendor()->create();
     VendorProfile::factory()->for($vendorViewer, 'user')->approved()->create();
 
@@ -660,16 +659,14 @@ test('vendors can open a visible product detail page without purchase controls',
         ->get(route('shop.products.show', $product))
         ->assertOk()
         ->assertSee($product->name)
-        ->assertSee('Switch to customer mode')
-        ->assertSee('Customer mode')
-        ->assertDontSee('Browsing as vendor')
-        ->assertDontSee('Bring this stall to your cart')
-        ->assertDontSee('Add to cart')
-        ->assertDontSee('Buy now')
+        ->assertSee('Bring this stall to your cart')
+        ->assertSee('Add to cart')
+        ->assertSee('Buy now')
+        ->assertDontSee('Switch roles')
         ->assertSee('Message vendor');
 });
 
-test('approved vendors in customer mode can see purchase controls on product detail pages', function () {
+test('approved vendors can see purchase controls on product detail pages without switching modes', function () {
     $vendorViewer = User::factory()->vendor()->create();
     VendorProfile::factory()->for($vendorViewer, 'user')->approved()->create();
 
@@ -689,11 +686,10 @@ test('approved vendors in customer mode can see purchase controls on product det
         ]);
 
     $this->actingAs($vendorViewer)
-        ->withSession(['marketplace_mode' => 'customer'])
         ->get(route('shop.products.show', $product))
         ->assertOk()
         ->assertSee('Bring this stall to your cart')
-        ->assertDontSee('Switch to customer mode');
+        ->assertDontSee('Switch roles');
 });
 
 test('sold out product detail keeps support actions while replacing purchase controls', function () {
@@ -728,9 +724,8 @@ test('sold out product detail keeps support actions while replacing purchase con
         ->assertDontSee('Add to cart')
         ->assertDontSee('Buy now')
         ->assertSee('Message vendor')
-        ->assertSee('Cash on delivery')
-        ->assertSee('GCash & Maya')
-        ->assertSee('Vendor support');
+        ->assertDontSee('Digital payment options')
+        ->assertDontSee('Vendor support');
 });
 
 test('invisible products return not found on the detail page', function () {

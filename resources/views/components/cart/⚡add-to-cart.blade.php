@@ -18,7 +18,7 @@ new class extends Component {
     public function mount(Product $product): void
     {
         abort_unless(Auth::check(), 403);
-        abort_unless(Auth::user()->effectiveMarketplaceRole() === UserRole::Customer, 403);
+        abort_if(Auth::user()->effectiveMarketplaceRole() === UserRole::Admin, 403);
 
         $this->product = Product::query()
             ->visibleToCustomers()
@@ -226,7 +226,7 @@ new class extends Component {
                     wire:target="addToCart"
                     class="brand-button-primary w-full"
                 >
-                    <span wire:loading.remove wire:target="addToCart">
+                    <span wire:loading.remove wire:target="addToCart" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-cart-plus text-xs"></i>
                         {{ __('Add to cart') }}
                     </span>
@@ -240,7 +240,7 @@ new class extends Component {
                     wire:target="buyNow"
                     class="brand-button-secondary w-full"
                 >
-                    <span wire:loading.remove wire:target="buyNow">
+                    <span wire:loading.remove wire:target="buyNow" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-bolt text-xs"></i>
                         {{ __('Buy now') }}
                     </span>

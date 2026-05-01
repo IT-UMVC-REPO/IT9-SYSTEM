@@ -70,6 +70,46 @@ test('admins can view the operational dashboard', function () {
         ->assertSee($approvedVendor->store_name);
 });
 
+test('dashboard preview widgets only show three newest rows', function () {
+    $admin = User::factory()->admin()->create();
+
+    $vendors = collect(range(1, 4))->map(function (int $index): VendorProfile {
+        return VendorProfile::factory()->create([
+            'store_name' => "Pending Stall {$index}",
+            'status' => VendorStatus::Pending,
+            'created_at' => now()->subMinutes($index),
+        ]);
+    });
+
+    $approvedVendor = VendorProfile::factory()->approved()->create();
+
+    $orders = collect(range(1, 4))->map(function (int $index) use ($approvedVendor): Order {
+        $customer = User::factory()->create([
+            'name' => "Recent Buyer {$index}",
+        ]);
+
+        return Order::factory()
+            ->for($customer, 'customer')
+            ->for($approvedVendor, 'vendor')
+            ->create([
+                'total_amount' => 100 + $index,
+                'created_at' => now()->subMinutes($index),
+            ]);
+    });
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertSee($vendors[0]->store_name)
+        ->assertSee($vendors[1]->store_name)
+        ->assertSee($vendors[2]->store_name)
+        ->assertDontSee($vendors[3]->store_name)
+        ->assertSee($orders[0]->customer->name)
+        ->assertSee($orders[1]->customer->name)
+        ->assertSee($orders[2]->customer->name)
+        ->assertDontSee($orders[3]->customer->name);
+});
+
 test('non admin users are redirected away from the admin dashboard', function () {
     $customer = User::factory()->create();
 

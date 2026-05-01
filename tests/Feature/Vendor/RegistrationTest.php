@@ -33,6 +33,7 @@ test('authenticated customers can see the vendor registration form', function ()
         ->assertSee('Open your stall on SukiMarket')
         ->assertSee('Sample products')
         ->assertSee('Show the admin what your stall plans to sell')
+        ->assertSee('This draft stays off the storefront until approval.')
         ->assertSee('Submit application');
 });
 

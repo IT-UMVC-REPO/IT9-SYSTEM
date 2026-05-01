@@ -59,8 +59,6 @@ new #[Title('Conversation')] class extends Component {
         $trimmedMessage = trim($this->newMessage);
 
         if ($trimmedMessage === '' && $this->attachmentUpload === null) {
-            $this->addError('newMessage', __('Write a message or attach a file before sending.'));
-
             return;
         }
 
@@ -191,9 +189,8 @@ new #[Title('Conversation')] class extends Component {
 ?>
 
 @php
-    $broadcastConnection = config('broadcasting.default');
-    $broadcastConfig = config("broadcasting.connections.{$broadcastConnection}", []);
-    $realtimeEnabled = filled($broadcastConfig['key'] ?? null) && filled($broadcastConfig['app_id'] ?? null);
+    $pusherBroadcastConfig = config('broadcasting.connections.pusher', []);
+    $realtimeEnabled = filled($pusherBroadcastConfig['key'] ?? null) && filled($pusherBroadcastConfig['app_id'] ?? null);
 @endphp
 
 <div wire:poll.5s="refreshThread" class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8">
@@ -217,15 +214,15 @@ new #[Title('Conversation')] class extends Component {
         x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
-            class="fixed inset-0 z-[70] bg-neutral-950/95 px-4 py-6 backdrop-blur-sm sm:px-6 lg:px-8">
-            <div class="mx-auto flex h-full max-w-7xl flex-col gap-6">
+            class="fixed inset-0 z-[70] bg-neutral-950/95 backdrop-blur-sm">
+            <div class="mx-auto grid h-screen max-w-[1600px] grid-rows-[auto_minmax(0,1fr)] p-4 sm:p-6">
                 <section
-                    class="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-white/10 bg-white/6 px-5 py-4 text-white shadow-2xl shadow-black/35">
+                    class="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-white shadow-2xl shadow-black/35">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-                            {{ __('Video call') }}</p>
-                        <h2 class="brand-serif mt-2 text-3xl font-bold text-white" x-text="otherUserName"></h2>
-                        <p class="mt-2 text-sm text-white/70" x-text="statusMessage || 'Waiting to connect...'"></p>
+                        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                            {{ __('VIDEO CALL') }}</p>
+                        <h2 class="mt-2 text-xl font-semibold text-white sm:text-2xl" x-text="otherUserName"></h2>
+                        <p class="mt-1 text-sm text-zinc-400" x-text="statusMessage || 'Waiting to connect...'"></p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
@@ -246,84 +243,69 @@ new #[Title('Conversation')] class extends Component {
                         </template>
 
                         <template x-if="callStatus === 'active' || callStatus === 'connecting'">
-                            <button type="button" x-on:click="endCall()"
-                                class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20">
-                                <i class="fa-solid fa-phone-slash text-sm"></i>
-                                {{ __('End call') }}
-                            </button>
+                            <flux:button type="button" variant="outline" x-on:click="endCall()" class="border-zinc-600 text-zinc-100 hover:bg-zinc-800">
+                                <span class="flex items-center gap-2">
+                                    <i class="fa-solid fa-phone-slash text-sm"></i>
+                                    {{ __('End call') }}
+                                </span>
+                            </flux:button>
                         </template>
 
                         <template x-if="callStatus === 'calling'">
-                            <button type="button" x-on:click="endCall('Call cancelled.')"
-                                class="inline-flex items-center gap-2 rounded-[1.25rem] border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/15">
-                                <i class="fa-solid fa-xmark text-sm"></i>
-                                {{ __('Cancel call') }}
-                            </button>
+                            <flux:button type="button" variant="outline" x-on:click="endCall('Call cancelled.')" class="border-zinc-600 text-zinc-100 hover:bg-zinc-800">
+                                <span class="flex items-center gap-2">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                    {{ __('Cancel call') }}
+                                </span>
+                            </flux:button>
                         </template>
                     </div>
                 </section>
 
-                <div class="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <div class="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                     <section
-                        class="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-2xl shadow-black/40">
+                        class="relative min-h-0 overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl shadow-black/40">
                         <video id="conversation-call-remote-video" autoplay playsinline
-                            class="h-full min-h-[20rem] w-full object-cover"></video>
+                            class="h-full min-h-[22rem] w-full rounded-2xl bg-zinc-900 object-cover"></video>
 
                         <div
-                            class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10">
-                        </div>
-
-                        <div
-                            class="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 text-xs font-semibold text-white/80 backdrop-blur">
-                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"
-                                :class="callStatus === 'calling' || callStatus === 'incoming' || callStatus === 'connecting' ? 'animate-pulse' : ''"></span>
+                            class="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-semibold text-white/85 backdrop-blur">
+                            <span class="text-emerald-400"
+                                :class="callStatus === 'calling' || callStatus === 'incoming' || callStatus === 'connecting' ? 'animate-pulse' : ''">●</span>
                             <span
                                 x-text="callStatus === 'calling' ? 'Calling...' : (callStatus === 'incoming' ? 'Incoming call' : (callStatus === 'connecting' ? 'Connecting media' : 'Live call'))"></span>
                         </div>
-
-                        <div class="absolute inset-x-0 bottom-0 p-6">
-                            <div class="rounded-[1.5rem] border border-white/10 bg-black/40 px-5 py-4 backdrop-blur">
-                                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-                                    {{ __('Connection') }}</p>
-                                <p class="mt-3 text-sm leading-7 text-white/80"
-                                    x-text="statusMessage || 'Waiting for the other participant.'"></p>
-                            </div>
-                        </div>
                     </section>
 
-                    <div class="grid gap-6 lg:grid-rows-[auto_minmax(0,1fr)]">
-                        <section class="overflow-hidden rounded-[2rem] border border-white/10 bg-white/8 backdrop-blur">
-                            <div class="border-b border-white/10 px-5 py-4">
-                                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-                                    {{ __('Local preview') }}</p>
-                                <p class="mt-2 text-sm text-white/75">
-                                    {{ __('Your camera and microphone stay in this browser.') }}</p>
-                            </div>
+                    <div class="grid min-h-0 gap-4 content-start lg:w-[320px] lg:grid-rows-[auto_minmax(0,1fr)]">
+                        <section class="rounded-2xl border border-white/10 bg-zinc-900 p-4">
+                            <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                                {{ __('LOCAL PREVIEW') }}</p>
 
                             <video id="conversation-call-local-video" autoplay muted playsinline
-                                class="aspect-[4/5] w-full bg-black object-cover"></video>
+                                class="aspect-video w-full rounded-xl bg-black object-cover"></video>
                         </section>
 
                         <section
-                            class="rounded-[2rem] border border-white/10 bg-white/6 p-5 text-white/80 backdrop-blur">
-                            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-                                {{ __('Call status') }}</p>
+                            class="min-h-0 rounded-2xl border border-white/10 bg-zinc-900 p-5 text-zinc-300">
+                            <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                                {{ __('CALL STATUS') }}</p>
                             <p class="mt-3 text-base leading-7"
                                 x-text="statusMessage || 'Camera and audio will connect as soon as both participants join.'">
                             </p>
 
                             <template x-if="callStatus === 'calling'">
-                                <p class="mt-4 text-sm leading-7 text-white/65">
+                                <p class="mt-4 text-sm leading-7 text-zinc-400">
                                     {{ __('Keep this window open while the other person answers.') }}</p>
                             </template>
 
                             <template x-if="callStatus === 'incoming'">
-                                <p class="mt-4 text-sm leading-7 text-white/65">
+                                <p class="mt-4 text-sm leading-7 text-zinc-400">
                                     {{ __('Accept to share your camera and microphone for this conversation.') }}</p>
                             </template>
 
                             <template x-if="callStatus === 'connecting'">
-                                <p class="mt-4 text-sm leading-7 text-white/65">
+                                <p class="mt-4 text-sm leading-7 text-zinc-400">
                                     {{ __('The call was accepted. Keep this window open while the media connection finishes.') }}</p>
                             </template>
                         </section>
@@ -412,25 +394,24 @@ new #[Title('Conversation')] class extends Component {
                 @endif
 
                 <section class="brand-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-                    <div class="flex-1 min-h-0 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data
+                    <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data
                         x-init="$el.scrollTop = $el.scrollHeight"
                         @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                         @forelse ($this->threadMessages as $message)
                             @php($isOwnMessage = $message->sender_id === auth()->id())
                             <div wire:key="conversation-message-{{ $message->id }}"
-                                class="flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
+                                class="mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
                                 <div
-                                    class="flex max-w-[85%] flex-col gap-2 sm:max-w-[80%] {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
-                                    <div class="flex max-w-full items-start gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
+                                    class="flex max-w-[70%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
+                                    <div class="flex max-w-full items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
                                         @unless ($isOwnMessage)
                                             <x-user-avatar :user="$message->sender" size="sm" class="shrink-0" />
                                         @endunless
 
                                         <div
-                                            class="min-w-0 w-fit max-w-full overflow-hidden rounded-[1.5rem] px-4 py-3 text-left text-sm leading-7 {{ $isOwnMessage ? 'bg-[var(--brand-600)] text-white' : 'bg-stone-100 text-neutral-900 dark:bg-zinc-800 dark:text-zinc-100' }}">
+                                            class="min-w-0 w-fit max-w-full overflow-hidden rounded-2xl px-4 py-2 text-left text-sm leading-relaxed break-words {{ $isOwnMessage ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-100' }}">
                                             <?php if (filled($message->content)): ?>
-                                            <p
-                                                class="max-h-72 overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                                            <p class="break-words [overflow-wrap:anywhere]">
                                                 {{ $message->content }}</p>
                                             <?php endif; ?>
 
@@ -442,12 +423,12 @@ new #[Title('Conversation')] class extends Component {
                                                 class="mt-2 block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
                                                 <img src="{{ $attachmentUrl }}"
                                                     alt="{{ $message->attachment_name ?? __('Attached image') }}"
-                                                    class="max-h-72 w-full object-cover" loading="lazy">
+                                                    class="max-h-52 max-w-full object-cover" loading="lazy">
                                             </a>
                                             <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'video/')): ?>
                                             <div
                                                 class="mt-2 overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
-                                                <video controls preload="metadata" class="max-h-72 w-full bg-black">
+                                                <video controls preload="metadata" class="max-h-48 max-w-full bg-black">
                                                     <source src="{{ $attachmentUrl }}"
                                                         type="{{ $message->attachment_mime }}">
                                                     {{ __('Your browser does not support the video tag.') }}
@@ -491,7 +472,7 @@ new #[Title('Conversation')] class extends Component {
                         @endforelse
                     </div>
 
-                    <form wire:submit="send"
+                    <form x-on:submit.prevent="if (($wire.newMessage || '').trim() || $wire.attachmentUpload) $wire.send()"
                         class="shrink-0 border-t border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
@@ -503,8 +484,9 @@ new #[Title('Conversation')] class extends Component {
                                         }
                                     }"
                                     x-init="resize()" x-on:input="resize()"
-                                    x-on:keydown.enter.prevent="$wire.send()"
-                                    style="min-height: 2.75rem; max-height: 10rem; overflow-y: auto; resize: none;" />
+                                    x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || $wire.attachmentUpload) $wire.send()"
+                                    class="scrollbar-none resize-none overflow-hidden"
+                                    style="min-height: 2.75rem; max-height: 160px; overflow-y: auto;" />
                             </div>
 
                             <label for="conversation-attachment"
@@ -515,7 +497,7 @@ new #[Title('Conversation')] class extends Component {
                             <input id="conversation-attachment" type="file" wire:model="attachmentUpload"
                                 class="sr-only">
 
-                            <button type="submit" wire:loading.attr="disabled" wire:target="send,attachmentUpload"
+                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !$wire.attachmentUpload" wire:loading.attr="disabled" wire:target="send,attachmentUpload"
                                 class="brand-button-primary min-h-[2.75rem] shrink-0 px-5 py-3">
                                 <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
                                 <span wire:loading wire:target="send">{{ __('Sending...') }}</span>

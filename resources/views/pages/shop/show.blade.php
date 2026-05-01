@@ -1,6 +1,6 @@
 <x-layouts::app :title="$product->name">
     @php
-        $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value === 'customer';
+        $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value !== 'admin';
 
         $availabilityClasses = $product->stock_quantity > 0
             ? 'brand-soft-surface border'
@@ -75,17 +75,6 @@
                 <div class="mt-5 space-y-4">
                     @if ($canPurchaseProduct)
                         <livewire:cart.add-to-cart :product="$product" />
-                    @else
-                        <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
-                            <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Switch to customer mode') }}</h2>
-                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                                {{ __('You are browsing as a vendor. Switch to customer mode to add items to your cart and place orders.') }}
-                            </p>
-                            <div class="mt-5">
-                                <livewire:mode-toggle :full-width="true" :key="'product-mode-toggle'" />
-                            </div>
-                        </div>
                     @endif
 
                     <a
@@ -102,31 +91,6 @@
                         </p>
                     </a>
 
-                    <div class="grid grid-cols-3 gap-3">
-                        <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
-                                <i class="fa-solid fa-money-bill-wave"></i>
-                            </span>
-                            <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">Cash on delivery</p>
-                            <p class="text-xs leading-5 text-neutral-500 dark:text-zinc-400">Pay when the order arrives.</p>
-                        </div>
-
-                        <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
-                                <i class="fa-solid fa-wallet"></i>
-                            </span>
-                            <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">GCash &amp; Maya</p>
-                            <p class="text-xs leading-5 text-neutral-500 dark:text-zinc-400">Digital payment options.</p>
-                        </div>
-
-                        <div class="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <span class="brand-feature-bubble flex h-10 w-10 items-center justify-center rounded-full">
-                                <i class="fa-solid fa-headset"></i>
-                            </span>
-                            <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">Vendor support</p>
-                            <p class="text-xs leading-5 text-neutral-500 dark:text-zinc-400">Direct conversation with the stall.</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 

@@ -5,27 +5,12 @@ import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
-const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
-const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
-
-if (pusherKey) {
-    window.Echo = new Echo({
-        broadcaster: 'pusher',
-        key: pusherKey,
-        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-        forceTLS: true,
-    });
-} else if (reverbKey) {
-    window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key: reverbKey,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-        enabledTransports: ['ws', 'wss'],
-    });
-}
+window.Echo = new Echo({
+    broadcaster: 'pusher',
+    key: import.meta.env.VITE_PUSHER_APP_KEY,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+    forceTLS: true,
+});
 
 const videoCallResetDelay = 1800;
 const videoCallConnectingWarningDelay = 10000;
@@ -42,12 +27,66 @@ const videoCallIceServers = [
 /**
  * Strip large/unnecessary SDP lines to keep signal payloads small enough
  * for Pusher's free-tier 10KB message limit.
+ *
+ * IMPORTANT: When removing a codec's a=rtpmap line we must also:
+ *  1. Remove its payload type number from the m= line.
+ *  2. Remove any RTX (retransmission) codec whose apt= points at the removed PT,
+ *     otherwise the browser rejects the SDP with "Invalid SDP line".
  */
 function stripSdp(sdp) {
-    return sdp.split('\n')
-        .filter(line => !line.startsWith('a=ssrc'))
-        .join('\n');
+    if (!sdp) return sdp;
+
+    // Normalize line endings: SDP spec requires CRLF, browsers may emit LF only.
+    const lines = sdp.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+    // --- Pass 1: collect payload type IDs for codecs we want to drop ---
+    const removedPts = new Set();
+
+    for (const line of lines) {
+        // a=rtpmap:<pt> <codec>/<rate>
+        const rtpmap = line.match(/^a=rtpmap:(\d+) (red|ulpfec)\//i);
+        if (rtpmap) {
+            removedPts.add(rtpmap[1]);
+        }
+    }
+
+    // --- Pass 2: collect RTX codecs that reference a removed PT via apt= ---
+    // e.g. "a=fmtp:122 apt=121" — if PT 121 was removed, PT 122 must go too.
+    for (const line of lines) {
+        const rtx = line.match(/^a=fmtp:(\d+) apt=(\d+)/);
+        if (rtx && removedPts.has(rtx[2])) {
+            removedPts.add(rtx[1]);
+        }
+    }
+
+    // --- Pass 3: filter lines and patch m= lines to remove dead payload types ---
+    const filtered = lines.filter((line) => {
+        // Drop all a=ssrc lines (they bloat the payload)
+        if (line.startsWith('a=ssrc')) return false;
+
+        // Drop a=rtpmap / a=fmtp / a=rtcp-fb lines for removed codec IDs
+        const attrPt = line.match(/^a=(?:rtpmap|fmtp|rtcp-fb):(\d+)/);
+        if (attrPt && removedPts.has(attrPt[1])) return false;
+
+        return true;
+    }).map((line) => {
+        // Patch m= lines: remove the dead payload type numbers from the PT list.
+        // e.g. "m=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103" → drop 102, 103
+        if (line.startsWith('m=') && removedPts.size > 0) {
+            // m= format: "m=<media> <port> <proto> <pt1> <pt2> ..."
+            return line.replace(/^(m=\S+ \S+ \S+)((?:\s+\d+)+)/, (_, header, pts) => {
+                const kept = pts.trim().split(/\s+/).filter((pt) => !removedPts.has(pt));
+                return header + ' ' + kept.join(' ');
+            });
+        }
+
+        return line;
+    });
+
+    // Rejoin with \r\n per SDP spec and ensure a trailing \r\n
+    return filtered.join('\r\n') + '\r\n';
 }
+
 
 window.conversationVideoCall = (config) => ({
     authUserId: config.authUserId,
@@ -435,7 +474,10 @@ window.conversationVideoCall = (config) => ({
 
             void (async () => {
                 try {
-                    await peer.setRemoteDescription(new RTCSessionDescription(signalData));
+                    // Strip the remote SDP before setting it — the remote peer may not
+                    // have run the same codec-pruning logic, leaving dangling apt= refs.
+                    const cleanOffer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
+                    await peer.setRemoteDescription(new RTCSessionDescription(cleanOffer));
 
                     if (this.peer !== peer) {
                         return;
@@ -471,7 +513,10 @@ window.conversationVideoCall = (config) => ({
 
             void (async () => {
                 try {
-                    await peer.setRemoteDescription(new RTCSessionDescription(signalData));
+                    // Strip the remote SDP before setting it — the remote peer may not
+                    // have run the same codec-pruning logic, leaving dangling apt= refs.
+                    const cleanAnswer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
+                    await peer.setRemoteDescription(new RTCSessionDescription(cleanAnswer));
 
                     if (this.peer === peer) {
                         this.flushPendingSignals();
@@ -720,5 +765,3 @@ document.addEventListener('brand-color-preview', (event) => {
 document.addEventListener('brand-color-persisted', () => {
     window.setTimeout(() => window.location.reload(), 1200);
 });
-
-import './echo';

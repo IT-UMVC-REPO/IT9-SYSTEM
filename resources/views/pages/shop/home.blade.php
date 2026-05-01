@@ -70,9 +70,7 @@
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     @foreach ($popularVendors as $vendor)
                         <div class="brand-card-hover group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
-                            <div class="absolute right-3 top-3 z-10">
-                                <livewire:vendor.follow-button :vendor="$vendor" :key="'popular-vendor-follow-'.$vendor->id" />
-                            </div>
+                            <livewire:vendor.follow-button :vendor="$vendor" :overlay="true" :key="'popular-vendor-follow-'.$vendor->id" />
                             <a href="{{ route('shop.vendors.show', $vendor) }}" class="flex flex-1 flex-col">
                                 <div class="brand-soft-surface mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-base font-bold">
                                     {{ strtoupper(substr($vendor->store_name, 0, 2)) }}

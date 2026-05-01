@@ -291,16 +291,15 @@ new #[Title('Vendor Order Detail')] class extends Component
                     @endif
 
                     @if ($this->order->order_status === OrderStatus::Pending)
-                        <button
+                        <flux:button
+                            variant="outline"
                             type="button"
-                            wire:click="cancelOrder"
-                            wire:confirm="{{ __('Cancel this order? This action cannot be undone.') }}"
-                            wire:loading.attr="disabled"
-                            wire:target="cancelOrder"
-                            class="rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-white/5"
+                            x-data
+                            x-on:click="$flux.modal('cancel-vendor-order').show()"
+                            class="w-full justify-center border-zinc-600"
                         >
                             {{ __('Cancel order') }}
-                        </button>
+                        </flux:button>
                     @endif
 
                     <a
@@ -339,4 +338,21 @@ new #[Title('Vendor Order Detail')] class extends Component
             </section>
         </aside>
     </div>
+
+    <flux:modal name="cancel-vendor-order" class="max-w-sm">
+        <div class="p-6 space-y-4">
+            <flux:heading size="lg">{{ __('Cancel order?') }}</flux:heading>
+            <flux:text>{{ __('This order will be cancelled and the customer will be notified.') }}</flux:text>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button variant="ghost" x-on:click="$flux.modal('cancel-vendor-order').close()">
+                    {{ __('Keep order') }}
+                </flux:button>
+
+                <flux:button variant="danger" wire:click="cancelOrder">
+                    {{ __('Cancel order') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </section>
