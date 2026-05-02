@@ -46,33 +46,31 @@ new class extends Component
 };
 ?>
 
-<flux:modal name="create-admin" class="max-w-md">
-    <div class="rounded-[1.75rem] border border-stone-200 bg-white p-6 shadow-2xl backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900 sm:p-7">
-        <div class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-full">
-            <i class="fa-solid fa-user-shield"></i>
-        </div>
-
-        <h2 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Create admin') }}</h2>
-        <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-            {{ __('Create a verified administrator account with direct access to the admin portal.') }}
-        </p>
-
-        <form wire:submit="createAdmin" class="mt-6 space-y-5">
-            <flux:input wire:model="name" :label="__('Name')" type="text" required autocomplete="name" />
-            <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
-            <flux:input wire:model="password" :label="__('Password')" type="password" required autocomplete="new-password" />
-            <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
-
-            <div class="flex justify-end gap-3 pt-2">
-                <flux:button type="button" variant="ghost" x-on:click="$flux.modal('create-admin').close()">
-                    {{ __('Cancel') }}
-                </flux:button>
-
-                <button type="submit" wire:loading.attr="disabled" class="brand-button-primary">
-                    <span wire:loading.remove wire:target="createAdmin">{{ __('Create admin') }}</span>
-                    <span wire:loading wire:target="createAdmin">{{ __('Creating...') }}</span>
-                </button>
-            </div>
-        </form>
+<flux:modal name="create-admin" class="max-h-[90vh] max-w-md overflow-y-auto p-6 sm:p-7">
+    <div class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-full">
+        <i class="fa-solid fa-user-shield"></i>
     </div>
+
+    <h2 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Create admin') }}</h2>
+    <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+        {{ __('Create a verified administrator account with direct access to the admin portal.') }}
+    </p>
+
+    <form wire:submit="createAdmin" class="mt-6 space-y-5">
+        <flux:input wire:model="name" :label="__('Name')" type="text" required autocomplete="name" />
+        <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+        <flux:input wire:model="password" :label="__('Password')" type="password" required autocomplete="new-password" />
+        <flux:input wire:model="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
+
+        <div class="flex justify-end gap-3 pt-2">
+            <flux:button type="button" variant="ghost" x-on:click="$flux.modal('create-admin').close()">
+                {{ __('Cancel') }}
+            </flux:button>
+
+            <button type="submit" wire:loading.attr="disabled" class="brand-button-primary">
+                <span wire:loading.remove wire:target="createAdmin">{{ __('Create admin') }}</span>
+                <span wire:loading wire:target="createAdmin">{{ __('Creating...') }}</span>
+            </button>
+        </div>
+    </form>
 </flux:modal>

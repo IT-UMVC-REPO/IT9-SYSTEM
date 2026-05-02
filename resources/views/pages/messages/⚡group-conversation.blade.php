@@ -353,6 +353,20 @@ new #[Title('Group conversation')] class extends Component
                         <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400">{{ __('GROUP VIDEO CALL') }}</p>
                         <h2 class="mt-2 text-xl font-semibold text-white sm:text-2xl">{{ $groupDisplayName }}</h2>
                         <p class="mt-1 text-sm text-zinc-400" x-text="statusMessage || 'Waiting for members to join...'"></p>
+
+                        <div class="mt-3 flex items-center gap-2" x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'">
+                            <button type="button" x-data="{ muted: false }" x-on:click="muted = !muted; $el.closest('[data-group-video-call]').__groupConversationVideoCall?.localStream?.getAudioTracks().forEach((track) => track.enabled = !muted)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Mute microphone') }}" aria-label="{{ __('Mute microphone') }}">
+                                <i class="fa-solid" x-bind:class="muted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+                            </button>
+
+                            <button type="button" x-data="{ camOff: false }" x-on:click="camOff = !camOff; $el.closest('[data-group-video-call]').__groupConversationVideoCall?.localStream?.getVideoTracks().forEach((track) => track.enabled = !camOff)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Toggle camera') }}" aria-label="{{ __('Toggle camera') }}">
+                                <i class="fa-solid" x-bind:class="camOff ? 'fa-video-slash' : 'fa-video'"></i>
+                            </button>
+
+                            <button type="button" x-on:click="leaveCall()" class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white hover:bg-rose-600" title="{{ __('Leave call') }}" aria-label="{{ __('Leave call') }}">
+                                <i class="fa-solid fa-phone-slash"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
@@ -363,7 +377,7 @@ new #[Title('Group conversation')] class extends Component
                             </button>
                         </template>
 
-                        <button type="button" x-on:click="leaveCall()" class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20">
+                        <button type="button" x-cloak x-show="callStatus !== 'active' && callStatus !== 'connecting'" x-on:click="leaveCall()" class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20">
                             <i class="fa-solid fa-phone-slash text-sm"></i>
                             {{ __('Leave call') }}
                         </button>
@@ -510,7 +524,7 @@ new #[Title('Group conversation')] class extends Component
                             },
                         }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="sticky bottom-0 shrink-0 border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto"
+                        class="sticky bottom-0 shrink-0 overflow-hidden border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto"
                     >
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
@@ -531,21 +545,15 @@ new #[Title('Group conversation')] class extends Component
                         </div>
 
                         @if ($attachmentUploads !== [])
-                            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach ($attachmentUploads as $index => $upload)
-                                    <div wire:key="group-pending-attachment-{{ $index }}" class="relative rounded-2xl border border-stone-200 bg-stone-50 p-2 dark:border-white/10 dark:bg-zinc-800">
-                                        <button type="button" wire:click="removeAttachmentUpload({{ $index }})" class="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white">
-                                            <i class="fa-solid fa-xmark"></i>
+                                    <span wire:key="group-pending-attachment-{{ $index }}" class="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-200">
+                                        <i class="fa-solid fa-paperclip text-xs text-neutral-400"></i>
+                                        <span class="max-w-[12rem] truncate">{{ $upload->getClientOriginalName() }}</span>
+                                        <button type="button" wire:click="removeAttachmentUpload({{ $index }})" class="text-neutral-400 transition hover:text-neutral-700 dark:hover:text-zinc-100" aria-label="{{ __('Remove attachment') }}">
+                                            <i class="fa-solid fa-xmark text-xs"></i>
                                         </button>
-                                        @if (Str::startsWith($upload->getMimeType() ?? '', 'image/'))
-                                            <img src="{{ $upload->temporaryUrl() }}" alt="{{ __('Attachment preview') }}" class="aspect-video w-full rounded-xl object-cover">
-                                        @else
-                                            <div class="flex aspect-video items-center justify-center rounded-xl bg-white text-neutral-500 dark:bg-zinc-900 dark:text-zinc-300">
-                                                <i class="fa-solid fa-file text-lg"></i>
-                                            </div>
-                                        @endif
-                                        <p class="mt-2 truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $upload->getClientOriginalName() }}</p>
-                                    </div>
+                                    </span>
                                 @endforeach
                             </div>
                         @endif
@@ -568,11 +576,7 @@ new #[Title('Group conversation')] class extends Component
                     x-cloak
                     x-show="showInfo"
                     x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="translate-x-full opacity-0 lg:translate-x-0"
-                    x-transition:enter-end="translate-x-0 opacity-100"
                     x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="translate-x-0 opacity-100"
-                    x-transition:leave-end="translate-x-full opacity-0 lg:translate-x-0"
                     class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-5 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:shadow-none"
                 >
                     <div class="flex items-center justify-between gap-3">

@@ -596,7 +596,7 @@ new #[Title('Vendor registration')] class extends Component {
                                         @endif
                                     </div>
 
-                                    <div class="mt-6 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+                                    <div class="mt-6 space-y-4">
                                         <div
                                             x-data="{
                                                 previewUrl: @js($sampleProduct['currentImageUrl']),
@@ -629,7 +629,7 @@ new #[Title('Vendor registration')] class extends Component {
                                                     <img
                                                         x-bind:src="previewUrl"
                                                         alt="{{ __('Sample product preview') }}"
-                                                        class="h-64 w-full rounded-xl object-cover"
+                                                        class="aspect-video w-full rounded-2xl object-cover"
                                                     >
 
                                                     <label for="sample-product-image-{{ $index }}" class="brand-button-secondary w-full cursor-pointer">
@@ -639,7 +639,7 @@ new #[Title('Vendor registration')] class extends Component {
                                             </template>
 
                                             <template x-if="!previewUrl">
-                                                <label for="sample-product-image-{{ $index }}" class="flex h-64 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
+                                                <label for="sample-product-image-{{ $index }}" class="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
                                                     <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
                                                         <i class="fa-solid fa-camera text-sm"></i>
                                                     </span>

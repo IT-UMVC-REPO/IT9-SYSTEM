@@ -729,3 +729,7 @@ select:focus[data-flux-control] {
     top: 0.875rem !important;
     right: 0.875rem !important;
 }
+
+.rounded-2xl {
+    border-radius: var(--rounded-2xl, 1.5rem);
+}

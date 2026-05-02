@@ -18,28 +18,26 @@
         : 'brand-button-primary';
 @endphp
 
-<flux:modal name="{{ $name }}" class="{{ $maxWidth }}" {{ $attributes }}>
-    <div class="rounded-[1.75rem] border border-stone-200 bg-white p-6 shadow-2xl backdrop-blur-sm dark:border-white/10 dark:bg-zinc-900 sm:p-7">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full {{ $iconClasses }}">
-            <i class="fa-solid {{ $isDanger ? 'fa-triangle-exclamation' : 'fa-circle-info' }}"></i>
-        </div>
+<flux:modal name="{{ $name }}" class="{{ $maxWidth }} p-6 sm:p-7" {{ $attributes }}>
+    <div class="flex h-14 w-14 items-center justify-center rounded-full {{ $iconClasses }}">
+        <i class="fa-solid {{ $isDanger ? 'fa-triangle-exclamation' : 'fa-circle-info' }}"></i>
+    </div>
 
-        <h2 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $heading }}</h2>
-        <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ $body }}</p>
+    <h2 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $heading }}</h2>
+    <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ $body }}</p>
 
-        <div class="mt-6 flex justify-end gap-3">
-            <flux:button variant="ghost" x-on:click="$flux.modal('{{ $name }}').close()">
-                {{ __('Cancel') }}
-            </flux:button>
+    <div class="mt-6 flex justify-end gap-3">
+        <flux:button variant="ghost" x-on:click="$flux.modal('{{ $name }}').close()">
+            {{ __('Cancel') }}
+        </flux:button>
 
-            <button
-                type="button"
-                @if ($confirmAction) wire:click="{{ $confirmAction }}" @endif
-                x-on:click="$flux.modal('{{ $name }}').close()"
-                class="{{ $buttonClasses }}"
-            >
-                {{ $confirmLabel }}
-            </button>
-        </div>
+        <button
+            type="button"
+            @if ($confirmAction) wire:click="{{ $confirmAction }}" @endif
+            x-on:click="$flux.modal('{{ $name }}').close()"
+            class="{{ $buttonClasses }}"
+        >
+            {{ $confirmLabel }}
+        </button>
     </div>
 </flux:modal>

@@ -323,6 +323,20 @@ new #[Title('Conversation')] class extends Component {
                             {{ __('VIDEO CALL') }}</p>
                         <h2 class="mt-2 text-xl font-semibold text-white sm:text-2xl" x-text="otherUserName"></h2>
                         <p class="mt-1 text-sm text-zinc-400" x-text="statusMessage || 'Waiting to connect...'"></p>
+
+                        <div class="mt-3 flex items-center gap-2" x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'">
+                            <button type="button" x-data="{ muted: false }" x-on:click="muted = !muted; $el.closest('[data-conversation-video-call]').__conversationVideoCall?.localStream?.getAudioTracks().forEach((track) => track.enabled = !muted)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Mute microphone') }}" aria-label="{{ __('Mute microphone') }}">
+                                <i class="fa-solid" x-bind:class="muted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+                            </button>
+
+                            <button type="button" x-data="{ camOff: false }" x-on:click="camOff = !camOff; $el.closest('[data-conversation-video-call]').__conversationVideoCall?.localStream?.getVideoTracks().forEach((track) => track.enabled = !camOff)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Toggle camera') }}" aria-label="{{ __('Toggle camera') }}">
+                                <i class="fa-solid" x-bind:class="camOff ? 'fa-video-slash' : 'fa-video'"></i>
+                            </button>
+
+                            <button type="button" x-on:click="endCall()" class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white hover:bg-rose-600" title="{{ __('End call') }}" aria-label="{{ __('End call') }}">
+                                <i class="fa-solid fa-phone-slash"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
@@ -340,16 +354,6 @@ new #[Title('Conversation')] class extends Component {
                                     {{ __('Decline') }}
                                 </button>
                             </div>
-                        </template>
-
-                        <template x-if="callStatus === 'active' || callStatus === 'connecting'">
-                            <flux:button type="button" variant="outline" x-on:click="endCall()"
-                                class="border-zinc-600 text-zinc-100 hover:bg-zinc-800">
-                                <span class="flex items-center gap-2">
-                                    <i class="fa-solid fa-phone-slash text-sm"></i>
-                                    {{ __('End call') }}
-                                </span>
-                            </flux:button>
                         </template>
 
                         <template x-if="callStatus === 'calling'">
@@ -380,7 +384,7 @@ new #[Title('Conversation')] class extends Component {
                         </div>
                     </section>
 
-                    <div class="grid min-h-0 gap-4 content-start lg:w-[320px] lg:grid-rows-[auto_minmax(0,1fr)]">
+                    <div class="grid min-h-0 gap-4 content-start lg:w-[320px]">
                         <section class="rounded-2xl border border-white/10 bg-zinc-900 p-4">
                             <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
                                 {{ __('LOCAL PREVIEW') }}</p>
@@ -397,41 +401,6 @@ new #[Title('Conversation')] class extends Component {
                                     <i class="fa-solid fa-camera-rotate text-sm"></i>
                                 </button>
                             </div>
-                        </section>
-
-                        <section class="min-h-0 rounded-2xl border border-white/10 bg-zinc-900 p-5 text-zinc-300">
-                            <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                                {{ __('CALL STATUS') }}</p>
-                            <p class="mt-3 text-base leading-7"
-                                x-text="statusMessage || 'Camera and audio will connect as soon as both participants join.'">
-                            </p>
-
-                            <template x-if="callStatus === 'calling'">
-                                <p class="mt-4 text-sm leading-7 text-zinc-400">
-                                    {{ __('Keep this window open while the other person answers.') }}</p>
-                            </template>
-
-                            <template x-if="callStatus === 'incoming'">
-                                <p class="mt-4 text-sm leading-7 text-zinc-400">
-                                    {{ __('Accept to share your camera and microphone for this conversation.') }}</p>
-                            </template>
-
-                            <template x-if="callStatus === 'connecting'">
-                                <p class="mt-4 text-sm leading-7 text-zinc-400">
-                                    {{ __('The call was accepted. Keep this window open while the media connection finishes.') }}
-                                </p>
-                            </template>
-
-                            <template x-if="showTurnWarning && callStatus === 'connecting' && !usesTurnServers()">
-                                <p
-                                    class="mt-4 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm leading-7 text-amber-100">
-                                    {{ __('Your network may require TURN server credentials for mobile or cross-network calls.') }}
-                                    <a href="{{ route('support.video-calls') }}" target="_blank"
-                                        rel="noopener noreferrer" class="font-semibold underline">
-                                        {{ __('Read the support note') }}
-                                    </a>
-                                </p>
-                            </template>
                         </section>
                     </div>
                 </div>
@@ -485,24 +454,23 @@ new #[Title('Conversation')] class extends Component {
                 </section>
 
                 @if ($this->linkedOrder !== null)
-                    <section class="brand-panel-muted shrink-0 p-5">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p class="brand-kicker !mb-0">{{ __('Linked order') }}</p>
-                                <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
+                    <section class="brand-panel-muted shrink-0 px-5 py-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex min-w-0 flex-wrap items-center gap-3">
+                                <span class="brand-kicker !mb-0">{{ __('Linked order') }}</span>
+                                <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
                                     {{ __('Order #:number', ['number' => str_pad((string) $this->linkedOrder->id, 6, '0', STR_PAD_LEFT)]) }}
-                                </h2>
-                                <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">
+                                </span>
+                                <span class="text-xs text-neutral-500 dark:text-zinc-400">
                                     {{ __('Status: :status', ['status' => \Illuminate\Support\Str::headline($this->linkedOrder->order_status->value)]) }}
-                                </p>
+                                </span>
                             </div>
-
-                            <p class="text-sm text-neutral-500 dark:text-zinc-400">
-                                {{ __('Customer: :customer - Vendor: :vendor', [
+                            <span class="text-xs text-neutral-400 dark:text-zinc-500">
+                                {{ __(':customer -> :vendor', [
                                     'customer' => $this->linkedOrder->customer->name,
                                     'vendor' => $this->linkedOrder->vendor->user->name,
                                 ]) }}
-                            </p>
+                            </span>
                         </div>
                     </section>
                 @endif
@@ -629,7 +597,7 @@ new #[Title('Conversation')] class extends Component {
                         },
                     }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="sticky bottom-0 shrink-0 border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto">
+                        class="sticky bottom-0 shrink-0 overflow-hidden border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto">
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
                                 <flux:textarea wire:model="newMessage" :label="__('Reply')" rows="1"
@@ -669,28 +637,15 @@ new #[Title('Conversation')] class extends Component {
                         </div>
 
                         @if ($attachmentUploads !== [])
-                            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                            <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach ($attachmentUploads as $index => $upload)
-                                    <div wire:key="pending-attachment-{{ $index }}"
-                                        class="relative rounded-2xl border border-stone-200 bg-stone-50 p-2 dark:border-white/10 dark:bg-zinc-800">
-                                        <button type="button"
-                                            wire:click="removeAttachmentUpload({{ $index }})"
-                                            class="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white">
-                                            <i class="fa-solid fa-xmark"></i>
+                                    <span wire:key="pending-attachment-{{ $index }}" class="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-200">
+                                        <i class="fa-solid fa-paperclip text-xs text-neutral-400"></i>
+                                        <span class="max-w-[12rem] truncate">{{ $upload->getClientOriginalName() }}</span>
+                                        <button type="button" wire:click="removeAttachmentUpload({{ $index }})" class="text-neutral-400 transition hover:text-neutral-700 dark:hover:text-zinc-100" aria-label="{{ __('Remove attachment') }}">
+                                            <i class="fa-solid fa-xmark text-xs"></i>
                                         </button>
-                                        @if (Str::startsWith($upload->getMimeType() ?? '', 'image/'))
-                                            <img src="{{ $upload->temporaryUrl() }}"
-                                                alt="{{ __('Attachment preview') }}"
-                                                class="aspect-video w-full rounded-xl object-cover">
-                                        @else
-                                            <div
-                                                class="flex aspect-video items-center justify-center rounded-xl bg-white text-neutral-500 dark:bg-zinc-900 dark:text-zinc-300">
-                                                <i class="fa-solid fa-file text-lg"></i>
-                                            </div>
-                                        @endif
-                                        <p class="mt-2 truncate text-xs text-neutral-500 dark:text-zinc-400">
-                                            {{ $upload->getClientOriginalName() }}</p>
-                                    </div>
+                                    </span>
                                 @endforeach
                             </div>
                         @endif

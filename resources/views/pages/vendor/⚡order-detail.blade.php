@@ -4,10 +4,12 @@ use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\VendorStatus;
+use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -17,6 +19,10 @@ new #[Title('Vendor Order Detail')] class extends Component
 {
     public int $orderId;
 
+    public ?string $estimated_delivery_at = null;
+
+    public string $delay_note = '';
+
     public function mount(string $orderReference): void
     {
         if (! $this->hasApprovedVendorProfile()) {
@@ -25,10 +31,12 @@ new #[Title('Vendor Order Detail')] class extends Component
             return;
         }
 
-        $this->orderId = Order::query()
+        $order = Order::query()
             ->where('vendor_id', $this->vendorId())
-            ->findOrFail((int) $orderReference)
-            ->getKey();
+            ->findOrFail((int) $orderReference);
+
+        $this->orderId = $order->getKey();
+        $this->hydrateDeliveryEstimateForm($order);
     }
 
     public function advanceStatus(): void
@@ -114,6 +122,39 @@ new #[Title('Vendor Order Detail')] class extends Component
         Flux::toast(variant: 'warning', text: __('Order cancelled.'));
     }
 
+    public function saveDeliveryEstimate(): void
+    {
+        $validated = $this->validate([
+            'estimated_delivery_at' => ['nullable', 'date'],
+            'delay_note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $order = DB::transaction(function () use ($validated): Order {
+            $order = Order::query()
+                ->where('vendor_id', $this->vendorId())
+                ->lockForUpdate()
+                ->findOrFail($this->orderId);
+
+            abort_unless(in_array($order->order_status, [OrderStatus::Confirmed, OrderStatus::Preparing], true), 403);
+
+            $order->forceFill([
+                'estimated_delivery_at' => blank($validated['estimated_delivery_at'] ?? null)
+                    ? null
+                    : Carbon::parse($validated['estimated_delivery_at']),
+                'delay_note' => blank($validated['delay_note'] ?? null) ? null : $validated['delay_note'],
+            ])->save();
+
+            return $order;
+        });
+
+        event(new OrderStatusUpdated($order));
+
+        unset($this->order);
+        $this->hydrateDeliveryEstimateForm($order);
+
+        Flux::toast(variant: 'success', text: __('Delivery estimate saved.'));
+    }
+
     #[Computed]
     public function order(): Order
     {
@@ -147,6 +188,12 @@ new #[Title('Vendor Order Detail')] class extends Component
     private function hasApprovedVendorProfile(): bool
     {
         return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
+    }
+
+    private function hydrateDeliveryEstimateForm(Order $order): void
+    {
+        $this->estimated_delivery_at = $order->estimated_delivery_at?->format('Y-m-d\TH:i');
+        $this->delay_note = $order->delay_note ?? '';
     }
 };
 ?>
@@ -276,6 +323,19 @@ new #[Title('Vendor Order Detail')] class extends Component
                         <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ Str::headline($this->order->payment_status->value) }}</span>
                     </div>
                 </div>
+
+                @if (in_array($this->order->order_status, [OrderStatus::Confirmed, OrderStatus::Preparing], true))
+                    <div class="mt-6 space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+                        <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Set estimated delivery') }}</p>
+
+                        <flux:input type="datetime-local" wire:model="estimated_delivery_at" :label="__('Estimated delivery')" />
+                        <flux:input wire:model="delay_note" :label="__('Delay note (optional)')" :placeholder="__('e.g. Delayed due to weather')" />
+
+                        <button type="button" wire:click="saveDeliveryEstimate" wire:loading.attr="disabled" wire:target="saveDeliveryEstimate" class="brand-button-secondary w-full">
+                            {{ __('Save estimate') }}
+                        </button>
+                    </div>
+                @endif
 
                 <div class="mt-6 grid gap-3">
                     @if ($this->nextStatus !== null)

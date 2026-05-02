@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\ReportStatus;
 use App\Enums\UserRole;
+use App\Models\Report;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Livewire\Livewire;
@@ -142,6 +144,40 @@ test('admins can create another admin from the user management modal', function 
         ->and($createdAdmin->role)->toBe(UserRole::Admin)
         ->and($createdAdmin->is_active)->toBeTrue()
         ->and($createdAdmin->email_verified_at)->not->toBeNull();
+});
+
+test('admin user list shows actionable vendor and report markers', function () {
+    $admin = User::factory()->admin()->create();
+    $approvedVendorUser = User::factory()->vendor()->create([
+        'name' => 'Approved Vendor',
+    ]);
+    $pendingVendorUser = User::factory()->vendor()->create([
+        'name' => 'Pending Vendor',
+    ]);
+    $rejectedVendorUser = User::factory()->vendor()->create([
+        'name' => 'Rejected Vendor',
+    ]);
+    $watchlistedCustomer = User::factory()->create([
+        'name' => 'Watchlisted Customer',
+    ]);
+
+    VendorProfile::factory()->for($approvedVendorUser, 'user')->approved()->create();
+    VendorProfile::factory()->for($pendingVendorUser, 'user')->create();
+    VendorProfile::factory()->for($rejectedVendorUser, 'user')->rejected()->create();
+    Report::factory()->open()->create([
+        'reporter_id' => $admin->getKey(),
+        'reported_user_id' => $watchlistedCustomer->getKey(),
+        'status' => ReportStatus::Open,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.users'))
+        ->assertOk()
+        ->assertSee('Approved Vendor')
+        ->assertSee('Pending')
+        ->assertSee('Rejected')
+        ->assertSee('Watchlist')
+        ->assertDontSee('Vendor: Approved');
 });
 
 test('admin users are gracefully redirected away from shop-only routes', function () {

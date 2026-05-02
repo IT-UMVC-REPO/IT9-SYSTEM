@@ -110,6 +110,22 @@ test('order detail shows correct line items and totals', function () {
         ->assertSee('View full message history in your inbox');
 });
 
+test('order detail shows estimated delivery and delay note', function () {
+    $customer = User::factory()->create();
+    $tracked = seedTrackedOrder($customer, [
+        'order_status' => OrderStatus::Confirmed,
+        'estimated_delivery_at' => '2026-05-03 14:30:00',
+        'delay_note' => 'Delayed due to weather',
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.orders.show', ['orderReference' => $tracked['order']->getKey()]))
+        ->assertOk()
+        ->assertSee('Estimated delivery')
+        ->assertSee('May 3, 2026 2:30 PM')
+        ->assertSee('Delayed due to weather');
+});
+
 test('cancel order changes the status and dispatches a vendor notification job', function () {
     Queue::fake();
 

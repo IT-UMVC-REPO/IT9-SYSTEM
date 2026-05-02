@@ -336,6 +336,16 @@ new #[Title('Order Detail')] class extends Component {
                         </li>
                     @endforeach
                 </ol>
+
+                @if ($this->order->estimated_delivery_at)
+                    <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 text-sm dark:border-white/10 dark:bg-zinc-800">
+                        <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Estimated delivery') }}</p>
+                        <p class="mt-1 text-neutral-500 dark:text-zinc-400">{{ $this->order->estimated_delivery_at->format('M j, Y g:i A') }}</p>
+                        @if ($this->order->delay_note)
+                            <p class="mt-2 text-xs text-amber-700 dark:text-amber-300"><i class="fa-solid fa-clock-rotate-left mr-1"></i>{{ $this->order->delay_note }}</p>
+                        @endif
+                    </div>
+                @endif
             </section>
 
             <section class="brand-panel space-y-5 p-6">

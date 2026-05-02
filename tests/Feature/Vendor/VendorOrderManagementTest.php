@@ -2,6 +2,7 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Category;
 use App\Models\Order;
@@ -10,6 +11,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -154,6 +156,30 @@ test('customer notification is dispatched on status change', function () {
             && $job->userId === $tracked['customer']->getKey()
             && $job->broadcastOrderStatus === true;
     });
+});
+
+test('vendor can save estimated delivery for confirmed or preparing orders', function () {
+    Event::fake([OrderStatusUpdated::class]);
+
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $tracked = createVendorManagedOrder($vendorProfile, [
+        'order_status' => OrderStatus::Confirmed,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.order-detail', ['orderReference' => (string) $tracked['order']->getKey()])
+        ->set('estimated_delivery_at', '2026-05-03T14:30')
+        ->set('delay_note', 'Delayed due to weather')
+        ->call('saveDeliveryEstimate')
+        ->assertHasNoErrors();
+
+    $order = $tracked['order']->fresh();
+
+    expect($order->estimated_delivery_at?->format('Y-m-d H:i'))->toBe('2026-05-03 14:30')
+        ->and($order->delay_note)->toBe('Delayed due to weather');
+
+    Event::assertDispatched(OrderStatusUpdated::class, fn (OrderStatusUpdated $event) => $event->order->is($order));
 });
 
 test('cancel works for pending orders', function () {
