@@ -11,6 +11,13 @@
 
         $marketStream = $marketItems->concat($marketItems);
         $portalHomeRoute = auth()->check() ? route(auth()->user()->homeRoute()) : null;
+        $sellerPortalRoute = auth()->check()
+            ? route(match (auth()->user()->effectiveMarketplaceRole()) {
+                \App\Enums\UserRole::Admin => 'admin.dashboard',
+                \App\Enums\UserRole::Vendor => 'vendor.dashboard',
+                default => 'vendor.registration',
+            })
+            : route('register');
         $heroActions = auth()->check()
             ? [
                 ['label' => 'Go to my dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
@@ -282,7 +289,7 @@
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shop"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor workspace</h3>
                         <p class="mt-4 text-sm leading-7 text-amber-100">A seller portal built around onboarding, catalog management, order handling, and sales visibility.</p>
-                        <a href="{{ auth()->check() ? route('vendor.registration') : route('register') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:text-amber-300 dark:hover:bg-zinc-900">
+                        <a href="{{ $sellerPortalRoute }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-amber-700 transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:text-amber-300 dark:hover:bg-zinc-900">
                             {{ auth()->check() ? 'Explore seller pages' : 'Start with an account' }}
                         </a>
                     </article>

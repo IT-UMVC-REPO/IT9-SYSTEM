@@ -343,7 +343,7 @@ new #[Title('Group conversation')] class extends Component
         x-on:beforeunload.window="leaveCall()"
         x-on:livewire:navigating.window="leaveCall()"
         x-on:group-call-start.window="startCall()"
-        x-on:group-conversation-auto-answer.window="callId = $event.detail.callId; acceptCall()"
+        x-on:group-conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         class="contents"
     >
         <div wire:ignore x-cloak x-show="callStatus !== 'idle'" x-transition.opacity class="fixed inset-0 z-[70] bg-neutral-950/95 backdrop-blur-sm">

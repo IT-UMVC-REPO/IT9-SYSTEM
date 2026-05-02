@@ -14,9 +14,7 @@
                 <div class="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-[oklch(from_var(--brand-200)_l_c_h_/_0.22)] blur-3xl"></div>
 
                 <div class="inline-flex items-center gap-2 self-start rounded-lg border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900/80">
-                    <a href="{{ route('home') }}" class="relative z-10 flex items-center gap-3" wire:navigate>
-                        <x-app-logo class="h-9 w-auto" />
-                    </a>
+                    <x-app-logo href="{{ route('home') }}" wire:navigate class="relative z-10 h-9 w-auto" />
                 </div>
 
                 <div class="relative z-10">

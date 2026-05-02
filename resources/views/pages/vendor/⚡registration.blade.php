@@ -575,17 +575,22 @@ new #[Title('Vendor registration')] class extends Component {
                             @foreach ($sampleProducts as $index => $sampleProduct)
                                 <article
                                     wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
-                                    class="rounded-2xl border border-zinc-800 bg-zinc-900 p-8"
+                                    class="brand-panel p-6 sm:p-8"
                                 >
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
-                                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">
+                                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-zinc-400">
                                                 {{ __('Sample product #:number', ['number' => $loop->iteration]) }}
                                             </p>
                                         </div>
 
                                         @if (count($sampleProducts) > 1)
-                                            <button type="button" wire:click="removeSampleProduct({{ $index }})" class="text-sm font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200">
+                                            <button
+                                                type="button"
+                                                wire:click="removeSampleProduct({{ $index }})"
+                                                class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:border-rose-500/30 dark:hover:bg-rose-500/15"
+                                            >
+                                                <i class="fa-solid fa-trash text-xs"></i>
                                                 {{ __('Remove') }}
                                             </button>
                                         @endif
@@ -634,15 +639,15 @@ new #[Title('Vendor registration')] class extends Component {
                                             </template>
 
                                             <template x-if="!previewUrl">
-                                                <label for="sample-product-image-{{ $index }}" class="flex h-64 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-zinc-700 px-4 text-center">
-                                                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800 text-zinc-300">
+                                                <label for="sample-product-image-{{ $index }}" class="flex h-64 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
+                                                    <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
                                                         <i class="fa-solid fa-camera text-sm"></i>
                                                     </span>
                                                     <div class="space-y-2">
-                                                        <p class="text-sm font-semibold text-zinc-100">
+                                                        <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
                                                             {{ __('Upload product image') }}
                                                         </p>
-                                                        <p class="text-xs leading-6 text-zinc-400">
+                                                        <p class="text-xs leading-6 text-neutral-500 dark:text-zinc-400">
                                                             {{ __('Use the kind of photo customers should expect to see later in your catalog.') }}
                                                         </p>
                                                     </div>

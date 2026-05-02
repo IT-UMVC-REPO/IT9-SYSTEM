@@ -11,7 +11,7 @@
     };
 @endphp
 
-@if ($user->profile_image)
+@if ($user?->profile_image)
     <img
         src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($user->profile_image) }}"
         alt="{{ $user->name }}"
@@ -19,6 +19,6 @@
     >
 @else
     <span {{ $attributes->class([$sizeClasses, 'brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm']) }}>
-        {{ $user->initials() }}
+        {{ $user?->initials() ?? '?' }}
     </span>
 @endif

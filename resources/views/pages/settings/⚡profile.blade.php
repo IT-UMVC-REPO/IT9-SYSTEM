@@ -231,7 +231,7 @@ new #[Title('Profile settings')] class extends Component {
                                     class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-xs"
                                 >
                                     <i class="fa-solid fa-arrow-up-from-bracket"></i>
-                                    <span x-text="previewUrl ? '{{ __('Change selection') }}' : '{{ __('Upload photo') }}'"></span>
+                                    <span x-text="previewUrl ? @js(__('Change selection')) : @js(__('Upload photo'))"></span>
                                 </label>
                                 <input
                                     id="profile-image-upload"
