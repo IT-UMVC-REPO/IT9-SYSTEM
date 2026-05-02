@@ -47,6 +47,9 @@ class SendOrderNotificationJob implements ShouldQueue
             'title' => $this->title,
             'message' => $this->message,
             'type' => $this->type,
+            'data' => [
+                'order_id' => $order->getKey(),
+            ],
         ]);
 
         try {

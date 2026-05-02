@@ -1,8 +1,8 @@
 <?php
 
+use App\Concerns\HasVendorGuard;
 use App\Concerns\VendorProductValidationRules;
 use App\Enums\ProductStatus;
-use App\Enums\VendorStatus;
 use App\Models\Category;
 use App\Models\Product;
 use Flux\Flux;
@@ -16,6 +16,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new #[Title('Edit product')] class extends Component {
+    use HasVendorGuard;
     use VendorProductValidationRules;
     use WithFileUploads;
 
@@ -144,37 +145,29 @@ new #[Title('Edit product')] class extends Component {
             : Storage::disk('public')->url($this->currentImage);
     }
 
-    private function hasApprovedVendorProfile(): bool
-    {
-        return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
-    }
-
-    private function approvedVendorProfile()
-    {
-        $vendorProfile = auth()->user()->vendorProfile;
-
-        abort_if($vendorProfile === null || $vendorProfile->status !== VendorStatus::Approved, 403);
-
-        return $vendorProfile;
-    }
 }; ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4">
+        <a href="{{ route('vendor.products') }}" wire:navigate class="brand-hover-text inline-flex w-fit items-center gap-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            {{ __('Back to products') }}
+        </a>
         <span class="brand-kicker">{{ __('Edit listing') }}</span>
-        <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+        <h1 class="brand-serif text-3xl font-bold text-neutral-900 dark:text-neutral-100 sm:text-4xl">
             {{ __('Update your product details') }}
         </h1>
-        <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
+        <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-neutral-400">
             {{ __('Refresh the image, revise the copy, or adjust the product status before shoppers see the latest version in your storefront.') }}
         </p>
     </section>
 
     <form
         wire:submit="update"
-        class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+        class="brand-panel grid gap-8 rounded-[2rem] p-6 sm:p-8 lg:grid-cols-[minmax(16rem,0.45fr)_minmax(0,1fr)]"
         x-data="{
             previewUrl: @js($this->currentImageUrl),
+            dragOver: false,
             handleFile(event) {
                 const file = event.target.files[0];
 
@@ -187,12 +180,31 @@ new #[Title('Edit product')] class extends Component {
                 }
 
                 this.previewUrl = URL.createObjectURL(file);
+            },
+            setDroppedFile(event) {
+                const files = event.dataTransfer.files;
+
+                if (! files.length) {
+                    return;
+                }
+
+                this.$refs.productImageInput.files = files;
+                this.handleFile({ target: this.$refs.productImageInput });
+                this.dragOver = false;
+                this.$refs.productImageInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }"
     >
-        <section class="brand-panel p-6 sm:p-8">
-            <div class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60">
+        <section class="space-y-3 lg:sticky lg:top-24 lg:self-start">
+            <div
+                class="min-h-64 rounded-[2rem] border-2 border-dashed border-stone-300 p-4 transition hover:bg-stone-50 dark:border-white/20 dark:hover:bg-white/5"
+                x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[var(--brand-50)] dark:bg-white/5' : ''"
+                x-on:dragover.prevent="dragOver = true"
+                x-on:dragleave.prevent="dragOver = false"
+                x-on:drop.prevent="setDroppedFile($event)"
+            >
                 <input
+                    x-ref="productImageInput"
                     id="product-image-upload"
                     type="file"
                     wire:model="productImageUpload"
@@ -202,17 +214,33 @@ new #[Title('Edit product')] class extends Component {
                 >
 
                 <template x-if="previewUrl">
-                    <div class="space-y-4">
+                    <div class="relative overflow-hidden rounded-[1.5rem]">
                         <img
                             x-bind:src="previewUrl"
                             alt="{{ __('Product preview') }}"
-                            class="aspect-[4/3] w-full rounded-[1.5rem] object-cover"
+                            class="aspect-square w-full object-cover"
                         >
 
-                        <label for="product-image-upload" class="brand-button-secondary w-full cursor-pointer">
-                            {{ __('Choose a different image') }}
+                        <label for="product-image-upload" class="absolute inset-x-4 bottom-4 cursor-pointer rounded-xl bg-white/90 px-4 py-3 text-center text-sm font-semibold text-neutral-800 shadow-sm backdrop-blur transition hover:bg-white dark:bg-neutral-950/85 dark:text-white">
+                            {{ __('Change image') }}
                         </label>
                     </div>
+                </template>
+
+                <template x-if="!previewUrl">
+                    <label for="product-image-upload" class="flex h-full cursor-pointer flex-col items-center justify-center gap-4 text-center">
+                        <span class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-2xl">
+                            <i class="fa-solid fa-camera text-lg"></i>
+                        </span>
+                        <div class="space-y-2">
+                            <p class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                                {{ __('Click or drag to upload') }}
+                            </p>
+                            <p class="text-sm text-neutral-500 dark:text-neutral-400">
+                                {{ __('Use a clean photo that matches what customers will receive from your stall.') }}
+                            </p>
+                        </div>
+                    </label>
                 </template>
             </div>
 
@@ -221,14 +249,14 @@ new #[Title('Edit product')] class extends Component {
             @enderror
         </section>
 
-        <section class="brand-panel space-y-6 p-6 sm:p-8">
+        <section class="space-y-5">
             <flux:input wire:model="name" :label="__('Product name')" type="text" required />
 
             <flux:textarea wire:model="description" :label="__('Description')" rows="4" required />
 
             <div class="grid gap-4 sm:grid-cols-2">
                 <div class="relative">
-                    <span class="pointer-events-none absolute left-4 top-[2.7rem] text-sm font-semibold text-neutral-500 dark:text-zinc-400">₱</span>
+                    <span class="pointer-events-none absolute left-px top-[1.9rem] flex h-[2.55rem] w-11 items-center justify-center rounded-l-xl border border-stone-200 bg-stone-50 text-sm font-semibold text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-400">&#8369;</span>
                     <flux:input
                         wire:model="price"
                         :label="__('Price')"
@@ -236,7 +264,7 @@ new #[Title('Edit product')] class extends Component {
                         inputmode="decimal"
                         step="0.01"
                         min="0.01"
-                        class="pl-8"
+                        class="pl-12"
                         required
                     />
                 </div>
@@ -262,40 +290,53 @@ new #[Title('Edit product')] class extends Component {
             </flux:select>
 
             <div class="space-y-3">
-                <p class="text-sm font-medium text-neutral-900 dark:text-zinc-100">{{ __('Publishing status') }}</p>
+                <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100">{{ __('Publishing status') }}</p>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
-                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Inactive->value }}" class="accent-emerald-500">
+                    <button
+                        type="button"
+                        wire:click="$set('status', '{{ ProductStatus::Inactive->value }}')"
+                        @class([
+                            'rounded-xl border px-4 py-3 text-left transition',
+                            'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Inactive->value,
+                            'border-stone-200 bg-stone-100 text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-white/5 dark:text-neutral-300' => $status !== ProductStatus::Inactive->value,
+                        ])
+                    >
                         <div>
-                            <p class="text-sm font-medium text-zinc-100">{{ __('Draft') }}</p>
-                            <p class="text-xs text-zinc-400">{{ __('Hidden from storefront') }}</p>
+                            <p class="text-sm font-semibold">{{ __('Draft') }}</p>
+                            <p class="mt-1 text-xs opacity-80">{{ __('Hidden from storefront') }}</p>
                         </div>
-                    </label>
+                    </button>
 
-                    <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 p-4 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-950/30">
-                        <input type="radio" wire:model="status" name="status" value="{{ ProductStatus::Active->value }}" class="accent-emerald-500">
+                    <button
+                        type="button"
+                        wire:click="$set('status', '{{ ProductStatus::Active->value }}')"
+                        @class([
+                            'rounded-xl border px-4 py-3 text-left transition',
+                            'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
+                            'border-stone-200 bg-stone-100 text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-white/5 dark:text-neutral-300' => $status !== ProductStatus::Active->value,
+                        ])
+                    >
                         <div>
-                            <p class="text-sm font-medium text-zinc-100">{{ __('Active') }}</p>
-                            <p class="text-xs text-zinc-400">{{ __('Visible to shoppers') }}</p>
+                            <p class="text-sm font-semibold">{{ __('Active') }}</p>
+                            <p class="mt-1 text-xs opacity-80">{{ __('Visible to shoppers') }}</p>
                         </div>
-                    </label>
+                    </button>
                 </div>
             </div>
 
-            <flux:button
-                variant="primary"
+            <button
                 type="submit"
                 wire:loading.attr="disabled"
                 wire:target="update,productImageUpload"
-                class="w-full justify-center"
+                class="brand-button-primary w-full"
             >
                 <span wire:loading.remove wire:target="update">{{ __('Save changes') }}</span>
                 <span wire:loading wire:target="update">{{ __('Saving...') }}</span>
-            </flux:button>
+            </button>
 
             <div>
-                <hr class="my-4 border-zinc-800">
+                <hr class="my-4 border-stone-200 dark:border-white/10">
 
                 <flux:modal.trigger name="delete-product-listing">
                     <flux:button variant="danger" type="button" class="w-full justify-center">

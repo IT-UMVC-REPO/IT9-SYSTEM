@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\VendorStatus;
 use App\Models\CartItem;
 use App\Models\Favorite;
 use App\Models\Notification;
@@ -64,7 +63,12 @@ new #[Title('Customer Dashboard')] class extends Component
         return Favorite::query()
             ->where('customer_id', auth()->id())
             ->with([
-                'vendor:id,user_id,store_name,store_image,status,approved_at',
+                'vendor' => fn ($query) => $query
+                    ->select(['id', 'user_id', 'store_name', 'store_description', 'store_image', 'status', 'approved_at'])
+                    ->with('user:id,name')
+                    ->withCount([
+                        'products as active_products_count' => fn ($productQuery) => $productQuery->active(),
+                    ]),
             ])
             ->latest('created_at')
             ->limit(4)
@@ -118,14 +122,6 @@ new #[Title('Customer Dashboard')] class extends Component
         ];
     }
 
-    public function vendorStatusLabel(string $status): string
-    {
-        return match ($status) {
-            VendorStatus::Approved->value => __('Approved stall'),
-            VendorStatus::Rejected->value => __('No longer active'),
-            default => __('Pending stall'),
-        };
-    }
 };
 ?>
 
@@ -218,7 +214,7 @@ new #[Title('Customer Dashboard')] class extends Component
                             </div>
 
                             <div class="flex flex-col items-start gap-3 sm:items-end">
-                                <span class="brand-badge">{{ Str::headline($order->order_status->value) }}</span>
+                                <x-order-status-badge :status="$order->order_status" />
                                 <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $order->formattedTotal() }}</p>
                                 <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary">
                                     {{ __('View order') }}
@@ -252,41 +248,16 @@ new #[Title('Customer Dashboard')] class extends Component
             <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                 @forelse ($this->favoriteVendors as $favorite)
                     @php($vendor = $favorite->vendor)
-                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-favourite-{{ $favorite->id }}">
-                        @if ($vendor !== null)
-                            <div class="flex items-start gap-4">
-                                <img
-                                    src="{{ $vendor->store_image_url }}"
-                                    alt="{{ $vendor->store_name }}"
-                                    class="h-14 w-14 rounded-2xl object-cover"
-                                >
-
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <h3 class="truncate text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h3>
-                                            <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ $this->vendorStatusLabel($vendor->status->value) }}</p>
-                                        </div>
-
-                                        <livewire:vendor.follow-button :vendor="$vendor" :key="'customer-dashboard-favorite-button-'.$favorite->id" />
-                                    </div>
-
-                                    @if ($vendor->status === VendorStatus::Approved)
-                                        <a href="{{ route('shop.vendors.show', $vendor) }}" wire:navigate class="mt-4 inline-flex text-sm font-semibold" style="color: var(--brand-700);">
-                                            {{ __('Visit stall') }}
-                                        </a>
-                                    @endif
-                                </div>
-                            </div>
-                        @endif
-                    </article>
+                    @if ($vendor !== null)
+                        <x-vendor-card :vendor="$vendor" :compact="true" wire:key="customer-dashboard-favourite-{{ $favorite->id }}" />
+                    @endif
                 @empty
-                    <div class="rounded-[1.75rem] border border-dashed border-stone-200 px-6 py-12 text-center dark:border-white/10 sm:col-span-2 xl:col-span-1">
-                        <span class="brand-kicker">{{ __('No favourites yet') }}</span>
-                        <p class="mt-4 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                            {{ __('Follow a few trusted stalls to keep them close on your dashboard.') }}
-                        </p>
-                    </div>
+                    <x-empty-state
+                        class="sm:col-span-2 xl:col-span-1"
+                        icon="fa-regular fa-heart"
+                        :heading="__('No favourites yet')"
+                        :body="__('Follow a few trusted stalls to keep them close on your dashboard.')"
+                    />
                 @endforelse
             </div>
         </div>

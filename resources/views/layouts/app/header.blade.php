@@ -10,6 +10,7 @@
         $quickActionItems = [];
         $portalSummary = null;
         $mobileNavigationItems = [];
+        $mobileBottomNavigationItems = [];
         $showNotificationBell = false;
         $navItem = fn (string $label, string $routeName, array $patterns, string $icon): array => [
             'label' => __($label),
@@ -77,13 +78,43 @@
                     ...$navigationItems,
                     $homeNavigationItem,
                 ];
+
+            $mobileBottomNavigationItems = match ($effectiveMarketplaceRole) {
+                \App\Enums\UserRole::Customer => [
+                    $navItem('Home', 'customer.dashboard', ['customer.dashboard'], 'fa-solid fa-house'),
+                    $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                    $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
+                    $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
+                    $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
+                ],
+                \App\Enums\UserRole::Vendor => [
+                    $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
+                    $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
+                    $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
+                    $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
+                    $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
+                ],
+                \App\Enums\UserRole::Admin => [
+                    $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
+                    $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
+                    $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
+                    $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
+                    $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
+                ],
+            };
         }
 
         $logoHref = $user !== null && filled($navigationItems)
             ? $navigationItems[0]['route']
             : route('home');
     @endphp
-    <body class="brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+    <body
+        x-data="{ mobileMenuOpen: false, showBackToTop: false }"
+        x-init="showBackToTop = window.scrollY > 400; window.addEventListener('scroll', () => showBackToTop = window.scrollY > 400, { passive: true })"
+        x-on:keydown.escape.window="mobileMenuOpen = false"
+        x-on:livewire:navigating.window="mobileMenuOpen = false"
+        class="brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100"
+    >
         <header class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/70">
             <nav class="mx-auto flex h-[52px] max-w-[1500px] items-stretch gap-4 px-4 sm:px-6 lg:px-8">
                 <div class="flex shrink-0 items-center">
@@ -133,64 +164,27 @@
                         <x-desktop-user-menu />
                     </div>
 
-                    <details
-                        x-data="{ open: false }"
-                        x-bind:open="open"
-                        x-on:click.outside="open = false"
-                        x-on:livewire:navigate.window="open = false"
-                        class="relative ml-auto flex items-center lg:hidden"
-                    >
-                        <summary @click.prevent="open = !open" class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
+                    <div class="ml-auto flex items-center gap-1 lg:hidden">
+                        @foreach ($quickActionItems as $item)
+                            @if ($item['route'] === route('shop.cart'))
+                                <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'mobile-header-cart-badge'" />
+                            @endif
+                        @endforeach
+
+                        @if ($showNotificationBell)
+                            <livewire:notifications.notification-bell :key="'mobile-header-notification-bell'" />
+                        @endif
+
+                        <button
+                            type="button"
+                            x-on:click="mobileMenuOpen = ! mobileMenuOpen"
+                            x-bind:aria-expanded="mobileMenuOpen.toString()"
+                            class="brand-summary-toggle flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100"
+                            aria-label="{{ __('Open menu') }}"
+                        >
                             <i class="fa-solid fa-bars-staggered text-sm"></i>
-                        </summary>
-
-                        <div class="absolute right-0 top-[calc(100%+0.75rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40">
-                            <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
-                                <div class="flex items-center gap-3">
-                                    <x-user-avatar :user="$user" size="lg" />
-                                    <div class="min-w-0">
-                                        <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</p>
-                                        <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>
-                                    </div>
-                                </div>
-
-                                <div class="mt-4 rounded-[1.25rem] border border-stone-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-                                    <p class="text-sm text-neutral-600 dark:text-zinc-300">{{ $portalSummary }}</p>
-                                </div>
-                            </div>
-
-                            <div class="grid gap-2 p-4">
-                                @foreach ($mobileNavigationItems as $item)
-                                    <a
-                                        href="{{ $item['route'] }}"
-                                        wire:navigate
-                                        @class([
-                                            'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 px-4 py-3 text-sm font-semibold text-neutral-700 transition dark:border-white/10 dark:text-zinc-100',
-                                            'is-active' => request()->routeIs(...$item['patterns']),
-                                        ])
-                                    >
-                                        <span class="flex items-center gap-3">
-                                            <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-neutral-700 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
-                                                <i class="{{ $item['icon'] }}"></i>
-                                            </span>
-                                            <span>{{ $item['label'] }}</span>
-                                        </span>
-                                        <i class="fa-solid fa-arrow-right text-xs"></i>
-                                    </a>
-                                @endforeach
-                            </div>
-
-                            <div class="border-t border-stone-200 p-4 dark:border-white/10">
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="brand-button-secondary w-full">
-                                        <i class="fa-solid fa-right-from-bracket text-xs"></i>
-                                        {{ __('Log out') }}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </details>
+                        </button>
+                    </div>
                 @else
                     <div class="ml-auto hidden items-center gap-3 sm:flex">
                         <a href="{{ route('login') }}" class="brand-link" wire:navigate>
@@ -201,46 +195,164 @@
                         </a>
                     </div>
 
-                    <details
-                        x-data="{ open: false }"
-                        x-bind:open="open"
-                        x-on:click.outside="open = false"
-                        x-on:livewire:navigate.window="open = false"
-                        class="relative ml-auto flex items-center sm:hidden"
+                    <button
+                        type="button"
+                        x-on:click="mobileMenuOpen = ! mobileMenuOpen"
+                        x-bind:aria-expanded="mobileMenuOpen.toString()"
+                        class="brand-summary-toggle ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 sm:hidden"
+                        aria-label="{{ __('Open menu') }}"
                     >
-                        <summary @click.prevent="open = !open" class="brand-summary-toggle flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition marker:hidden dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100 [&::-webkit-details-marker]:hidden">
-                            <i class="fa-solid fa-bars-staggered text-sm"></i>
-                        </summary>
+                        <i class="fa-solid fa-bars-staggered text-sm"></i>
+                    </button>
+                @endauth
+            </nav>
 
-                        <div class="absolute right-0 top-[calc(100%+0.75rem)] w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40">
-                            <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
+            <div
+                x-cloak
+                x-show="mobileMenuOpen"
+                x-transition.opacity
+                x-on:click="mobileMenuOpen = false"
+                class="fixed inset-x-0 top-[52px] z-[55] h-[calc(100vh-52px)] bg-neutral-950/40 backdrop-blur-sm lg:hidden"
+            ></div>
+
+            <div
+                x-cloak
+                x-show="mobileMenuOpen"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="-translate-y-3 opacity-0"
+                x-transition:enter-end="translate-y-0 opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="translate-y-0 opacity-100"
+                x-transition:leave-end="-translate-y-3 opacity-0"
+                class="fixed inset-x-3 top-[60px] z-[60] max-h-[calc(100vh-76px)] overflow-y-auto rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40 lg:hidden"
+            >
+                @auth
+                    <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <x-user-avatar :user="$user" size="lg" />
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</p>
+                                    <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>
+                                </div>
+                            </div>
+
+                            <button type="button" x-on:click="mobileMenuOpen = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0" aria-label="{{ __('Close menu') }}">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div class="mt-4 rounded-[1.25rem] border border-stone-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
+                            <p class="text-sm text-neutral-600 dark:text-zinc-300">{{ $portalSummary }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-2 p-4">
+                        @foreach ($mobileNavigationItems as $item)
+                            <a
+                                href="{{ $item['route'] }}"
+                                wire:navigate
+                                x-on:click="mobileMenuOpen = false"
+                                @class([
+                                    'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 px-4 py-3 text-sm font-semibold text-neutral-700 transition dark:border-white/10 dark:text-zinc-100',
+                                    'is-active' => request()->routeIs(...$item['patterns']),
+                                ])
+                            >
+                                <span class="flex items-center gap-3">
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-neutral-700 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
+                                        <i class="{{ $item['icon'] }}"></i>
+                                    </span>
+                                    <span>{{ $item['label'] }}</span>
+                                </span>
+                                <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </a>
+                        @endforeach
+                    </div>
+
+                    <div class="border-t border-stone-200 p-4 dark:border-white/10">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="brand-button-secondary w-full">
+                                <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                                {{ __('Log out') }}
+                            </button>
+                        </form>
+                    </div>
+                @else
+                    <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
                                 <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Welcome to SukiMarket') }}</p>
                                 <p class="mt-2 text-xs leading-6 text-neutral-500 dark:text-zinc-400">
                                     {{ __('Sign in to open your dashboard or create an account to start browsing the market.') }}
                                 </p>
                             </div>
 
-                            <div class="grid gap-3 p-4">
-                                <a href="{{ route('login') }}" class="brand-button-secondary w-full" wire:navigate>
-                                    {{ __('Log in') }}
-                                </a>
-                                <a href="{{ route('register') }}" class="brand-button-primary w-full" wire:navigate>
-                                    {{ __('Create account') }}
-                                </a>
-                            </div>
+                            <button type="button" x-on:click="mobileMenuOpen = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0" aria-label="{{ __('Close menu') }}">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
                         </div>
-                    </details>
+                    </div>
+
+                    <div class="grid gap-3 p-4">
+                        <a href="{{ route('login') }}" class="brand-button-secondary w-full" wire:navigate x-on:click="mobileMenuOpen = false">
+                            {{ __('Log in') }}
+                        </a>
+                        <a href="{{ route('register') }}" class="brand-button-primary w-full" wire:navigate x-on:click="mobileMenuOpen = false">
+                            {{ __('Create account') }}
+                        </a>
+                    </div>
                 @endauth
-            </nav>
+            </div>
         </header>
 
         {{ $slot }}
+
+        @auth
+            @if ($mobileBottomNavigationItems !== [])
+                <nav class="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 lg:hidden" aria-label="{{ __('Mobile primary navigation') }}">
+                    <div class="mx-auto grid max-w-xl grid-cols-5 gap-1">
+                        @foreach ($mobileBottomNavigationItems as $item)
+                            <a
+                                href="{{ $item['route'] }}"
+                                wire:navigate
+                                @class([
+                                    'flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition',
+                                    'bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]' => request()->routeIs(...$item['patterns']),
+                                    'text-neutral-500 hover:bg-stone-100 hover:text-neutral-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100' => ! request()->routeIs(...$item['patterns']),
+                                ])
+                            >
+                                <i class="{{ $item['icon'] }} text-sm"></i>
+                                <span class="max-w-full truncate">{{ $item['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </nav>
+            @endif
+        @endauth
+
+        <button
+            type="button"
+            x-cloak
+            x-show="showBackToTop"
+            x-transition.opacity
+            x-on:click="window.scrollTo({ top: 0, behavior: 'smooth' })"
+            class="brand-soft-surface fixed bottom-24 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border shadow-lg transition hover:-translate-y-0.5 lg:bottom-6"
+            aria-label="{{ __('Back to top') }}"
+            title="{{ __('Back to top') }}"
+        >
+            <i class="fa-solid fa-arrow-up text-sm"></i>
+        </button>
 
         @persist('toast')
             <flux:toast.group>
                 <flux:toast />
             </flux:toast.group>
         @endpersist
+
+        @if (session()->has('toast.warning'))
+            <div x-data x-init="$flux.toast({ variant: 'warning', text: @js(session('toast.warning')) })" class="hidden"></div>
+        @endif
 
         @auth
             <livewire:calls.incoming-call-notification :key="'incoming-call-notification'" />

@@ -1,6 +1,6 @@
 <x-layouts::app :title="$product->name">
     @php
-        $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value !== 'admin';
+        $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value !== 'admin' && ! ($isOwnProduct ?? false);
 
         $availabilityClasses = $product->stock_quantity > 0
             ? 'brand-soft-surface border'
@@ -10,6 +10,15 @@
             ? $product->stock_quantity.' units in stock'
             : 'Currently sold out';
     @endphp
+
+    @if ($isOwnProduct ?? false)
+        <div class="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 lg:px-8">
+            <div class="brand-soft-surface rounded-[1.75rem] border px-5 py-4 text-sm font-semibold text-[var(--brand-800)] dark:text-[var(--brand-200)]">
+                <i class="fa-solid fa-box-open mr-2"></i>
+                {{ __("You're viewing your own listing. Purchase controls are hidden for you.") }}
+            </div>
+        </div>
+    @endif
 
     <section class="relative overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12); background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 55%, color-mix(in oklab, var(--brand-950) 80%, black) 100%);">
         <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_top_right,_rgb(255_255_255_/_0.18),_transparent_52%)]"></div>
@@ -75,21 +84,33 @@
                 <div class="mt-5 space-y-4">
                     @if ($canPurchaseProduct)
                         <livewire:cart.add-to-cart :product="$product" />
+                    @elseif ($isOwnProduct ?? false)
+                        <div class="brand-soft-surface rounded-[1.75rem] border p-5">
+                            <span class="text-sm font-semibold text-[var(--brand-800)] dark:text-[var(--brand-200)]">
+                                <i class="fa-solid fa-circle-check mr-2"></i>
+                                {{ __('Your listing') }}
+                            </span>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                {{ __('Customers see the purchase panel here. You can manage this product from your vendor dashboard.') }}
+                            </p>
+                        </div>
                     @endif
 
-                    <a
-                        href="{{ route('messages.conversation', ['conversationReference' => $product->vendor->user->id]) }}"
-                        wire:navigate
-                        class="brand-card-hover block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
-                    >
-                        <span class="brand-accent-text-strong flex items-center gap-3">
-                            <i class="fa-solid fa-comments"></i>
-                            <span class="font-semibold">Message vendor</span>
-                        </span>
-                        <p class="mt-3 text-sm text-neutral-500 dark:text-zinc-400">
-                            Ask about availability, delivery timing, or anything else before you place the order.
-                        </p>
-                    </a>
+                    @unless ($isOwnProduct ?? false)
+                        <a
+                            href="{{ route('messages.conversation', ['conversationReference' => $product->vendor->user->id]) }}"
+                            wire:navigate
+                            class="brand-card-hover block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
+                        >
+                            <span class="brand-accent-text-strong flex items-center gap-3">
+                                <i class="fa-solid fa-comments"></i>
+                                <span class="font-semibold">{{ __('Message vendor') }}</span>
+                            </span>
+                            <p class="mt-3 text-sm text-neutral-500 dark:text-zinc-400">
+                                {{ __('Ask about availability, delivery timing, or anything else before you place the order.') }}
+                            </p>
+                        </a>
+                    @endunless
 
                 </div>
             </div>

@@ -153,9 +153,9 @@ new #[Title('Marketplace Order Oversight')] class extends Component
                                 <flux:table.cell>{{ $order->vendor->store_name }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->formattedTotal() }}</flux:table.cell>
                                 <flux:table.cell>
-                                    {{ Str::headline($order->payment->method->value) }} - {{ Str::headline($order->payment->status->value) }}
+                                    <x-payment-status-badge :status="$order->payment->status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment->status->value)" />
                                 </flux:table.cell>
-                                <flux:table.cell><span class="brand-badge">{{ Str::headline($order->order_status->value) }}</span></flux:table.cell>
+                                <flux:table.cell><x-order-status-badge :status="$order->order_status" /></flux:table.cell>
                                 <flux:table.cell>{{ $order->created_at->format('M j, Y g:i A') }}</flux:table.cell>
                             </flux:table.row>
                         @endforeach
@@ -173,12 +173,12 @@ new #[Title('Marketplace Order Oversight')] class extends Component
                                 <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ $order->vendor->store_name }}</p>
                             </div>
 
-                            <span class="brand-badge">{{ Str::headline($order->order_status->value) }}</span>
+                            <x-order-status-badge :status="$order->order_status" />
                         </div>
 
                         <div class="mt-4 grid gap-2 text-sm text-neutral-500 dark:text-zinc-400">
                             <p>{{ $order->formattedTotal() }}</p>
-                            <p>{{ Str::headline($order->payment->method->value) }} - {{ Str::headline($order->payment->status->value) }}</p>
+                            <x-payment-status-badge :status="$order->payment->status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment->status->value)" />
                             <p>{{ $order->created_at->format('M j, Y g:i A') }}</p>
                         </div>
                     </article>

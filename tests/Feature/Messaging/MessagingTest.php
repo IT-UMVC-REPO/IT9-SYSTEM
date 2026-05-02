@@ -3,6 +3,7 @@
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\VendorProfile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -249,6 +250,20 @@ test('conversation header links to customer profile when other user is a custome
         ->assertOk()
         ->assertSee('Customer Link Target')
         ->assertSee(route('shop.customers.show', $customer), false);
+});
+
+test('conversation header links to vendor storefront when other user is a vendor', function () {
+    $customer = User::factory()->create();
+    $vendorUser = User::factory()->vendor()->create([
+        'name' => 'Vendor Storefront Link',
+    ]);
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+
+    $this->actingAs($customer)
+        ->get(route('messages.conversation', ['conversationReference' => $vendorUser->getKey()]))
+        ->assertOk()
+        ->assertSee('Vendor Storefront Link')
+        ->assertSee(route('shop.vendors.show', $vendorProfile), false);
 });
 
 test('admins can access messaging pages and link back to admin profiles', function () {

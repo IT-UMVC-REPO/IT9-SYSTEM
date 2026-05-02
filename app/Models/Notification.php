@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'title', 'message', 'type', 'is_read', 'created_at'])]
+#[Fillable(['user_id', 'title', 'message', 'type', 'data', 'is_read', 'created_at'])]
 class Notification extends Model
 {
     public const UPDATED_AT = null;
@@ -31,6 +31,7 @@ class Notification extends Model
     {
         return [
             'type' => NotificationType::class,
+            'data' => 'array',
             'is_read' => 'bool',
             'created_at' => 'immutable_datetime',
         ];

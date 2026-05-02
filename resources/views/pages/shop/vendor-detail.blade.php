@@ -1,4 +1,13 @@
 <x-layouts::app :title="$vendorProfile->store_name">
+    @if ($isOwnStall ?? false)
+        <div class="mx-auto max-w-[1500px] px-4 pt-6 sm:px-6 lg:px-8">
+            <div class="brand-soft-surface rounded-[1.75rem] border px-5 py-4 text-sm font-semibold text-[var(--brand-800)] dark:text-[var(--brand-200)]">
+                <i class="fa-solid fa-store mr-2"></i>
+                {{ __("You're viewing your own storefront - customers see it exactly like this.") }}
+            </div>
+        </div>
+    @endif
+
     <section class="relative min-h-[380px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0">
             <img
@@ -37,22 +46,29 @@
                 </div>
 
                 <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
-                    <div class="flex items-center gap-3">
-                        <livewire:vendor.follow-button :vendor="$vendorProfile" :key="'vendor-storefront-follow-'.$vendorProfile->id" />
-                        <p class="text-sm font-semibold text-white">
-                            {{ $isFavorited ? __('Following this stall') : __('Follow this stall') }}
-                        </p>
-                    </div>
+                    @if ($isOwnStall ?? false)
+                        <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white">
+                            <i class="fa-solid fa-circle-check mr-2"></i>
+                            {{ __('This is your stall') }}
+                        </div>
+                    @else
+                        <div class="flex items-center gap-3">
+                            <livewire:vendor.follow-button :vendor="$vendorProfile" :key="'vendor-storefront-follow-'.$vendorProfile->id" />
+                            <p class="text-sm font-semibold text-white">
+                                {{ $isFavorited ? __('Following this stall') : __('Follow this stall') }}
+                            </p>
+                        </div>
 
-                    <a
-                        href="{{ route('messages.conversation', ['conversationReference' => $vendorProfile->user_id]) }}"
-                        wire:navigate
-                        class="brand-button-primary mt-5 w-full"
-                    >
-                        {{ __('Message vendor') }}
-                    </a>
+                        <a
+                            href="{{ route('messages.conversation', ['conversationReference' => $vendorProfile->user_id]) }}"
+                            wire:navigate
+                            class="brand-button-primary mt-5 w-full"
+                        >
+                            {{ __('Message vendor') }}
+                        </a>
+                    @endif
 
-                    @if (in_array(auth()->user()?->effectiveMarketplaceRole()->value, ['customer', 'vendor'], true))
+                    @if (! ($isOwnStall ?? false) && in_array(auth()->user()?->effectiveMarketplaceRole()->value, ['customer', 'vendor'], true))
                         <flux:modal.trigger name="report-user">
                             <flux:button
                                 variant="ghost"
@@ -107,9 +123,15 @@
                                 </a>
 
                                 <div class="mt-auto pt-6">
-                                    <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full">
-                                        {{ __('View product') }}
-                                    </a>
+                                    @if ($isOwnStall ?? false)
+                                        <span class="inline-flex w-full items-center justify-center rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-3 text-sm font-semibold text-[var(--brand-700)] dark:border-[var(--brand-500)] dark:bg-[color:oklch(from_var(--brand-500)_l_c_h_/_0.14)] dark:text-[var(--brand-300)]">
+                                            {{ __('Your listing') }}
+                                        </span>
+                                    @else
+                                        <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full">
+                                            {{ __('View product') }}
+                                        </a>
+                                    @endif
                                 </div>
                             </div>
                         </article>

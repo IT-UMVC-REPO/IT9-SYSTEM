@@ -176,8 +176,8 @@ new #[Title('Vendor Orders')] class extends Component
                                 <flux:table.cell>{{ $order->customer->name }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->order_items_count }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->formattedTotal() }}</flux:table.cell>
-                                <flux:table.cell>{{ Str::headline($order->payment->method->value) }} - {{ Str::headline($order->payment->status->value) }}</flux:table.cell>
-                                <flux:table.cell><span class="brand-badge">{{ Str::headline($order->order_status->value) }}</span></flux:table.cell>
+                                <flux:table.cell><x-payment-status-badge :status="$order->payment->status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment->status->value)" /></flux:table.cell>
+                                <flux:table.cell><x-order-status-badge :status="$order->order_status" /></flux:table.cell>
                                 <flux:table.cell>{{ $order->created_at->format('M j, Y') }}</flux:table.cell>
                                 <flux:table.cell align="end">
                                     <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary">
@@ -199,13 +199,13 @@ new #[Title('Vendor Orders')] class extends Component
                                 <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $order->customer->name }}</h2>
                             </div>
 
-                            <span class="brand-badge">{{ Str::headline($order->order_status->value) }}</span>
+                            <x-order-status-badge :status="$order->order_status" />
                         </div>
 
                         <div class="mt-4 grid gap-2 text-sm text-neutral-500 dark:text-zinc-400">
                             <p>{{ trans_choice(':count item|:count items', $order->order_items_count, ['count' => $order->order_items_count]) }}</p>
                             <p>{{ $order->formattedTotal() }}</p>
-                            <p>{{ Str::headline($order->payment->method->value) }} - {{ Str::headline($order->payment->status->value) }}</p>
+                            <x-payment-status-badge :status="$order->payment->status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment->status->value)" />
                             <p>{{ $order->created_at->format('M j, Y g:i A') }}</p>
                         </div>
 

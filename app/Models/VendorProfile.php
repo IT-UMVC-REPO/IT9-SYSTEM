@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasStorageImage;
 use App\Enums\VendorStatus;
 use Database\Factories\VendorProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,14 +12,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 #[Fillable(['user_id', 'store_name', 'store_description', 'vendor_address', 'store_image', 'status', 'rejection_reason', 'approved_at', 'created_at'])]
 class VendorProfile extends Model
 {
     /** @use HasFactory<VendorProfileFactory> */
-    use HasFactory;
+    use HasFactory, HasStorageImage;
 
     public const UPDATED_AT = null;
 
@@ -72,22 +71,9 @@ class VendorProfile extends Model
 
     protected function storeImageUrl(): Attribute
     {
-        return Attribute::get(fn (): string => $this->resolveStoreImageUrl(
+        return Attribute::get(fn (): string => $this->resolvePublicImageUrl(
             $this->getRawOriginal('store_image'),
             'https://placehold.co/640x640/e7e5e4/9ca3af?text=Store',
         ));
-    }
-
-    private function resolveStoreImageUrl(?string $path, string $fallback): string
-    {
-        if (blank($path)) {
-            return $fallback;
-        }
-
-        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
-            return $path;
-        }
-
-        return Storage::disk('public')->url($path);
     }
 }

@@ -3,7 +3,6 @@
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\ShopController;
-use App\Http\Controllers\VideoCallController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -26,7 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route($request->user()->homeRoute(), $request->query());
     })->name('dashboard');
 
-    Route::view('/notifications', 'pages.notifications.index')->name('notifications.index');
+    Route::livewire('/notifications', 'pages::notifications.index')->name('notifications.index');
 });
 
 Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {
@@ -50,31 +49,7 @@ Route::middleware(['auth', 'verified'])->prefix('vendor')->name('vendor.')->grou
     Route::livewire('/register', 'pages::vendor.registration')->name('registration');
 });
 
-Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('messages')->name('messages.')->group(function () {
-    Route::livewire('/', 'pages::messages.inbox')->name('inbox');
-    Route::livewire('/{conversationReference}', 'pages::messages.conversation')->name('conversation');
-});
-
-Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->group(function () {
-    Route::livewire('/groups/{groupId}', 'pages::messages.group-conversation')->name('messages.group');
-});
-
 Route::view('/support/video-calls', 'pages.support.video-calls')->name('support.video-calls');
-
-Route::middleware(['auth', 'verified'])->prefix('api/calls')->name('calls.')->group(function () {
-    Route::get('/ice-servers', [VideoCallController::class, 'iceServers'])->name('ice-servers');
-    Route::post('/initiate', [VideoCallController::class, 'initiate'])->name('initiate');
-    Route::prefix('group')->name('group.')->group(function () {
-        Route::post('/initiate', [VideoCallController::class, 'initiateGroup'])->name('initiate');
-        Route::post('/{call}/signal', [VideoCallController::class, 'signalGroup'])->name('signal');
-        Route::post('/{call}/answer', [VideoCallController::class, 'answerGroup'])->name('answer');
-        Route::post('/{call}/end', [VideoCallController::class, 'endGroup'])->name('end');
-    });
-    Route::post('/{call}/signal', [VideoCallController::class, 'signal'])->name('signal');
-    Route::post('/{call}/answer', [VideoCallController::class, 'answer'])->name('answer');
-    Route::post('/{call}/decline', [VideoCallController::class, 'decline'])->name('decline');
-    Route::post('/{call}/end', [VideoCallController::class, 'end'])->name('end');
-});
 
 Route::middleware(['auth', 'verified', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
     Route::livewire('/dashboard', 'pages::vendor.dashboard')->name('dashboard');

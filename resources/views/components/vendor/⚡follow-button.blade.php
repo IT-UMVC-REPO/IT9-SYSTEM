@@ -102,22 +102,13 @@ new class extends Component
             </span>
         </button>
 
-        <flux:modal name="{{ $modalName }}" class="max-w-sm">
-            <div class="p-6 space-y-4">
-                <flux:heading size="lg">{{ __('Remove stall?') }}</flux:heading>
-                <flux:text>{{ __('This stall will be removed from your favourites.') }}</flux:text>
-
-                <div class="flex justify-end gap-3 pt-2">
-                    <flux:button variant="ghost" x-on:click="$flux.modal('{{ $modalName }}').close()">
-                        {{ __('Cancel') }}
-                    </flux:button>
-
-                    <flux:button variant="danger" wire:click="unfollow">
-                        {{ __('Remove') }}
-                    </flux:button>
-                </div>
-            </div>
-        </flux:modal>
+        <x-confirmation-modal
+            :name="$modalName"
+            :heading="__('Remove stall?')"
+            :body="__('This stall will be removed from your favourites.')"
+            :confirm-label="__('Remove')"
+            confirm-action="unfollow"
+        />
     @else
         <button
             type="button"

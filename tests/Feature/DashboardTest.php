@@ -66,24 +66,26 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     ],
 ]);
 
-test('customer header renders the home navigation link only once', function () {
+test('customer header renders home in mobile navigation surfaces', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->get(route('customer.dashboard'));
 
     $response->assertOk();
 
-    expect(substr_count($response->getContent(), '>Home<'))->toBe(1);
+    expect(substr_count($response->getContent(), '>Home<'))->toBe(2);
+    $response->assertSee('Mobile primary navigation');
 });
 
-test('vendor and admin headers render the dashboard navigation label in both desktop and mobile menus', function (callable $makeUser, string $routeName) {
+test('vendor and admin headers render the dashboard navigation label in desktop drawer and bottom nav', function (callable $makeUser, string $routeName) {
     $user = $makeUser();
 
     $response = $this->actingAs($user)->get(route($routeName));
 
     $response->assertOk();
 
-    expect(substr_count($response->getContent(), '>Dashboard<'))->toBe(2);
+    expect(substr_count($response->getContent(), '>Dashboard<'))->toBe(3);
+    $response->assertSee('Mobile primary navigation');
 })->with([
     'vendor' => [
         function () {

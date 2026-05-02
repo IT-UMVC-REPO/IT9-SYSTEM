@@ -23,10 +23,16 @@ class EnsureUserHasRole
             return redirect()->route('login');
         }
 
-        foreach ($this->resolveAllowedRoles($roles) as $role) {
+        $allowedRoles = $this->resolveAllowedRoles($roles);
+
+        foreach ($allowedRoles as $role) {
             if ($user->canAccessMarketplaceRole($role)) {
                 return $next($request);
             }
+        }
+
+        if ($user->effectiveMarketplaceRole() === UserRole::Admin && ! in_array(UserRole::Admin, $allowedRoles, true)) {
+            $request->session()->flash('toast.warning', __('Admin accounts use the admin portal. Customer shopping actions are disabled for administrators.'));
         }
 
         return redirect()->route($user->homeRoute());

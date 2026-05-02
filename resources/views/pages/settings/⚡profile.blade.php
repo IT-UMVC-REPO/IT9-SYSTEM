@@ -1,13 +1,13 @@
 ﻿<?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\UserRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Storage;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
-use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -19,30 +19,50 @@ new #[Title('Profile settings')] class extends Component {
     public string $email = '';
     public string $phone = '';
     public string $address = '';
+    public string $store_name = '';
+    public string $store_description = '';
+    public string $vendor_address = '';
     public ?string $currentProfileImage = null;
 
-    #[Validate('nullable|image|max:2048')]
     public $profileImageUpload = null;
 
     public function mount(): void
     {
-        $user = Auth::user();
+        $user = Auth::user()->loadMissing('vendorProfile');
 
         $this->name = $user->name;
         $this->email = $user->email;
         $this->phone = $user->phone ?? '';
         $this->address = $user->address ?? '';
         $this->currentProfileImage = $user->profile_image;
+
+        if ($user->effectiveMarketplaceRole() === UserRole::Vendor && $user->vendorProfile !== null) {
+            $this->store_name = $user->vendorProfile->store_name;
+            $this->store_description = $user->vendorProfile->store_description ?? '';
+            $this->vendor_address = $user->vendorProfile->vendor_address ?? '';
+        }
     }
 
     public function updateProfileInformation(): void
     {
-        $user = Auth::user();
+        $user = Auth::user()->loadMissing('vendorProfile');
+        $isVendor = $user->effectiveMarketplaceRole() === UserRole::Vendor;
 
-        $validated = $this->validate([
+        $rules = [
             ...$this->profileRules($user->id),
             'profileImageUpload' => ['nullable', 'image', 'max:2048'],
-        ]);
+        ];
+
+        if ($isVendor) {
+            $rules = [
+                ...$rules,
+                'store_name' => ['required', 'string', 'max:120'],
+                'store_description' => ['nullable', 'string', 'max:800'],
+                'vendor_address' => ['nullable', 'string', 'max:500'],
+            ];
+        }
+
+        $validated = $this->validate($rules);
 
         $user->fill([
             'name' => $validated['name'],
@@ -67,6 +87,14 @@ new #[Title('Profile settings')] class extends Component {
         }
 
         $user->save();
+
+        if ($isVendor && $user->vendorProfile !== null) {
+            $user->vendorProfile->update([
+                'store_name' => $validated['store_name'],
+                'store_description' => blank($validated['store_description'] ?? null) ? null : $validated['store_description'],
+                'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
+            ]);
+        }
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
 
@@ -103,6 +131,12 @@ new #[Title('Profile settings')] class extends Component {
         $user->sendEmailVerificationNotification();
 
         Flux::toast(text: __('A new verification code has been sent to your email address.'));
+    }
+
+    #[Computed]
+    public function isVendor(): bool
+    {
+        return Auth::user()->effectiveMarketplaceRole() === UserRole::Vendor;
     }
 
     #[Computed]
@@ -218,22 +252,13 @@ new #[Title('Profile settings')] class extends Component {
                                         {{ __('Remove photo') }}
                                     </button>
 
-                                    <flux:modal name="remove-profile-photo" class="max-w-sm">
-                                        <div class="p-6 space-y-4">
-                                            <flux:heading size="lg">{{ __('Remove photo?') }}</flux:heading>
-                                            <flux:text>{{ __('Your profile will use the default avatar until you upload a new photo.') }}</flux:text>
-
-                                            <div class="flex justify-end gap-3 pt-2">
-                                                <flux:button variant="ghost" x-on:click="$flux.modal('remove-profile-photo').close()">
-                                                    {{ __('Cancel') }}
-                                                </flux:button>
-
-                                                <flux:button variant="danger" wire:click="removeProfileImage" x-on:click="$flux.modal('remove-profile-photo').close()">
-                                                    {{ __('Remove') }}
-                                                </flux:button>
-                                            </div>
-                                        </div>
-                                    </flux:modal>
+                                    <x-confirmation-modal
+                                        name="remove-profile-photo"
+                                        :heading="__('Remove photo?')"
+                                        :body="__('Your profile will use the default avatar until you upload a new photo.')"
+                                        :confirm-label="__('Remove')"
+                                        confirm-action="removeProfileImage"
+                                    />
                                 @endif
                             </div>
 
@@ -276,6 +301,47 @@ new #[Title('Profile settings')] class extends Component {
                         :placeholder="__('Street, barangay, city, province')"
                         rows="3"
                     />
+
+                    @if ($this->isVendor)
+                        <div class="border-t border-stone-200 pt-6 dark:border-white/10">
+                            <div class="flex items-start gap-3">
+                                <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
+                                    <i class="fa-solid fa-store"></i>
+                                </span>
+
+                                <div>
+                                    <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Vendor stall info') }}</h2>
+                                    <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                        {{ __('Keep your public storefront name, description, and stall address current for shoppers.') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 grid gap-6">
+                                <flux:input
+                                    wire:model="store_name"
+                                    :label="__('Store name')"
+                                    type="text"
+                                    required
+                                    maxlength="120"
+                                />
+
+                                <flux:textarea
+                                    wire:model="store_description"
+                                    :label="__('Store description')"
+                                    rows="3"
+                                    maxlength="800"
+                                />
+
+                                <flux:textarea
+                                    wire:model="vendor_address"
+                                    :label="__('Vendor stall address')"
+                                    rows="2"
+                                    maxlength="500"
+                                />
+                            </div>
+                        </div>
+                    @endif
 
                     <div class="flex items-center gap-4">
                         <flux:button variant="primary" type="submit" data-test="update-profile-button">

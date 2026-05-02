@@ -165,6 +165,9 @@ new #[Title('Vendor registration')] class extends Component {
             'type' => NotificationType::System,
             'title' => 'Application submitted',
             'message' => 'Your vendor application has been received and is under review.',
+            'data' => [
+                'route' => 'vendor.registration',
+            ],
         ]);
 
         event(new NotificationCreated($notification));

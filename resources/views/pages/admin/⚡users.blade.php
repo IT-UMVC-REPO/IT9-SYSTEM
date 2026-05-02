@@ -2,17 +2,20 @@
 
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
+use App\Concerns\HasPaginationView;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 new #[Title('User management')] class extends Component {
+    use HasPaginationView;
     use WithPagination;
 
     #[Url(except: '')]
@@ -36,6 +39,14 @@ new #[Title('User management')] class extends Component {
 
     public function updatedStatusFilter(): void
     {
+        $this->resetPage();
+    }
+
+    #[On('admin-created')]
+    public function refreshAfterAdminCreated(): void
+    {
+        unset($this->users);
+        unset($this->stats);
         $this->resetPage();
     }
 
@@ -104,11 +115,6 @@ new #[Title('User management')] class extends Component {
         ];
     }
 
-    public function paginationView(): string
-    {
-        return 'layouts.app.livewire-paginate';
-    }
-
     private function resolveUser(int $userId): User
     {
         return User::query()
@@ -119,15 +125,24 @@ new #[Title('User management')] class extends Component {
 }; ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-    <section class="flex flex-col gap-4">
-        <span class="brand-kicker">{{ __('Admin controls') }}</span>
-        <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
-            {{ __('User management') }}
-        </h1>
-        <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Search marketplace accounts, review vendor enrollment context, and control who can sign in to the platform.') }}
-        </p>
+    <section class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <span class="brand-kicker">{{ __('Admin controls') }}</span>
+            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+                {{ __('User management') }}
+            </h1>
+            <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
+                {{ __('Search marketplace accounts, review vendor enrollment context, and control who can sign in to the platform.') }}
+            </p>
+        </div>
+
+        <button type="button" x-data x-on:click="$flux.modal('create-admin').show()" class="brand-button-primary">
+            <i class="fa-solid fa-user-shield text-xs"></i>
+            {{ __('Create admin') }}
+        </button>
     </section>
+
+    <livewire:pages::admin.create-admin-modal />
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ([
@@ -206,14 +221,7 @@ new #[Title('User management')] class extends Component {
                                         <span class="settings-role-badge">{{ ucfirst($user->role->value) }}</span>
 
                                         @if ($user->vendorProfile !== null)
-                                            <span @class([
-                                                'inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]',
-                                                'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' => $user->vendorProfile->status === VendorStatus::Pending,
-                                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' => $user->vendorProfile->status === VendorStatus::Approved,
-                                                'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' => $user->vendorProfile->status === VendorStatus::Rejected,
-                                            ])>
-                                                {{ __('Vendor: :status', ['status' => ucfirst($user->vendorProfile->status->value)]) }}
-                                            </span>
+                                            <x-vendor-status-badge :status="$user->vendorProfile->status" :label="__('Vendor: :status', ['status' => ucfirst($user->vendorProfile->status->value)])" />
                                         @endif
                                     </div>
                                 </flux:table.cell>
@@ -317,22 +325,14 @@ new #[Title('User management')] class extends Component {
             </div>
 
             @foreach ($this->users as $user)
-                <flux:modal name="deactivate-user-{{ $user->id }}" class="max-w-sm" wire:key="deactivate-user-modal-{{ $user->id }}">
-                    <div class="p-6 space-y-4">
-                        <flux:heading size="lg">{{ __('Deactivate account?') }}</flux:heading>
-                        <flux:text>{{ __('This user will be unable to log in until an admin reactivates the account.') }}</flux:text>
-
-                        <div class="flex justify-end gap-3 pt-2">
-                            <flux:button variant="ghost" x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').close()">
-                                {{ __('Cancel') }}
-                            </flux:button>
-
-                            <flux:button variant="danger" wire:click="toggleActiveStatus({{ $user->id }})" x-on:click="$flux.modal('deactivate-user-{{ $user->id }}').close()">
-                                {{ __('Deactivate') }}
-                            </flux:button>
-                        </div>
-                    </div>
-                </flux:modal>
+                <x-confirmation-modal
+                    wire:key="deactivate-user-modal-{{ $user->id }}"
+                    name="deactivate-user-{{ $user->id }}"
+                    :heading="__('Deactivate account?')"
+                    :body="__('This user will be unable to log in until an admin reactivates the account.')"
+                    :confirm-label="__('Deactivate')"
+                    :confirm-action="'toggleActiveStatus('.$user->id.')'"
+                />
             @endforeach
 
             @if ($this->users->hasPages())
@@ -341,17 +341,11 @@ new #[Title('User management')] class extends Component {
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-14 text-center">
-                <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
-                    <i class="fa-solid fa-users text-xl"></i>
-                </span>
-                <h2 class="brand-serif mt-5 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
-                    {{ __('No users match this view') }}
-                </h2>
-                <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                    {{ __('Adjust the filters to surface the accounts you need to review.') }}
-                </p>
-            </div>
+            <x-empty-state
+                icon="fa-solid fa-users"
+                :heading="__('No users match this view')"
+                :body="__('Adjust the filters to surface the accounts you need to review.')"
+            />
         @endif
     </section>
 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasStorageImage;
 use App\Enums\ProductStatus;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,14 +13,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 #[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'image', 'status'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
-    use HasFactory;
+    use HasFactory, HasStorageImage;
 
     /**
      * The model's default values for attributes.
@@ -130,22 +129,9 @@ class Product extends Model
 
     protected function imageUrl(): Attribute
     {
-        return Attribute::get(fn (): string => $this->resolveImageUrl(
+        return Attribute::get(fn (): string => $this->resolvePublicImageUrl(
             $this->getRawOriginal('image'),
             'https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image',
         ));
-    }
-
-    private function resolveImageUrl(?string $path, string $fallback): string
-    {
-        if (blank($path)) {
-            return $fallback;
-        }
-
-        if (Str::startsWith($path, ['http://', 'https://', '//'])) {
-            return $path;
-        }
-
-        return Storage::disk('public')->url($path);
     }
 }

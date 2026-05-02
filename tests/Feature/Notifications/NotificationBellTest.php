@@ -147,7 +147,74 @@ test('notification bell renders stronger dark mode classes for read and unread i
         ->assertSee('dark:text-[var(--brand-400)]', false);
 });
 
-test('notifications page placeholder requires authentication', function () {
+test('notifications page requires authentication', function () {
     $this->get(route('notifications.index'))
         ->assertRedirect(route('login'));
+});
+
+test('notifications page lists only the authenticated users notifications', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Your page alert',
+        'message' => 'Visible on the notification center.',
+        'type' => NotificationType::System,
+    ]);
+
+    Notification::query()->create([
+        'user_id' => $otherUser->getKey(),
+        'title' => 'Hidden page alert',
+        'message' => 'Owned by someone else.',
+        'type' => NotificationType::System,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('notifications.index'))
+        ->assertOk()
+        ->assertSee('Your page alert')
+        ->assertDontSee('Hidden page alert');
+});
+
+test('notifications page can mark all as read and delete an item', function () {
+    $user = User::factory()->create();
+
+    $notification = Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Delete me',
+        'message' => 'This notification will be removed.',
+        'type' => NotificationType::System,
+        'is_read' => false,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::notifications.index')
+        ->call('markAllAsRead')
+        ->call('deleteNotification', $notification->getKey())
+        ->assertHasNoErrors();
+
+    expect($notification->fresh())->toBeNull();
+});
+
+test('notification click marks the item read and uses metadata target routes', function () {
+    $user = User::factory()->create();
+
+    $notification = Notification::query()->create([
+        'user_id' => $user->getKey(),
+        'title' => 'Order update',
+        'message' => 'Your order has moved.',
+        'type' => NotificationType::OrderUpdate,
+        'is_read' => false,
+        'data' => [
+            'order_id' => 123,
+        ],
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::notifications.index')
+        ->call('openNotification', $notification->getKey())
+        ->assertRedirect(route('shop.orders.show', ['orderReference' => 123], absolute: false));
+
+    expect($notification->fresh()->is_read)->toBeTrue();
 });

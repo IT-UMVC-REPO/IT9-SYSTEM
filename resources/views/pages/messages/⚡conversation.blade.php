@@ -153,7 +153,26 @@ new #[Title('Conversation')] class extends Component {
     #[Computed]
     public function otherUser(): User
     {
-        return User::query()->findOrFail($this->otherUserId);
+        return User::query()
+            ->with('vendorProfile:id,user_id,status')
+            ->findOrFail($this->otherUserId);
+    }
+
+    #[Computed]
+    public function otherUserProfileRoute(): string
+    {
+        $viewer = auth()->user();
+        $otherUser = $this->otherUser;
+
+        if ($viewer->effectiveMarketplaceRole() === UserRole::Admin || $otherUser->effectiveMarketplaceRole() === UserRole::Admin) {
+            return route('admin.users.show', $otherUser);
+        }
+
+        if ($otherUser->effectiveMarketplaceRole() === UserRole::Vendor && $otherUser->vendorProfile !== null) {
+            return route('shop.vendors.show', $otherUser->vendorProfile);
+        }
+
+        return route('shop.customers.show', $otherUser);
     }
 
     #[Computed]
@@ -443,18 +462,8 @@ new #[Title('Conversation')] class extends Component {
                                 <x-user-avatar :user="$this->otherUser" size="lg" />
                                 <div class="min-w-0">
                                     <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
-                                        <livewire:messaging.nickname-editor :target-user-id="$otherUserId" :key="'nickname-editor-' . $otherUserId" />
+                                        <livewire:messaging.nickname-editor :target-user-id="$otherUserId" :profile-route="$this->otherUserProfileRoute" :key="'nickname-editor-' . $otherUserId" />
                                     </h1>
-
-                                    @if (auth()->user()?->effectiveMarketplaceRole() === UserRole::Admin)
-                                        <a href="{{ route('admin.users.show', $this->otherUser) }}" wire:navigate class="mt-1 inline-flex text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)]">
-                                            {{ __('View profile') }}
-                                        </a>
-                                    @elseif ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
-                                        <a href="{{ route('shop.customers.show', $this->otherUser) }}" wire:navigate class="mt-1 inline-flex text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)]">
-                                            {{ __('View customer profile') }}
-                                        </a>
-                                    @endif
                                 </div>
                             </div>
                             <div wire:ignore>
@@ -500,7 +509,7 @@ new #[Title('Conversation')] class extends Component {
                         @forelse ($this->threadMessages as $message)
                             @php($isOwnMessage = $message->sender_id === auth()->id())
                             <div wire:key="conversation-message-{{ $message->id }}"
-                                class="mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
+                                class="group mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
                                 <div
                                     class="flex max-w-[70%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
                                     <div class="flex max-w-full items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
@@ -565,7 +574,7 @@ new #[Title('Conversation')] class extends Component {
                                         </div>
                                     </div>
 
-                                    <p class="px-1 text-xs text-neutral-400 dark:text-zinc-500">
+                                    <p class="px-1 text-xs text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 dark:text-zinc-500">
                                         {{ $message->timeAgo() }}</p>
                                 </div>
                             </div>
@@ -600,7 +609,7 @@ new #[Title('Conversation')] class extends Component {
                             },
                         }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="shrink-0 border-t border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
+                        class="sticky bottom-0 shrink-0 border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto">
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
                                 <flux:textarea wire:model="newMessage" :label="__('Reply')" rows="1"

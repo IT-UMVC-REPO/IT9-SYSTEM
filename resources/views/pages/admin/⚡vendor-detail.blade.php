@@ -44,6 +44,9 @@ new #[Title('Vendor review')] class extends Component {
                 'type' => NotificationType::System,
                 'title' => 'Your store was approved!',
                 'message' => 'Your vendor application has been approved. You can now access your vendor dashboard and start listing products.',
+                'data' => [
+                    'route' => 'vendor.dashboard',
+                ],
             ]);
 
             event(new NotificationCreated($notification));
@@ -74,6 +77,9 @@ new #[Title('Vendor review')] class extends Component {
                 'type' => NotificationType::System,
                 'title' => 'Application not approved',
                 'message' => 'Your vendor application was not approved. Reason: '.$validated['rejection_reason'].'. You may reapply after addressing the feedback.',
+                'data' => [
+                    'route' => 'vendor.registration',
+                ],
             ]);
 
             event(new NotificationCreated($notification));

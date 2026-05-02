@@ -9,6 +9,8 @@ new class extends Component
 {
     public int $targetUserId;
 
+    public ?string $profileRoute = null;
+
     public string $nickname = '';
 
     public string $draftNickname = '';
@@ -94,7 +96,13 @@ new class extends Component
 <div class="min-w-0">
     @if (! $isEditing)
         <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <span class="truncate">{{ filled($nickname) ? $nickname : $this->targetUser->name }}</span>
+            @if ($profileRoute)
+                <a href="{{ $profileRoute }}" wire:navigate class="brand-hover-text truncate transition hover:underline">
+                    {{ filled($nickname) ? $nickname : $this->targetUser->name }}
+                </a>
+            @else
+                <span class="truncate">{{ filled($nickname) ? $nickname : $this->targetUser->name }}</span>
+            @endif
 
             @if (filled($nickname))
                 <span class="text-sm font-medium text-neutral-400 dark:text-zinc-500">({{ $this->targetUser->name }})</span>

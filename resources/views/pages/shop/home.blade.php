@@ -67,30 +67,9 @@
                     </a>
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ($popularVendors as $vendor)
-                        <div class="brand-card-hover group relative flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
-                            <livewire:vendor.follow-button :vendor="$vendor" :overlay="true" :key="'popular-vendor-follow-'.$vendor->id" />
-                            <a href="{{ route('shop.vendors.show', $vendor) }}" class="flex flex-1 flex-col">
-                                <div class="brand-soft-surface mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-base font-bold">
-                                    {{ strtoupper(substr($vendor->store_name, 0, 2)) }}
-                                </div>
-                                <p class="line-clamp-1 pr-6 text-sm font-semibold leading-snug text-neutral-900 dark:text-zinc-100">
-                                    {{ $vendor->store_name }}
-                                </p>
-                                <p class="mt-1 flex-1 line-clamp-2 text-xs leading-5 text-neutral-400 dark:text-zinc-400">
-                                    {{ $vendor->store_description }}
-                                </p>
-                                <div class="mt-3 flex items-center gap-1.5 border-t border-stone-200 pt-3 dark:border-white/10">
-                                    <span class="brand-accent-text-strong text-xs font-semibold">
-                                        {{ $vendor->active_products_count }}
-                                    </span>
-                                    <span class="text-xs text-stone-400 dark:text-zinc-400">
-                                        {{ Str::plural('listing', $vendor->active_products_count) }}
-                                    </span>
-                                </div>
-                            </a>
-                        </div>
+                        <x-vendor-card :vendor="$vendor" :compact="true" wire:key="popular-vendor-{{ $vendor->id }}" />
                     @endforeach
                 </div>
             </div>

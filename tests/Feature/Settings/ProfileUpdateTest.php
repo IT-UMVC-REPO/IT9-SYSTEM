@@ -66,6 +66,46 @@ test('user can update phone and address from profile settings', function () {
         ->and($user->address)->toBe('Blk 3 Lot 5, Mahogany St, Davao City');
 });
 
+test('approved vendors can update stall information from profile settings', function () {
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create([
+        'store_name' => 'Old Stall Name',
+        'store_description' => 'Old stall description.',
+        'vendor_address' => 'Old stall address',
+    ]);
+
+    $this->actingAs($vendorUser);
+
+    Livewire::test('pages::settings.profile')
+        ->set('name', $vendorUser->name)
+        ->set('email', $vendorUser->email)
+        ->set('store_name', 'Updated Suki Stall')
+        ->set('store_description', 'Fresh produce and pantry staples every morning.')
+        ->set('vendor_address', 'Stall 12, Central Market')
+        ->call('updateProfileInformation')
+        ->assertHasNoErrors();
+
+    $vendorProfile->refresh();
+
+    expect($vendorProfile->store_name)->toBe('Updated Suki Stall')
+        ->and($vendorProfile->store_description)->toBe('Fresh produce and pantry staples every morning.')
+        ->and($vendorProfile->vendor_address)->toBe('Stall 12, Central Market');
+});
+
+test('vendor store name is required for vendors only', function () {
+    $vendorUser = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+
+    $this->actingAs($vendorUser);
+
+    Livewire::test('pages::settings.profile')
+        ->set('name', $vendorUser->name)
+        ->set('email', $vendorUser->email)
+        ->set('store_name', '')
+        ->call('updateProfileInformation')
+        ->assertHasErrors(['store_name' => 'required']);
+});
+
 test('user can clear phone and address by saving empty values', function () {
     $user = User::factory()->create([
         'phone' => '+63 900 111 2222',

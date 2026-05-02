@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
 use App\Models\Order;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -75,27 +74,6 @@ new #[Title('My Orders')] class extends Component {
     public function paginationView(): string
     {
         return 'layouts.app.livewire-paginate';
-    }
-
-    public function statusBadgeClasses(OrderStatus $status): string
-    {
-        return match ($status) {
-            OrderStatus::Pending => 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
-            OrderStatus::Confirmed => 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200',
-            OrderStatus::Preparing => 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-200',
-            OrderStatus::Ready => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-            OrderStatus::Delivered => 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-200',
-            OrderStatus::Cancelled => 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200',
-        };
-    }
-
-    public function paymentBadgeClasses(PaymentStatus $status): string
-    {
-        return match ($status) {
-            PaymentStatus::Pending => 'bg-stone-100 text-stone-700 dark:bg-zinc-700 dark:text-zinc-100',
-            PaymentStatus::Paid => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-            PaymentStatus::Failed => 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200',
-        };
     }
 
     public function emptyStateHeading(): string
@@ -194,9 +172,7 @@ new #[Title('My Orders')] class extends Component {
                             <div class="min-w-0 space-y-2">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $this->statusBadgeClasses($order->order_status) }}">
-                                        {{ Str::headline($order->order_status->value) }}
-                                    </span>
+                                    <x-order-status-badge :status="$order->order_status" />
                                 </div>
 
                                 <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">
@@ -215,9 +191,7 @@ new #[Title('My Orders')] class extends Component {
 
                         <div class="flex flex-col items-start gap-3 lg:items-end">
                             <div class="flex flex-wrap gap-2">
-                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $this->paymentBadgeClasses($order->payment_status) }}">
-                                    {{ Str::headline($order->payment->method->value).' - '.Str::headline($order->payment_status->value) }}
-                                </span>
+                                <x-payment-status-badge :status="$order->payment_status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment_status->value)" />
                             </div>
 
                             <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" class="brand-button-secondary">

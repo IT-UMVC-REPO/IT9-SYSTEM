@@ -37,11 +37,16 @@ class ShopController extends Controller
     public function show(Product $product): View
     {
         $product = Product::query()
+            ->with(['category:id,name', 'vendor.user:id,name'])
             ->visibleToCustomers()
             ->findOrFail($product->getKey());
 
+        $isOwnProduct = Auth::check()
+            && Auth::user()->vendorProfile?->getKey() === $product->vendor_id;
+
         return view('pages.shop.show', [
             'product' => $product,
+            'isOwnProduct' => $isOwnProduct,
         ]);
     }
 
@@ -65,7 +70,11 @@ class ShopController extends Controller
             ->active()
             ->count();
 
+        $isOwnStall = Auth::check()
+            && Auth::user()->vendorProfile?->getKey() === $vendorProfile->getKey();
+
         $isFavorited = Auth::check()
+            && ! $isOwnStall
             ? Favorite::query()
                 ->where('customer_id', Auth::id())
                 ->where('vendor_id', $vendorProfile->getKey())
@@ -77,6 +86,7 @@ class ShopController extends Controller
             'products' => $products,
             'activeProductCount' => $activeProductCount,
             'isFavorited' => $isFavorited,
+            'isOwnStall' => $isOwnStall,
         ]);
     }
 

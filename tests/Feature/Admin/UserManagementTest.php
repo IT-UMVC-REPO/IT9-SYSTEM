@@ -104,6 +104,55 @@ test('admins can not deactivate themselves', function () {
     expect($admin->fresh()->is_active)->toBeTrue();
 });
 
+test('make admin command creates a verified active administrator', function () {
+    $this->artisan('make:admin', [
+        'name' => 'Ana Admin',
+        'email' => 'ana.admin@example.test',
+        'password' => 'password',
+    ])
+        ->expectsOutputToContain('Admin account created')
+        ->assertSuccessful();
+
+    $admin = User::query()->where('email', 'ana.admin@example.test')->first();
+
+    expect($admin)->not->toBeNull()
+        ->and($admin->name)->toBe('Ana Admin')
+        ->and($admin->role)->toBe(UserRole::Admin)
+        ->and($admin->is_active)->toBeTrue()
+        ->and($admin->email_verified_at)->not->toBeNull()
+        ->and($admin->homeRoute())->toBe('admin.dashboard');
+});
+
+test('admins can create another admin from the user management modal', function () {
+    $admin = User::factory()->admin()->create();
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.create-admin-modal')
+        ->set('name', 'Modal Admin')
+        ->set('email', 'modal.admin@example.test')
+        ->set('password', 'password')
+        ->set('password_confirmation', 'password')
+        ->call('createAdmin')
+        ->assertHasNoErrors()
+        ->assertDispatched('admin-created');
+
+    $createdAdmin = User::query()->where('email', 'modal.admin@example.test')->first();
+
+    expect($createdAdmin)->not->toBeNull()
+        ->and($createdAdmin->role)->toBe(UserRole::Admin)
+        ->and($createdAdmin->is_active)->toBeTrue()
+        ->and($createdAdmin->email_verified_at)->not->toBeNull();
+});
+
+test('admin users are gracefully redirected away from shop-only routes', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get(route('shop.cart'))
+        ->assertRedirect(route('admin.dashboard'))
+        ->assertSessionHas('toast.warning');
+});
+
 test('non admin users are redirected away from user management', function () {
     $customer = User::factory()->create();
 

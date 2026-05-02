@@ -278,7 +278,44 @@ new #[Title('Group conversation')] class extends Component
     $groupDisplayName = $this->group->displayName((int) auth()->id());
 @endphp
 
-<div wire:poll.8s="refreshThread" class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8">
+<div
+    wire:poll.8s="refreshThread"
+    x-data="{
+        showInfo: window.innerWidth >= 1024,
+        isDesktop() {
+            return window.innerWidth >= 1024;
+        },
+        initInfoPanel() {
+            const stored = window.localStorage.getItem('sukimarket_group_info_open');
+
+            if (this.isDesktop() && stored !== null) {
+                this.showInfo = stored === 'true';
+            }
+
+            if (! this.isDesktop()) {
+                this.showInfo = false;
+            }
+
+            this.$watch('showInfo', (value) => {
+                if (this.isDesktop()) {
+                    window.localStorage.setItem('sukimarket_group_info_open', value ? 'true' : 'false');
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                if (! this.isDesktop()) {
+                    this.showInfo = false;
+                    return;
+                }
+
+                const latestStored = window.localStorage.getItem('sukimarket_group_info_open');
+                this.showInfo = latestStored === null ? true : latestStored === 'true';
+            });
+        },
+    }"
+    x-init="initInfoPanel()"
+    class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8"
+>
     <div
         wire:key="group-video-call-{{ $groupId }}"
         wire:ignore.self
@@ -368,7 +405,10 @@ new #[Title('Group conversation')] class extends Component
                 </div>
             </aside>
 
-            <div class="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div
+                class="relative grid min-h-0 gap-4"
+                x-bind:class="showInfo ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'lg:grid-cols-[minmax(0,1fr)]'"
+            >
                 <section class="brand-panel flex min-h-0 flex-col overflow-hidden">
                     <header class="shrink-0 border-b border-stone-200 p-5 dark:border-white/10">
                         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -381,17 +421,30 @@ new #[Title('Group conversation')] class extends Component
                                 <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">{{ __(':count members', ['count' => $this->members->count()]) }}</p>
                             </div>
 
-                            <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
-                                <i class="fa-solid fa-video text-sm"></i>
-                                {{ __('Start call') }}
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                                    <i class="fa-solid fa-video text-sm"></i>
+                                    {{ __('Start call') }}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    x-on:click="showInfo = ! showInfo"
+                                    x-bind:aria-pressed="showInfo.toString()"
+                                    class="brand-button-secondary inline-flex h-11 w-11 items-center justify-center p-0"
+                                    title="{{ __('Toggle group info') }}"
+                                    aria-label="{{ __('Toggle group info') }}"
+                                >
+                                    <i class="fa-solid fa-circle-info text-sm"></i>
+                                </button>
+                            </div>
                         </div>
                     </header>
 
                     <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                         @forelse ($this->threadMessages as $message)
                             @php($isOwnMessage = $message->sender_id === auth()->id())
-                            <div wire:key="group-message-{{ $message->id }}" class="mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
+                            <div wire:key="group-message-{{ $message->id }}" class="group mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
                                 <div class="flex max-w-[76%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
                                     @unless ($isOwnMessage)
                                         <p class="px-1 text-xs font-semibold text-neutral-400 dark:text-zinc-500">{{ $this->memberDisplayName($message->sender) }}</p>
@@ -426,7 +479,7 @@ new #[Title('Group conversation')] class extends Component
                                         </div>
                                     </div>
 
-                                    <p class="px-1 text-xs text-neutral-400 dark:text-zinc-500">{{ $message->timeAgo() }}</p>
+                                    <p class="px-1 text-xs text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 dark:text-zinc-500">{{ $message->timeAgo() }}</p>
                                 </div>
                             </div>
                         @empty
@@ -457,7 +510,7 @@ new #[Title('Group conversation')] class extends Component
                             },
                         }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="shrink-0 border-t border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900"
+                        class="sticky bottom-0 shrink-0 border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto"
                     >
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
@@ -503,15 +556,38 @@ new #[Title('Group conversation')] class extends Component
                     </form>
                 </section>
 
-                <aside class="brand-panel hidden min-h-0 overflow-y-auto p-5 lg:block">
+                <div
+                    x-cloak
+                    x-show="showInfo && ! isDesktop()"
+                    x-transition.opacity
+                    x-on:click="showInfo = false"
+                    class="fixed inset-0 z-50 bg-neutral-950/50 backdrop-blur-sm lg:hidden"
+                ></div>
+
+                <aside
+                    x-cloak
+                    x-show="showInfo"
+                    x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="translate-x-full opacity-0 lg:translate-x-0"
+                    x-transition:enter-end="translate-x-0 opacity-100"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="translate-x-0 opacity-100"
+                    x-transition:leave-end="translate-x-full opacity-0 lg:translate-x-0"
+                    class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-5 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:shadow-none"
+                >
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <span class="brand-kicker">{{ __('Group') }}</span>
                             <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Members') }}</h2>
                         </div>
-                        <button type="button" wire:click="leaveGroup" wire:confirm="{{ __('Leave this group?') }}" class="text-xs font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-400">
-                            {{ __('Leave') }}
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" x-on:click="showInfo = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0 lg:hidden" aria-label="{{ __('Close group info') }}">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
+                            <button type="button" wire:click="leaveGroup" wire:confirm="{{ __('Leave this group?') }}" class="text-xs font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-400">
+                                {{ __('Leave') }}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="mt-5 space-y-3">
