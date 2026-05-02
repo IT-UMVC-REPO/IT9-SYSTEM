@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ConversationGroupMember;
 use App\Models\Order;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -25,6 +26,17 @@ Broadcast::channel('messaging.{conversationKey}', function ($user, string $conve
     );
 
     return in_array($user->id, [$firstUserId, $secondUserId], true);
+});
+
+Broadcast::channel('calls.{userId}', function ($user, int $userId): bool {
+    return $user->id === $userId;
+});
+
+Broadcast::channel('group.{groupId}', function ($user, int $groupId): bool {
+    return ConversationGroupMember::query()
+        ->where('group_id', $groupId)
+        ->where('user_id', $user->id)
+        ->exists();
 });
 
 Broadcast::channel('notifications.{userId}', function ($user, int $userId): bool {

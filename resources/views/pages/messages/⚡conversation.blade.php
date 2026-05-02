@@ -3,12 +3,16 @@
 use App\Enums\UserRole;
 use App\Events\MessageSent;
 use App\Models\Message;
+use App\Models\MessageAttachment;
 use App\Models\Order;
 use App\Models\User;
+use App\Models\VideoCall;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -25,8 +29,16 @@ new #[Title('Conversation')] class extends Component {
     #[Validate('nullable|string|max:2000')]
     public string $newMessage = '';
 
-    #[Validate('nullable|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg|extensions:jpg,jpeg,png,webp,gif,pdf,mp4,mov,mp3,wav,ogg')]
-    public $attachmentUpload = null;
+    /**
+     * @var array<int, mixed>
+     */
+    #[Validate([
+        'attachmentUploads' => ['array', 'max:5'],
+        'attachmentUploads.*' => ['file', 'max:10240', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,application/pdf,video/mp4,video/quicktime,audio/mpeg,audio/wav,audio/ogg', 'extensions:jpg,jpeg,png,webp,gif,pdf,mp4,mov,mp3,wav,ogg'],
+    ])]
+    public array $attachmentUploads = [];
+
+    public ?int $incomingCallId = null;
 
     public function mount(string $conversationReference): void
     {
@@ -36,8 +48,13 @@ new #[Title('Conversation')] class extends Component {
 
         $this->otherUserId = $otherUser->getKey();
         $this->linkedOrderId = $this->resolveLinkedOrderId();
+        $this->incomingCallId = $this->resolveIncomingCallId();
 
         $this->markMessagesAsRead();
+
+        if ($this->incomingCallId !== null) {
+            $this->dispatch('conversation-auto-answer', callId: $this->incomingCallId);
+        }
     }
 
     public function getListeners(): array
@@ -55,42 +72,42 @@ new #[Title('Conversation')] class extends Component {
     public function send(): void
     {
         $this->validate();
+        $this->validateAttachmentTotalSize();
 
         $trimmedMessage = trim($this->newMessage);
 
-        if ($trimmedMessage === '' && $this->attachmentUpload === null) {
+        if ($trimmedMessage === '' && $this->attachmentUploads === []) {
             return;
         }
 
-        $attachmentPath = null;
-        $attachmentName = null;
-        $attachmentMime = null;
-        $attachmentSize = null;
-
-        if ($this->attachmentUpload !== null) {
-            $attachmentPath = $this->attachmentUpload->store('message-attachments', 'public');
-            $attachmentName = $this->attachmentUpload->getClientOriginalName();
-            $attachmentMime = $this->attachmentUpload->getMimeType();
-            $attachmentSize = $this->attachmentUpload->getSize();
-        }
+        $storedPaths = [];
 
         try {
-            $message = DB::transaction(function () use ($attachmentMime, $attachmentName, $attachmentPath, $attachmentSize, $trimmedMessage): Message {
-                return Message::query()->create([
+            $message = DB::transaction(function () use (&$storedPaths, $trimmedMessage): Message {
+                $message = Message::query()->create([
                     'sender_id' => auth()->id(),
                     'receiver_id' => $this->otherUserId,
                     'order_id' => $this->linkedOrderId,
                     'content' => $trimmedMessage,
-                    'attachment_path' => $attachmentPath,
-                    'attachment_name' => $attachmentName,
-                    'attachment_mime' => $attachmentMime,
-                    'attachment_size' => $attachmentSize,
                 ]);
+
+                foreach ($this->attachmentUploads as $upload) {
+                    $path = $upload->store('message-attachments', 'public');
+                    $storedPaths[] = $path;
+
+                    MessageAttachment::query()->create([
+                        'message_id' => $message->getKey(),
+                        'path' => $path,
+                        'name' => $upload->getClientOriginalName(),
+                        'mime' => $upload->getMimeType(),
+                        'size' => $upload->getSize(),
+                    ]);
+                }
+
+                return $message;
             });
         } catch (\Throwable $exception) {
-            if ($attachmentPath !== null) {
-                Storage::disk('public')->delete($attachmentPath);
-            }
+            Storage::disk('public')->delete($storedPaths);
 
             throw $exception;
         }
@@ -102,12 +119,23 @@ new #[Title('Conversation')] class extends Component {
         }
 
         $this->newMessage = '';
-        $this->attachmentUpload = null;
-        $this->resetValidation(['newMessage', 'attachmentUpload']);
+        $this->attachmentUploads = [];
+        $this->resetValidation(['newMessage', 'attachmentUploads', 'attachmentUploads.*']);
 
         unset($this->threadMessages);
 
         $this->dispatch('message-sent');
+    }
+
+    public function removeAttachmentUpload(int $index): void
+    {
+        if (! array_key_exists($index, $this->attachmentUploads)) {
+            return;
+        }
+
+        unset($this->attachmentUploads[$index]);
+        $this->attachmentUploads = array_values($this->attachmentUploads);
+        $this->resetValidation(['attachmentUploads', 'attachmentUploads.*']);
     }
 
     public function refreshThread(bool $shouldScroll = false): void
@@ -153,7 +181,7 @@ new #[Title('Conversation')] class extends Component {
                         $innerQuery->where('sender_id', $this->otherUserId)->where('receiver_id', auth()->id());
                     });
             })
-            ->with(['sender:id,name,profile_image', 'order:id,order_status'])
+            ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
             ->orderBy('created_at')
             ->get();
     }
@@ -175,15 +203,61 @@ new #[Title('Conversation')] class extends Component {
         return $order->getKey();
     }
 
+    private function resolveIncomingCallId(): ?int
+    {
+        if (! request()->boolean('incoming_call')) {
+            return null;
+        }
+
+        $requestedCallId = (int) request()->integer('call_id');
+
+        if ($requestedCallId > 0) {
+            $call = VideoCall::query()
+                ->whereKey($requestedCallId)
+                ->where('caller_id', $this->otherUserId)
+                ->where('receiver_id', auth()->id())
+                ->where('is_group_call', false)
+                ->where('status', \App\Enums\VideoCallStatus::Pending)
+                ->first();
+
+            if ($call !== null) {
+                return $call->getKey();
+            }
+        }
+
+        return VideoCall::query()
+            ->where('caller_id', $this->otherUserId)
+            ->where('receiver_id', auth()->id())
+            ->where('is_group_call', false)
+            ->where('status', \App\Enums\VideoCallStatus::Pending)
+            ->latest('created_at')
+            ->value('id');
+    }
+
     private function markMessagesAsRead(): void
     {
-        DB::transaction(function (): void {
-            Message::query()
+        $updatedCount = DB::transaction(function (): int {
+            return Message::query()
                 ->where('sender_id', $this->otherUserId)
                 ->where('receiver_id', auth()->id())
                 ->where('is_read', false)
                 ->update(['is_read' => true]);
         });
+
+        if ($updatedCount > 0) {
+            $this->dispatch('message-marked-read');
+        }
+    }
+
+    private function validateAttachmentTotalSize(): void
+    {
+        $totalSize = collect($this->attachmentUploads)->sum(fn ($upload): int => (int) $upload->getSize());
+
+        if ($totalSize > 25 * 1024 * 1024) {
+            throw ValidationException::withMessages([
+                'attachmentUploads' => __('Attachments cannot exceed 25 MB total.'),
+            ]);
+        }
     }
 };
 ?>
@@ -210,8 +284,14 @@ new #[Title('Conversation')] class extends Component {
                 end: @js(route('calls.end', ['call' => '__CALL_ID__'])),
             },
         })" x-init="$el.__conversationVideoCall = $data;
-        init()" x-on:beforeunload.window="disposeOnLeave()"
+        init();
+        if (@js($incomingCallId) !== null) {
+            callId = @js($incomingCallId);
+            callStatus = 'incoming';
+            window.setTimeout(() => acceptCall());
+        }" x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="disposeOnLeave()"
+        x-on:conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
             class="fixed inset-0 z-[70] bg-neutral-950/95 backdrop-blur-sm">
@@ -282,8 +362,21 @@ new #[Title('Conversation')] class extends Component {
                             <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">
                                 {{ __('LOCAL PREVIEW') }}</p>
 
-                            <video id="conversation-call-local-video" autoplay muted playsinline
-                                class="aspect-video w-full rounded-xl bg-black object-cover"></video>
+                            <div class="relative">
+                                <video id="conversation-call-local-video" autoplay muted playsinline
+                                    class="aspect-video w-full rounded-xl bg-black object-cover"></video>
+
+                                <button
+                                    type="button"
+                                    x-cloak
+                                    x-show="hasMultipleCameras && (callStatus === 'active' || callStatus === 'connecting')"
+                                    x-on:click="switchCamera()"
+                                    class="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white shadow-lg backdrop-blur transition hover:bg-black/80"
+                                    title="{{ __('Switch camera') }}"
+                                >
+                                    <i class="fa-solid fa-camera-rotate text-sm"></i>
+                                </button>
+                            </div>
                         </section>
 
                         <section
@@ -307,6 +400,15 @@ new #[Title('Conversation')] class extends Component {
                             <template x-if="callStatus === 'connecting'">
                                 <p class="mt-4 text-sm leading-7 text-zinc-400">
                                     {{ __('The call was accepted. Keep this window open while the media connection finishes.') }}</p>
+                            </template>
+
+                            <template x-if="showTurnWarning && callStatus === 'connecting' && !usesTurnServers()">
+                                <p class="mt-4 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm leading-7 text-amber-100">
+                                    {{ __('Your network may require TURN server credentials for mobile or cross-network calls.') }}
+                                    <a href="{{ route('support.video-calls') }}" target="_blank" rel="noopener noreferrer" class="font-semibold underline">
+                                        {{ __('Read the support note') }}
+                                    </a>
+                                </p>
                             </template>
                         </section>
                     </div>
@@ -339,21 +441,19 @@ new #[Title('Conversation')] class extends Component {
                         <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
                             <div class="flex items-center gap-4">
                                 <x-user-avatar :user="$this->otherUser" size="lg" />
-                                <div>
+                                <div class="min-w-0">
+                                    <h1 class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
+                                        <livewire:messaging.nickname-editor :target-user-id="$otherUserId" :key="'nickname-editor-' . $otherUserId" />
+                                    </h1>
+
                                     @if (auth()->user()?->effectiveMarketplaceRole() === UserRole::Admin)
-                                        <a href="{{ route('admin.users.show', $this->otherUser) }}" wire:navigate
-                                            class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]">
-                                            {{ $this->otherUser->name }}
+                                        <a href="{{ route('admin.users.show', $this->otherUser) }}" wire:navigate class="mt-1 inline-flex text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)]">
+                                            {{ __('View profile') }}
                                         </a>
                                     @elseif ($this->otherUser->effectiveMarketplaceRole()->value === 'customer')
-                                        <a href="{{ route('shop.customers.show', $this->otherUser) }}" wire:navigate
-                                            class="brand-serif mt-2 inline-flex items-center gap-2 text-3xl font-bold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100 dark:hover:text-[var(--brand-300)]">
-                                            {{ $this->otherUser->name }}
+                                        <a href="{{ route('shop.customers.show', $this->otherUser) }}" wire:navigate class="mt-1 inline-flex text-sm font-semibold text-[var(--brand-700)] transition hover:text-[var(--brand-800)] dark:text-[var(--brand-400)]">
+                                            {{ __('View customer profile') }}
                                         </a>
-                                    @else
-                                        <h1
-                                            class="brand-serif mt-2 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
-                                            {{ $this->otherUser->name }}</h1>
                                     @endif
                                 </div>
                             </div>
@@ -415,43 +515,53 @@ new #[Title('Conversation')] class extends Component {
                                                 {{ $message->content }}</p>
                                             <?php endif; ?>
 
-                                            <?php if ($message->attachment_path): ?>
-                                            <?php $attachmentUrl = asset('storage/' . $message->attachment_path); ?>
+                                            @php($attachments = $message->attachmentsForDisplay())
 
-                                            <?php if (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'image/')): ?>
-                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
-                                                class="mt-2 block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
-                                                <img src="{{ $attachmentUrl }}"
-                                                    alt="{{ $message->attachment_name ?? __('Attached image') }}"
-                                                    class="max-h-52 max-w-full object-cover" loading="lazy">
-                                            </a>
-                                            <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'video/')): ?>
-                                            <div
-                                                class="mt-2 overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
-                                                <video controls preload="metadata" class="max-h-48 max-w-full bg-black">
-                                                    <source src="{{ $attachmentUrl }}"
-                                                        type="{{ $message->attachment_mime }}">
-                                                    {{ __('Your browser does not support the video tag.') }}
-                                                </video>
-                                            </div>
-                                            <?php elseif (\Illuminate\Support\Str::startsWith($message->attachment_mime ?? '', 'audio/')): ?>
-                                            <div
-                                                class="mt-2 rounded-2xl border px-3 py-2 {{ $isOwnMessage ? 'border-white/25 bg-white/10' : 'border-stone-300 bg-white/70 dark:border-zinc-600 dark:bg-zinc-700' }}">
-                                                <audio controls preload="metadata" class="w-full">
-                                                    <source src="{{ $attachmentUrl }}"
-                                                        type="{{ $message->attachment_mime }}">
-                                                    {{ __('Your browser does not support the audio element.') }}
-                                                </audio>
-                                            </div>
-                                            <?php endif; ?>
+                                            @if ($attachments->isNotEmpty())
+                                                <div class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
+                                                    @foreach ($attachments as $attachment)
+                                                        @php($attachmentUrl = asset('storage/' . $attachment->path))
+                                                        @php($attachmentMime = $attachment->mime ?? 'application/octet-stream')
 
-                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
-                                                class="mt-2 inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}">
-                                                <i class="fa-solid fa-paperclip"></i>
-                                                <span
-                                                    class="truncate">{{ $message->attachment_name ?? __('Attachment') }}</span>
-                                            </a>
-                                            <?php endif; ?>
+                                                        @if (Str::startsWith($attachmentMime, 'image/'))
+                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
+                                                                class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                                <img src="{{ $attachmentUrl }}"
+                                                                    alt="{{ __('Attached image') }}"
+                                                                    class="max-h-52 w-full object-cover" loading="lazy">
+                                                            </a>
+                                                        @elseif (Str::startsWith($attachmentMime, 'video/'))
+                                                            <div class="overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                                <video controls preload="metadata" class="max-h-48 max-w-full bg-black">
+                                                                    <source src="{{ $attachmentUrl }}" type="{{ $attachmentMime }}">
+                                                                    {{ __('Your browser does not support the video tag.') }}
+                                                                </video>
+                                                                <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 px-3 py-2 text-xs font-medium">
+                                                                    <i class="fa-solid fa-video"></i>
+                                                                    {{ __('Video attachment') }}
+                                                                </a>
+                                                            </div>
+                                                        @elseif (Str::startsWith($attachmentMime, 'audio/'))
+                                                            <div class="rounded-2xl border px-3 py-2 {{ $isOwnMessage ? 'border-white/25 bg-white/10' : 'border-stone-300 bg-white/70 dark:border-zinc-600 dark:bg-zinc-700' }}">
+                                                                <audio controls preload="metadata" class="w-full">
+                                                                    <source src="{{ $attachmentUrl }}" type="{{ $attachmentMime }}">
+                                                                    {{ __('Your browser does not support the audio element.') }}
+                                                                </audio>
+                                                                <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex items-center gap-2 text-xs font-medium">
+                                                                    <i class="fa-solid fa-volume-high"></i>
+                                                                    {{ __('Audio attachment') }}
+                                                                </a>
+                                                            </div>
+                                                        @else
+                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
+                                                                title="{{ Str::contains($attachmentMime, 'pdf') ? __('Document') : __('Document') }}"
+                                                                class="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}">
+                                                                <i class="fa-solid {{ Str::contains($attachmentMime, 'pdf') ? 'fa-file-pdf' : (Str::contains($attachmentMime, 'word') ? 'fa-file-word' : 'fa-file') }}"></i>
+                                                            </a>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -472,7 +582,24 @@ new #[Title('Conversation')] class extends Component {
                         @endforelse
                     </div>
 
-                    <form x-on:submit.prevent="if (($wire.newMessage || '').trim() || $wire.attachmentUpload) $wire.send()"
+                    <form
+                        x-data="{
+                            handlePaste(event) {
+                                const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
+
+                                if (imageFiles.length === 0) {
+                                    return;
+                                }
+
+                                event.preventDefault();
+                                const transfer = new DataTransfer();
+                                Array.from(this.$refs.attachments.files ?? []).forEach((file) => transfer.items.add(file));
+                                imageFiles.forEach((file) => transfer.items.add(file));
+                                this.$refs.attachments.files = transfer.files;
+                                this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
+                            },
+                        }"
+                        x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
                         class="shrink-0 border-t border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
                         <div class="flex items-end gap-2">
                             <div class="min-w-0 flex-1">
@@ -483,8 +610,8 @@ new #[Title('Conversation')] class extends Component {
                                             $el.style.height = $el.scrollHeight + 'px'
                                         }
                                     }"
-                                    x-init="resize()" x-on:input="resize()"
-                                    x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || $wire.attachmentUpload) $wire.send()"
+                                    x-init="resize()" x-on:input="resize()" x-on:paste="handlePaste($event)"
+                                    x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
                                     class="scrollbar-none resize-none overflow-hidden"
                                     style="min-height: 2.75rem; max-height: 160px; overflow-y: auto;" />
                             </div>
@@ -494,10 +621,10 @@ new #[Title('Conversation')] class extends Component {
                                 <i class="fa-solid fa-paperclip text-xs"></i>
                                 {{ __('Attach') }}
                             </label>
-                            <input id="conversation-attachment" type="file" wire:model="attachmentUpload"
+                            <input id="conversation-attachment" x-ref="attachments" type="file" multiple wire:model="attachmentUploads"
                                 class="sr-only">
 
-                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !$wire.attachmentUpload" wire:loading.attr="disabled" wire:target="send,attachmentUpload"
+                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads"
                                 class="brand-button-primary min-h-[2.75rem] shrink-0 px-5 py-3">
                                 <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
                                 <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
@@ -508,20 +635,35 @@ new #[Title('Conversation')] class extends Component {
                             <p class="text-xs text-neutral-500 dark:text-zinc-400">{{ __('Press Enter to send.') }}
                             </p>
 
-                            @if ($attachmentUpload)
-                                <span
-                                    class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                    <i class="fa-solid fa-file"></i>
-                                    <span
-                                        class="max-w-[12rem] truncate">{{ $attachmentUpload->getClientOriginalName() }}</span>
-                                </span>
-                            @endif
                         </div>
+
+                        @if ($attachmentUploads !== [])
+                            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                @foreach ($attachmentUploads as $index => $upload)
+                                    <div wire:key="pending-attachment-{{ $index }}" class="relative rounded-2xl border border-stone-200 bg-stone-50 p-2 dark:border-white/10 dark:bg-zinc-800">
+                                        <button type="button" wire:click="removeAttachmentUpload({{ $index }})" class="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                        @if (Str::startsWith($upload->getMimeType() ?? '', 'image/'))
+                                            <img src="{{ $upload->temporaryUrl() }}" alt="{{ __('Attachment preview') }}" class="aspect-video w-full rounded-xl object-cover">
+                                        @else
+                                            <div class="flex aspect-video items-center justify-center rounded-xl bg-white text-neutral-500 dark:bg-zinc-900 dark:text-zinc-300">
+                                                <i class="fa-solid fa-file text-lg"></i>
+                                            </div>
+                                        @endif
+                                        <p class="mt-2 truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $upload->getClientOriginalName() }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @error('newMessage')
                             <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
-                        @error('attachmentUpload')
+                        @error('attachmentUploads')
+                            <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                        @error('attachmentUploads.*')
                             <p class="mt-2 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
                     </form>

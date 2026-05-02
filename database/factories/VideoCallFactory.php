@@ -31,6 +31,8 @@ class VideoCallFactory extends Factory
         return [
             'caller_id' => User::factory(),
             'receiver_id' => User::factory(),
+            'group_id' => null,
+            'is_group_call' => false,
             'conversation_key' => '0-0',
             'status' => VideoCallStatus::Pending,
             'started_at' => null,

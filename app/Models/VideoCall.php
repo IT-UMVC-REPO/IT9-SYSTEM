@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'caller_id',
     'receiver_id',
+    'group_id',
+    'is_group_call',
     'conversation_key',
     'status',
     'started_at',
@@ -32,6 +35,7 @@ class VideoCall extends Model
     {
         return [
             'status' => VideoCallStatus::class,
+            'is_group_call' => 'bool',
             'started_at' => 'immutable_datetime',
             'ended_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
@@ -46,6 +50,16 @@ class VideoCall extends Model
     public function receiver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(ConversationGroup::class, 'group_id');
+    }
+
+    public function participants(): HasMany
+    {
+        return $this->hasMany(VideoCallParticipant::class);
     }
 
     public static function conversationKeyFor(int $firstUserId, int $secondUserId): string

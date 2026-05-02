@@ -55,9 +55,21 @@ Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('m
     Route::livewire('/{conversationReference}', 'pages::messages.conversation')->name('conversation');
 });
 
+Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->group(function () {
+    Route::livewire('/groups/{groupId}', 'pages::messages.group-conversation')->name('messages.group');
+});
+
+Route::view('/support/video-calls', 'pages.support.video-calls')->name('support.video-calls');
+
 Route::middleware(['auth', 'verified'])->prefix('api/calls')->name('calls.')->group(function () {
     Route::get('/ice-servers', [VideoCallController::class, 'iceServers'])->name('ice-servers');
     Route::post('/initiate', [VideoCallController::class, 'initiate'])->name('initiate');
+    Route::prefix('group')->name('group.')->group(function () {
+        Route::post('/initiate', [VideoCallController::class, 'initiateGroup'])->name('initiate');
+        Route::post('/{call}/signal', [VideoCallController::class, 'signalGroup'])->name('signal');
+        Route::post('/{call}/answer', [VideoCallController::class, 'answerGroup'])->name('answer');
+        Route::post('/{call}/end', [VideoCallController::class, 'endGroup'])->name('end');
+    });
     Route::post('/{call}/signal', [VideoCallController::class, 'signal'])->name('signal');
     Route::post('/{call}/answer', [VideoCallController::class, 'answer'])->name('answer');
     Route::post('/{call}/decline', [VideoCallController::class, 'decline'])->name('decline');

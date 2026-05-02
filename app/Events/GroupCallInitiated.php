@@ -9,30 +9,32 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VideoCallInitiated implements ShouldBroadcastNow
+class GroupCallInitiated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(public VideoCall $videoCall)
     {
-        $this->videoCall->loadMissing('caller:id,name');
+        $this->videoCall->loadMissing(['caller:id,name', 'group:id,name']);
     }
 
     public function broadcastAs(): string
     {
-        return 'VideoCallInitiated';
+        return 'GroupCallInitiated';
     }
 
+    /**
+     * @return array<int, PrivateChannel>
+     */
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('messaging.'.$this->videoCall->conversation_key),
-            new PrivateChannel('calls.'.$this->videoCall->receiver_id),
+            new PrivateChannel('group.'.$this->videoCall->group_id),
         ];
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array<string, mixed>
      */
     public function broadcastWith(): array
     {
@@ -40,9 +42,9 @@ class VideoCallInitiated implements ShouldBroadcastNow
             'call_id' => $this->videoCall->getKey(),
             'caller_id' => $this->videoCall->caller_id,
             'caller_name' => $this->videoCall->caller->name,
-            'receiver_id' => $this->videoCall->receiver_id,
-            'conversation_key' => $this->videoCall->conversation_key,
-            'is_group_call' => false,
+            'group_id' => $this->videoCall->group_id,
+            'group_name' => $this->videoCall->group?->name,
+            'is_group_call' => true,
         ];
     }
 }

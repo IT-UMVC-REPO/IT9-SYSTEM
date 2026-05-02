@@ -2,8 +2,10 @@ window.global = window.global ?? window;
 
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { RingtonePlayer } from './ringtone';
 
 window.Pusher = Pusher;
+window.sukiRingtone = window.sukiRingtone ?? new RingtonePlayer();
 
 window.Echo = new Echo({
     broadcaster: 'pusher',
@@ -13,7 +15,7 @@ window.Echo = new Echo({
 });
 
 const videoCallResetDelay = 1800;
-const videoCallConnectingWarningDelay = 10000;
+const videoCallConnectingWarningDelay = 5000;
 const videoCallConnectingTimeout = 30000;
 const localVideoElementId = 'conversation-call-local-video';
 const remoteVideoElementId = 'conversation-call-remote-video';
@@ -81,8 +83,12 @@ window.conversationVideoCall = (config) => ({
     pendingSignals: [],
     iceServers: null,
     iceTransportPolicy: 'all',
+    facingMode: 'user',
+    hasMultipleCameras: false,
+    hasCheckedCameraDevices: false,
     connectingWarningTimer: null,
     connectingTimeoutTimer: null,
+    showTurnWarning: false,
     statusMessage: '',
     initialized: false,
 
@@ -146,6 +152,10 @@ window.conversationVideoCall = (config) => ({
             && navigator.mediaDevices
             && navigator.mediaDevices.getUserMedia,
         );
+    },
+
+    supportsCameraSwitch() {
+        return this.hasMultipleCameras;
     },
 
     videoCallDisabledReason() {
@@ -393,6 +403,7 @@ window.conversationVideoCall = (config) => ({
                 return;
             }
 
+            this.showTurnWarning = !this.usesTurnServers();
             this.statusMessage = this.usesTurnServers()
                 ? 'Still connecting media. Please keep this window open...'
                 : 'Still connecting media. Calls across different networks need TURN credentials in .env.';
@@ -418,6 +429,7 @@ window.conversationVideoCall = (config) => ({
 
         this.connectingWarningTimer = null;
         this.connectingTimeoutTimer = null;
+        this.showTurnWarning = false;
     },
 
     usesTurnServers() {
@@ -559,28 +571,119 @@ window.conversationVideoCall = (config) => ({
             return this.localStream;
         }
 
-        let stream;
+        const attempts = [
+            { video: this.getBestVideoConstraints(), audio: true },
+            { video: this.getBestVideoConstraints(true), audio: true },
+            { video: true, audio: true },
+            { video: true, audio: false },
+            { video: false, audio: true },
+        ];
 
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-                audio: true,
-            });
-        } catch (error) {
-            if (error instanceof DOMException && error.name === 'NotAllowedError') {
-                throw error;
+        let lastError = null;
+
+        for (const constraints of attempts) {
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (error) {
+                lastError = error;
+
+                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                    throw error;
+                }
             }
-
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-                audio: false,
-            });
         }
 
-        this.localStream = stream;
-        this.setVideoSource(localVideoElementId, stream);
+        if (this.localStream === null) {
+            throw lastError ?? new Error('Could not access camera or microphone.');
+        }
 
-        return stream;
+        this.setVideoSource(localVideoElementId, this.localStream);
+        await this.updateCameraCapabilities();
+
+        return this.localStream;
+    },
+
+    getBestVideoConstraints(useFallback = false) {
+        return {
+            width: { ideal: useFallback ? 640 : 1280 },
+            height: { ideal: useFallback ? 480 : 720 },
+            frameRate: { ideal: 30 },
+            facingMode: { ideal: this.facingMode },
+        };
+    },
+
+    isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 900);
+    },
+
+    async updateCameraCapabilities() {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+            this.hasCheckedCameraDevices = true;
+            this.hasMultipleCameras = false;
+            return;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.hasMultipleCameras = devices.filter((device) => device.kind === 'videoinput').length > 1;
+        } catch {
+            this.hasMultipleCameras = false;
+        }
+
+        this.hasCheckedCameraDevices = true;
+    },
+
+    async switchCamera() {
+        if (!this.localStream || !this.supportsCameraSwitch()) {
+            return;
+        }
+
+        const previousFacingMode = this.facingMode;
+        const previousVideoTracks = this.localStream.getVideoTracks();
+        this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+
+        let cameraStream;
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: this.facingMode } },
+                audio: false,
+            });
+        } catch (error) {
+            this.facingMode = previousFacingMode;
+            this.statusMessage = this.callErrorMessage(error, 'Could not switch cameras. Your current camera is still active.');
+            return;
+        }
+
+        const [newVideoTrack] = cameraStream.getVideoTracks();
+
+        if (!newVideoTrack) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+            this.facingMode = previousFacingMode;
+            this.statusMessage = 'Could not switch cameras. Your current camera is still active.';
+            return;
+        }
+
+        const sender = this.peer?.getSenders().find((candidateSender) => candidateSender.track?.kind === 'video');
+
+        if (sender) {
+            try {
+                await sender.replaceTrack(newVideoTrack);
+            } catch (error) {
+                newVideoTrack.stop();
+                this.facingMode = previousFacingMode;
+                this.statusMessage = this.callErrorMessage(error, 'Could not switch cameras. Your current camera is still active.');
+                return;
+            }
+        }
+
+        const audioTracks = this.localStream.getAudioTracks();
+        previousVideoTracks.forEach((track) => track.stop());
+        this.localStream = new MediaStream([...audioTracks, newVideoTrack]);
+        this.setVideoSource(localVideoElementId, this.localStream);
+        await this.updateCameraCapabilities();
     },
 
     cleanupCall(nextStatus, message = '') {
@@ -697,6 +800,10 @@ window.conversationVideoCall = (config) => ({
             return 'No camera or microphone was found for this device.';
         }
 
+        if (error instanceof DOMException && error.name === 'NotReadableError') {
+            return 'Your camera or microphone is already in use by another app.';
+        }
+
         if (error instanceof Error && error.message) {
             return error.message;
         }
@@ -736,6 +843,461 @@ window.conversationVideoCallControl = () => ({
 
     startCall() {
         return this.manager()?.startCall();
+    },
+});
+
+window.groupConversationVideoCall = (config) => ({
+    authUserId: config.authUserId,
+    groupId: config.groupId,
+    groupName: config.groupName,
+    realtimeEnabled: config.realtimeEnabled,
+    routes: config.routes,
+    callStatus: 'idle',
+    callId: null,
+    localStream: null,
+    iceServers: null,
+    iceTransportPolicy: 'all',
+    facingMode: 'user',
+    peerConnections: new Map(),
+    remoteStreams: new Map(),
+    remoteParticipants: [],
+    participants: [],
+    pendingSignals: new Map(),
+    statusMessage: '',
+    initialized: false,
+
+    init() {
+        if (this.initialized || !this.realtimeEnabled || !window.Echo) {
+            return;
+        }
+
+        this.initialized = true;
+
+        window.Echo.private(`group.${this.groupId}`)
+            .listen('.GroupCallInitiated', (event) => {
+                if (event.caller_id === this.authUserId || this.callStatus !== 'idle') {
+                    return;
+                }
+
+                this.callId = event.call_id;
+                this.callStatus = 'incoming';
+                this.statusMessage = `${event.caller_name} started a group call.`;
+            })
+            .listen('.GroupCallSignal', (event) => {
+                if (event.sender_id === this.authUserId || event.call_id !== this.callId) {
+                    return;
+                }
+
+                if (event.recipient_id !== null && event.recipient_id !== this.authUserId) {
+                    return;
+                }
+
+                this.handleGroupSignal(event.sender_id, event.signal_data);
+            })
+            .listen('.GroupCallStatusChanged', (event) => {
+                if (this.callId !== null && event.call_id !== this.callId) {
+                    return;
+                }
+
+                if (event.status === 'ended') {
+                    this.cleanupGroupCall('idle');
+                    return;
+                }
+
+                this.participants = Array.isArray(event.participants) ? event.participants : [];
+
+                if (this.localStream !== null) {
+                    this.connectToParticipants();
+                }
+            });
+    },
+
+    supportsVideoCalling() {
+        return Boolean(
+            this.realtimeEnabled
+            && window.Echo
+            && navigator.mediaDevices
+            && navigator.mediaDevices.getUserMedia,
+        );
+    },
+
+    async startCall() {
+        if (!this.supportsVideoCalling()) {
+            this.statusMessage = 'Video calling is not available right now.';
+            return;
+        }
+
+        try {
+            this.callStatus = 'connecting';
+            this.statusMessage = 'Preparing your camera...';
+            await this.ensureLocalStream();
+            this.statusMessage = 'Loading call connection settings...';
+            await this.loadIceConfiguration();
+
+            const payload = await this.requestJson(this.routes.initiate, {
+                group_id: this.groupId,
+            }, { timeoutMs: 15000 });
+
+            this.callId = payload.id;
+            this.callStatus = 'active';
+            this.participants = payload.participants ?? [this.authUserId];
+            this.statusMessage = 'Group call started.';
+        } catch (error) {
+            this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not start the group call.'));
+        }
+    },
+
+    async acceptCall() {
+        if (!this.callId) {
+            return;
+        }
+
+        try {
+            this.callStatus = 'connecting';
+            this.statusMessage = 'Joining group call...';
+            await this.ensureLocalStream();
+            await this.loadIceConfiguration();
+
+            const payload = await this.requestJson(this.callRoute('answer'), null, { timeoutMs: 15000 });
+
+            this.callStatus = 'active';
+            this.participants = payload.participants ?? [];
+            this.statusMessage = 'Connected.';
+            this.connectToParticipants();
+        } catch (error) {
+            this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not join the group call.'));
+        }
+    },
+
+    async leaveCall() {
+        if (this.callId !== null) {
+            try {
+                await this.requestJson(this.callRoute('end'), null, { timeoutMs: 15000 });
+            } catch {
+                // Ignore cleanup failures while leaving.
+            }
+        }
+
+        this.cleanupGroupCall('idle');
+    },
+
+    async ensureLocalStream() {
+        if (this.localStream !== null) {
+            return this.localStream;
+        }
+
+        const attempts = [
+            { video: this.getBestVideoConstraints(), audio: true },
+            { video: this.getBestVideoConstraints(true), audio: true },
+            { video: true, audio: true },
+            { video: true, audio: false },
+            { video: false, audio: true },
+        ];
+
+        let lastError = null;
+
+        for (const constraints of attempts) {
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                break;
+            } catch (error) {
+                lastError = error;
+
+                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                    throw error;
+                }
+            }
+        }
+
+        if (this.localStream === null) {
+            throw lastError ?? new Error('Could not access camera or microphone.');
+        }
+
+        this.setVideoSource('group-call-local-video', this.localStream);
+
+        return this.localStream;
+    },
+
+    getBestVideoConstraints(useFallback = false) {
+        return {
+            width: { ideal: useFallback ? 640 : 1280 },
+            height: { ideal: useFallback ? 480 : 720 },
+            frameRate: { ideal: 30 },
+            facingMode: { ideal: this.facingMode },
+        };
+    },
+
+    async loadIceConfiguration() {
+        if (this.iceServers !== null) {
+            return;
+        }
+
+        const payload = await this.requestJson(this.routes.iceServers, null, {
+            method: 'GET',
+            timeoutMs: 15000,
+        });
+
+        this.iceServers = Array.isArray(payload?.ice_servers) && payload.ice_servers.length > 0
+            ? payload.ice_servers
+            : videoCallIceServers;
+        this.iceTransportPolicy = payload?.ice_transport_policy === 'relay' ? 'relay' : 'all';
+    },
+
+    connectToParticipants() {
+        this.participants
+            .filter((participantId) => participantId !== this.authUserId)
+            .forEach((participantId) => {
+                if (!this.peerConnections.has(participantId)) {
+                    this.createPeerConnection(participantId, this.authUserId < participantId);
+                }
+            });
+    },
+
+    createPeerConnection(peerId, initiator = false) {
+        if (this.peerConnections.has(peerId) || this.localStream === null) {
+            return this.peerConnections.get(peerId);
+        }
+
+        const peer = new RTCPeerConnection({
+            iceServers: this.iceServers ?? videoCallIceServers,
+            iceTransportPolicy: this.iceTransportPolicy,
+        });
+
+        this.peerConnections.set(peerId, peer);
+        this.localStream.getTracks().forEach((track) => peer.addTrack(track, this.localStream));
+
+        peer.onicecandidate = ({ candidate }) => {
+            if (!candidate || !this.callId) {
+                return;
+            }
+
+            void this.sendGroupSignal(peerId, {
+                type: 'candidate',
+                candidate: candidate.toJSON(),
+            });
+        };
+
+        peer.ontrack = (event) => {
+            if (!event.streams[0]) {
+                return;
+            }
+
+            this.remoteStreams.set(peerId, event.streams[0]);
+            this.refreshRemoteParticipants();
+        };
+
+        peer.oniceconnectionstatechange = () => {
+            if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
+                this.removePeer(peerId);
+            }
+        };
+
+        if (initiator) {
+            peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+                .then((offer) => peer.setLocalDescription(offer).then(() => offer))
+                .then((offer) => this.sendGroupSignal(peerId, {
+                    type: offer.type,
+                    sdp: stripSdp(offer.sdp),
+                }))
+                .catch(() => this.removePeer(peerId));
+        }
+
+        return peer;
+    },
+
+    async handleGroupSignal(senderId, signalData) {
+        if (!signalData || typeof signalData !== 'object') {
+            return;
+        }
+
+        if (this.localStream === null) {
+            const signals = this.pendingSignals.get(senderId) ?? [];
+            signals.push(signalData);
+            this.pendingSignals.set(senderId, signals);
+            return;
+        }
+
+        const peer = this.createPeerConnection(senderId, false);
+
+        if (!peer) {
+            return;
+        }
+
+        if (signalData.type === 'offer') {
+            await peer.setRemoteDescription(new RTCSessionDescription({
+                ...signalData,
+                sdp: stripSdp(signalData.sdp),
+            }));
+
+            const answer = await peer.createAnswer();
+            await peer.setLocalDescription(answer);
+            await this.sendGroupSignal(senderId, {
+                type: answer.type,
+                sdp: stripSdp(answer.sdp),
+            });
+            this.flushGroupSignals(senderId);
+            return;
+        }
+
+        if (signalData.type === 'answer') {
+            await peer.setRemoteDescription(new RTCSessionDescription({
+                ...signalData,
+                sdp: stripSdp(signalData.sdp),
+            }));
+            this.flushGroupSignals(senderId);
+            return;
+        }
+
+        if (signalData.candidate) {
+            if (!peer.remoteDescription) {
+                const signals = this.pendingSignals.get(senderId) ?? [];
+                signals.push(signalData);
+                this.pendingSignals.set(senderId, signals);
+                return;
+            }
+
+            await peer.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+        }
+    },
+
+    flushGroupSignals(senderId) {
+        const signals = this.pendingSignals.get(senderId) ?? [];
+        this.pendingSignals.delete(senderId);
+        signals.forEach((signalData) => {
+            void this.handleGroupSignal(senderId, signalData);
+        });
+    },
+
+    async sendGroupSignal(recipientId, signalData) {
+        await this.requestJson(this.callRoute('signal'), {
+            recipient_id: recipientId,
+            signal_data: signalData,
+        }, { timeoutMs: 15000 });
+    },
+
+    refreshRemoteParticipants() {
+        this.remoteParticipants = Array.from(this.remoteStreams.keys()).map((participantId) => ({
+            id: participantId,
+            elementId: `group-call-remote-video-${participantId}`,
+        }));
+
+        window.setTimeout(() => {
+            this.remoteParticipants.forEach((participant) => {
+                this.setVideoSource(participant.elementId, this.remoteStreams.get(participant.id) ?? null);
+            });
+        });
+    },
+
+    removePeer(peerId) {
+        const peer = this.peerConnections.get(peerId);
+
+        if (peer) {
+            peer.close();
+        }
+
+        this.peerConnections.delete(peerId);
+        this.remoteStreams.delete(peerId);
+        this.refreshRemoteParticipants();
+    },
+
+    cleanupGroupCall(nextStatus = 'idle', message = '') {
+        this.peerConnections.forEach((peer) => peer.close());
+        this.peerConnections.clear();
+        this.remoteStreams.clear();
+        this.remoteParticipants = [];
+        this.pendingSignals.clear();
+
+        if (this.localStream !== null) {
+            this.localStream.getTracks().forEach((track) => track.stop());
+        }
+
+        this.localStream = null;
+        this.callId = null;
+        this.callStatus = nextStatus;
+        this.statusMessage = message;
+        this.setVideoSource('group-call-local-video', null);
+
+        if (nextStatus === 'ended') {
+            window.setTimeout(() => {
+                if (this.callStatus === 'ended') {
+                    this.callStatus = 'idle';
+                    this.statusMessage = '';
+                }
+            }, videoCallResetDelay);
+        }
+
+        if (nextStatus === 'idle') {
+            this.statusMessage = '';
+        }
+    },
+
+    callRoute(action) {
+        return (this.routes[action] ?? '').replace('__CALL_ID__', String(this.callId ?? ''));
+    },
+
+    csrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    },
+
+    async requestJson(url, body = null, options = {}) {
+        const { method = 'POST', timeoutMs = 5000 } = options;
+        const response = await fetch(url, {
+            method,
+            headers: {
+                ...(body === null ? {} : { 'Content-Type': 'application/json' }),
+                ...(method === 'GET' ? {} : { 'X-CSRF-TOKEN': this.csrfToken() }),
+            },
+            body: body === null ? null : JSON.stringify(body),
+            signal: this.requestSignal(timeoutMs),
+        });
+
+        const payload = (response.headers.get('content-type') ?? '').includes('application/json')
+            ? await response.json()
+            : null;
+
+        if (!response.ok || payload?.realtime_available === false) {
+            throw new Error(payload?.message ?? 'Group call server unavailable.');
+        }
+
+        return payload;
+    },
+
+    requestSignal(timeoutMs) {
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+            return AbortSignal.timeout(timeoutMs);
+        }
+
+        const controller = new AbortController();
+        window.setTimeout(() => controller.abort(), timeoutMs);
+        return controller.signal;
+    },
+
+    groupCallErrorMessage(error, fallbackMessage) {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+            return 'Camera or microphone access was denied. Please allow access in your browser settings and try again.';
+        }
+
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+            return 'No camera or microphone was found for this device.';
+        }
+
+        if (error instanceof DOMException && error.name === 'NotReadableError') {
+            return 'Your camera or microphone is already in use by another app.';
+        }
+
+        if (error instanceof Error && error.message) {
+            return error.message;
+        }
+
+        return fallbackMessage;
+    },
+
+    setVideoSource(elementId, stream) {
+        const element = document.getElementById(elementId);
+
+        if (element instanceof HTMLVideoElement) {
+            element.srcObject = stream;
+        }
     },
 });
 

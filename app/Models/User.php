@@ -10,6 +10,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -118,6 +119,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Message::class, 'receiver_id');
     }
 
+    public function nicknamesGiven(): HasMany
+    {
+        return $this->hasMany(UserNickname::class, 'owner_id');
+    }
+
+    public function nicknamesReceived(): HasMany
+    {
+        return $this->hasMany(UserNickname::class, 'target_id');
+    }
+
+    public function conversationGroupMemberships(): HasMany
+    {
+        return $this->hasMany(ConversationGroupMember::class);
+    }
+
+    public function conversationGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(ConversationGroup::class, 'conversation_group_members', 'user_id', 'group_id')
+            ->withPivot(['role', 'joined_at', 'last_read_at']);
+    }
+
     public function callsMade(): HasMany
     {
         return $this->hasMany(VideoCall::class, 'caller_id');
@@ -126,6 +148,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function callsReceived(): HasMany
     {
         return $this->hasMany(VideoCall::class, 'receiver_id');
+    }
+
+    public function nicknameFor(int $viewerId): ?string
+    {
+        return UserNickname::query()
+            ->where('owner_id', $viewerId)
+            ->where('target_id', $this->getKey())
+            ->value('nickname');
     }
 
     public function favorites(): HasMany

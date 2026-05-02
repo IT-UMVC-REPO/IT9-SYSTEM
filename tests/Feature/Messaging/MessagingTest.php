@@ -93,7 +93,7 @@ test('sending a message with an attachment stores metadata', function () {
     Livewire::actingAs($user)
         ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
         ->set('newMessage', '')
-        ->set('attachmentUpload', $attachment)
+        ->set('attachmentUploads', [$attachment])
         ->call('send')
         ->assertHasNoErrors()
         ->assertDispatched('message-sent');
@@ -108,7 +108,51 @@ test('sending a message with an attachment stores metadata', function () {
         ->and($message->content)->toBe('')
         ->and($message->attachment_name)->toBe('market-note.pdf')
         ->and($message->attachment_path)->not->toBeNull()
+        ->and($message->attachments)->toHaveCount(1)
         ->and(Storage::disk('public')->exists($message->attachment_path))->toBeTrue();
+});
+
+test('sending a message stores multiple attachments', function () {
+    Storage::fake('public');
+    Event::fake([MessageSent::class]);
+
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
+        ->set('newMessage', 'See these files')
+        ->set('attachmentUploads', [
+            UploadedFile::fake()->create('one.jpg', 64, 'image/jpeg'),
+            UploadedFile::fake()->create('two.pdf', 64, 'application/pdf'),
+        ])
+        ->call('send')
+        ->assertHasNoErrors()
+        ->assertDispatched('message-sent');
+
+    $message = Message::query()
+        ->where('sender_id', $user->getKey())
+        ->where('receiver_id', $otherUser->getKey())
+        ->latest('id')
+        ->first();
+
+    expect($message)->not->toBeNull()
+        ->and($message->attachments()->count())->toBe(2)
+        ->and($message->attachment_path)->toBe($message->attachments()->oldest('id')->first()->path);
+});
+
+test('legacy attachment metadata still renders through display attachments', function () {
+    $sender = User::factory()->create();
+    $receiver = User::factory()->create();
+    $message = createMarketplaceMessage($sender, $receiver, 'Legacy file', [
+        'attachment_path' => 'message-attachments/legacy.pdf',
+        'attachment_name' => 'legacy.pdf',
+        'attachment_mime' => 'application/pdf',
+        'attachment_size' => 1024,
+    ]);
+
+    expect($message->attachmentsForDisplay())->toHaveCount(1)
+        ->and($message->attachmentsForDisplay()->first()->path)->toBe('message-attachments/legacy.pdf');
 });
 
 test('sending a message rejects unsupported attachment types', function () {
@@ -121,9 +165,9 @@ test('sending a message rejects unsupported attachment types', function () {
     Livewire::actingAs($user)
         ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
         ->set('newMessage', '')
-        ->set('attachmentUpload', $attachment)
+        ->set('attachmentUploads', [$attachment])
         ->call('send')
-        ->assertHasErrors(['attachmentUpload']);
+        ->assertHasErrors(['attachmentUploads.0']);
 
     expect(Message::query()
         ->where('sender_id', $user->getKey())

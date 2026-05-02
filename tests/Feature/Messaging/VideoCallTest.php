@@ -59,6 +59,32 @@ test('authenticated users can initiate a call', function () {
     Event::assertDispatched(VideoCallInitiated::class, fn (VideoCallInitiated $event) => $event->videoCall->is($call));
 });
 
+test('direct call initiation broadcasts on conversation and receiver notification channels', function () {
+    $caller = User::factory()->create([
+        'name' => 'Caller Mina',
+    ]);
+    $receiver = User::factory()->create();
+    $call = createVideoCallRecord($caller, $receiver);
+    $event = new VideoCallInitiated($call);
+
+    $channels = collect($event->broadcastOn())
+        ->map(fn ($channel): string => $channel->name)
+        ->all();
+
+    expect($channels)
+        ->toContain('private-messaging.'.$call->conversation_key)
+        ->toContain('private-calls.'.$receiver->getKey())
+        ->and($event->broadcastAs())->toBe('VideoCallInitiated')
+        ->and($event->broadcastWith())->toMatchArray([
+            'call_id' => $call->getKey(),
+            'caller_id' => $caller->getKey(),
+            'caller_name' => 'Caller Mina',
+            'receiver_id' => $receiver->getKey(),
+            'conversation_key' => $call->conversation_key,
+            'is_group_call' => false,
+        ]);
+});
+
 test('users cannot call themselves', function () {
     $user = User::factory()->create();
 
@@ -287,8 +313,12 @@ test('video call client uses native rtc peer connection and server-provided ice 
     $client = file_get_contents(resource_path('js/app.js'));
 
     expect($client)
+        ->toContain("import { RingtonePlayer } from './ringtone';")
+        ->toContain('window.sukiRingtone')
         ->toContain('new RTCPeerConnection({')
         ->toContain('await this.loadIceConfiguration();')
+        ->toContain('iceTransportPolicy: this.iceTransportPolicy')
+        ->toContain('payload?.ice_transport_policy')
         ->toContain("type: 'candidate'")
         ->toContain('setRemoteDescription(new RTCSessionDescription')
         ->toContain('new RTCIceCandidate')
@@ -296,12 +326,24 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('Calls across different networks need TURN credentials in .env.')
         ->toContain('realtimeEnabled')
         ->toContain('Camera or microphone access was denied')
+        ->toContain('getBestVideoConstraints')
+        ->toContain('hasMultipleCameras')
+        ->toContain('switchCamera')
+        ->toContain('sender.replaceTrack(newVideoTrack)')
+        ->toContain('Could not switch cameras. Your current camera is still active.')
+        ->toContain('window.groupConversationVideoCall')
+        ->toContain('groupCallErrorMessage')
+        ->toContain('video: false, audio: true')
+        ->toContain('video: true, audio: false')
+        ->toContain('Could not start the group call.')
         ->toContain('window.conversationVideoCallControl')
+        ->not->toContain('localStorage')
+        ->not->toContain('sessionStorage')
         ->not->toContain("import Peer from '@thaunknown/simple-peer';")
         ->not->toContain('new Peer({')
         ->not->toContain('trickle: false')
         ->not->toContain('sanitizeIncomingSdp')
-        ->not->toContain('signal_data: signalData');
+        ->not->toContain('}).catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: true }))');
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {

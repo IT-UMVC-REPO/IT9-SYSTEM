@@ -110,6 +110,8 @@
                         @foreach ($quickActionItems as $item)
                             @if ($item['route'] === route('shop.cart'))
                                 <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'header-cart-badge'" />
+                            @elseif ($item['route'] === route('messages.inbox'))
+                                <livewire:messaging.unread-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'header-message-badge'" />
                             @else
                                 <a
                                     href="{{ $item['route'] }}"
@@ -239,6 +241,10 @@
                 <flux:toast />
             </flux:toast.group>
         @endpersist
+
+        @auth
+            <livewire:calls.incoming-call-notification :key="'incoming-call-notification'" />
+        @endauth
 
         @fluxScripts
     </body>

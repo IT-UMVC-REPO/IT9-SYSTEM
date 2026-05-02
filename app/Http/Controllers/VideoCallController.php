@@ -3,10 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\VideoCallStatus;
+use App\Events\GroupCallInitiated;
+use App\Events\GroupCallSignal;
+use App\Events\GroupCallStatusChanged;
 use App\Events\VideoCallInitiated;
 use App\Events\VideoCallSignal;
 use App\Events\VideoCallStatusChanged;
+use App\Models\ConversationGroup;
+use App\Models\ConversationGroupMember;
 use App\Models\VideoCall;
+use App\Models\VideoCallParticipant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +73,8 @@ class VideoCallController extends Controller
 
     public function signal(Request $request, VideoCall $call): JsonResponse
     {
+        abort_if($call->is_group_call, 404);
+
         $validated = $request->validate([
             'signal_data' => ['required', 'array'],
         ]);
@@ -85,6 +93,7 @@ class VideoCallController extends Controller
 
     public function answer(Request $request, VideoCall $call): JsonResponse
     {
+        abort_if($call->is_group_call, 404);
         abort_if($call->receiver_id !== $request->user()->getKey(), 403);
 
         $call->forceFill([
@@ -104,6 +113,7 @@ class VideoCallController extends Controller
 
     public function decline(Request $request, VideoCall $call): JsonResponse
     {
+        abort_if($call->is_group_call, 404);
         abort_if($call->receiver_id !== $request->user()->getKey(), 403);
 
         $call->forceFill([
@@ -123,6 +133,7 @@ class VideoCallController extends Controller
 
     public function end(Request $request, VideoCall $call): JsonResponse
     {
+        abort_if($call->is_group_call, 404);
         abort_if(! $this->isParticipant($call, $request->user()->getKey()), 403);
 
         $call->forceFill([
@@ -140,9 +151,184 @@ class VideoCallController extends Controller
         return $this->broadcastResponse($broadcasted);
     }
 
+    public function initiateGroup(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'group_id' => ['required', 'integer', 'exists:conversation_groups,id'],
+        ]);
+
+        $group = ConversationGroup::query()->findOrFail((int) $validated['group_id']);
+        $userId = $request->user()->getKey();
+
+        abort_unless($this->isGroupMember($group->getKey(), $userId), 403);
+
+        $videoCall = VideoCall::query()->create([
+            'caller_id' => $userId,
+            'receiver_id' => null,
+            'group_id' => $group->getKey(),
+            'is_group_call' => true,
+            'conversation_key' => 'group-'.$group->getKey(),
+            'status' => VideoCallStatus::Pending,
+        ]);
+
+        VideoCallParticipant::query()->create([
+            'video_call_id' => $videoCall->getKey(),
+            'user_id' => $userId,
+        ]);
+
+        $broadcasted = $this->dispatchBroadcastSafely(
+            new GroupCallInitiated($videoCall),
+            'GroupCallInitiated broadcast failed (Pusher may be unavailable): ',
+        );
+
+        if (! $broadcasted) {
+            $videoCall->forceFill([
+                'status' => VideoCallStatus::Ended,
+                'ended_at' => now(),
+            ])->save();
+
+            $videoCall->refresh();
+        }
+
+        return response()->json([
+            ...$this->groupCallPayload($videoCall),
+            'realtime_available' => $broadcasted,
+            'message' => $broadcasted ? null : __('Group video call service is unavailable right now.'),
+        ], $broadcasted ? 201 : 503);
+    }
+
+    public function signalGroup(Request $request, VideoCall $call): JsonResponse
+    {
+        abort_unless($call->is_group_call && $call->group_id !== null, 404);
+
+        $validated = $request->validate([
+            'recipient_id' => ['nullable', 'integer', 'exists:users,id'],
+            'signal_data' => ['required', 'array'],
+        ]);
+
+        $userId = $request->user()->getKey();
+
+        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+
+        $recipientId = isset($validated['recipient_id']) ? (int) $validated['recipient_id'] : null;
+
+        if ($recipientId !== null) {
+            abort_unless($this->isGroupMember($call->group_id, $recipientId), 403);
+        }
+
+        $broadcasted = $this->dispatchBroadcastSafely(
+            new GroupCallSignal($call, $userId, $recipientId, $validated['signal_data']),
+            'GroupCallSignal broadcast failed (Pusher may be unavailable): ',
+        );
+
+        return $this->broadcastResponse($broadcasted);
+    }
+
+    public function answerGroup(Request $request, VideoCall $call): JsonResponse
+    {
+        abort_unless($call->is_group_call && $call->group_id !== null, 404);
+
+        $userId = $request->user()->getKey();
+
+        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+        abort_if($call->status === VideoCallStatus::Ended || $call->status === VideoCallStatus::Declined, 409);
+
+        $alreadyJoined = VideoCallParticipant::query()
+            ->where('video_call_id', $call->getKey())
+            ->where('user_id', $userId)
+            ->whereNull('left_at')
+            ->exists();
+
+        if (! $alreadyJoined && $this->activeGroupParticipantCount($call) >= 6) {
+            throw ValidationException::withMessages([
+                'call' => __('This group call is full.'),
+            ]);
+        }
+
+        $call->forceFill([
+            'status' => VideoCallStatus::Active,
+            'started_at' => $call->started_at ?? now(),
+        ])->save();
+
+        VideoCallParticipant::query()->updateOrCreate(
+            [
+                'video_call_id' => $call->getKey(),
+                'user_id' => $userId,
+            ],
+            [
+                'joined_at' => now(),
+                'left_at' => null,
+            ],
+        );
+
+        $call->refresh();
+
+        $broadcasted = $this->dispatchBroadcastSafely(
+            new GroupCallStatusChanged($call),
+            'GroupCallStatusChanged broadcast failed while joining a group call (Pusher may be unavailable): ',
+        );
+
+        return response()->json([
+            ...$this->groupCallPayload($call),
+            'realtime_available' => $broadcasted,
+            'message' => $broadcasted ? null : __('Group video call service is unavailable right now.'),
+        ], $broadcasted ? 200 : 503);
+    }
+
+    public function endGroup(Request $request, VideoCall $call): JsonResponse
+    {
+        abort_unless($call->is_group_call && $call->group_id !== null, 404);
+
+        $userId = $request->user()->getKey();
+
+        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+
+        VideoCallParticipant::query()
+            ->where('video_call_id', $call->getKey())
+            ->where('user_id', $userId)
+            ->whereNull('left_at')
+            ->update(['left_at' => now()]);
+
+        if ($this->activeGroupParticipantCount($call) === 0) {
+            $call->forceFill([
+                'status' => VideoCallStatus::Ended,
+                'ended_at' => now(),
+            ])->save();
+        }
+
+        $call->refresh();
+
+        $broadcasted = $this->dispatchBroadcastSafely(
+            new GroupCallStatusChanged($call),
+            'GroupCallStatusChanged broadcast failed while leaving a group call (Pusher may be unavailable): ',
+        );
+
+        return response()->json([
+            ...$this->groupCallPayload($call),
+            'realtime_available' => $broadcasted,
+            'message' => $broadcasted ? null : __('Group video call service is unavailable right now.'),
+        ], $broadcasted ? 200 : 503);
+    }
+
     private function isParticipant(VideoCall $call, int $userId): bool
     {
         return in_array($userId, [$call->caller_id, $call->receiver_id], true);
+    }
+
+    private function isGroupMember(int $groupId, int $userId): bool
+    {
+        return ConversationGroupMember::query()
+            ->where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    private function activeGroupParticipantCount(VideoCall $call): int
+    {
+        return VideoCallParticipant::query()
+            ->where('video_call_id', $call->getKey())
+            ->whereNull('left_at')
+            ->count();
     }
 
     /**
@@ -240,7 +426,7 @@ class VideoCallController extends Controller
     }
 
     /**
-     * @return array{id: int, caller_id: int, receiver_id: int, conversation_key: string, status: string}
+     * @return array{id: int, caller_id: int, receiver_id: int|null, conversation_key: string, status: string}
      */
     private function callPayload(VideoCall $call): array
     {
@@ -250,6 +436,24 @@ class VideoCallController extends Controller
             'receiver_id' => $call->receiver_id,
             'conversation_key' => $call->conversation_key,
             'status' => $call->status->value,
+        ];
+    }
+
+    /**
+     * @return array{id: int, caller_id: int, group_id: int|null, status: string, participants: array<int, int>}
+     */
+    private function groupCallPayload(VideoCall $call): array
+    {
+        return [
+            'id' => $call->getKey(),
+            'caller_id' => $call->caller_id,
+            'group_id' => $call->group_id,
+            'status' => $call->status->value,
+            'participants' => $call->participants()
+                ->whereNull('left_at')
+                ->pluck('user_id')
+                ->values()
+                ->all(),
         ];
     }
 

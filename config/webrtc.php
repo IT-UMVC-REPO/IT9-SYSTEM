@@ -20,13 +20,34 @@ $parseUrls = static function (?string $value, array $default = [], string $schem
 };
 
 return [
+    /*
+    |--------------------------------------------------------------------------
+    | ICE Servers
+    |--------------------------------------------------------------------------
+    |
+    | STUN helps browsers discover a public media path, but it is not enough for
+    | many mobile carrier networks, strict NATs, or Cloudflare Tunnel paths.
+    | Configure TURN credentials for reliable cross-network mobile calls.
+    |
+    */
     'stun_urls' => $parseUrls(env('WEBRTC_STUN_URLS'), [
         'stun:stun.l.google.com:19302',
         'stun:stun1.l.google.com:19302',
         'stun:stun2.l.google.com:19302',
         'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302',
+        'stun:stun.cloudflare.com:3478',
     ], 'stun'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | TURN Credentials
+    |--------------------------------------------------------------------------
+    |
+    | TURN is mandatory for dependable phone-to-phone calls across different
+    | networks. Use static credentials or a shared secret from your TURN provider.
+    |
+    */
     'turn_urls' => $parseUrls(env('WEBRTC_TURN_URLS'), [], 'turn'),
     'turn_username' => env('WEBRTC_TURN_USERNAME'),
     'turn_credential' => env('WEBRTC_TURN_CREDENTIAL'),
