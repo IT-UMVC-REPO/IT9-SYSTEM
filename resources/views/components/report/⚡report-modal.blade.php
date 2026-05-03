@@ -138,7 +138,7 @@ new class extends Component {
 };
 ?>
 
-<flux:modal name="report-user" scroll="body" :closable="false" class="max-w-2xl">
+<flux:modal name="report-user" scroll="body" :closable="false" class="max-w-2xl overflow-hidden">
     <form wire:submit="submit" class="relative flex flex-col rounded-[1.75rem] overflow-hidden">
         <flux:modal.close>
             <button type="button" 

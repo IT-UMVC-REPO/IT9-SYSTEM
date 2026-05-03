@@ -56,9 +56,9 @@ test('vendor cards and order tracking use compact polished classes', function ()
     $orders = uiPolishBlade('views/pages/shop/*orders.blade.php');
 
     expect($vendorCard)
-        ->toContain('aspect-[4/3] w-full rounded-t-[2rem]')
-        ->toContain('line-clamp-1 text-sm leading-6')
-        ->toContain('brand-button-secondary mt-auto w-full !py-2')
+        ->toContain('aspect-[3/2] w-full object-cover')
+        ->toContain('line-clamp-2 text-sm leading-relaxed')
+        ->toContain('group/btn relative flex w-full items-center justify-center')
         ->and($orders)
         ->toContain('<span class="brand-kicker">{{ __(\'Order tracking\') }}</span>')
         ->not->toContain('border-emerald-800/50 bg-emerald-950/40 px-4 py-2');
@@ -67,14 +67,19 @@ test('vendor cards and order tracking use compact polished classes', function ()
 test('video call overlays use compact header controls', function () {
     $conversation = uiPolishBlade('views/pages/messages/*conversation.blade.php', 'group-conversation');
     $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
+    $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
 
     expect($conversation)
-        ->toContain('$el.closest(\'[data-conversation-video-call]\').__conversationVideoCall')
-        ->toContain('fa-microphone-slash')
-        ->toContain('fa-video-slash')
+        ->toContain('data-conversation-video-call')
+        ->toContain('x-on:video-call-start.window="startCall()"')
+        ->toContain('<flux:icon.microphone variant="mini" />')
+        ->toContain('<flux:icon.video-camera-slash variant="mini" />')
         ->not->toContain('CALL STATUS')
         ->and($groupConversation)
-        ->toContain('$el.closest(\'[data-group-video-call]\').__groupConversationVideoCall')
-        ->toContain('fa-microphone-slash')
-        ->toContain('fa-video-slash');
+        ->toContain('data-group-video-call')
+        ->toContain('x-on:group-call-start.window="startCall()"')
+        ->toContain('<flux:icon.microphone variant="mini" />')
+        ->toContain('<flux:icon.video-camera-slash variant="mini" />')
+        ->and($videoCallControl)
+        ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall');
 });

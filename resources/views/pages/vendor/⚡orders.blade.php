@@ -1,7 +1,7 @@
 <?php
 
+use App\Concerns\HasVendorGuard;
 use App\Enums\OrderStatus;
-use App\Enums\VendorStatus;
 use App\Models\Order;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -13,6 +13,7 @@ use Livewire\WithPagination;
 
 new #[Title('Vendor Orders')] class extends Component
 {
+    use HasVendorGuard;
     use WithPagination;
 
     #[Url(except: 'all')]
@@ -20,13 +21,6 @@ new #[Title('Vendor Orders')] class extends Component
 
     #[Url(except: '')]
     public string $search = '';
-
-    public function mount(): void
-    {
-        if (! $this->hasApprovedVendorProfile()) {
-            $this->redirectRoute('customer.dashboard', navigate: true);
-        }
-    }
 
     public function updatedStatus(): void
     {
@@ -94,12 +88,7 @@ new #[Title('Vendor Orders')] class extends Component
 
     private function vendorId(): int
     {
-        return auth()->user()->vendorProfile->getKey();
-    }
-
-    private function hasApprovedVendorProfile(): bool
-    {
-        return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
+        return $this->approvedVendorProfile()->getKey();
     }
 };
 ?>

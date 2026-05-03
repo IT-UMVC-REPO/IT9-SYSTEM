@@ -1,8 +1,8 @@
 <?php
 
+use App\Concerns\HasVendorGuard;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\VendorStatus;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
@@ -14,21 +14,12 @@ use Livewire\Component;
 
 new #[Title('Vendor Dashboard')] class extends Component
 {
-    public function mount(): void
-    {
-        if (! $this->hasApprovedVendorProfile()) {
-            $this->redirectRoute('customer.dashboard', navigate: true);
-        }
-    }
+    use HasVendorGuard;
 
     #[Computed]
     public function vendorProfile(): VendorProfile
     {
-        $vendorProfile = auth()->user()->vendorProfile;
-
-        abort_if($vendorProfile === null || $vendorProfile->status !== VendorStatus::Approved, 403);
-
-        return $vendorProfile;
+        return $this->approvedVendorProfile();
     }
 
     /**
@@ -92,10 +83,6 @@ new #[Title('Vendor Dashboard')] class extends Component
             ->get(['id', 'name', 'stock_quantity']);
     }
 
-    private function hasApprovedVendorProfile(): bool
-    {
-        return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
-    }
 };
 ?>
 

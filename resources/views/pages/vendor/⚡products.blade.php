@@ -1,10 +1,9 @@
 <?php
 
+use App\Concerns\HasVendorGuard;
 use App\Enums\ProductStatus;
-use App\Enums\VendorStatus;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\VendorProfile;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -17,6 +16,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new #[Title('My products')] class extends Component {
+    use HasVendorGuard;
     use WithPagination;
 
     #[Url(except: '')]
@@ -27,13 +27,6 @@ new #[Title('My products')] class extends Component {
 
     #[Url(as: 'category', except: '')]
     public string $categoryFilter = '';
-
-    public function mount(): void
-    {
-        if (! $this->hasApprovedVendorProfile()) {
-            $this->redirectRoute('customer.dashboard', navigate: true);
-        }
-    }
 
     public function updatedSearch(): void
     {
@@ -138,19 +131,6 @@ new #[Title('My products')] class extends Component {
         return 'layouts.app.livewire-paginate';
     }
 
-    private function hasApprovedVendorProfile(): bool
-    {
-        return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
-    }
-
-    private function approvedVendorProfile(): VendorProfile
-    {
-        $vendorProfile = auth()->user()->vendorProfile;
-
-        abort_if($vendorProfile === null || $vendorProfile->status !== VendorStatus::Approved, 403);
-
-        return $vendorProfile;
-    }
 }; ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">

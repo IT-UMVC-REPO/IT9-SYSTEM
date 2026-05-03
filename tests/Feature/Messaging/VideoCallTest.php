@@ -301,7 +301,8 @@ test('shared-secret turn credentials are temporary and preferred over static cre
 });
 
 test('video call signaling uses pusher echo credentials', function () {
-    $client = file_get_contents(resource_path('js/app.js'));
+    $client = file_get_contents(resource_path('js/echo.js'));
+    $app = file_get_contents(resource_path('js/app.js'));
     $conversation = messagingBladeSource('conversation');
 
     expect($client)
@@ -311,7 +312,8 @@ test('video call signaling uses pusher echo credentials', function () {
         ->toContain('forceTLS: true')
         ->not->toContain("broadcaster: 'reverb'")
         ->not->toContain('VITE_REVERB_APP_KEY')
-        ->not->toContain("import './echo';")
+        ->and($app)
+        ->toContain("import './echo';")
         ->and($conversation)
         ->toContain("config('broadcasting.connections.pusher', [])")
         ->not->toContain("config('broadcasting.connections.reverb.key')")
@@ -319,11 +321,18 @@ test('video call signaling uses pusher echo credentials', function () {
 });
 
 test('video call client uses native rtc peer connection and server-provided ice configuration', function () {
-    $client = file_get_contents(resource_path('js/app.js'));
+    $app = file_get_contents(resource_path('js/app.js'));
+    $videoCall = file_get_contents(resource_path('js/video-call.js'));
+    $groupCall = file_get_contents(resource_path('js/group-call.js'));
+    $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
 
-    expect($client)
+    expect($app)
         ->toContain("import { RingtonePlayer } from './ringtone';")
         ->toContain('window.sukiRingtone')
+        ->toContain('window.conversationVideoCall')
+        ->toContain('window.groupConversationVideoCall')
+        ->toContain('window.conversationVideoCallControl')
+        ->and($videoCall)
         ->toContain('new RTCPeerConnection({')
         ->toContain('await this.loadIceConfiguration();')
         ->toContain('iceTransportPolicy: this.iceTransportPolicy')
@@ -340,25 +349,35 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('switchCamera')
         ->toContain('sender.replaceTrack(newVideoTrack)')
         ->toContain('Could not switch cameras. Your current camera is still active.')
-        ->toContain('window.groupConversationVideoCall')
+        ->and($groupCall)
         ->toContain('groupCallErrorMessage')
         ->toContain('video: false, audio: true')
         ->toContain('video: true, audio: false')
         ->toContain('Could not start the group call.')
-        ->toContain('window.conversationVideoCallControl')
         ->toContain('formattedCallDuration')
         ->toContain('showCallChrome')
         ->toContain('toggleMicrophone')
         ->toContain('toggleCamera')
         ->toContain('thumbnailParticipants')
         ->toContain('group-call-speaker-video')
+        ->and($videoCallControl)
+        ->toContain('conversationVideoCallControl')
+        ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall')
+        ->and($videoCall)
         ->not->toContain('localStorage')
         ->not->toContain('sessionStorage')
         ->not->toContain("import Peer from '@thaunknown/simple-peer';")
         ->not->toContain('new Peer({')
         ->not->toContain('trickle: false')
         ->not->toContain('sanitizeIncomingSdp')
-        ->not->toContain('}).catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: true }))');
+        ->not->toContain('}).catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: true }))')
+        ->and($groupCall)
+        ->not->toContain('localStorage')
+        ->not->toContain('sessionStorage')
+        ->not->toContain("import Peer from '@thaunknown/simple-peer';")
+        ->not->toContain('new Peer({')
+        ->not->toContain('trickle: false')
+        ->not->toContain('sanitizeIncomingSdp');
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
@@ -371,7 +390,7 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('realtimeEnabled: @js($realtimeEnabled)')
         ->toContain("iceServers: @js(route('calls.ice-servers'))")
         ->toContain("callStatus === 'active' || callStatus === 'connecting'")
-        ->toContain('Connecting media')
+        ->toContain("callStatus === 'active' ? 'Connected' : 'Connecting'")
         ->toContain('conversation-call-local-background-video')
         ->toContain('formattedCallDuration()')
         ->toContain('toggleMicrophone()')

@@ -1,310 +1,3 @@
-<?php
-
-use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
-use App\Enums\ProductStatus;
-use App\Enums\VendorStatus;
-use App\Models\Message;
-use App\Models\Notification;
-use App\Models\Order;
-use App\Models\Payment;
-use App\Models\Product;
-use App\Models\User;
-use App\Models\VendorProfile;
-use Carbon\CarbonInterface;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
-use Livewire\Component;
-
-new #[Title('Admin dashboard')] class extends Component {
-    public function refreshDashboard(): void
-    {
-    }
-
-    #[Computed]
-    public function kpis(): array
-    {
-        $todayStart = now()->startOfDay();
-        $todayEnd = now()->endOfDay();
-        $yesterdayStart = now()->subDay()->startOfDay();
-        $yesterdayEnd = now()->subDay()->endOfDay();
-
-        $totalUsers = User::query()->count();
-        $pendingApplications = VendorProfile::query()
-            ->where('status', VendorStatus::Pending)
-            ->count();
-        $ordersToday = Order::query()
-            ->whereBetween('created_at', [$todayStart, $todayEnd])
-            ->count();
-        $revenueToday = (float) Payment::query()
-            ->where('status', PaymentStatus::Paid)
-            ->whereBetween('paid_at', [$todayStart, $todayEnd])
-            ->sum('amount');
-
-        $userDelta = User::query()->whereBetween('created_at', [$todayStart, $todayEnd])->count()
-            - User::query()->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])->count();
-
-        $pendingDelta = VendorProfile::query()
-            ->where('status', VendorStatus::Pending)
-            ->whereBetween('created_at', [$todayStart, $todayEnd])
-            ->count()
-            - VendorProfile::query()
-                ->where('status', VendorStatus::Pending)
-                ->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])
-                ->count();
-
-        $ordersDelta = $ordersToday - Order::query()
-            ->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])
-            ->count();
-
-        $revenueDelta = $revenueToday - (float) Payment::query()
-            ->where('status', PaymentStatus::Paid)
-            ->whereBetween('paid_at', [$yesterdayStart, $yesterdayEnd])
-            ->sum('amount');
-
-        return [
-            [
-                'icon' => 'fa-solid fa-users',
-                'label' => __('Total users'),
-                'value' => number_format($totalUsers),
-                'delta' => $this->signedCount($userDelta).' '.__('signups vs yesterday'),
-                'delta_class' => $this->deltaClass($userDelta),
-            ],
-            [
-                'icon' => 'fa-solid fa-store',
-                'label' => __('Pending vendor applications'),
-                'value' => number_format($pendingApplications),
-                'delta' => $this->signedCount($pendingDelta).' '.__('submissions vs yesterday'),
-                'delta_class' => $this->deltaClass($pendingDelta),
-            ],
-            [
-                'icon' => 'fa-solid fa-basket-shopping',
-                'label' => __('Orders today'),
-                'value' => number_format($ordersToday),
-                'delta' => $this->signedCount($ordersDelta).' '.__('vs yesterday'),
-                'delta_class' => $this->deltaClass($ordersDelta),
-            ],
-            [
-                'icon' => 'fa-solid fa-wallet',
-                'label' => __('Revenue today'),
-                'value' => $this->peso($revenueToday),
-                'delta' => $this->signedPeso($revenueDelta).' '.__('vs yesterday'),
-                'delta_class' => $this->deltaClass($revenueDelta),
-            ],
-        ];
-    }
-
-    #[Computed]
-    public function pendingApprovals(): Collection
-    {
-        return VendorProfile::query()
-            ->with('user:id,name')
-            ->where('status', VendorStatus::Pending)
-            ->latest('created_at')
-            ->take(3)
-            ->get();
-    }
-
-    #[Computed]
-    public function recentOrders(): Collection
-    {
-        return Order::query()
-            ->with([
-                'customer:id,name',
-                'vendor:id,store_name',
-            ])
-            ->latest('created_at')
-            ->take(3)
-            ->get();
-    }
-
-    #[Computed]
-    public function platformHealth(): array
-    {
-        return [
-            'active_products' => Product::query()->where('status', ProductStatus::Active)->count(),
-            'active_vendor_storefronts' => VendorProfile::query()->where('status', VendorStatus::Approved)->count(),
-            'unread_messages' => Message::query()->where('is_read', false)->count(),
-            'notifications_sent_today' => Notification::query()
-                ->whereBetween('created_at', [now()->startOfDay(), now()->endOfDay()])
-                ->count(),
-        ];
-    }
-
-    #[Computed]
-    public function revenueChartData(): array
-    {
-        $start = now()->subDays(29)->startOfDay();
-        $end = now()->endOfDay();
-
-        $payments = Payment::query()
-            ->where('status', PaymentStatus::Paid)
-            ->whereBetween('paid_at', [$start, $end])
-            ->get(['amount', 'paid_at']);
-
-        $chart = $this->buildDailySeries(
-            $start,
-            $end,
-            $payments,
-            fn (Payment $payment): ?CarbonInterface => $payment->paid_at,
-            fn (Payment $payment): float => (float) $payment->amount,
-        );
-
-        return [
-            ...$chart,
-            'total' => round(array_sum($chart['series']), 2),
-        ];
-    }
-
-    #[Computed]
-    public function orderVolumeChartData(): array
-    {
-        $start = now()->subDays(13)->startOfDay();
-        $end = now()->endOfDay();
-
-        $orders = Order::query()
-            ->whereBetween('created_at', [$start, $end])
-            ->get(['created_at']);
-
-        $chart = $this->buildDailySeries(
-            $start,
-            $end,
-            $orders,
-            fn (Order $order): ?CarbonInterface => Carbon::parse($order->created_at),
-            fn (): int => 1,
-        );
-
-        return [
-            ...$chart,
-            'series' => array_map(static fn ($value): int => (int) round($value), $chart['series']),
-            'total' => $orders->count(),
-        ];
-    }
-
-    #[Computed]
-    public function vendorStatusChartData(): array
-    {
-        $counts = VendorProfile::query()
-            ->get(['status'])
-            ->countBy(fn (VendorProfile $vendorProfile): string => $vendorProfile->status->value);
-
-        $series = [
-            (int) ($counts[VendorStatus::Approved->value] ?? 0),
-            (int) ($counts[VendorStatus::Pending->value] ?? 0),
-            (int) ($counts[VendorStatus::Rejected->value] ?? 0),
-        ];
-
-        return [
-            'labels' => ['Approved', 'Pending', 'Rejected'],
-            'series' => $series,
-            'colors' => ['#16a34a', '#d97706', '#dc2626'],
-            'total' => array_sum($series),
-        ];
-    }
-
-    #[Computed]
-    public function userRegistrationChartData(): array
-    {
-        $start = now()->subDays(29)->startOfDay();
-        $end = now()->endOfDay();
-
-        $users = User::query()
-            ->whereBetween('created_at', [$start, $end])
-            ->get(['created_at']);
-
-        $chart = $this->buildDailySeries(
-            $start,
-            $end,
-            $users,
-            fn (User $user): ?CarbonInterface => Carbon::parse($user->created_at),
-            fn (): int => 1,
-        );
-
-        return [
-            ...$chart,
-            'series' => array_map(static fn ($value): int => (int) round($value), $chart['series']),
-            'total' => $users->count(),
-        ];
-    }
-
-    /**
-     * @template TRecord of object
-     *
-     * @param  Collection<int, TRecord>  $records
-     * @param  callable(TRecord): ?CarbonInterface  $dateResolver
-     * @param  callable(TRecord): float|int  $valueResolver
-     * @return array{labels: array<int, string>, series: array<int, float>}
-     */
-    private function buildDailySeries(CarbonInterface $start, CarbonInterface $end, Collection $records, callable $dateResolver, callable $valueResolver): array
-    {
-        $days = collect();
-        $cursor = Carbon::instance($start);
-        $endDate = Carbon::instance($end);
-
-        while ($cursor->lte($endDate)) {
-            $days->push($cursor->toDateString());
-            $cursor->addDay();
-        }
-
-        /** @var array<string, float> $totals */
-        $totals = $records->reduce(function (array $carry, object $record) use ($dateResolver, $valueResolver): array {
-            $date = $dateResolver($record);
-
-            if ($date === null) {
-                return $carry;
-            }
-
-            $day = $date->toDateString();
-            $carry[$day] = round(($carry[$day] ?? 0) + (float) $valueResolver($record), 2);
-
-            return $carry;
-        }, []);
-
-        return [
-            'labels' => $days->map(fn (string $day): string => Carbon::parse($day)->format('M j'))->all(),
-            'series' => $days->map(fn (string $day): float => round((float) ($totals[$day] ?? 0), 2))->all(),
-        ];
-    }
-
-    private function signedCount(int|float $value): string
-    {
-        $formatted = number_format(abs($value));
-
-        return $value > 0
-            ? '+'.$formatted
-            : ($value < 0 ? '-'.$formatted : '0');
-    }
-
-    private function signedPeso(int|float $value): string
-    {
-        $formatted = $this->peso(abs($value));
-
-        return $value > 0
-            ? '+'.$formatted
-            : ($value < 0 ? '-'.$formatted : $this->peso(0));
-    }
-
-    private function deltaClass(int|float $value): string
-    {
-        if ($value > 0) {
-            return 'text-emerald-600 dark:text-emerald-300';
-        }
-
-        if ($value < 0) {
-            return 'text-rose-600 dark:text-rose-300';
-        }
-
-        return 'text-neutral-500 dark:text-zinc-400';
-    }
-
-    private function peso(int|float $value): string
-    {
-        return sprintf("\u{20B1}%s", number_format((float) $value, 2));
-    }
-}; ?>
-
 @php
     $revenueChartData = $this->revenueChartData;
     $orderVolumeChartData = $this->orderVolumeChartData;
@@ -359,86 +52,15 @@ new #[Title('Admin dashboard')] class extends Component {
                     {{ __('No data yet for this period') }}
                 </div>
             @else
-                <div
-                    x-data="{
-                        chart: null,
-                        init() {
-                            if (typeof Chart !== 'function') {
-                                return;
-                            }
-
-                            const styles = getComputedStyle(document.documentElement);
-                            const isDark = document.documentElement.classList.contains('dark');
-                            const brand600 = styles.getPropertyValue('--brand-600').trim() || '#059669';
-                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
-                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-                            Chart.getChart(this.$refs.canvas)?.destroy();
-
-                            this.chart = new Chart(this.$refs.canvas, {
-                                type: 'line',
-                                data: {
-                                    labels: @js($revenueChartData['labels']),
-                                    datasets: [{
-                                        data: @js($revenueChartData['series']),
-                                        borderColor: brand600,
-                                        backgroundColor: 'rgba(5,150,105,0.08)',
-                                        fill: true,
-                                        tension: 0.4,
-                                        pointRadius: 0,
-                                        borderWidth: 2,
-                                    }],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    interaction: {
-                                        mode: 'index',
-                                        intersect: false,
-                                    },
-                                    plugins: {
-                                        legend: { display: false },
-                                        tooltip: {
-                                            displayColors: false,
-                                            callbacks: {
-                                                label: (ctx) => '₱' + Number(ctx.parsed.y ?? 0).toLocaleString('en-PH', {
-                                                    minimumFractionDigits: 2,
-                                                    maximumFractionDigits: 2,
-                                                }),
-                                            },
-                                        },
-                                    },
-                                    scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: {
-                                                color: labelColor,
-                                                maxTicksLimit: 8,
-                                            },
-                                        },
-                                        y: {
-                                            grid: { color: gridColor },
-                                            ticks: {
-                                                color: labelColor,
-                                                callback: (value) => '₱' + Number(value).toLocaleString('en-PH', {
-                                                    minimumFractionDigits: 0,
-                                                    maximumFractionDigits: 0,
-                                                }),
-                                            },
-                                        },
-                                    },
-                                },
-                            });
-                        },
-                        destroy() {
-                            this.chart?.destroy();
-                        },
-                    }"
-                    class="mt-6"
-                    style="height: 260px; position: relative;"
-                >
-                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Area chart showing platform revenue over the last 30 days') }}"></canvas>
-                </div>
+                <x-chart-canvas
+                    type="line"
+                    :labels="$revenueChartData['labels']"
+                    :series="$revenueChartData['series']"
+                    :colors="['brand-600', 'rgba(5,150,105,0.08)']"
+                    formatter="currency"
+                    height="260px"
+                    :aria-label="__('Area chart showing platform revenue over the last 30 days')"
+                />
             @endif
         </article>
 
@@ -457,75 +79,16 @@ new #[Title('Admin dashboard')] class extends Component {
                     {{ __('No data yet for this period') }}
                 </div>
             @else
-                <div
-                    x-data="{
-                        chart: null,
-                        init() {
-                            if (typeof Chart !== 'function') {
-                                return;
-                            }
-
-                            const styles = getComputedStyle(document.documentElement);
-                            const isDark = document.documentElement.classList.contains('dark');
-                            const brand600 = styles.getPropertyValue('--brand-600').trim() || '#059669';
-                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
-                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-                            Chart.getChart(this.$refs.canvas)?.destroy();
-
-                            this.chart = new Chart(this.$refs.canvas, {
-                                type: 'bar',
-                                data: {
-                                    labels: @js($orderVolumeChartData['labels']),
-                                    datasets: [{
-                                        data: @js($orderVolumeChartData['series']),
-                                        backgroundColor: brand600,
-                                        borderRadius: 10,
-                                        borderSkipped: false,
-                                    }],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { display: false },
-                                        tooltip: {
-                                            displayColors: false,
-                                            callbacks: {
-                                                label: (ctx) => Number(ctx.parsed.y ?? 0).toLocaleString('en-PH'),
-                                            },
-                                        },
-                                    },
-                                    scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: {
-                                                color: labelColor,
-                                                maxTicksLimit: 7,
-                                            },
-                                        },
-                                        y: {
-                                            beginAtZero: true,
-                                            grid: { color: gridColor },
-                                            ticks: {
-                                                color: labelColor,
-                                                precision: 0,
-                                                callback: (value) => Number(value).toLocaleString('en-PH'),
-                                            },
-                                        },
-                                    },
-                                },
-                            });
-                        },
-                        destroy() {
-                            this.chart?.destroy();
-                        },
-                    }"
-                    class="mt-6"
-                    style="height: 260px; position: relative;"
-                >
-                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Bar chart showing order volume over the last 14 days') }}"></canvas>
-                </div>
+                <x-chart-canvas
+                    type="bar"
+                    :labels="$orderVolumeChartData['labels']"
+                    :series="$orderVolumeChartData['series']"
+                    :colors="['brand-600']"
+                    formatter="number"
+                    height="260px"
+                    :max-ticks="7"
+                    :aria-label="__('Bar chart showing order volume over the last 14 days')"
+                />
             @endif
         </article>
 
@@ -544,61 +107,15 @@ new #[Title('Admin dashboard')] class extends Component {
                     {{ __('No data yet for this period') }}
                 </div>
             @else
-                <div
-                    x-data="{
-                        chart: null,
-                        init() {
-                            if (typeof Chart !== 'function') {
-                                return;
-                            }
-
-                            const isDark = document.documentElement.classList.contains('dark');
-                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
-
-                            Chart.getChart(this.$refs.canvas)?.destroy();
-
-                            this.chart = new Chart(this.$refs.canvas, {
-                                type: 'doughnut',
-                                data: {
-                                    labels: @js($vendorStatusChartData['labels']),
-                                    datasets: [{
-                                        data: @js($vendorStatusChartData['series']),
-                                        backgroundColor: @js($vendorStatusChartData['colors']),
-                                        borderWidth: 0,
-                                    }],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    cutout: '68%',
-                                    plugins: {
-                                        legend: {
-                                            display: true,
-                                            position: 'bottom',
-                                            labels: {
-                                                color: labelColor,
-                                                usePointStyle: true,
-                                                boxWidth: 10,
-                                            },
-                                        },
-                                        tooltip: {
-                                            callbacks: {
-                                                label: (ctx) => `${ctx.label}: ${Number(ctx.parsed ?? 0).toLocaleString('en-PH')}`,
-                                            },
-                                        },
-                                    },
-                                },
-                            });
-                        },
-                        destroy() {
-                            this.chart?.destroy();
-                        },
-                    }"
-                    class="mt-6"
-                    style="height: 220px; position: relative;"
-                >
-                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Donut chart showing vendor application statuses') }}"></canvas>
-                </div>
+                <x-chart-canvas
+                    type="doughnut"
+                    :labels="$vendorStatusChartData['labels']"
+                    :series="$vendorStatusChartData['series']"
+                    :colors="$vendorStatusChartData['colors']"
+                    formatter="number"
+                    height="220px"
+                    :aria-label="__('Donut chart showing vendor application statuses')"
+                />
             @endif
         </article>
 
@@ -617,75 +134,15 @@ new #[Title('Admin dashboard')] class extends Component {
                     {{ __('No data yet for this period') }}
                 </div>
             @else
-                <div
-                    x-data="{
-                        chart: null,
-                        init() {
-                            if (typeof Chart !== 'function') {
-                                return;
-                            }
-
-                            const styles = getComputedStyle(document.documentElement);
-                            const isDark = document.documentElement.classList.contains('dark');
-                            const brand400 = styles.getPropertyValue('--brand-400').trim() || '#34d399';
-                            const labelColor = isDark ? '#a1a1aa' : '#78716c';
-                            const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-                            Chart.getChart(this.$refs.canvas)?.destroy();
-
-                            this.chart = new Chart(this.$refs.canvas, {
-                                type: 'bar',
-                                data: {
-                                    labels: @js($userRegistrationChartData['labels']),
-                                    datasets: [{
-                                        data: @js($userRegistrationChartData['series']),
-                                        backgroundColor: brand400,
-                                        borderRadius: 10,
-                                        borderSkipped: false,
-                                    }],
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: { display: false },
-                                        tooltip: {
-                                            displayColors: false,
-                                            callbacks: {
-                                                label: (ctx) => Number(ctx.parsed.y ?? 0).toLocaleString('en-PH'),
-                                            },
-                                        },
-                                    },
-                                    scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: {
-                                                color: labelColor,
-                                                maxTicksLimit: 8,
-                                            },
-                                        },
-                                        y: {
-                                            beginAtZero: true,
-                                            grid: { color: gridColor },
-                                            ticks: {
-                                                color: labelColor,
-                                                precision: 0,
-                                                callback: (value) => Number(value).toLocaleString('en-PH'),
-                                            },
-                                        },
-                                    },
-                                },
-                            });
-                        },
-                        destroy() {
-                            this.chart?.destroy();
-                        },
-                    }"
-                    class="mt-6"
-                    style="height: 260px; position: relative;"
-                >
-                    <canvas x-ref="canvas" role="img" aria-label="{{ __('Bar chart showing new user registrations over the last 30 days') }}"></canvas>
-                </div>
+                <x-chart-canvas
+                    type="bar"
+                    :labels="$userRegistrationChartData['labels']"
+                    :series="$userRegistrationChartData['series']"
+                    :colors="['brand-400']"
+                    formatter="number"
+                    height="260px"
+                    :aria-label="__('Bar chart showing new user registrations over the last 30 days')"
+                />
             @endif
         </article>
     </section>
@@ -749,12 +206,12 @@ new #[Title('Admin dashboard')] class extends Component {
                             <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">&#8369;{{ number_format((float) $order->total_amount, 2) }}</span>
                             <span @class([
                                 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]',
-                                'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' => $order->order_status === OrderStatus::Pending,
-                                'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' => $order->order_status === OrderStatus::Confirmed,
-                                'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300' => $order->order_status === OrderStatus::Preparing,
-                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' => $order->order_status === OrderStatus::Ready,
-                                'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' => $order->order_status === OrderStatus::Delivered,
-                                'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' => $order->order_status === OrderStatus::Cancelled,
+                                'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' => $order->order_status === \App\Enums\OrderStatus::Pending,
+                                'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' => $order->order_status === \App\Enums\OrderStatus::Confirmed,
+                                'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300' => $order->order_status === \App\Enums\OrderStatus::Preparing,
+                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' => $order->order_status === \App\Enums\OrderStatus::Ready,
+                                'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' => $order->order_status === \App\Enums\OrderStatus::Delivered,
+                                'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' => $order->order_status === \App\Enums\OrderStatus::Cancelled,
                             ])>
                                 {{ ucfirst($order->order_status->value) }}
                             </span>

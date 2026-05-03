@@ -155,27 +155,6 @@ new #[Title('Order Detail')] class extends Component {
             ->all();
     }
 
-    public function statusBadgeClasses(OrderStatus $status): string
-    {
-        return match ($status) {
-            OrderStatus::Pending => 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
-            OrderStatus::Confirmed => 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200',
-            OrderStatus::Preparing => 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-200',
-            OrderStatus::Ready => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-            OrderStatus::Delivered => 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-200',
-            OrderStatus::Cancelled => 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200',
-        };
-    }
-
-    public function paymentBadgeClasses(PaymentStatus $status): string
-    {
-        return match ($status) {
-            PaymentStatus::Pending => 'bg-stone-100 text-stone-700 dark:bg-zinc-700 dark:text-zinc-100',
-            PaymentStatus::Paid => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
-            PaymentStatus::Failed => 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200',
-        };
-    }
-
     public function maskedReference(?string $reference): ?string
     {
         if (blank($reference)) {
@@ -230,9 +209,7 @@ new #[Title('Order Detail')] class extends Component {
                 </p>
             </div>
 
-            <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $this->statusBadgeClasses($this->order->order_status) }}">
-                {{ Str::headline($this->order->order_status->value) }}
-            </span>
+            <x-order-status-badge :status="$this->order->order_status" />
         </div>
     </div>
 
@@ -361,9 +338,7 @@ new #[Title('Order Detail')] class extends Component {
                     </div>
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-neutral-500 dark:text-zinc-400">{{ __('Status') }}</span>
-                        <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $this->paymentBadgeClasses($this->order->payment_status) }}">
-                            {{ Str::headline($this->order->payment_status->value) }}
-                        </span>
+                        <x-payment-status-badge :status="$this->order->payment_status" />
                     </div>
                     @if ($this->maskedReference($this->order->payment->reference_number))
                         <div class="flex items-center justify-between gap-4">
