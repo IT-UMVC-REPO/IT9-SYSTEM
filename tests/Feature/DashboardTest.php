@@ -108,3 +108,15 @@ test('vendor and admin headers render the dashboard navigation label in desktop 
         'admin.dashboard',
     ],
 ]);
+
+test('admin header shows the messaging quick action', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+
+    $response->assertOk()
+        ->assertSee(route('messages.inbox'), false)
+        ->assertSee('title="Messages"', false);
+
+    expect(substr_count($response->getContent(), route('messages.inbox')))->toBe(2);
+});

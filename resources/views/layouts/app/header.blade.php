@@ -65,7 +65,9 @@
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                         $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
                     ],
-                    [],
+                    [
+                        $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
+                    ],
                     __('Review approvals, users, and marketplace operations from the admin portal.'),
                 ],
             };
@@ -185,6 +187,8 @@
                         @foreach ($quickActionItems as $item)
                             @if ($item['route'] === route('shop.cart'))
                                 <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'mobile-header-cart-badge'" />
+                            @elseif ($effectiveMarketplaceRole === \App\Enums\UserRole::Admin && $item['route'] === route('messages.inbox'))
+                                <livewire:messaging.unread-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'mobile-header-message-badge'" />
                             @endif
                         @endforeach
 
