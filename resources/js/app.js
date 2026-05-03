@@ -2,6 +2,7 @@ window.global = window.global ?? window;
 
 import './echo';
 import './brand-color';
+import 'emoji-picker-element';
 import { RingtonePlayer } from './ringtone';
 import { conversationVideoCall } from './video-call';
 import { conversationVideoCallControl } from './video-call-control';

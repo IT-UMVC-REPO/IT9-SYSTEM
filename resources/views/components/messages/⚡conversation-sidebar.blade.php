@@ -149,7 +149,7 @@ new class extends Component
                         ])
                     >
                         @if ($isGroup)
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
                                 <i class="fa-solid fa-user-group text-sm"></i>
                             </span>
                         @else

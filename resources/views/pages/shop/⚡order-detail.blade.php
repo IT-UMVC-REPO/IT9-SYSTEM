@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
+use App\Models\Product;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -155,6 +156,37 @@ new #[Title('Order Detail')] class extends Component {
             ->all();
     }
 
+    #[Computed]
+    public function suggestedProducts()
+    {
+        $order = $this->order;
+        $vendorId = $order->vendor_id;
+        $categoryIds = $order->orderItems->pluck('product.category_id')->unique()->toArray();
+        $orderProductIds = $order->orderItems->pluck('product_id')->toArray();
+
+        $products = Product::query()
+            ->visibleToCustomers()
+            ->where('vendor_id', $vendorId)
+            ->whereNotIn('id', $orderProductIds)
+            ->inRandomOrder()
+            ->limit(4)
+            ->get();
+
+        if ($products->count() < 4) {
+            $extraProducts = Product::query()
+                ->visibleToCustomers()
+                ->whereIn('category_id', $categoryIds)
+                ->whereNotIn('id', array_merge($orderProductIds, $products->pluck('id')->toArray()))
+                ->inRandomOrder()
+                ->limit(4 - $products->count())
+                ->get();
+
+            $products = $products->concat($extraProducts);
+        }
+
+        return $products;
+    }
+
     public function maskedReference(?string $reference): ?string
     {
         if (blank($reference)) {
@@ -196,7 +228,7 @@ new #[Title('Order Detail')] class extends Component {
             <i class="fa-solid fa-arrow-left text-xs"></i>
             {{ __('Back to orders') }}
         </a>
-        <span class="inline-flex w-fit rounded-full border border-emerald-800/50 bg-emerald-950/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+        <span class="inline-flex w-fit rounded-full border border-[oklch(from_var(--brand-400)_l_c_h_/_0.32)] bg-[oklch(from_var(--brand-100)_l_c_h_/_0.6)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--brand-800)] dark:border-[oklch(from_var(--brand-500)_l_c_h_/_0.25)] dark:bg-[oklch(from_var(--brand-500)_l_c_h_/_0.15)] dark:text-[var(--brand-300)]">
             {{ __('Order tracker') }}
         </span>
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -277,6 +309,31 @@ new #[Title('Order Detail')] class extends Component {
                     </p>
                 </div>
             </section>
+
+            @if ($this->suggestedProducts->isNotEmpty())
+                <section class="space-y-5">
+                    <div class="flex items-center justify-between gap-3 pt-4">
+                        <div>
+                            <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('More products you might like') }}</h2>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 grid-cols-2">
+                        @foreach ($this->suggestedProducts as $product)
+                            <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-panel group flex items-center gap-4 overflow-hidden p-3 transition hover:scale-[1.02] hover:shadow-lg dark:bg-zinc-900/50">
+                                <div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-110">
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-zinc-500">{{ $product->category->name }}</p>
+                                    <h3 class="mt-0.5 truncate text-sm font-bold text-neutral-900 dark:text-zinc-100 group-hover:text-[var(--brand-600)]">{{ $product->name }}</h3>
+                                    <p class="mt-1 text-sm font-bold text-[var(--brand-600)]">₱{{ number_format($product->price, 2) }}</p>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
         </div>
 
         <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">

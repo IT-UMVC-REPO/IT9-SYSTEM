@@ -46,7 +46,7 @@
         wire:key="group-video-call-{{ $groupId }}"
         wire:ignore.self
         data-group-video-call
-        x-data="window.groupConversationVideoCall({
+        x-data="{ volume: 1.0, ...window.groupConversationVideoCall({
             authUserId: @js((int) auth()->id()),
             groupId: @js($groupId),
             groupName: @js($groupDisplayName),
@@ -59,7 +59,7 @@
                 answer: @js(route('calls.group.answer', ['call' => '__CALL_ID__'])),
                 end: @js(route('calls.group.end', ['call' => '__CALL_ID__'])),
             },
-        })"
+        }) }"
         x-init="$el.__groupConversationVideoCall = $data;
         init();
         if (@js($incomingCallId) !== null) {
@@ -101,12 +101,21 @@
                                 <flux:icon.users variant="micro" />
                                 <span x-text="activeParticipantCount()"></span>
                             </div>
-                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('Add participant') }}">
-                                <flux:icon.user-plus variant="mini" />
-                            </button>
-                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
-                                <flux:icon.ellipsis-horizontal variant="mini" />
-                            </button>
+                            <div class="relative" x-data="{ open: false }">
+                                <button type="button" x-on:click="open = !open" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
+                                    <flux:icon.ellipsis-horizontal variant="mini" />
+                                </button>
+                                <div x-cloak x-show="open" x-on:click.away="open = false" class="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white p-1 shadow-lg ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
+                                    <button type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                        <flux:icon.device-phone-mobile variant="micro" class="h-4 w-4" />
+                                        {{ __('Device settings') }}
+                                    </button>
+                                    <button type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                        <flux:icon.arrows-pointing-out variant="micro" class="h-4 w-4" />
+                                        {{ __('Full screen') }}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -116,6 +125,7 @@
                     class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
                 <video id="group-call-speaker-video" autoplay playsinline
                     x-cloak x-show="remoteParticipants.length > 0"
+                    x-effect="$el.volume = Number(volume)"
                     class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
                 <div class="absolute inset-0 bg-black/45"></div>
 
@@ -146,7 +156,7 @@
                     <template x-for="participant in thumbnailParticipants()" :key="participant.id">
                         <button type="button" x-on:click="selectSpeaker(participant.id)"
                             class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 border-white/20 bg-neutral-950 text-left shadow-lg transition hover:border-white/40 sm:h-32">
-                            <video autoplay playsinline x-bind:id="participant.thumbnailElementId" class="h-full w-full bg-neutral-950 object-cover"></video>
+                            <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full bg-neutral-950 object-cover"></video>
                             <span class="absolute bottom-0 left-0 right-0 bg-black/45 px-1 py-1 text-center text-[10px] font-medium text-white" x-text="participant.name"></span>
                         </button>
                     </template>
@@ -171,9 +181,37 @@
                             <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
                             <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
                         </button>
-                        <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20" aria-label="{{ __('Speaker') }}">
-                            <flux:icon.speaker-wave variant="mini" />
-                        </button>
+                        <div class="relative flex items-center" x-data="{ showVolume: false }">
+                            <button type="button" x-on:click="showVolume = !showVolume" 
+                                x-bind:class="showVolume ? 'bg-[var(--brand-600)] text-white' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                                class="flex h-12 w-12 items-center justify-center rounded-full transition shadow-sm" aria-label="{{ __('Speaker volume') }}">
+                                <template x-if="volume > 0"><flux:icon.speaker-wave variant="mini" /></template>
+                                <template x-if="volume == 0"><flux:icon.speaker-x-mark variant="mini" /></template>
+                            </button>
+                            
+                            <div x-cloak x-show="showVolume" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" x-on:click.away="showVolume = false" 
+                                class="absolute bottom-full left-1/2 mb-6 flex h-48 w-14 -translate-x-1/2 flex-col items-center justify-between rounded-[2rem] bg-white/95 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10">
+                                <div class="relative h-full w-2.5 rounded-full bg-neutral-100 dark:bg-white/10">
+                                    <!-- Progress Fill -->
+                                    <div class="absolute bottom-0 w-full rounded-full bg-[var(--brand-600)] transition-all duration-150 ease-out"
+                                        x-bind:style="`height: ${volume * 100}%`"></div>
+                                    
+                                    <!-- Thumb Dot -->
+                                    <div class="absolute left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white bg-[var(--brand-600)] shadow-xl transition-all duration-150 ease-out pointer-events-none"
+                                        x-bind:style="`bottom: calc(${volume * 100}% - 10px)`"></div>
+                                    
+                                    <!-- Interactive Range Input (Invisible) -->
+                                    <input type="range" min="0" max="1" step="0.01" x-model="volume"
+                                        class="absolute inset-x-[-12px] inset-y-0 z-20 w-[calc(100%+24px)] cursor-pointer opacity-0"
+                                        style="-webkit-appearance: slider-vertical; appearance: slider-vertical; writing-mode: bt-lr;"
+                                        orient="vertical">
+                                </div>
+
+                                <div class="mt-3 flex flex-col items-center">
+                                    <span class="text-[10px] font-bold text-neutral-500 dark:text-neutral-400" x-text="Math.round(volume * 100) + '%'"></span>
+                                </div>
+                            </div>
+                        </div>
                         <button type="button" x-on:click="leaveCall()" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
                             <flux:icon.phone-x-mark variant="solid" />
                         </button>
@@ -185,7 +223,10 @@
         <div class="mx-auto grid h-full min-h-0 w-full max-w-[1600px] lg:grid-cols-[20rem_minmax(0,1fr)]">
             <aside class="hidden min-h-0 flex-col overflow-hidden border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:flex">
                 <div class="shrink-0 pb-4">
-                    <span class="brand-kicker">{{ __('Conversations') }}</span>
+                    <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-600)] transition hover:text-[var(--brand-700)] dark:text-[var(--brand-400)] dark:hover:text-[var(--brand-300)]">
+                        <flux:icon.arrow-left variant="micro" class="h-4 w-4" />
+                        {{ __('Return to Inbox') }}
+                    </a>
                     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('All threads') }}</h2>
                 </div>
 
@@ -205,10 +246,10 @@
                                 <flux:icon.arrow-left variant="mini" />
                             </a>
 
-                            <div class="flex h-11 w-14 shrink-0 items-center">
+                            <div class="flex h-11 shrink-0 items-center">
                                 @foreach ($this->members->take(3) as $index => $member)
                                     <x-user-avatar :user="$member->user" size="sm" @class([
-                                        'border-2 border-white dark:border-neutral-900',
+                                        'border-2 border-white dark:border-neutral-900 shrink-0',
                                         '-ml-3' => $index > 0,
                                     ]) />
                                 @endforeach
@@ -350,24 +391,27 @@
                             },
                         }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="shrink-0 overflow-hidden border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900"
+                        class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900"
                     >
-                        <div class="flex items-end gap-2">
-                            <button type="button" class="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
+                        <div class="flex items-center gap-2 relative" x-data="{ showEmoji: false }">
+                            <button type="button" x-on:click="showEmoji = !showEmoji" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
                                 <flux:icon.face-smile variant="mini" />
                             </button>
 
-                            <label for="group-attachment" class="mb-1 inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Attach file') }}">
+                            <div x-cloak x-show="showEmoji" x-on:click.away="showEmoji = false" class="absolute bottom-12 left-0 z-50">
+                                <emoji-picker class="dark" x-on:emoji-click="$wire.newMessage = ($wire.newMessage || '') + $event.detail.unicode; showEmoji = false;"></emoji-picker>
+                            </div>
+
+                            <label for="group-attachment" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Attach file') }}">
                                 <flux:icon.paper-clip variant="mini" />
                             </label>
                             <input id="group-attachment" x-ref="attachments" type="file" multiple wire:model="attachmentUploads" class="sr-only">
 
                             <div class="min-w-0 flex-1">
                                 <flux:textarea wire:model="newMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:paste="handlePaste($event)" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
-                                <p class="mt-1 text-right text-[10px] font-medium text-neutral-400 dark:text-neutral-500" x-text="`${messageLength()}/2000`"></p>
                             </div>
 
-                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
+                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
                                 <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>
                                 <span wire:loading wire:target="send" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
                             </button>

@@ -44,14 +44,14 @@
 
                 <input type="hidden" wire:model="payment_method" value="cod">
 
-                <div class="rounded-[1.5rem] border border-emerald-800/50 bg-emerald-950/40 p-4 text-emerald-100">
-                    <div class="flex items-start gap-4">
-                        <span class="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <div class="rounded-3xl border border-[oklch(from_var(--brand-400)_l_c_h_/_0.32)] bg-[oklch(from_var(--brand-100)_l_c_h_/_0.6)] px-5 py-4 dark:border-[oklch(from_var(--brand-500)_l_c_h_/_0.2)] dark:bg-[oklch(from_var(--brand-500)_l_c_h_/_0.1)]">
+                    <div class="flex items-center gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-600)] text-white shadow-xl shadow-[var(--brand-600)]/20">
                             <i class="fa-solid fa-money-bill-wave"></i>
-                        </span>
-                        <div class="space-y-1">
-                            <p class="font-semibold">{{ __('Cash on Delivery confirmed') }}</p>
-                            <p class="text-sm leading-6 text-emerald-200">{{ __('Settle payment directly when the order arrives at your address.') }}</p>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-bold text-[var(--brand-900)] dark:text-[var(--brand-50)]">{{ __('Cash on Delivery confirmed') }}</p>
+                            <p class="mt-1 text-xs font-medium text-[var(--brand-700)] dark:text-[var(--brand-400)]">{{ __('Settle payment directly when the order arrives at your address.') }}</p>
                         </div>
                     </div>
                 </div>
