@@ -22,6 +22,15 @@ function createVideoCallRecord(User $caller, User $receiver, array $overrides = 
     ], $overrides));
 }
 
+function messagingBladeSource(string $file): string
+{
+    $path = glob(resource_path('views/pages/messages/*'.$file.'.blade.php'))[0] ?? null;
+
+    expect($path)->not->toBeNull();
+
+    return file_get_contents($path);
+}
+
 test('authenticated users can initiate a call', function () {
     $caller = User::factory()->create();
     $receiver = User::factory()->create();
@@ -293,7 +302,7 @@ test('shared-secret turn credentials are temporary and preferred over static cre
 
 test('video call signaling uses pusher echo credentials', function () {
     $client = file_get_contents(resource_path('js/app.js'));
-    $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
+    $conversation = messagingBladeSource('conversation');
 
     expect($client)
         ->toContain("broadcaster: 'pusher'")
@@ -337,6 +346,12 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('video: true, audio: false')
         ->toContain('Could not start the group call.')
         ->toContain('window.conversationVideoCallControl')
+        ->toContain('formattedCallDuration')
+        ->toContain('showCallChrome')
+        ->toContain('toggleMicrophone')
+        ->toContain('toggleCamera')
+        ->toContain('thumbnailParticipants')
+        ->toContain('group-call-speaker-video')
         ->not->toContain('localStorage')
         ->not->toContain('sessionStorage')
         ->not->toContain("import Peer from '@thaunknown/simple-peer';")
@@ -347,7 +362,7 @@ test('video call client uses native rtc peer connection and server-provided ice 
 });
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
-    $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
+    $conversation = messagingBladeSource('conversation');
 
     expect($conversation)
         ->toContain('wire:key="conversation-video-call-{{ $otherUserId }}"')
@@ -357,7 +372,36 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain("iceServers: @js(route('calls.ice-servers'))")
         ->toContain("callStatus === 'active' || callStatus === 'connecting'")
         ->toContain('Connecting media')
+        ->toContain('conversation-call-local-background-video')
+        ->toContain('formattedCallDuration()')
+        ->toContain('toggleMicrophone()')
+        ->toContain('toggleCamera()')
+        ->toContain('phone-x-mark')
+        ->toContain("endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')")
+        ->toContain('bg-white/60')
         ->toContain('x-data="window.conversationVideoCall({')
         ->toContain('x-bind:disabled="callStatus !== \'idle\' || !supportsVideoCalling()"')
+        ->not->toContain('Cancel call')
+        ->not->toContain('LOCAL PREVIEW')
+        ->not->toContain('CALL STATUS')
         ->not->toContain('reverbEnabled');
+});
+
+test('group conversation call overlay uses speaker thumbnails and one floating local preview', function () {
+    $groupConversation = messagingBladeSource('group-conversation');
+
+    expect($groupConversation)
+        ->toContain('participantSummaries: @js($this->groupParticipantSummaries())')
+        ->toContain('group-call-local-background-video')
+        ->toContain('group-call-speaker-video')
+        ->toContain('group-call-thumbnail-video')
+        ->toContain('speakerParticipant()')
+        ->toContain('thumbnailParticipants()')
+        ->toContain('callPreviewStyle()')
+        ->toContain('Waiting for others to join...')
+        ->toContain('activeParticipantCount()')
+        ->toContain('phone-x-mark')
+        ->toContain('bg-white/60')
+        ->not->toContain('LOCAL PREVIEW')
+        ->not->toContain('CALL STATUS');
 });

@@ -10,8 +10,10 @@
         $quickActionItems = [];
         $portalSummary = null;
         $mobileNavigationItems = [];
+        $mobileAccountNavigationItems = [];
         $mobileBottomNavigationItems = [];
         $showNotificationBell = false;
+        $isConversationSurface = request()->routeIs('messages.conversation', 'messages.group');
         $navItem = fn (string $label, string $routeName, array $patterns, string $icon): array => [
             'label' => __($label),
             'route' => route($routeName),
@@ -22,6 +24,7 @@
 
         if ($user !== null) {
             $effectiveMarketplaceRole = $user->effectiveMarketplaceRole();
+            $settingsNavigationItem = $navItem('Settings', 'profile.edit', ['profile.edit', 'appearance.edit', 'security.edit'], 'fa-solid fa-gear');
 
             [$navigationItems, $quickActionItems, $portalSummary] = match ($effectiveMarketplaceRole) {
                 \App\Enums\UserRole::Customer => [
@@ -72,12 +75,23 @@
                 \App\Enums\UserRole::Vendor,
             ], true);
 
-            $mobileNavigationItems = $effectiveMarketplaceRole === \App\Enums\UserRole::Customer
-                ? $navigationItems
-                : [
-                    ...$navigationItems,
-                    $homeNavigationItem,
-                ];
+            $mobileOrdersNavigationItem = collect($navigationItems)->firstWhere('label', __('Orders'));
+            $mobileSellerSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Seller setup'));
+            $mobileAccountNavigationItems = array_values(array_filter([
+                $mobileOrdersNavigationItem,
+                $settingsNavigationItem,
+                $mobileSellerSetupNavigationItem,
+            ]));
+
+            $mobileNavigationItems = array_values(array_filter(
+                $effectiveMarketplaceRole === \App\Enums\UserRole::Customer
+                    ? $navigationItems
+                    : [
+                        $homeNavigationItem,
+                        ...$navigationItems,
+                    ],
+                fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Seller setup')], true),
+            ));
 
             $mobileBottomNavigationItems = match ($effectiveMarketplaceRole) {
                 \App\Enums\UserRole::Customer => [
@@ -113,7 +127,10 @@
         x-init="showBackToTop = window.scrollY > 400; window.addEventListener('scroll', () => showBackToTop = window.scrollY > 400, { passive: true })"
         x-on:keydown.escape.window="mobileMenuOpen = false"
         x-on:livewire:navigating.window="mobileMenuOpen = false"
-        class="brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100"
+        @class([
+            'brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100',
+            'overflow-hidden' => $isConversationSurface,
+        ])
     >
         <header class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/70">
             <nav class="mx-auto flex h-[52px] max-w-[1500px] items-stretch gap-4 px-4 sm:px-6 lg:px-8">
@@ -180,9 +197,9 @@
                             x-on:click="mobileMenuOpen = ! mobileMenuOpen"
                             x-bind:aria-expanded="mobileMenuOpen.toString()"
                             class="brand-summary-toggle flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-700 shadow-sm transition dark:border-white/10 dark:bg-zinc-900/80 dark:text-zinc-100"
-                            aria-label="{{ __('Open menu') }}"
+                            aria-label="{{ __('Open account menu') }}"
                         >
-                            <i class="fa-solid fa-bars-staggered text-sm"></i>
+                            <i class="fa-solid fa-user text-sm"></i>
                         </button>
                     </div>
                 @else
@@ -227,54 +244,81 @@
                 class="fixed inset-x-3 top-[60px] z-[60] max-h-[calc(100vh-76px)] overflow-y-auto rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40 lg:hidden"
             >
                 @auth
-                    <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
-                        <div class="flex items-center justify-between gap-3">
-                            <div class="flex min-w-0 items-center gap-3">
-                                <x-user-avatar :user="$user" size="lg" />
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $user->name }}</p>
-                                    <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>
-                                </div>
+                    <div class="relative border-b border-neutral-200 bg-neutral-50 px-5 py-4 dark:border-neutral-800 dark:bg-neutral-900">
+                        <button type="button" x-on:click="mobileMenuOpen = false" class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:text-neutral-900 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:text-white" aria-label="{{ __('Close menu') }}">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+
+                        <div class="flex min-w-0 items-center gap-3 pr-11">
+                            <x-user-avatar :user="$user" size="profile" />
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-neutral-900 dark:text-white">{{ $user->name }}</p>
+                                <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $user->email }}</p>
+                                <a href="{{ route('profile.edit') }}" wire:navigate x-on:click="mobileMenuOpen = false" class="mt-1 inline-flex text-xs font-semibold text-[var(--brand-700)] dark:text-[var(--brand-400)]">
+                                    {{ __('View Profile') }}
+                                </a>
                             </div>
-
-                            <button type="button" x-on:click="mobileMenuOpen = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0" aria-label="{{ __('Close menu') }}">
-                                <i class="fa-solid fa-xmark text-xs"></i>
-                            </button>
-                        </div>
-
-                        <div class="mt-4 rounded-[1.25rem] border border-stone-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-                            <p class="text-sm text-neutral-600 dark:text-zinc-300">{{ $portalSummary }}</p>
                         </div>
                     </div>
 
-                    <div class="grid gap-2 p-4">
-                        @foreach ($mobileNavigationItems as $item)
-                            <a
-                                href="{{ $item['route'] }}"
-                                wire:navigate
-                                x-on:click="mobileMenuOpen = false"
-                                @class([
-                                    'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-[1.25rem] border border-stone-200 px-4 py-3 text-sm font-semibold text-neutral-700 transition dark:border-white/10 dark:text-zinc-100',
-                                    'is-active' => request()->routeIs(...$item['patterns']),
-                                ])
-                            >
-                                <span class="flex items-center gap-3">
-                                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-neutral-700 shadow-sm dark:bg-zinc-800 dark:text-zinc-100">
-                                        <i class="{{ $item['icon'] }}"></i>
+                    <div class="grid gap-5 p-4">
+                        <div class="grid gap-2">
+                            @foreach ($mobileNavigationItems as $item)
+                                <a
+                                    href="{{ $item['route'] }}"
+                                    wire:navigate
+                                    x-on:click="mobileMenuOpen = false"
+                                    @class([
+                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition dark:bg-neutral-800 dark:text-white',
+                                        'is-active' => request()->routeIs(...$item['patterns']),
+                                    ])
+                                >
+                                    <span class="flex items-center gap-3">
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-700 shadow-sm dark:bg-neutral-900 dark:text-neutral-100">
+                                            <i class="{{ $item['icon'] }}"></i>
+                                        </span>
+                                        <span>{{ $item['label'] }}</span>
                                     </span>
-                                    <span>{{ $item['label'] }}</span>
-                                </span>
-                                <i class="fa-solid fa-arrow-right text-xs"></i>
-                            </a>
-                        @endforeach
-                    </div>
+                                    <i class="fa-solid fa-chevron-right text-xs text-neutral-400 dark:text-neutral-500"></i>
+                                </a>
+                            @endforeach
+                        </div>
 
-                    <div class="border-t border-stone-200 p-4 dark:border-white/10">
+                        <div class="grid gap-2">
+                            <p class="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-500">
+                                {{ __('ACCOUNT') }}
+                            </p>
+                            @foreach ($mobileAccountNavigationItems as $item)
+                                <a
+                                    href="{{ $item['route'] }}"
+                                    wire:navigate
+                                    x-on:click="mobileMenuOpen = false"
+                                    @class([
+                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition dark:bg-neutral-800 dark:text-white',
+                                        'is-active' => request()->routeIs(...$item['patterns']),
+                                    ])
+                                >
+                                    <span class="flex items-center gap-3">
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-700 shadow-sm dark:bg-neutral-900 dark:text-neutral-100">
+                                            <i class="{{ $item['icon'] }}"></i>
+                                        </span>
+                                        <span>{{ $item['label'] }}</span>
+                                    </span>
+                                    <i class="fa-solid fa-chevron-right text-xs text-neutral-400 dark:text-neutral-500"></i>
+                                </a>
+                            @endforeach
+                        </div>
+
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="brand-button-secondary w-full">
-                                <i class="fa-solid fa-right-from-bracket text-xs"></i>
-                                {{ __('Log out') }}
+                            <button type="submit" class="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-950/40 dark:text-red-400">
+                                <span class="flex items-center gap-3">
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                                        <i class="fa-solid fa-right-from-bracket"></i>
+                                    </span>
+                                    <span>{{ __('Log out') }}</span>
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-xs text-red-400"></i>
                             </button>
                         </form>
                     </div>

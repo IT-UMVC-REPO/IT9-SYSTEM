@@ -242,6 +242,39 @@ new #[Title('Group conversation')] class extends Component
         return $user->nicknameFor((int) auth()->id()) ?? $user->name;
     }
 
+    /**
+     * @return array<int, array{name: string, initials: string}>
+     */
+    public function groupParticipantSummaries(): array
+    {
+        return $this->members
+            ->mapWithKeys(fn (ConversationGroupMember $member): array => [
+                $member->user_id => [
+                    'name' => $this->memberDisplayName($member->user),
+                    'initials' => $member->user->initials(),
+                ],
+            ])
+            ->all();
+    }
+
+    public function messageDateLabel(GroupMessage $message): string
+    {
+        if ($message->created_at?->isToday()) {
+            return __('Today');
+        }
+
+        if ($message->created_at?->isYesterday()) {
+            return __('Yesterday');
+        }
+
+        return $message->created_at?->format('M j, Y') ?? __('Today');
+    }
+
+    public function messageTimestamp(GroupMessage $message): string
+    {
+        return $message->created_at?->format('g:i A') ?? __('Now');
+    }
+
     public function isGroupAdmin(): bool
     {
         return ConversationGroupMember::query()
@@ -314,7 +347,7 @@ new #[Title('Group conversation')] class extends Component
         },
     }"
     x-init="initInfoPanel()"
-    class="flex h-[calc(100vh-52px)] flex-col overflow-hidden px-4 py-4 sm:px-6 lg:px-8"
+    class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-full"
 >
     <div
         wire:key="group-video-call-{{ $groupId }}"
@@ -324,6 +357,7 @@ new #[Title('Group conversation')] class extends Component
             authUserId: @js((int) auth()->id()),
             groupId: @js($groupId),
             groupName: @js($groupDisplayName),
+            participantSummaries: @js($this->groupParticipantSummaries()),
             realtimeEnabled: @js($realtimeEnabled),
             routes: {
                 iceServers: @js(route('calls.ice-servers')),
@@ -346,69 +380,117 @@ new #[Title('Group conversation')] class extends Component
         x-on:group-conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         class="contents"
     >
-        <div wire:ignore x-cloak x-show="callStatus !== 'idle'" x-transition.opacity class="fixed inset-0 z-[70] bg-neutral-950/95 backdrop-blur-sm">
-            <div class="mx-auto grid h-screen max-w-[1600px] grid-rows-[auto_minmax(0,1fr)] p-4 sm:p-6">
-                <section class="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-white shadow-2xl shadow-black/35">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400">{{ __('GROUP VIDEO CALL') }}</p>
-                        <h2 class="mt-2 text-xl font-semibold text-white sm:text-2xl">{{ $groupDisplayName }}</h2>
-                        <p class="mt-1 text-sm text-zinc-400" x-text="statusMessage || 'Waiting for members to join...'"></p>
+        <div wire:ignore x-cloak x-show="callStatus !== 'idle'" x-transition.opacity
+            x-on:mousemove="showCallChrome()" x-on:click="showCallChrome()" x-on:touchstart.passive="showCallChrome()"
+            class="fixed inset-0 z-[70] overflow-hidden bg-neutral-950 text-white">
+            <div class="relative h-full w-full overflow-hidden">
+                <header x-cloak x-show="callChromeVisible" x-transition.opacity
+                    class="absolute left-0 right-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="leaveCall()"
+                                class="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+                                aria-label="{{ __('Back to messages') }}">
+                                <flux:icon.arrow-left variant="mini" />
+                            </a>
+                            <div class="min-w-0">
+                                <p class="truncate text-lg font-semibold text-white">{{ $groupDisplayName }}</p>
+                                <p class="mt-1 text-xs text-white/70">
+                                    {{ __('Group call') }}
+                                    <span>&middot;</span>
+                                    <span x-text="formattedCallDuration()"></span>
+                                </p>
+                            </div>
+                        </div>
 
-                        <div class="mt-3 flex items-center gap-2" x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'">
-                            <button type="button" x-data="{ muted: false }" x-on:click="muted = !muted; $el.closest('[data-group-video-call]').__groupConversationVideoCall?.localStream?.getAudioTracks().forEach((track) => track.enabled = !muted)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Mute microphone') }}" aria-label="{{ __('Mute microphone') }}">
-                                <i class="fa-solid" x-bind:class="muted ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+                        <div class="flex items-center gap-2">
+                            <div class="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-2 text-sm font-semibold text-white backdrop-blur">
+                                <flux:icon.users variant="micro" />
+                                <span x-text="activeParticipantCount()"></span>
+                            </div>
+                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('Add participant') }}">
+                                <flux:icon.user-plus variant="mini" />
                             </button>
-
-                            <button type="button" x-data="{ camOff: false }" x-on:click="camOff = !camOff; $el.closest('[data-group-video-call]').__groupConversationVideoCall?.localStream?.getVideoTracks().forEach((track) => track.enabled = !camOff)" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20" title="{{ __('Toggle camera') }}" aria-label="{{ __('Toggle camera') }}">
-                                <i class="fa-solid" x-bind:class="camOff ? 'fa-video-slash' : 'fa-video'"></i>
-                            </button>
-
-                            <button type="button" x-on:click="leaveCall()" class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white hover:bg-rose-600" title="{{ __('Leave call') }}" aria-label="{{ __('Leave call') }}">
-                                <i class="fa-solid fa-phone-slash"></i>
+                            <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
+                                <flux:icon.ellipsis-horizontal variant="mini" />
                             </button>
                         </div>
                     </div>
+                </header>
 
-                    <div class="flex flex-wrap items-center gap-3">
-                        <template x-if="callStatus === 'incoming'">
-                            <button type="button" x-on:click="acceptCall()" class="brand-button-primary inline-flex items-center gap-2">
-                                <i class="fa-solid fa-phone text-sm"></i>
-                                {{ __('Accept') }}
-                            </button>
-                        </template>
+                <video id="group-call-local-background-video" autoplay muted playsinline
+                    x-cloak x-show="remoteParticipants.length === 0"
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
+                <video id="group-call-speaker-video" autoplay playsinline
+                    x-cloak x-show="remoteParticipants.length > 0"
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
+                <div class="absolute inset-0 bg-black/45"></div>
 
-                        <button type="button" x-cloak x-show="callStatus !== 'active' && callStatus !== 'connecting'" x-on:click="leaveCall()" class="inline-flex items-center gap-2 rounded-[1.25rem] border border-rose-400/35 bg-rose-500/15 px-5 py-3 text-sm font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20">
-                            <i class="fa-solid fa-phone-slash text-sm"></i>
-                            {{ __('Leave call') }}
+                <div x-cloak x-show="remoteParticipants.length === 0"
+                    class="absolute inset-0 z-10 flex flex-col items-center justify-center px-8 text-center">
+                    <div class="relative flex h-28 w-28 items-center justify-center">
+                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
+                        <span class="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-600 text-3xl font-bold text-white">
+                            {{ auth()->user()->initials() }}
+                        </span>
+                    </div>
+                    <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
+                </div>
+
+                <div x-cloak x-show="remoteParticipants.length > 0"
+                    class="absolute bottom-28 left-4 z-10 max-w-[65vw] text-sm font-medium text-white drop-shadow-lg">
+                    <p class="truncate" x-text="speakerParticipant()?.name ?? groupName"></p>
+                    <p class="mt-1 text-xs text-white/70">
+                        <span>{{ __('Connected') }}</span>
+                        <span>&middot;</span>
+                        <span x-text="formattedCallDuration()"></span>
+                    </p>
+                </div>
+
+                <div x-cloak x-show="remoteParticipants.length > 1"
+                    data-thumbnail-prefix="group-call-thumbnail-video"
+                    class="scrollbar-none absolute bottom-24 left-4 right-4 z-20 flex gap-3 overflow-x-auto pb-1 sm:left-auto sm:right-4 sm:top-24 sm:bottom-24 sm:w-24 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden">
+                    <template x-for="participant in thumbnailParticipants()" :key="participant.id">
+                        <button type="button" x-on:click="selectSpeaker(participant.id)"
+                            class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 border-white/20 bg-neutral-950 text-left shadow-lg transition hover:border-white/40 sm:h-32">
+                            <video autoplay playsinline x-bind:id="participant.thumbnailElementId" class="h-full w-full bg-neutral-950 object-cover"></video>
+                            <span class="absolute bottom-0 left-0 right-0 bg-black/45 px-1 py-1 text-center text-[10px] font-medium text-white" x-text="participant.name"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="absolute z-30 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
+                    x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
+                    <video id="group-call-local-video" autoplay muted playsinline class="h-full w-full bg-neutral-950 object-cover"></video>
+                </div>
+
+                <div class="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 pb-6 pt-10">
+                    <div class="flex items-center gap-3 rounded-full bg-white/60 px-5 py-3 backdrop-blur-md dark:bg-black/60">
+                        <button type="button" x-on:click="toggleMicrophone()"
+                            x-bind:class="microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                            class="relative flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle microphone') }}">
+                            <flux:icon.microphone variant="mini" />
+                            <span x-cloak x-show="microphoneMuted" class="absolute h-7 w-0.5 rotate-45 rounded-full bg-red-400"></span>
+                        </button>
+                        <button type="button" x-on:click="toggleCamera()"
+                            x-bind:class="cameraDisabled ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                            class="flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle camera') }}">
+                            <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
+                            <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
+                        </button>
+                        <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20" aria-label="{{ __('Speaker') }}">
+                            <flux:icon.speaker-wave variant="mini" />
+                        </button>
+                        <button type="button" x-on:click="leaveCall()" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
+                            <flux:icon.phone-x-mark variant="solid" />
                         </button>
                     </div>
-                </section>
-
-                <div class="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                    <section class="relative min-h-0 overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl shadow-black/40">
-                        <div class="grid h-full min-h-[24rem] gap-3 p-3" x-bind:class="remoteParticipants.length <= 1 ? 'grid-cols-1' : (remoteParticipants.length <= 4 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3')">
-                            <template x-for="participant in remoteParticipants" :key="participant.id">
-                                <video autoplay playsinline x-bind:id="participant.elementId" class="h-full min-h-40 w-full rounded-2xl bg-black object-cover"></video>
-                            </template>
-
-                            <template x-if="remoteParticipants.length === 0">
-                                <div class="flex h-full items-center justify-center rounded-2xl border border-white/10 text-zinc-400">
-                                    {{ __('Waiting for other members...') }}
-                                </div>
-                            </template>
-                        </div>
-                    </section>
-
-                    <section class="rounded-2xl border border-white/10 bg-zinc-900 p-4">
-                        <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-400">{{ __('LOCAL PREVIEW') }}</p>
-                        <video id="group-call-local-video" autoplay muted playsinline class="aspect-video w-full rounded-xl bg-black object-cover"></video>
-                    </section>
                 </div>
             </div>
         </div>
 
-        <div class="mx-auto grid h-full w-full max-w-[1600px] min-h-0 gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-            <aside class="hidden min-h-0 flex-col overflow-hidden lg:flex">
+        <div class="mx-auto grid h-full min-h-0 w-full max-w-[1600px] lg:grid-cols-[20rem_minmax(0,1fr)]">
+            <aside class="hidden min-h-0 flex-col overflow-hidden border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:flex">
                 <div class="shrink-0 pb-4">
                     <span class="brand-kicker">{{ __('Conversations') }}</span>
                     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('All threads') }}</h2>
@@ -420,56 +502,102 @@ new #[Title('Group conversation')] class extends Component
             </aside>
 
             <div
-                class="relative grid min-h-0 gap-4"
+                class="relative grid min-h-0 overflow-hidden"
                 x-bind:class="showInfo ? 'lg:grid-cols-[minmax(0,1fr)_22rem]' : 'lg:grid-cols-[minmax(0,1fr)]'"
             >
-                <section class="brand-panel flex min-h-0 flex-col overflow-hidden">
-                    <header class="shrink-0 border-b border-stone-200 p-5 dark:border-white/10">
-                        <div class="flex flex-wrap items-start justify-between gap-4">
-                            <div class="min-w-0">
-                                <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-400)] lg:hidden">
-                                    <i class="fa-solid fa-arrow-left text-xs"></i>
-                                    {{ __('All conversations') }}
-                                </a>
-                                <h1 class="brand-serif mt-3 truncate text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ $groupDisplayName }}</h1>
-                                <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">{{ __(':count members', ['count' => $this->members->count()]) }}</p>
+                <section class="flex min-h-0 flex-col overflow-hidden bg-white dark:bg-neutral-950">
+                    <header class="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div class="flex items-center gap-3">
+                            <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white lg:hidden" aria-label="{{ __('All conversations') }}">
+                                <flux:icon.arrow-left variant="mini" />
+                            </a>
+
+                            <div class="flex h-11 w-14 shrink-0 items-center">
+                                @foreach ($this->members->take(3) as $index => $member)
+                                    <x-user-avatar :user="$member->user" size="sm" @class([
+                                        'border-2 border-white dark:border-neutral-900',
+                                        '-ml-3' => $index > 0,
+                                    ]) />
+                                @endforeach
                             </div>
 
-                            <div class="flex items-center gap-2">
-                                <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" class="brand-button-secondary inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-60">
-                                    <i class="fa-solid fa-video text-sm"></i>
-                                    {{ __('Start call') }}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    x-on:click="showInfo = ! showInfo"
-                                    x-bind:aria-pressed="showInfo.toString()"
-                                    class="brand-button-secondary inline-flex h-11 w-11 items-center justify-center p-0"
-                                    title="{{ __('Toggle group info') }}"
-                                    aria-label="{{ __('Toggle group info') }}"
-                                >
-                                    <i class="fa-solid fa-circle-info text-sm"></i>
-                                </button>
+                            <div class="min-w-0 flex-1">
+                                <h1 class="truncate text-base font-bold text-neutral-900 dark:text-white">{{ $groupDisplayName }}</h1>
+                                <p class="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __(':count members', ['count' => $this->members->count()]) }}</p>
                             </div>
+
+                            <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--brand-600)] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500">
+                                <flux:icon.video-camera variant="micro" />
+                                {{ __('Start call') }}
+                            </button>
+
+                            <button
+                                type="button"
+                                x-on:click="showInfo = ! showInfo"
+                                x-bind:aria-pressed="showInfo.toString()"
+                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                                title="{{ __('Toggle group info') }}"
+                                aria-label="{{ __('Toggle group info') }}"
+                            >
+                                <flux:icon.information-circle variant="mini" />
+                            </button>
                         </div>
                     </header>
 
-                    <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
+                    <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                         @forelse ($this->threadMessages as $message)
-                            @php($isOwnMessage = $message->sender_id === auth()->id())
-                            <div wire:key="group-message-{{ $message->id }}" class="group mb-4 flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }}">
-                                <div class="flex max-w-[76%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
+                            @php
+                                $isOwnMessage = $message->sender_id === auth()->id();
+                                $previousMessage = $this->threadMessages->get($loop->index - 1);
+                                $startsNewDate = ! $previousMessage || ! $message->created_at?->isSameDay($previousMessage->created_at);
+                                $isGroupedWithPrevious = $previousMessage
+                                    && $previousMessage->sender_id === $message->sender_id
+                                    && $message->created_at?->isSameDay($previousMessage->created_at);
+                                $showSenderLabel = ! $isOwnMessage && ! $isGroupedWithPrevious;
+                            @endphp
+
+                            @if ($startsNewDate)
+                                <div class="my-4 flex justify-center">
+                                    <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                                        {{ $this->messageDateLabel($message) }}
+                                    </span>
+                                </div>
+                            @endif
+
+                            <div wire:key="group-message-{{ $message->id }}" @class([
+                                'mb-1 flex',
+                                'mt-4' => ! $isGroupedWithPrevious,
+                                'justify-end' => $isOwnMessage,
+                                'justify-start' => ! $isOwnMessage,
+                            ])>
+                                <div @class([
+                                    'flex max-w-[75%] gap-2',
+                                    'items-end' => ! $showSenderLabel,
+                                    'items-start' => $showSenderLabel,
+                                    'flex-row-reverse' => $isOwnMessage,
+                                ])>
                                     @unless ($isOwnMessage)
-                                        <p class="px-1 text-xs font-semibold text-neutral-400 dark:text-zinc-500">{{ $this->memberDisplayName($message->sender) }}</p>
+                                        @if ($showSenderLabel)
+                                            <x-user-avatar :user="$message->sender" size="xs" class="mt-5 shrink-0" />
+                                        @else
+                                            <span class="w-7 shrink-0"></span>
+                                        @endif
                                     @endunless
 
-                                    <div class="flex max-w-full items-end gap-3 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
-                                        @unless ($isOwnMessage)
-                                            <x-user-avatar :user="$message->sender" size="sm" class="shrink-0" />
-                                        @endunless
+                                    <div @class([
+                                        'min-w-0 flex flex-col',
+                                        'items-end' => $isOwnMessage,
+                                        'items-start' => ! $isOwnMessage,
+                                    ])>
+                                        @if ($showSenderLabel)
+                                            <p class="mb-1 px-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $this->memberDisplayName($message->sender) }}</p>
+                                        @endif
 
-                                        <div class="min-w-0 w-fit max-w-full overflow-hidden rounded-2xl px-4 py-2 text-left text-sm leading-relaxed break-words {{ $isOwnMessage ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-100' }}">
+                                        <div @class([
+                                            'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
+                                            'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
+                                            'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
+                                        ])>
                                             @if (filled($message->content))
                                                 <p class="break-words [overflow-wrap:anywhere]">{{ $message->content }}</p>
                                             @endif
@@ -479,11 +607,11 @@ new #[Title('Group conversation')] class extends Component
                                                     @foreach ($message->attachments as $attachment)
                                                         @php($attachmentUrl = asset('storage/'.$attachment->path))
                                                         @if (Str::startsWith($attachment->mime, 'image/'))
-                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
+                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-neutral-200 dark:border-neutral-700' }}">
                                                                 <img src="{{ $attachmentUrl }}" alt="{{ __('Attached image') }}" class="max-h-52 w-full object-cover" loading="lazy">
                                                             </a>
                                                         @else
-                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-stone-300 bg-white/70 text-neutral-700 hover:bg-white dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600' }}">
+                                                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-neutral-200 bg-white/70 text-neutral-700 hover:bg-white dark:border-neutral-700 dark:bg-neutral-700 dark:text-white dark:hover:bg-neutral-600' }}">
                                                                 <i class="fa-solid {{ Str::contains($attachment->mime, 'pdf') ? 'fa-file-pdf' : (Str::contains($attachment->mime, 'word') ? 'fa-file-word' : 'fa-file') }}"></i>
                                                             </a>
                                                         @endif
@@ -491,16 +619,18 @@ new #[Title('Group conversation')] class extends Component
                                                 </div>
                                             @endif
                                         </div>
-                                    </div>
 
-                                    <p class="px-1 text-xs text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 dark:text-zinc-500">{{ $message->timeAgo() }}</p>
+                                        <p class="mt-1 w-full px-1 text-right text-xs text-neutral-500 dark:text-neutral-500">
+                                            {{ $this->messageTimestamp($message) }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         @empty
-                            <div class="flex h-full min-h-80 items-center justify-center rounded-[1.75rem] border border-dashed border-stone-200 px-6 py-12 text-center dark:border-white/10">
+                            <div class="flex h-full min-h-80 items-center justify-center rounded-2xl border border-dashed border-neutral-200 px-6 py-12 text-center dark:border-neutral-800">
                                 <div>
                                     <span class="brand-kicker">{{ __('No messages yet') }}</span>
-                                    <p class="mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ __('Start the group conversation here.') }}</p>
+                                    <p class="mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-neutral-400">{{ __('Start the group conversation here.') }}</p>
                                 </div>
                             </div>
                         @endforelse
@@ -522,25 +652,31 @@ new #[Title('Group conversation')] class extends Component
                                 this.$refs.attachments.files = transfer.files;
                                 this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
                             },
+                            messageLength() {
+                                return ($wire.newMessage || '').length;
+                            },
                         }"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="sticky bottom-0 shrink-0 overflow-hidden border-t border-stone-200 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-zinc-900 lg:relative lg:bottom-auto"
+                        class="shrink-0 overflow-hidden border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900"
                     >
                         <div class="flex items-end gap-2">
-                            <div class="min-w-0 flex-1">
-                                <flux:textarea wire:model="newMessage" :label="__('Reply')" rows="1" :placeholder="__('Write your message here')" x-on:paste="handlePaste($event)" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden" style="min-height: 2.75rem; max-height: 160px; overflow-y: auto;" />
-                               
-                            </div>
+                            <button type="button" class="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
+                                <flux:icon.face-smile variant="mini" />
+                            </button>
 
-                            <label for="group-attachment" class="brand-button-secondary inline-flex min-h-[2.75rem] shrink-0 cursor-pointer items-center justify-center gap-2 px-4 py-3 text-sm">
-                                <i class="fa-solid fa-paperclip text-xs"></i>
-                                {{ __('Attach') }}
+                            <label for="group-attachment" class="mb-1 inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Attach file') }}">
+                                <flux:icon.paper-clip variant="mini" />
                             </label>
                             <input id="group-attachment" x-ref="attachments" type="file" multiple wire:model="attachmentUploads" class="sr-only">
 
-                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" class="brand-button-primary min-h-[2.75rem] shrink-0 px-5 py-3">
-                                <span wire:loading.remove wire:target="send">{{ __('Send') }}</span>
-                                <span wire:loading wire:target="send">{{ __('Sending...') }}</span>
+                            <div class="min-w-0 flex-1">
+                                <flux:textarea wire:model="newMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:paste="handlePaste($event)" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
+                                <p class="mt-1 text-right text-[10px] font-medium text-neutral-400 dark:text-neutral-500" x-text="`${messageLength()}/2000`"></p>
+                            </div>
+
+                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
+                                <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>
+                                <span wire:loading wire:target="send" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
                             </button>
                         </div>
 

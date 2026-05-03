@@ -60,6 +60,48 @@ test('members can view group conversations and non members cannot', function () 
         ->assertForbidden();
 });
 
+test('group conversation renders the polished mobile thread and call controls', function () {
+    $creator = User::factory()->create([
+        'name' => 'Group Admin',
+    ]);
+    $member = User::factory()->create([
+        'name' => 'Ramon Vendor',
+    ]);
+    $group = createMessagingGroup($creator, [$member], [
+        'name' => 'Morning Market Crew',
+    ]);
+    $yesterdayAt = now()->subDay()->setTime(8, 5);
+    $todayAt = now()->setTime(9, 10);
+
+    GroupMessage::factory()->create([
+        'group_id' => $group->getKey(),
+        'sender_id' => $member->getKey(),
+        'content' => 'Yesterday prep note',
+        'created_at' => $yesterdayAt,
+    ]);
+    GroupMessage::factory()->create([
+        'group_id' => $group->getKey(),
+        'sender_id' => $member->getKey(),
+        'content' => 'Fresh stock is ready.',
+        'created_at' => $todayAt,
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('Morning Market Crew')
+        ->assertSee('Ramon Vendor')
+        ->assertSee('Yesterday')
+        ->assertSee('Today')
+        ->assertSee($todayAt->format('g:i A'))
+        ->assertSee('Write a message...')
+        ->assertSee('Start call')
+        ->assertSee('group-call-speaker-video', false)
+        ->assertSee('group-call-thumbnail-video', false)
+        ->assertSee('Waiting for others to join...')
+        ->assertDontSee('LOCAL PREVIEW');
+});
+
 test('create group modal persists creator and selected members', function () {
     $creator = User::factory()->create();
     $member = User::factory()->create([

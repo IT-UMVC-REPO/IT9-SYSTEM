@@ -18,6 +18,7 @@ const videoCallResetDelay = 1800;
 const videoCallConnectingWarningDelay = 5000;
 const videoCallConnectingTimeout = 30000;
 const localVideoElementId = 'conversation-call-local-video';
+const localVideoBackgroundElementId = 'conversation-call-local-background-video';
 const remoteVideoElementId = 'conversation-call-remote-video';
 const videoCallIceServers = [
     { urls: ['stun:stun.l.google.com:19302'] },
@@ -74,6 +75,7 @@ window.conversationVideoCall = (config) => ({
     conversationKey: config.conversationKey,
     otherUserId: config.otherUserId,
     otherUserName: config.otherUserName,
+    otherUserInitials: config.otherUserInitials ?? '?',
     realtimeEnabled: config.realtimeEnabled,
     routes: config.routes,
     callStatus: 'idle',
@@ -91,6 +93,14 @@ window.conversationVideoCall = (config) => ({
     showTurnWarning: false,
     statusMessage: '',
     initialized: false,
+    microphoneMuted: false,
+    cameraDisabled: false,
+    callStartedAt: null,
+    callDurationTimer: null,
+    elapsedSeconds: 0,
+    callChromeVisible: true,
+    callChromeTimer: null,
+    previewPosition: { right: 16, bottom: 96 },
 
     init() {
         if (this.initialized || !this.realtimeEnabled || !window.Echo) {
@@ -109,6 +119,8 @@ window.conversationVideoCall = (config) => ({
                 this.callId = event.call_id;
                 this.callStatus = 'incoming';
                 this.statusMessage = `${event.caller_name} is calling...`;
+                this.startCallTimer();
+                this.showCallChrome();
             })
             .listen('.VideoCallSignal', (event) => {
                 if (event.sender_id === this.authUserId) {
@@ -178,6 +190,110 @@ window.conversationVideoCall = (config) => ({
         return this.callStatus !== 'idle';
     },
 
+    showCallChrome() {
+        this.callChromeVisible = true;
+
+        if (this.callChromeTimer !== null) {
+            window.clearTimeout(this.callChromeTimer);
+        }
+
+        this.callChromeTimer = window.setTimeout(() => {
+            if (this.callStatus !== 'idle') {
+                this.callChromeVisible = false;
+            }
+        }, 4000);
+    },
+
+    startCallTimer() {
+        if (this.callDurationTimer !== null) {
+            return;
+        }
+
+        this.callStartedAt ??= Date.now();
+        this.elapsedSeconds = Math.floor((Date.now() - this.callStartedAt) / 1000);
+
+        this.callDurationTimer = window.setInterval(() => {
+            this.elapsedSeconds = Math.floor((Date.now() - this.callStartedAt) / 1000);
+        }, 1000);
+    },
+
+    stopCallTimer() {
+        if (this.callDurationTimer !== null) {
+            window.clearInterval(this.callDurationTimer);
+        }
+
+        if (this.callChromeTimer !== null) {
+            window.clearTimeout(this.callChromeTimer);
+        }
+
+        this.callDurationTimer = null;
+        this.callChromeTimer = null;
+        this.callStartedAt = null;
+        this.elapsedSeconds = 0;
+        this.callChromeVisible = true;
+        this.previewPosition = { right: 16, bottom: 96 };
+    },
+
+    formattedCallDuration() {
+        const minutes = String(Math.floor(this.elapsedSeconds / 60)).padStart(2, '0');
+        const seconds = String(this.elapsedSeconds % 60).padStart(2, '0');
+
+        return `${minutes}:${seconds}`;
+    },
+
+    callPreviewStyle() {
+        return `right: ${this.previewPosition.right}px; bottom: ${this.previewPosition.bottom}px;`;
+    },
+
+    startPreviewDrag(event) {
+        const point = event.touches?.[0] ?? event;
+        const startX = point.clientX;
+        const startY = point.clientY;
+        const startRight = this.previewPosition.right;
+        const startBottom = this.previewPosition.bottom;
+
+        const movePreview = (moveEvent) => {
+            if (moveEvent.cancelable) {
+                moveEvent.preventDefault();
+            }
+
+            const movePoint = moveEvent.touches?.[0] ?? moveEvent;
+            const maxRight = Math.max(8, window.innerWidth - 128);
+            const maxBottom = Math.max(72, window.innerHeight - 152);
+
+            this.previewPosition = {
+                right: Math.min(maxRight, Math.max(8, startRight - (movePoint.clientX - startX))),
+                bottom: Math.min(maxBottom, Math.max(72, startBottom - (movePoint.clientY - startY))),
+            };
+        };
+
+        const stopDrag = () => {
+            window.removeEventListener('mousemove', movePreview);
+            window.removeEventListener('mouseup', stopDrag);
+            window.removeEventListener('touchmove', movePreview);
+            window.removeEventListener('touchend', stopDrag);
+        };
+
+        window.addEventListener('mousemove', movePreview);
+        window.addEventListener('mouseup', stopDrag, { once: true });
+        window.addEventListener('touchmove', movePreview, { passive: false });
+        window.addEventListener('touchend', stopDrag, { once: true });
+    },
+
+    toggleMicrophone() {
+        this.microphoneMuted = !this.microphoneMuted;
+        this.localStream?.getAudioTracks().forEach((track) => {
+            track.enabled = !this.microphoneMuted;
+        });
+    },
+
+    toggleCamera() {
+        this.cameraDisabled = !this.cameraDisabled;
+        this.localStream?.getVideoTracks().forEach((track) => {
+            track.enabled = !this.cameraDisabled;
+        });
+    },
+
     async startCall() {
         if (!this.supportsVideoCalling()) {
             this.cleanupCall('ended', this.videoCallDisabledReason());
@@ -195,6 +311,8 @@ window.conversationVideoCall = (config) => ({
             this.callId = payload.id;
             this.callStatus = 'calling';
             this.statusMessage = 'Preparing your camera...';
+            this.startCallTimer();
+            this.showCallChrome();
 
             await this.ensureLocalStream();
             this.statusMessage = 'Loading call connection settings...';
@@ -228,6 +346,8 @@ window.conversationVideoCall = (config) => ({
 
             this.callStatus = 'connecting';
             this.statusMessage = `Accepted. Connecting media with ${this.otherUserName}...`;
+            this.startCallTimer();
+            this.showCallChrome();
 
             this.initPeer(false);
             this.flushPendingSignals();
@@ -598,7 +718,14 @@ window.conversationVideoCall = (config) => ({
             throw lastError ?? new Error('Could not access camera or microphone.');
         }
 
+        this.localStream.getAudioTracks().forEach((track) => {
+            track.enabled = !this.microphoneMuted;
+        });
+        this.localStream.getVideoTracks().forEach((track) => {
+            track.enabled = !this.cameraDisabled;
+        });
         this.setVideoSource(localVideoElementId, this.localStream);
+        this.setVideoSource(localVideoBackgroundElementId, this.localStream);
         await this.updateCameraCapabilities();
 
         return this.localStream;
@@ -682,12 +809,15 @@ window.conversationVideoCall = (config) => ({
         const audioTracks = this.localStream.getAudioTracks();
         previousVideoTracks.forEach((track) => track.stop());
         this.localStream = new MediaStream([...audioTracks, newVideoTrack]);
+        newVideoTrack.enabled = !this.cameraDisabled;
         this.setVideoSource(localVideoElementId, this.localStream);
+        this.setVideoSource(localVideoBackgroundElementId, this.localStream);
         await this.updateCameraCapabilities();
     },
 
     cleanupCall(nextStatus, message = '') {
         this.clearConnectionTimers();
+        this.stopCallTimer();
 
         const peer = this.peer;
         this.peer = null;
@@ -704,7 +834,10 @@ window.conversationVideoCall = (config) => ({
         this.pendingSignals = [];
         this.iceServers = null;
         this.iceTransportPolicy = 'all';
+        this.microphoneMuted = false;
+        this.cameraDisabled = false;
         this.setVideoSource(localVideoElementId, null);
+        this.setVideoSource(localVideoBackgroundElementId, null);
         this.setVideoSource(remoteVideoElementId, null);
 
         this.callId = null;
@@ -850,6 +983,7 @@ window.groupConversationVideoCall = (config) => ({
     authUserId: config.authUserId,
     groupId: config.groupId,
     groupName: config.groupName,
+    participantSummaries: config.participantSummaries ?? {},
     realtimeEnabled: config.realtimeEnabled,
     routes: config.routes,
     callStatus: 'idle',
@@ -865,6 +999,15 @@ window.groupConversationVideoCall = (config) => ({
     pendingSignals: new Map(),
     statusMessage: '',
     initialized: false,
+    speakerParticipantId: null,
+    microphoneMuted: false,
+    cameraDisabled: false,
+    callStartedAt: null,
+    callDurationTimer: null,
+    elapsedSeconds: 0,
+    callChromeVisible: true,
+    callChromeTimer: null,
+    previewPosition: { right: 16, bottom: 96 },
 
     init() {
         if (this.initialized || !this.realtimeEnabled || !window.Echo) {
@@ -882,6 +1025,8 @@ window.groupConversationVideoCall = (config) => ({
                 this.callId = event.call_id;
                 this.callStatus = 'incoming';
                 this.statusMessage = `${event.caller_name} started a group call.`;
+                this.startCallTimer();
+                this.showCallChrome();
             })
             .listen('.GroupCallSignal', (event) => {
                 if (event.sender_id === this.authUserId || event.call_id !== this.callId) {
@@ -921,6 +1066,143 @@ window.groupConversationVideoCall = (config) => ({
         );
     },
 
+    showCallChrome() {
+        this.callChromeVisible = true;
+
+        if (this.callChromeTimer !== null) {
+            window.clearTimeout(this.callChromeTimer);
+        }
+
+        this.callChromeTimer = window.setTimeout(() => {
+            if (this.callStatus !== 'idle') {
+                this.callChromeVisible = false;
+            }
+        }, 4000);
+    },
+
+    startCallTimer() {
+        if (this.callDurationTimer !== null) {
+            return;
+        }
+
+        this.callStartedAt ??= Date.now();
+        this.elapsedSeconds = Math.floor((Date.now() - this.callStartedAt) / 1000);
+
+        this.callDurationTimer = window.setInterval(() => {
+            this.elapsedSeconds = Math.floor((Date.now() - this.callStartedAt) / 1000);
+        }, 1000);
+    },
+
+    stopCallTimer() {
+        if (this.callDurationTimer !== null) {
+            window.clearInterval(this.callDurationTimer);
+        }
+
+        if (this.callChromeTimer !== null) {
+            window.clearTimeout(this.callChromeTimer);
+        }
+
+        this.callDurationTimer = null;
+        this.callChromeTimer = null;
+        this.callStartedAt = null;
+        this.elapsedSeconds = 0;
+        this.callChromeVisible = true;
+        this.previewPosition = { right: 16, bottom: 96 };
+    },
+
+    formattedCallDuration() {
+        const minutes = String(Math.floor(this.elapsedSeconds / 60)).padStart(2, '0');
+        const seconds = String(this.elapsedSeconds % 60).padStart(2, '0');
+
+        return `${minutes}:${seconds}`;
+    },
+
+    callPreviewStyle() {
+        return `right: ${this.previewPosition.right}px; bottom: ${this.previewPosition.bottom}px;`;
+    },
+
+    startPreviewDrag(event) {
+        const point = event.touches?.[0] ?? event;
+        const startX = point.clientX;
+        const startY = point.clientY;
+        const startRight = this.previewPosition.right;
+        const startBottom = this.previewPosition.bottom;
+
+        const movePreview = (moveEvent) => {
+            if (moveEvent.cancelable) {
+                moveEvent.preventDefault();
+            }
+
+            const movePoint = moveEvent.touches?.[0] ?? moveEvent;
+            const maxRight = Math.max(8, window.innerWidth - 128);
+            const maxBottom = Math.max(72, window.innerHeight - 152);
+
+            this.previewPosition = {
+                right: Math.min(maxRight, Math.max(8, startRight - (movePoint.clientX - startX))),
+                bottom: Math.min(maxBottom, Math.max(72, startBottom - (movePoint.clientY - startY))),
+            };
+        };
+
+        const stopDrag = () => {
+            window.removeEventListener('mousemove', movePreview);
+            window.removeEventListener('mouseup', stopDrag);
+            window.removeEventListener('touchmove', movePreview);
+            window.removeEventListener('touchend', stopDrag);
+        };
+
+        window.addEventListener('mousemove', movePreview);
+        window.addEventListener('mouseup', stopDrag, { once: true });
+        window.addEventListener('touchmove', movePreview, { passive: false });
+        window.addEventListener('touchend', stopDrag, { once: true });
+    },
+
+    toggleMicrophone() {
+        this.microphoneMuted = !this.microphoneMuted;
+        this.localStream?.getAudioTracks().forEach((track) => {
+            track.enabled = !this.microphoneMuted;
+        });
+    },
+
+    toggleCamera() {
+        this.cameraDisabled = !this.cameraDisabled;
+        this.localStream?.getVideoTracks().forEach((track) => {
+            track.enabled = !this.cameraDisabled;
+        });
+    },
+
+    participantName(participantId) {
+        return this.participantSummaries?.[participantId]?.name ?? 'Participant';
+    },
+
+    participantInitials(participantId) {
+        return this.participantSummaries?.[participantId]?.initials ?? '?';
+    },
+
+    activeParticipantCount() {
+        return Math.max(1, new Set([this.authUserId, ...this.participants, ...this.remoteParticipants.map((participant) => participant.id)]).size);
+    },
+
+    selectSpeaker(participantId) {
+        this.speakerParticipantId = participantId;
+        this.refreshSpeakerVideo();
+    },
+
+    speakerParticipant() {
+        return this.remoteParticipants.find((participant) => participant.id === this.speakerParticipantId)
+            ?? this.remoteParticipants[0]
+            ?? null;
+    },
+
+    thumbnailParticipants() {
+        const speaker = this.speakerParticipant();
+
+        if (speaker === null) {
+            return [];
+        }
+
+        return this.remoteParticipants.filter((participant) => participant.id !== speaker.id);
+    },
+
     async startCall() {
         if (!this.supportsVideoCalling()) {
             this.statusMessage = 'Video calling is not available right now.';
@@ -930,6 +1212,8 @@ window.groupConversationVideoCall = (config) => ({
         try {
             this.callStatus = 'connecting';
             this.statusMessage = 'Preparing your camera...';
+            this.startCallTimer();
+            this.showCallChrome();
             await this.ensureLocalStream();
             this.statusMessage = 'Loading call connection settings...';
             await this.loadIceConfiguration();
@@ -955,6 +1239,8 @@ window.groupConversationVideoCall = (config) => ({
         try {
             this.callStatus = 'connecting';
             this.statusMessage = 'Joining group call...';
+            this.startCallTimer();
+            this.showCallChrome();
             await this.ensureLocalStream();
             await this.loadIceConfiguration();
 
@@ -1013,7 +1299,14 @@ window.groupConversationVideoCall = (config) => ({
             throw lastError ?? new Error('Could not access camera or microphone.');
         }
 
+        this.localStream.getAudioTracks().forEach((track) => {
+            track.enabled = !this.microphoneMuted;
+        });
+        this.localStream.getVideoTracks().forEach((track) => {
+            track.enabled = !this.cameraDisabled;
+        });
         this.setVideoSource('group-call-local-video', this.localStream);
+        this.setVideoSource('group-call-local-background-video', this.localStream);
 
         return this.localStream;
     },
@@ -1179,13 +1472,30 @@ window.groupConversationVideoCall = (config) => ({
         this.remoteParticipants = Array.from(this.remoteStreams.keys()).map((participantId) => ({
             id: participantId,
             elementId: `group-call-remote-video-${participantId}`,
+            thumbnailElementId: `group-call-thumbnail-video-${participantId}`,
+            name: this.participantName(participantId),
+            initials: this.participantInitials(participantId),
         }));
+
+        if (
+            this.speakerParticipantId === null
+            || !this.remoteParticipants.some((participant) => participant.id === this.speakerParticipantId)
+        ) {
+            this.speakerParticipantId = this.remoteParticipants[0]?.id ?? null;
+        }
 
         window.setTimeout(() => {
             this.remoteParticipants.forEach((participant) => {
                 this.setVideoSource(participant.elementId, this.remoteStreams.get(participant.id) ?? null);
+                this.setVideoSource(participant.thumbnailElementId, this.remoteStreams.get(participant.id) ?? null);
             });
+            this.refreshSpeakerVideo();
         });
+    },
+
+    refreshSpeakerVideo() {
+        const speaker = this.speakerParticipant();
+        this.setVideoSource('group-call-speaker-video', speaker === null ? null : this.remoteStreams.get(speaker.id) ?? null);
     },
 
     removePeer(peerId) {
@@ -1201,11 +1511,13 @@ window.groupConversationVideoCall = (config) => ({
     },
 
     cleanupGroupCall(nextStatus = 'idle', message = '') {
+        this.stopCallTimer();
         this.peerConnections.forEach((peer) => peer.close());
         this.peerConnections.clear();
         this.remoteStreams.clear();
         this.remoteParticipants = [];
         this.pendingSignals.clear();
+        this.speakerParticipantId = null;
 
         if (this.localStream !== null) {
             this.localStream.getTracks().forEach((track) => track.stop());
@@ -1215,7 +1527,11 @@ window.groupConversationVideoCall = (config) => ({
         this.callId = null;
         this.callStatus = nextStatus;
         this.statusMessage = message;
+        this.microphoneMuted = false;
+        this.cameraDisabled = false;
         this.setVideoSource('group-call-local-video', null);
+        this.setVideoSource('group-call-local-background-video', null);
+        this.setVideoSource('group-call-speaker-video', null);
 
         if (nextStatus === 'ended') {
             window.setTimeout(() => {

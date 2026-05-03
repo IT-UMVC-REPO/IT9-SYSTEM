@@ -74,7 +74,14 @@ test('customer header renders home in mobile navigation surfaces', function () {
     $response->assertOk();
 
     expect(substr_count($response->getContent(), '>Home<'))->toBe(2);
-    $response->assertSee('Mobile primary navigation');
+    expect(substr_count($response->getContent(), 'grid-cols-5'))->toBeGreaterThanOrEqual(1);
+
+    $response->assertSee('Mobile primary navigation')
+        ->assertSee('Open account menu')
+        ->assertSee('ACCOUNT')
+        ->assertSee('View Profile')
+        ->assertSee('Settings')
+        ->assertSee(route('profile.edit'), false);
 });
 
 test('vendor and admin headers render the dashboard navigation label in desktop drawer and bottom nav', function (callable $makeUser, string $routeName) {

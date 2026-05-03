@@ -199,18 +199,31 @@ test('users cannot message themselves', function () {
 test('thread shows messages in chronological order', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
+    $yesterdayAt = now()->subDay()->setTime(9, 15);
+    $todayAt = now()->setTime(10, 30);
+    $readAt = now()->setTime(10, 35);
 
     createMarketplaceMessage($user, $otherUser, 'First message', [
-        'created_at' => now()->subMinutes(15),
+        'created_at' => $yesterdayAt,
     ]);
     createMarketplaceMessage($otherUser, $user, 'Second message', [
-        'created_at' => now()->subMinutes(5),
+        'created_at' => $todayAt,
+    ]);
+    createMarketplaceMessage($user, $otherUser, 'Latest read message', [
+        'created_at' => $readAt,
+        'is_read' => true,
     ]);
 
     $this->actingAs($user)
         ->get(route('messages.conversation', ['conversationReference' => $otherUser->getKey()]))
         ->assertOk()
-        ->assertSeeInOrder(['First message', 'Second message']);
+        ->assertSeeInOrder(['Yesterday', 'First message', 'Today', 'Second message', 'Latest read message'])
+        ->assertSee($yesterdayAt->format('g:i A'))
+        ->assertSee($readAt->format('g:i A'))
+        ->assertSee('Active now')
+        ->assertSee('Read')
+        ->assertSee('Write a message...')
+        ->assertSee('Video call');
 });
 
 test('conversation page shows the shared sidebar and highlights the active thread', function () {

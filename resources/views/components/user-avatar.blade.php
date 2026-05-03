@@ -2,9 +2,11 @@
 
 @php
     $sizeClasses = match ($size) {
+        'xs' => 'h-7 w-7 text-xs',
         'sm' => 'h-[34px] w-[34px] text-sm',
         'md' => 'h-10 w-10 text-sm',
         'lg' => 'h-11 w-11 text-sm',
+        'profile' => 'h-12 w-12 text-base',
         'xl' => 'h-16 w-16 text-xl',
         '2xl' => 'h-20 w-20 text-2xl',
         default => 'h-10 w-10 text-sm',
