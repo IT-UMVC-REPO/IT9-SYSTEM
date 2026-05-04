@@ -13,6 +13,7 @@ use App\Models\ConversationGroup;
 use App\Models\ConversationGroupMember;
 use App\Models\VideoCall;
 use App\Models\VideoCallParticipant;
+use App\Services\GroupMessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -188,6 +189,13 @@ class VideoCallController extends Controller
             ])->save();
 
             $videoCall->refresh();
+        } else {
+            GroupMessageService::dispatchSystemMessage(
+                $group->getKey(),
+                'call_started',
+                $userId,
+                __(':name started a group call.', ['name' => $request->user()->name]),
+            );
         }
 
         return response()->json([
@@ -263,6 +271,15 @@ class VideoCallController extends Controller
 
         $call->refresh();
 
+        if (! $alreadyJoined) {
+            GroupMessageService::dispatchSystemMessage(
+                (int) $call->group_id,
+                'user_joined',
+                $userId,
+                __(':name joined the call.', ['name' => $request->user()->name]),
+            );
+        }
+
         $broadcasted = $this->dispatchBroadcastSafely(
             new GroupCallStatusChanged($call),
             'GroupCallStatusChanged broadcast failed while joining a group call (Pusher may be unavailable): ',
@@ -283,17 +300,33 @@ class VideoCallController extends Controller
 
         abort_unless($this->isGroupMember($call->group_id, $userId), 403);
 
-        VideoCallParticipant::query()
+        $leftParticipantCount = VideoCallParticipant::query()
             ->where('video_call_id', $call->getKey())
             ->where('user_id', $userId)
             ->whereNull('left_at')
             ->update(['left_at' => now()]);
+
+        if ($leftParticipantCount > 0) {
+            GroupMessageService::dispatchSystemMessage(
+                (int) $call->group_id,
+                'user_left',
+                $userId,
+                __(':name left the call.', ['name' => $request->user()->name]),
+            );
+        }
 
         if ($this->activeGroupParticipantCount($call) === 0) {
             $call->forceFill([
                 'status' => VideoCallStatus::Ended,
                 'ended_at' => now(),
             ])->save();
+
+            GroupMessageService::dispatchSystemMessage(
+                (int) $call->group_id,
+                'call_ended',
+                $userId,
+                __('Group call ended.'),
+            );
         }
 
         $call->refresh();

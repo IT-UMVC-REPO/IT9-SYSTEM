@@ -61,16 +61,10 @@
             },
         }) }"
         x-init="$el.__groupConversationVideoCall = $data;
-        init();
-        if (@js($incomingCallId) !== null) {
-            callId = @js($incomingCallId);
-            callStatus = 'incoming';
-            window.setTimeout(() => acceptCall());
-        }"
-        x-on:beforeunload.window="leaveCall()"
-        x-on:livewire:navigating.window="leaveCall()"
+        init();"
+        x-on:beforeunload.window="disposeOnLeave()"
+        x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:group-call-start.window="startCall()"
-        x-on:group-conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         class="contents"
     >
         <div wire:ignore x-cloak x-show="callStatus !== 'idle'" x-transition.opacity
@@ -101,18 +95,60 @@
                                 <flux:icon.users variant="micro" />
                                 <span x-text="activeParticipantCount()"></span>
                             </div>
-                            <div class="relative" x-data="{ open: false }">
+                            <div class="relative" x-data="{
+                                open: false,
+                                devicesOpen: false,
+                                devices: [],
+                                async loadDevices() {
+                                    try {
+                                        const allDevices = await navigator.mediaDevices.enumerateDevices();
+                                        this.devices = allDevices.map((device) => ({
+                                            kind: device.kind,
+                                            label: device.label || device.kind,
+                                            id: device.deviceId,
+                                        }));
+                                    } catch (error) {
+                                        this.devices = [];
+                                    }
+                                },
+                            }">
                                 <button type="button" x-on:click="open = !open" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
                                     <flux:icon.ellipsis-horizontal variant="mini" />
                                 </button>
                                 <div x-cloak x-show="open" x-on:click.away="open = false" class="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white p-1 shadow-lg ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
-                                    <button type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                    <button type="button" x-on:click="devicesOpen = true; open = false; loadDevices()" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
                                         <flux:icon.device-phone-mobile variant="micro" class="h-4 w-4" />
                                         {{ __('Device settings') }}
                                     </button>
-                                    <button type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                    <button type="button" x-on:click="
+                                        const el = $el.closest('.fixed.inset-0');
+                                        if (! document.fullscreenElement) {
+                                            el?.requestFullscreen?.();
+                                        } else {
+                                            document.exitFullscreen?.();
+                                        }
+                                        open = false;
+                                    " class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
                                         <flux:icon.arrows-pointing-out variant="micro" class="h-4 w-4" />
                                         {{ __('Full screen') }}
+                                    </button>
+                                </div>
+                                <div x-cloak x-show="devicesOpen" x-on:click.away="devicesOpen = false" class="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
+                                    <p class="mb-3 text-sm font-semibold text-white">{{ __('Available devices') }}</p>
+                                    <template x-for="device in devices.filter((device) => device.kind === 'audioinput')" :key="'audio-' + device.id">
+                                        <div class="flex items-center gap-2 py-1 text-xs text-zinc-300">
+                                            <flux:icon.microphone variant="micro" class="h-3 w-3" />
+                                            <span x-text="device.label"></span>
+                                        </div>
+                                    </template>
+                                    <template x-for="device in devices.filter((device) => device.kind === 'videoinput')" :key="'video-' + device.id">
+                                        <div class="flex items-center gap-2 py-1 text-xs text-zinc-300">
+                                            <flux:icon.video-camera variant="micro" class="h-3 w-3" />
+                                            <span x-text="device.label"></span>
+                                        </div>
+                                    </template>
+                                    <button type="button" x-on:click="devicesOpen = false" class="mt-3 text-xs text-zinc-400 transition hover:text-white">
+                                        {{ __('Close') }}
                                     </button>
                                 </div>
                             </div>
@@ -122,49 +158,41 @@
 
                 <video id="group-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="remoteParticipants.length === 0"
-                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
-                <video id="group-call-speaker-video" autoplay playsinline
-                    x-cloak x-show="remoteParticipants.length > 0"
-                    x-effect="$el.volume = Number(volume)"
-                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
+                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover"></video>
                 <div class="absolute inset-0 bg-black/45"></div>
 
-                <div x-cloak x-show="remoteParticipants.length === 0"
-                    class="absolute inset-0 z-10 flex flex-col items-center justify-center px-8 text-center">
-                    <div class="relative flex h-28 w-28 items-center justify-center">
-                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
-                        <span class="relative flex h-24 w-24 items-center justify-center rounded-full bg-green-600 text-3xl font-bold text-white">
-                            {{ auth()->user()->initials() }}
-                        </span>
+                <div class="absolute inset-0 z-10"
+                    x-bind:class="{
+                        'grid grid-cols-1': remoteParticipants.length === 0,
+                        'grid grid-cols-2': remoteParticipants.length === 1,
+                        'grid grid-cols-2 grid-rows-2': remoteParticipants.length === 2,
+                        'grid grid-cols-2 grid-rows-2': remoteParticipants.length === 3,
+                        'grid grid-cols-3 grid-rows-2': remoteParticipants.length >= 4,
+                    }">
+                    <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0">
+                        <video id="group-call-local-grid-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
+                        <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => auth()->user()->name]) }}</span>
                     </div>
-                    <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
-                </div>
 
-                <div x-cloak x-show="remoteParticipants.length > 0"
-                    class="absolute bottom-28 left-4 z-10 max-w-[65vw] text-sm font-medium text-white drop-shadow-lg">
-                    <p class="truncate" x-text="speakerParticipant()?.name ?? groupName"></p>
-                    <p class="mt-1 text-xs text-white/70">
-                        <span>{{ __('Connected') }}</span>
-                        <span>&middot;</span>
-                        <span x-text="formattedCallDuration()"></span>
-                    </p>
-                </div>
-
-                <div x-cloak x-show="remoteParticipants.length > 1"
-                    data-thumbnail-prefix="group-call-thumbnail-video"
-                    class="scrollbar-none absolute bottom-24 left-4 right-4 z-20 flex gap-3 overflow-x-auto pb-1 sm:left-auto sm:right-4 sm:top-24 sm:bottom-24 sm:w-24 sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden">
-                    <template x-for="participant in thumbnailParticipants()" :key="participant.id">
-                        <button type="button" x-on:click="selectSpeaker(participant.id)"
-                            class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 border-white/20 bg-neutral-950 text-left shadow-lg transition hover:border-white/40 sm:h-32">
-                            <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full bg-neutral-950 object-cover"></video>
-                            <span class="absolute bottom-0 left-0 right-0 bg-black/45 px-1 py-1 text-center text-[10px] font-medium text-white" x-text="participant.name"></span>
-                        </button>
+                    <template x-for="participant in remoteParticipants" :key="participant.id">
+                        <div class="relative overflow-hidden bg-neutral-900">
+                            <video autoplay playsinline x-bind:id="'group-tile-video-' + participant.id" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
+                            <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
+                        </div>
                     </template>
+
+                    <div class="flex flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
+                        <div class="relative flex h-24 w-24 items-center justify-center">
+                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
+                            <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
+                        </div>
+                        <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
+                    </div>
                 </div>
 
-                <div class="absolute z-30 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
+                <div x-cloak x-show="callStatus !== 'idle' && remoteParticipants.length === 0" class="absolute z-30 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
-                    <video id="group-call-local-video" autoplay muted playsinline class="h-full w-full bg-neutral-950 object-cover"></video>
+                    <video id="group-call-local-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] bg-neutral-950 object-cover"></video>
                 </div>
 
                 <div class="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 pb-6 pt-10">
@@ -180,6 +208,13 @@
                             class="flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle camera') }}">
                             <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
                             <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
+                        </button>
+                        <button type="button" x-on:click="switchCamera()"
+                            x-cloak x-show="hasMultipleCameras && (callStatus === 'active' || callStatus === 'connecting')"
+                            x-bind:class="'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                            class="flex h-12 w-12 items-center justify-center rounded-full transition"
+                            aria-label="{{ __('Switch camera') }}">
+                            <i class="fa-solid fa-camera-rotate text-sm"></i>
                         </button>
                         <div class="relative flex items-center" x-data="{ showVolume: false }">
                             <button type="button" x-on:click="showVolume = !showVolume" 
@@ -216,6 +251,13 @@
                             <flux:icon.phone-x-mark variant="solid" />
                         </button>
                     </div>
+                </div>
+
+                <div x-cloak x-show="callStatus === 'ended'"
+                    class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-neutral-950/90 text-white">
+                    <flux:icon.phone-x-mark variant="solid" class="h-16 w-16 text-red-500" />
+                    <p class="mt-4 text-xl font-semibold" x-text="statusMessage || @js(__('Call ended.'))"></p>
+                    <p class="mt-2 text-sm text-white/60">{{ __('Returning to chat...') }}</p>
                 </div>
             </div>
         </div>
@@ -278,6 +320,27 @@
                         </div>
                     </header>
 
+                    @php
+                        $activeGroupCall = $this->activeGroupCall;
+                    @endphp
+                    @if ($activeGroupCall !== null && $activeGroupCall->caller_id !== auth()->id())
+                        <div wire:poll.10s class="shrink-0 border-b border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-[var(--brand-600)]"></span>
+                                    <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">
+                                        {{ __('A group call is in progress') }}
+                                    </p>
+                                </div>
+                                <button type="button" x-on:click="$dispatch('group-call-join', { callId: {{ $activeGroupCall->id }} })"
+                                    class="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-600)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--brand-700)]">
+                                    <flux:icon.video-camera variant="micro" />
+                                    {{ __('Join call') }}
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                         @forelse ($this->threadMessages as $message)
                             @php
@@ -285,21 +348,35 @@
                                 $previousMessage = $this->threadMessages->get($loop->index - 1);
                                 $startsNewDate = ! $previousMessage || ! $message->created_at?->isSameDay($previousMessage->created_at);
                                 $isGroupedWithPrevious = $previousMessage
+                                    && ! $message->is_system_message
+                                    && ! $previousMessage->is_system_message
                                     && $previousMessage->sender_id === $message->sender_id
                                     && $message->created_at?->isSameDay($previousMessage->created_at);
                                 $showSenderLabel = ! $isOwnMessage && ! $isGroupedWithPrevious;
                             @endphp
 
                             @if ($startsNewDate)
-                                <div class="my-4 flex justify-center">
+                                <div wire:key="group-message-date-{{ $message->created_at?->toDateString() ?? $message->id }}" class="my-4 flex justify-center">
                                     <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
                                         {{ $this->messageDateLabel($message) }}
                                     </span>
                                 </div>
                             @endif
 
-                            <div wire:key="group-message-{{ $message->id }}" @class([
-                                'mb-1 flex',
+                            @if ($message->is_system_message)
+                                <div class="my-2 flex justify-center">
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                                        @if ($message->system_event === 'call_started')
+                                            <flux:icon.video-camera variant="micro" class="h-3 w-3" />
+                                        @elseif ($message->system_event === 'call_ended')
+                                            <flux:icon.phone-x-mark variant="micro" class="h-3 w-3" />
+                                        @endif
+                                        {{ $message->content }}
+                                    </span>
+                                </div>
+                            @else
+                                <div wire:key="group-message-{{ $message->id }}" x-data="{ showActions: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" @class([
+                                'relative mb-1 flex',
                                 'mt-4' => ! $isGroupedWithPrevious,
                                 'justify-end' => $isOwnMessage,
                                 'justify-start' => ! $isOwnMessage,
@@ -319,7 +396,7 @@
                                     @endunless
 
                                     <div @class([
-                                        'min-w-0 flex flex-col',
+                                        'relative min-w-0 flex flex-col',
                                         'items-end' => $isOwnMessage,
                                         'items-start' => ! $isOwnMessage,
                                     ])>
@@ -327,11 +404,36 @@
                                             <p class="mb-1 px-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $this->memberDisplayName($message->sender) }}</p>
                                         @endif
 
+                                        <div x-cloak x-show="showActions" @class([
+                                            'absolute top-0 z-20 flex items-center gap-1',
+                                            'left-0 -translate-x-full pr-2' => $isOwnMessage,
+                                            'right-0 translate-x-full pl-2' => ! $isOwnMessage,
+                                        ])>
+                                            <div class="relative" x-data="{ open: false }">
+                                                <button type="button" x-on:click="open = !open" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-sm shadow-sm dark:border-white/10 dark:bg-zinc-800" aria-label="{{ __('React') }}">😊</button>
+                                                <div x-cloak x-show="open" x-on:click.away="open = false" class="absolute bottom-8 flex gap-1 rounded-full border border-stone-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-800">
+                                                    @foreach (['👍', '❤️', '😂', '😮', '😢', '🙏'] as $emoji)
+                                                        <button type="button" wire:key="group-message-{{ $message->id }}-reaction-picker-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))" x-on:click="open = false" class="text-lg transition-transform hover:scale-125" aria-label="{{ __('React with :emoji', ['emoji' => $emoji]) }}">{{ $emoji }}</button>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            <button type="button" wire:click="setReplyTo({{ $message->id }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
+                                                <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+
                                         <div @class([
                                             'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
                                             'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
                                             'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
                                         ])>
+                                            @if ($message->replyTo)
+                                                <div class="mb-1 rounded-lg border-l-2 border-current/40 bg-black/10 px-2 py-1 text-xs opacity-80">
+                                                    <p class="font-semibold">{{ $this->memberDisplayName($message->replyTo->sender) }}</p>
+                                                    <p class="truncate">{{ \Illuminate\Support\Str::limit($message->replyTo->content ?: __('Attachment'), 60) }}</p>
+                                                </div>
+                                            @endif
+
                                             @if (filled($message->content))
                                                 <p class="break-words [overflow-wrap:anywhere]">{{ $message->content }}</p>
                                             @endif
@@ -357,9 +459,26 @@
                                         <p class="mt-1 w-full px-1 text-right text-xs text-neutral-500 dark:text-neutral-500">
                                             {{ $this->messageTimestamp($message) }}
                                         </p>
+
+                                        @if ($message->reactions->isNotEmpty())
+                                            <div @class([
+                                                'mt-1 flex flex-wrap gap-1',
+                                                'justify-end' => $isOwnMessage,
+                                                'justify-start' => ! $isOwnMessage,
+                                            ])>
+                                                @foreach ($message->reactions->groupBy('emoji') as $emoji => $reactors)
+                                                    <button type="button" wire:key="group-message-{{ $message->id }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))"
+                                                        class="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white px-1.5 py-0.5 text-xs shadow-sm transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800">
+                                                        <span>{{ $emoji }}</span>
+                                                        <span class="text-neutral-500 dark:text-zinc-400">{{ $reactors->count() }}</span>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
-                            </div>
+                                </div>
+                            @endif
                         @empty
                             <div class="flex h-full min-h-80 items-center justify-center rounded-2xl border border-dashed border-neutral-200 px-6 py-12 text-center dark:border-neutral-800">
                                 <div>
@@ -369,6 +488,18 @@
                             </div>
                         @endforelse
                     </div>
+
+                    @if ($replyingToId)
+                        <div class="flex shrink-0 items-center justify-between gap-3 border-t border-neutral-200 bg-neutral-50 px-4 py-2 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold text-[var(--brand-700)] dark:text-[var(--brand-400)]">{{ __('Replying to :name', ['name' => $replyingToSender]) }}</p>
+                                <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ $replyingToContent }}</p>
+                            </div>
+                            <button type="button" wire:click="clearReply" class="text-neutral-400 transition hover:text-neutral-700 dark:hover:text-zinc-100" aria-label="{{ __('Cancel reply') }}">
+                                <flux:icon.x-mark variant="micro" class="h-4 w-4" />
+                            </button>
+                        </div>
+                    @endif
 
                     <form
                         x-data="{

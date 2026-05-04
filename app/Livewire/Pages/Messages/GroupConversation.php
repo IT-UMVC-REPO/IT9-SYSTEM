@@ -2,17 +2,21 @@
 
 namespace App\Livewire\Pages\Messages;
 
+use App\Enums\VideoCallStatus;
 use App\Events\GroupMessageSent;
 use App\Models\ConversationGroup;
 use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
 use App\Models\GroupMessageAttachment;
+use App\Models\GroupMessageReaction;
 use App\Models\User;
+use App\Models\VideoCall;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -43,22 +47,19 @@ class GroupConversation extends Component
 
     public string $memberSearch = '';
 
-    public ?int $incomingCallId = null;
+    public ?int $replyingToId = null;
+
+    public ?string $replyingToContent = null;
+
+    public ?string $replyingToSender = null;
 
     public function mount(int $groupId): void
     {
         abort_unless($this->isMember($groupId), 403);
 
         $this->groupId = $groupId;
-        $this->incomingCallId = request()->boolean('incoming_call')
-            ? (int) request()->integer('call_id')
-            : null;
 
         $this->markRead();
-
-        if ($this->incomingCallId !== null && $this->incomingCallId > 0) {
-            $this->dispatch('group-conversation-auto-answer', callId: $this->incomingCallId);
-        }
     }
 
     public function getListeners(): array
@@ -92,6 +93,7 @@ class GroupConversation extends Component
                     'group_id' => $this->groupId,
                     'sender_id' => auth()->id(),
                     'content' => $trimmedMessage,
+                    'reply_to_id' => $this->replyingToId,
                 ]);
 
                 foreach ($this->attachmentUploads as $upload) {
@@ -123,6 +125,7 @@ class GroupConversation extends Component
 
         $this->newMessage = '';
         $this->attachmentUploads = [];
+        $this->clearReply();
         $this->resetValidation(['newMessage', 'attachmentUploads', 'attachmentUploads.*']);
 
         unset($this->threadMessages);
@@ -135,6 +138,7 @@ class GroupConversation extends Component
         $this->markRead();
         unset($this->threadMessages);
         unset($this->group);
+        unset($this->activeGroupCall);
 
         if ($shouldScroll) {
             $this->dispatch('group-message-sent');
@@ -192,6 +196,60 @@ class GroupConversation extends Component
         $this->dispatch('message-marked-read');
     }
 
+    public function setReplyTo(int $messageId): void
+    {
+        $message = GroupMessage::query()
+            ->where('group_id', $this->groupId)
+            ->with('sender:id,name,profile_image')
+            ->findOrFail($messageId);
+
+        $this->replyingToId = $message->getKey();
+        $this->replyingToContent = Str::limit($message->content ?: __('Attachment'), 80);
+        $this->replyingToSender = $this->memberDisplayName($message->sender);
+    }
+
+    public function clearReply(): void
+    {
+        $this->replyingToId = null;
+        $this->replyingToContent = null;
+        $this->replyingToSender = null;
+    }
+
+    public function toggleReaction(int $messageId, string $emoji): void
+    {
+        $allowedReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+        if (! in_array($emoji, $allowedReactions, true)) {
+            return;
+        }
+
+        abort_unless(
+            GroupMessage::query()
+                ->where('group_id', $this->groupId)
+                ->whereKey($messageId)
+                ->exists(),
+            404,
+        );
+
+        $existingReaction = GroupMessageReaction::query()
+            ->where('group_message_id', $messageId)
+            ->where('user_id', auth()->id())
+            ->where('emoji', $emoji)
+            ->first();
+
+        if ($existingReaction !== null) {
+            $existingReaction->delete();
+        } else {
+            GroupMessageReaction::query()->create([
+                'group_message_id' => $messageId,
+                'user_id' => auth()->id(),
+                'emoji' => $emoji,
+            ]);
+        }
+
+        unset($this->threadMessages);
+    }
+
     #[Computed]
     public function group(): ConversationGroup
     {
@@ -201,11 +259,34 @@ class GroupConversation extends Component
     }
 
     #[Computed]
+    public function activeGroupCall(): ?VideoCall
+    {
+        if (! isset($this->groupId)) {
+            return null;
+        }
+
+        return VideoCall::query()
+            ->where('group_id', $this->groupId)
+            ->where('is_group_call', true)
+            ->whereIn('status', [
+                VideoCallStatus::Active->value,
+                VideoCallStatus::Pending->value,
+            ])
+            ->latest('created_at')
+            ->first();
+    }
+
+    #[Computed]
     public function threadMessages(): Collection
     {
         return GroupMessage::query()
             ->where('group_id', $this->groupId)
-            ->with(['sender:id,name,profile_image', 'attachments'])
+            ->with([
+                'sender:id,name,profile_image',
+                'attachments',
+                'replyTo.sender:id,name,profile_image',
+                'reactions.user:id,name',
+            ])
             ->latest('created_at')
             ->limit(100)
             ->get()

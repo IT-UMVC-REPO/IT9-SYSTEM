@@ -671,6 +671,7 @@ export const conversationVideoCall = (config) => ({
 
     async ensureLocalStream() {
         if (this.localStream !== null) {
+            await this.updateCameraCapabilities();
             return this.localStream;
         }
 

@@ -9,6 +9,7 @@ use App\Models\ConversationGroup;
 use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
 use App\Models\GroupMessageAttachment;
+use App\Models\GroupMessageReaction;
 use App\Models\User;
 use App\Models\VideoCall;
 use App\Models\VideoCallParticipant;
@@ -85,6 +86,21 @@ test('group conversation renders the polished mobile thread and call controls', 
         'content' => 'Fresh stock is ready.',
         'created_at' => $todayAt,
     ]);
+    $activeCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Active,
+        'started_at' => now(),
+        'created_at' => now(),
+    ]);
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $activeCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => null,
+    ]);
 
     $this->actingAs($creator)
         ->get(route('messages.group', ['groupId' => $group->getKey()]))
@@ -96,9 +112,14 @@ test('group conversation renders the polished mobile thread and call controls', 
         ->assertSee($todayAt->format('g:i A'))
         ->assertSee('Write a message...')
         ->assertSee('Start call')
-        ->assertSee('group-call-speaker-video', false)
-        ->assertSee('group-call-thumbnail-video', false)
+        ->assertSee('A group call is in progress')
+        ->assertSee('Join call')
+        ->assertSee('group-call-join', false)
+        ->assertSee('group-call-local-grid-video', false)
+        ->assertSee('group-tile-video', false)
         ->assertSee('Waiting for others to join...')
+        ->assertDontSee('group-call-speaker-video', false)
+        ->assertDontSee('group-call-thumbnail-video', false)
         ->assertDontSee('LOCAL PREVIEW');
 });
 
@@ -163,6 +184,67 @@ test('group conversation sends messages with multiple attachments', function () 
     Event::assertDispatched(GroupMessageSent::class, fn (GroupMessageSent $event) => $event->message->is($message));
 });
 
+test('group conversation sends replies and toggles emoji reactions', function () {
+    Event::fake([GroupMessageSent::class]);
+
+    $creator = User::factory()->create([
+        'name' => 'Mina Buyer',
+    ]);
+    $member = User::factory()->create([
+        'name' => 'Ramon Vendor',
+    ]);
+    $group = createMessagingGroup($creator, [$member]);
+    $originalMessage = GroupMessage::factory()->create([
+        'group_id' => $group->getKey(),
+        'sender_id' => $creator->getKey(),
+        'content' => 'Can you prep the bundles?',
+    ]);
+
+    Livewire::actingAs($member)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->call('setReplyTo', $originalMessage->getKey())
+        ->assertSet('replyingToId', $originalMessage->getKey())
+        ->assertSet('replyingToSender', 'Mina Buyer')
+        ->set('newMessage', 'Yes, I will prep them.')
+        ->call('send')
+        ->assertHasNoErrors()
+        ->assertSet('replyingToId', null);
+
+    $reply = GroupMessage::query()
+        ->where('group_id', $group->getKey())
+        ->where('sender_id', $member->getKey())
+        ->latest('id')
+        ->first();
+
+    expect($reply)->not->toBeNull()
+        ->and($reply->reply_to_id)->toBe($originalMessage->getKey());
+
+    Livewire::actingAs($creator)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->call('toggleReaction', $reply->getKey(), '👍')
+        ->call('toggleReaction', $reply->getKey(), 'not-allowed');
+
+    expect(GroupMessageReaction::query()
+        ->where('group_message_id', $reply->getKey())
+        ->where('user_id', $creator->getKey())
+        ->where('emoji', '👍')
+        ->exists())->toBeTrue()
+        ->and(GroupMessageReaction::query()
+            ->where('group_message_id', $reply->getKey())
+            ->where('emoji', 'not-allowed')
+            ->exists())->toBeFalse();
+
+    Livewire::actingAs($creator)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->call('toggleReaction', $reply->getKey(), '👍');
+
+    expect(GroupMessageReaction::query()
+        ->where('group_message_id', $reply->getKey())
+        ->where('user_id', $creator->getKey())
+        ->where('emoji', '👍')
+        ->exists())->toBeFalse();
+});
+
 test('group sidebar merges group threads with unread counts and sender previews', function () {
     $viewer = User::factory()->create();
     $sender = User::factory()->create([
@@ -197,6 +279,7 @@ test('group call routes authorize members and persist active participants', func
         GroupCallInitiated::class,
         GroupCallSignal::class,
         GroupCallStatusChanged::class,
+        GroupMessageSent::class,
     ]);
 
     $creator = User::factory()->create();
@@ -218,6 +301,11 @@ test('group call routes authorize members and persist active participants', func
     expect($call)->not->toBeNull()
         ->and($call->is_group_call)->toBeTrue()
         ->and($call->receiver_id)->toBeNull()
+        ->and(GroupMessage::query()
+            ->where('group_id', $group->getKey())
+            ->where('is_system_message', true)
+            ->where('system_event', 'call_started')
+            ->exists())->toBeTrue()
         ->and(VideoCallParticipant::query()
             ->where('video_call_id', $call->getKey())
             ->where('user_id', $creator->getKey())
@@ -228,6 +316,22 @@ test('group call routes authorize members and persist active participants', func
         ->postJson(route('calls.group.answer', ['call' => $call]))
         ->assertSuccessful()
         ->assertJsonPath('status', VideoCallStatus::Active->value);
+
+    expect(GroupMessage::query()
+        ->where('group_id', $group->getKey())
+        ->where('is_system_message', true)
+        ->where('system_event', 'user_joined')
+        ->where('system_actor_id', $member->getKey())
+        ->exists())->toBeTrue();
+
+    Event::assertDispatched(GroupCallStatusChanged::class, function (GroupCallStatusChanged $event) use ($call, $creator, $member): bool {
+        $payload = $event->broadcastWith();
+
+        return $event->videoCall->is($call)
+            && $payload['status'] === VideoCallStatus::Active->value
+            && collect($payload['participants'])->contains($creator->getKey())
+            && collect($payload['participants'])->contains($member->getKey());
+    });
 
     $this->actingAs($member)
         ->postJson(route('calls.group.signal', ['call' => $call]), [
@@ -242,6 +346,27 @@ test('group call routes authorize members and persist active participants', func
     $this->actingAs($outsider)
         ->postJson(route('calls.group.answer', ['call' => $call]))
         ->assertForbidden();
+
+    $this->actingAs($member)
+        ->postJson(route('calls.group.end', ['call' => $call]))
+        ->assertSuccessful()
+        ->assertJsonPath('status', VideoCallStatus::Active->value);
+
+    $this->actingAs($creator)
+        ->postJson(route('calls.group.end', ['call' => $call]))
+        ->assertSuccessful()
+        ->assertJsonPath('status', VideoCallStatus::Ended->value);
+
+    expect(GroupMessage::query()
+        ->where('group_id', $group->getKey())
+        ->where('is_system_message', true)
+        ->where('system_event', 'user_left')
+        ->count())->toBe(2)
+        ->and(GroupMessage::query()
+            ->where('group_id', $group->getKey())
+            ->where('is_system_message', true)
+            ->where('system_event', 'call_ended')
+            ->exists())->toBeTrue();
 
     Event::assertDispatched(GroupCallInitiated::class, fn (GroupCallInitiated $event) => $event->videoCall->is($call));
     Event::assertDispatched(GroupCallSignal::class, fn (GroupCallSignal $event) => $event->videoCall->is($call)

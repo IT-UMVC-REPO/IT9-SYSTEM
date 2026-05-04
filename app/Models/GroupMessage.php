@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'group_id',
     'sender_id',
     'content',
+    'reply_to_id',
+    'is_system_message',
+    'system_event',
+    'system_actor_id',
     'created_at',
 ])]
 class GroupMessage extends Model
@@ -26,6 +30,7 @@ class GroupMessage extends Model
     protected function casts(): array
     {
         return [
+            'is_system_message' => 'bool',
             'created_at' => 'immutable_datetime',
         ];
     }
@@ -43,6 +48,21 @@ class GroupMessage extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(GroupMessageAttachment::class);
+    }
+
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'reply_to_id');
+    }
+
+    public function systemActor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'system_actor_id');
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(GroupMessageReaction::class);
     }
 
     public function timeAgo(): string

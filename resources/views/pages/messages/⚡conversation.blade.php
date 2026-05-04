@@ -54,15 +54,70 @@
                             </div>
                         </div>
 
-                        <button type="button" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
-                            <flux:icon.ellipsis-horizontal variant="mini" />
-                        </button>
+                        <div class="relative" x-data="{
+                            open: false,
+                            devicesOpen: false,
+                            devices: [],
+                            async loadDevices() {
+                                try {
+                                    const allDevices = await navigator.mediaDevices.enumerateDevices();
+                                    this.devices = allDevices.map((device) => ({
+                                        kind: device.kind,
+                                        label: device.label || device.kind,
+                                        id: device.deviceId,
+                                    }));
+                                } catch (error) {
+                                    this.devices = [];
+                                }
+                            },
+                        }">
+                            <button type="button" x-on:click="open = !open" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20" aria-label="{{ __('More call options') }}">
+                                <flux:icon.ellipsis-horizontal variant="mini" />
+                            </button>
+                            <div x-cloak x-show="open" x-on:click.away="open = false" class="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white p-1 shadow-lg ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
+                                <button type="button" x-on:click="devicesOpen = true; open = false; loadDevices()" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                    <flux:icon.device-phone-mobile variant="micro" class="h-4 w-4" />
+                                    {{ __('Device settings') }}
+                                </button>
+                                <button type="button" x-on:click="
+                                    const el = $el.closest('.fixed.inset-0');
+                                    if (! document.fullscreenElement) {
+                                        el?.requestFullscreen?.();
+                                    } else {
+                                        document.exitFullscreen?.();
+                                    }
+                                    open = false;
+                                " class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
+                                    <flux:icon.arrows-pointing-out variant="micro" class="h-4 w-4" />
+                                    {{ __('Full screen') }}
+                                </button>
+                            </div>
+                            <div x-cloak x-show="devicesOpen" x-on:click.away="devicesOpen = false" class="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
+                                <p class="mb-3 text-sm font-semibold text-white">{{ __('Available devices') }}</p>
+                                <template x-for="device in devices.filter((device) => device.kind === 'audioinput')" :key="'audio-' + device.id">
+                                    <div class="flex items-center gap-2 py-1 text-xs text-zinc-300">
+                                        <flux:icon.microphone variant="micro" class="h-3 w-3" />
+                                        <span x-text="device.label"></span>
+                                    </div>
+                                </template>
+                                <template x-for="device in devices.filter((device) => device.kind === 'videoinput')" :key="'video-' + device.id">
+                                    <div class="flex items-center gap-2 py-1 text-xs text-zinc-300">
+                                        <flux:icon.video-camera variant="micro" class="h-3 w-3" />
+                                        <span x-text="device.label"></span>
+                                    </div>
+                                </template>
+                                <button type="button" x-on:click="devicesOpen = false" class="mt-3 text-xs text-zinc-400 transition hover:text-white">
+                                    {{ __('Close') }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </header>
 
                 <video id="conversation-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="callStatus === 'calling' || callStatus === 'incoming'"
-                    class="absolute inset-0 h-full w-full scale-110 bg-neutral-950 object-cover blur-2xl"></video>
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover blur-2xl"
+                    style="transform: scaleX(-1) scale(1.1);"></video>
                 <video id="conversation-call-remote-video" autoplay playsinline
                     x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'"
                     x-effect="$el.volume = Number(volume)"
@@ -92,7 +147,7 @@
 
                 <div class="absolute z-20 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
-                    <video id="conversation-call-local-video" autoplay muted playsinline class="h-full w-full bg-neutral-950 object-cover"></video>
+                    <video id="conversation-call-local-video" autoplay muted playsinline class="h-full w-full bg-neutral-950 object-cover" style="transform: scaleX(-1);"></video>
                     <button type="button" x-cloak
                         x-show="hasMultipleCameras && (callStatus === 'active' || callStatus === 'connecting')"
                         x-on:click.stop="switchCamera()"

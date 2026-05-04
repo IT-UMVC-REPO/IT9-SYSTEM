@@ -13,6 +13,8 @@ export const groupConversationVideoCall = (config) => ({
     iceServers: null,
     iceTransportPolicy: 'all',
     facingMode: 'user',
+    hasMultipleCameras: false,
+    hasCheckedCameraDevices: false,
     peerConnections: new Map(),
     remoteStreams: new Map(),
     remoteParticipants: [],
@@ -70,12 +72,36 @@ export const groupConversationVideoCall = (config) => ({
                     return;
                 }
 
+                const previousParticipants = [...this.participants];
                 this.participants = Array.isArray(event.participants) ? event.participants : [];
 
-                if (this.localStream !== null) {
+                if (this.localStream !== null && this.callStatus === 'active') {
+                    this.participants
+                        .filter((id) => id !== this.authUserId && !previousParticipants.includes(id))
+                        .forEach((id) => {
+                            if (!this.peerConnections.has(id)) {
+                                this.createPeerConnection(id, this.authUserId < id);
+                            }
+                        });
                     this.connectToParticipants();
                 }
             });
+
+        document.addEventListener('group-call-join', (event) => {
+            if (this.callStatus !== 'idle') {
+                return;
+            }
+
+            const callId = Number(event.detail?.callId ?? null);
+
+            if (!callId) {
+                return;
+            }
+
+            this.callId = callId;
+            this.callStatus = 'incoming';
+            void this.acceptCall();
+        });
     },
 
     supportsVideoCalling() {
@@ -85,6 +111,10 @@ export const groupConversationVideoCall = (config) => ({
             && navigator.mediaDevices
             && navigator.mediaDevices.getUserMedia,
         );
+    },
+
+    supportsCameraSwitch() {
+        return this.hasMultipleCameras;
     },
 
     showCallChrome() {
@@ -285,11 +315,30 @@ export const groupConversationVideoCall = (config) => ({
             }
         }
 
+        this.cleanupGroupCall('ended', 'Group call ended.');
+    },
+
+    disposeOnLeave() {
+        if (this.localStream === null && this.peerConnections.size === 0) {
+            return;
+        }
+
+        if (this.callId !== null) {
+            void fetch(this.callRoute('end'), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': this.csrfToken(),
+                },
+                keepalive: true,
+            });
+        }
+
         this.cleanupGroupCall('idle');
     },
 
     async ensureLocalStream() {
         if (this.localStream !== null) {
+            await this.updateCameraCapabilities();
             return this.localStream;
         }
 
@@ -328,6 +377,8 @@ export const groupConversationVideoCall = (config) => ({
         });
         this.setVideoSource('group-call-local-video', this.localStream);
         this.setVideoSource('group-call-local-background-video', this.localStream);
+        this.setVideoSource('group-call-local-grid-video', this.localStream);
+        await this.updateCameraCapabilities();
 
         return this.localStream;
     },
@@ -339,6 +390,79 @@ export const groupConversationVideoCall = (config) => ({
             frameRate: { ideal: 30 },
             facingMode: { ideal: this.facingMode },
         };
+    },
+
+    async updateCameraCapabilities() {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+            this.hasCheckedCameraDevices = true;
+            this.hasMultipleCameras = false;
+            return;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.hasMultipleCameras = devices.filter((device) => device.kind === 'videoinput').length > 1;
+        } catch {
+            this.hasMultipleCameras = false;
+        }
+
+        this.hasCheckedCameraDevices = true;
+    },
+
+    async switchCamera() {
+        if (!this.localStream || !this.supportsCameraSwitch()) {
+            return;
+        }
+
+        const previousFacingMode = this.facingMode;
+        const previousVideoTracks = this.localStream.getVideoTracks();
+        this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
+
+        let cameraStream;
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: this.facingMode } },
+                audio: false,
+            });
+        } catch (error) {
+            this.facingMode = previousFacingMode;
+            this.statusMessage = this.groupCallErrorMessage(error, 'Could not switch cameras. Your current camera is still active.');
+            return;
+        }
+
+        const [newVideoTrack] = cameraStream.getVideoTracks();
+
+        if (!newVideoTrack) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+            this.facingMode = previousFacingMode;
+            this.statusMessage = 'Could not switch cameras. Your current camera is still active.';
+            return;
+        }
+
+        const videoSenders = Array.from(this.peerConnections.values())
+            .flatMap((peer) => peer.getSenders())
+            .filter((sender) => sender.track?.kind === 'video');
+
+        try {
+            for (const sender of videoSenders) {
+                await sender.replaceTrack(newVideoTrack);
+            }
+        } catch (error) {
+            newVideoTrack.stop();
+            this.facingMode = previousFacingMode;
+            this.statusMessage = this.groupCallErrorMessage(error, 'Could not switch cameras. Your current camera is still active.');
+            return;
+        }
+
+        const audioTracks = this.localStream.getAudioTracks();
+        previousVideoTracks.forEach((track) => track.stop());
+        this.localStream = new MediaStream([...audioTracks, newVideoTrack]);
+        newVideoTrack.enabled = !this.cameraDisabled;
+        this.setVideoSource('group-call-local-video', this.localStream);
+        this.setVideoSource('group-call-local-background-video', this.localStream);
+        this.setVideoSource('group-call-local-grid-video', this.localStream);
+        await this.updateCameraCapabilities();
     },
 
     async loadIceConfiguration() {
@@ -424,6 +548,10 @@ export const groupConversationVideoCall = (config) => ({
             return;
         }
 
+        if (!this.participants.includes(senderId)) {
+            this.participants = [...this.participants, senderId];
+        }
+
         if (this.localStream === null) {
             const signals = this.pendingSignals.get(senderId) ?? [];
             signals.push(signalData);
@@ -493,7 +621,7 @@ export const groupConversationVideoCall = (config) => ({
         this.remoteParticipants = Array.from(this.remoteStreams.keys()).map((participantId) => ({
             id: participantId,
             elementId: `group-call-remote-video-${participantId}`,
-            thumbnailElementId: `group-call-thumbnail-video-${participantId}`,
+            tileElementId: `group-tile-video-${participantId}`,
             name: this.participantName(participantId),
             initials: this.participantInitials(participantId),
         }));
@@ -508,8 +636,11 @@ export const groupConversationVideoCall = (config) => ({
         window.setTimeout(() => {
             this.remoteParticipants.forEach((participant) => {
                 this.setVideoSource(participant.elementId, this.remoteStreams.get(participant.id) ?? null);
-                this.setVideoSource(participant.thumbnailElementId, this.remoteStreams.get(participant.id) ?? null);
+                this.setVideoSource(participant.tileElementId, this.remoteStreams.get(participant.id) ?? null);
             });
+            if (this.localStream) {
+                this.setVideoSource('group-call-local-grid-video', this.localStream);
+            }
             this.refreshSpeakerVideo();
         });
     },
@@ -552,6 +683,7 @@ export const groupConversationVideoCall = (config) => ({
         this.cameraDisabled = false;
         this.setVideoSource('group-call-local-video', null);
         this.setVideoSource('group-call-local-background-video', null);
+        this.setVideoSource('group-call-local-grid-video', null);
         this.setVideoSource('group-call-speaker-video', null);
 
         if (nextStatus === 'ended') {
