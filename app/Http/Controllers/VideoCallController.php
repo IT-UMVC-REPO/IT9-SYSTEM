@@ -163,6 +163,8 @@ class VideoCallController extends Controller
 
         abort_unless($this->isGroupMember($group->getKey(), $userId), 403);
 
+        $this->expireStaleGroupCalls($group->getKey());
+
         $videoCall = VideoCall::query()->create([
             'caller_id' => $userId,
             'receiver_id' => null,
@@ -239,6 +241,10 @@ class VideoCallController extends Controller
         $userId = $request->user()->getKey();
 
         abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+
+        $this->expireStaleGroupCalls((int) $call->group_id);
+        $call->refresh();
+
         abort_if($call->status === VideoCallStatus::Ended || $call->status === VideoCallStatus::Declined, 409);
 
         $alreadyJoined = VideoCallParticipant::query()
@@ -362,6 +368,22 @@ class VideoCallController extends Controller
             ->where('video_call_id', $call->getKey())
             ->whereNull('left_at')
             ->count();
+    }
+
+    private function expireStaleGroupCalls(int $groupId): void
+    {
+        VideoCall::query()
+            ->where('group_id', $groupId)
+            ->where('is_group_call', true)
+            ->whereIn('status', [
+                VideoCallStatus::Active->value,
+                VideoCallStatus::Pending->value,
+            ])
+            ->where('created_at', '<', now()->subMinutes(90))
+            ->update([
+                'status' => VideoCallStatus::Ended->value,
+                'ended_at' => now(),
+            ]);
     }
 
     /**

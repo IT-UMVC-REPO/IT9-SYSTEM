@@ -123,6 +123,38 @@ test('group conversation renders the polished mobile thread and call controls', 
         ->assertDontSee('LOCAL PREVIEW');
 });
 
+test('group conversation ignores stale group call banners', function () {
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member], [
+        'name' => 'Morning Market Crew',
+    ]);
+    $staleCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Active,
+        'started_at' => now()->subMinutes(91),
+        'created_at' => now()->subMinutes(91),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $staleCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('Morning Market Crew')
+        ->assertSee('Start call')
+        ->assertDontSee('A group call is in progress')
+        ->assertDontSee('Join call');
+});
+
 test('create group modal persists creator and selected members', function () {
     $creator = User::factory()->create();
     $member = User::factory()->create([
@@ -373,6 +405,71 @@ test('group call routes authorize members and persist active participants', func
         && $event->senderId === $member->getKey()
         && $event->recipientId === $creator->getKey());
     Event::assertDispatched(GroupCallStatusChanged::class, fn (GroupCallStatusChanged $event) => $event->videoCall->is($call));
+});
+
+test('group call routes expire stale calls before starting or joining', function () {
+    Event::fake([
+        GroupCallInitiated::class,
+        GroupCallStatusChanged::class,
+        GroupMessageSent::class,
+    ]);
+
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member]);
+    $staleStartedAt = now()->subMinutes(91);
+    $staleCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Active,
+        'started_at' => $staleStartedAt,
+        'created_at' => $staleStartedAt,
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $staleCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($creator)
+        ->postJson(route('calls.group.initiate'), [
+            'group_id' => $group->getKey(),
+        ])
+        ->assertCreated();
+
+    $staleCall->refresh();
+
+    expect($staleCall->status)->toBe(VideoCallStatus::Ended)
+        ->and($staleCall->ended_at)->not->toBeNull();
+
+    $staleJoinCall = VideoCall::query()->create([
+        'caller_id' => $creator->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Pending,
+        'created_at' => now()->subMinutes(91),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $staleJoinCall->getKey(),
+        'user_id' => $creator->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($member)
+        ->postJson(route('calls.group.answer', ['call' => $staleJoinCall]))
+        ->assertStatus(409);
+
+    $staleJoinCall->refresh();
+
+    expect($staleJoinCall->status)->toBe(VideoCallStatus::Ended)
+        ->and($staleJoinCall->ended_at)->not->toBeNull();
 });
 
 test('group message attachments have a model relation', function () {

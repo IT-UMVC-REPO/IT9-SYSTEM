@@ -59,6 +59,8 @@ class GroupConversation extends Component
 
         $this->groupId = $groupId;
 
+        unset($this->activeGroupCall);
+
         $this->markRead();
     }
 
@@ -272,6 +274,7 @@ class GroupConversation extends Component
                 VideoCallStatus::Active->value,
                 VideoCallStatus::Pending->value,
             ])
+            ->where('created_at', '>=', now()->subMinutes(90))
             ->latest('created_at')
             ->first();
     }

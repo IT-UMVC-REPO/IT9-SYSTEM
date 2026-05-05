@@ -72,17 +72,9 @@ export const groupConversationVideoCall = (config) => ({
                     return;
                 }
 
-                const previousParticipants = [...this.participants];
-                this.participants = Array.isArray(event.participants) ? event.participants : [];
+                this.participants = this.normalizeParticipantIds(event.participants);
 
                 if (this.localStream !== null && this.callStatus === 'active') {
-                    this.participants
-                        .filter((id) => id !== this.authUserId && !previousParticipants.includes(id))
-                        .forEach((id) => {
-                            if (!this.peerConnections.has(id)) {
-                                this.createPeerConnection(id, this.authUserId < id);
-                            }
-                        });
                     this.connectToParticipants();
                 }
             });
@@ -115,6 +107,21 @@ export const groupConversationVideoCall = (config) => ({
 
     supportsCameraSwitch() {
         return this.hasMultipleCameras;
+    },
+
+    normalizeParticipantIds(participants) {
+        if (!Array.isArray(participants)) {
+            return [];
+        }
+
+        return participants
+            .map((participantId) => Number(participantId))
+            .filter((participantId) => Number.isInteger(participantId));
+    },
+
+    shouldInitiatePeerConnection(participantId) {
+        // The lower numeric user id creates the offer so each mesh edge has a single initiator.
+        return Number(this.authUserId) < Number(participantId);
     },
 
     showCallChrome() {
@@ -275,7 +282,7 @@ export const groupConversationVideoCall = (config) => ({
 
             this.callId = payload.id;
             this.callStatus = 'active';
-            this.participants = payload.participants ?? [this.authUserId];
+            this.participants = this.normalizeParticipantIds(payload.participants ?? [this.authUserId]);
             this.statusMessage = 'Group call started.';
         } catch (error) {
             this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not start the group call.'));
@@ -298,9 +305,12 @@ export const groupConversationVideoCall = (config) => ({
             const payload = await this.requestJson(this.callRoute('answer'), null, { timeoutMs: 15000 });
 
             this.callStatus = 'active';
-            this.participants = payload.participants ?? [];
+            this.participants = this.normalizeParticipantIds(payload.participants ?? []);
             this.statusMessage = 'Connected.';
-            this.connectToParticipants();
+
+            if (this.localStream !== null) {
+                this.connectToParticipants();
+            }
         } catch (error) {
             this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not join the group call.'));
         }
@@ -482,11 +492,15 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     connectToParticipants() {
+        if (this.localStream === null || this.callStatus !== 'active') {
+            return;
+        }
+
         this.participants
             .filter((participantId) => participantId !== this.authUserId)
             .forEach((participantId) => {
                 if (!this.peerConnections.has(participantId)) {
-                    this.createPeerConnection(participantId, this.authUserId < participantId);
+                    this.createPeerConnection(participantId, this.shouldInitiatePeerConnection(participantId));
                 }
             });
     },
@@ -642,7 +656,7 @@ export const groupConversationVideoCall = (config) => ({
                 this.setVideoSource('group-call-local-grid-video', this.localStream);
             }
             this.refreshSpeakerVideo();
-        });
+        }, 0);
     },
 
     refreshSpeakerVideo() {

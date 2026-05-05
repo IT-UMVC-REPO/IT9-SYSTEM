@@ -78,7 +78,7 @@
                 <a
                     href="{{ $vendorUrl }}"
                     wire:navigate
-                    class="group/btn relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[var(--brand-600)] px-4 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-[var(--brand-700)] active:scale-[0.98] dark:bg-[var(--brand-500)] dark:hover:bg-[var(--brand-400)]"
+                    class="brand-button-primary group/btn relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition duration-200 active:scale-[0.98] dark:bg-[var(--brand-500)] dark:hover:bg-[var(--brand-400)]"
                 >
                     {{ __('Visit stall') }}
                     <i class="fa-solid fa-arrow-right text-xs transition-transform duration-200 group-hover/btn:translate-x-0.5"></i>
