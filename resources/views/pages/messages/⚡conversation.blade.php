@@ -2,6 +2,7 @@
     $pusherBroadcastConfig = config('broadcasting.connections.pusher', []);
     $realtimeEnabled =
         filled($pusherBroadcastConfig['key'] ?? null) && filled($pusherBroadcastConfig['app_id'] ?? null);
+    $authUser = auth()->user();
 @endphp
 
 <div wire:poll.5s="refreshThread" class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-full">
@@ -116,7 +117,8 @@
 
                 <video id="conversation-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="callStatus === 'calling' || callStatus === 'incoming'"
-                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover blur-2xl"
+                    x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover blur-2xl transition-opacity duration-200"
                     style="transform: scaleX(-1) scale(1.1);"></video>
                 <video id="conversation-call-remote-video" autoplay playsinline
                     x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'"
@@ -147,7 +149,26 @@
 
                 <div class="absolute z-20 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
-                    <video id="conversation-call-local-video" autoplay muted playsinline class="h-full w-full bg-neutral-950 object-cover" style="transform: scaleX(-1);"></video>
+                    <video id="conversation-call-local-video" autoplay muted playsinline
+                        x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                        class="h-full w-full scale-x-[-1] bg-neutral-950 object-cover transition-opacity duration-200"></video>
+                    <div
+                        x-cloak
+                        x-show="cameraDisabled"
+                        class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
+                        style="background-color: var(--brand-700);"
+                    >
+                        @if ($authUser?->profile_image)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                alt="{{ $authUser->name }}"
+                                class="h-12 w-12 rounded-full object-cover ring-2 ring-white/30">
+                        @else
+                            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold text-white">
+                                {{ $authUser?->initials() ?? '?' }}
+                            </span>
+                        @endif
+                        <span class="mt-1 text-[10px] font-semibold text-white/70">{{ __('Camera off') }}</span>
+                    </div>
                     <button type="button" x-cloak
                         x-show="hasMultipleCameras && (callStatus === 'active' || callStatus === 'connecting')"
                         x-on:click.stop="switchCamera()"
@@ -214,6 +235,15 @@
                                     </div>
                                 </div>
                             </div>
+                            <button type="button"
+                                x-cloak
+                                x-show="callStatus === 'active' && isPipSupported()"
+                                x-on:click="enterPip()"
+                                class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
+                                title="{{ __('Picture in picture') }}"
+                                aria-label="{{ __('Picture in picture') }}">
+                                <flux:icon.squares-2x2 variant="mini" />
+                            </button>
                             <button type="button" x-on:click="endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
                                 <flux:icon.phone-x-mark variant="solid" />
                             </button>

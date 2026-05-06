@@ -1,72 +1,56 @@
 export class RingtonePlayer {
     constructor() {
-        this.audioContext = null;
-        this.gainNode = null;
-        this.oscillator = null;
-        this.intervalId = null;
-        this.activeFrequency = 480;
+        this._audio = null;
+        this._playing = false;
+        this._warnedMissingAudio = false;
     }
 
     start() {
-        if (this.intervalId !== null) {
-            return;
+        if (this._playing) return;
+
+        try {
+            if (!this._audio) {
+                this._audio = new Audio('/sound/reader.mp3');
+                this._audio.loop = true;
+                this._audio.volume = 0.7;
+                this._audio.addEventListener('error', () => {
+                    if (!this._warnedMissingAudio) {
+                        console.warn('Ringtone audio /sound/reader.mp3 could not be loaded.');
+                        this._warnedMissingAudio = true;
+                    }
+
+                    this._playing = false;
+                });
+            }
+
+            const playPromise = this._audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        this._playing = true;
+                    })
+                    .catch(() => {
+                        this._playing = false;
+                    });
+            } else {
+                this._playing = true;
+            }
+        } catch {
+            this._playing = false;
         }
-
-        const AudioContextClass = window.AudioContext ?? window.webkitAudioContext;
-
-        if (!AudioContextClass) {
-            return;
-        }
-
-        this.audioContext ??= new AudioContextClass();
-
-        if (this.audioContext.state === 'suspended') {
-            void this.audioContext.resume();
-        }
-
-        this.gainNode = this.audioContext.createGain();
-        this.gainNode.gain.value = 0.15;
-        this.gainNode.connect(this.audioContext.destination);
-
-        this.playTone(this.activeFrequency);
-        this.intervalId = window.setInterval(() => {
-            this.activeFrequency = this.activeFrequency === 480 ? 620 : 480;
-            this.playTone(this.activeFrequency);
-        }, 2000);
     }
 
     stop() {
-        if (this.intervalId !== null) {
-            window.clearInterval(this.intervalId);
-            this.intervalId = null;
+        if (!this._audio) return;
+
+        try {
+            this._audio.pause();
+            this._audio.currentTime = 0;
+        } catch {
+            // Ignore audio cleanup failures.
         }
 
-        if (this.oscillator !== null) {
-            this.oscillator.stop();
-            this.oscillator.disconnect();
-            this.oscillator = null;
-        }
-
-        if (this.gainNode !== null) {
-            this.gainNode.disconnect();
-            this.gainNode = null;
-        }
-    }
-
-    playTone(frequency) {
-        if (!this.audioContext || !this.gainNode) {
-            return;
-        }
-
-        if (this.oscillator !== null) {
-            this.oscillator.stop();
-            this.oscillator.disconnect();
-        }
-
-        this.oscillator = this.audioContext.createOscillator();
-        this.oscillator.type = 'sine';
-        this.oscillator.frequency.value = frequency;
-        this.oscillator.connect(this.gainNode);
-        this.oscillator.start();
+        this._playing = false;
     }
 }

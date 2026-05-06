@@ -1,6 +1,7 @@
 @php
     $pusherBroadcastConfig = config('broadcasting.connections.pusher', []);
     $realtimeEnabled = filled($pusherBroadcastConfig['key'] ?? null) && filled($pusherBroadcastConfig['app_id'] ?? null);
+    $authUser = auth()->user();
     $groupDisplayName = $this->group->displayName((int) auth()->id());
 @endphp
 
@@ -61,13 +62,55 @@
             },
         }) }"
         x-init="$el.__groupConversationVideoCall = $data;
-        init();"
+        init();
+        if (@js($incomingCallId) !== null) {
+            window.setTimeout(() => $dispatch('group-call-join', { callId: @js($incomingCallId) }));
+        }"
         x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:group-call-start.window="startCall()"
         class="contents"
     >
-        <div wire:ignore x-cloak x-show="callStatus !== 'idle'" x-transition.opacity
+        <div
+            x-cloak
+            x-show="callStatus === 'ringing'"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="-translate-y-4 opacity-0"
+            x-transition:enter-end="translate-y-0 opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="translate-y-0 opacity-100"
+            x-transition:leave-end="-translate-y-4 opacity-0"
+            class="fixed left-1/2 top-4 z-[60] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2"
+        >
+            <section class="rounded-2xl border border-[var(--brand-200)] bg-white p-4 shadow-2xl shadow-stone-950/20 dark:border-[var(--brand-500)]/20 dark:bg-neutral-900 dark:shadow-black/40">
+                <div class="flex items-start gap-4">
+                    <span class="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-[color:color-mix(in_oklab,var(--brand-500),transparent_82%)] dark:text-[var(--brand-300)]">
+                        <span class="h-3 w-3 animate-pulse rounded-full bg-[var(--brand-600)]"></span>
+                    </span>
+
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-500">
+                            {{ __('Incoming group call') }}
+                        </p>
+                        <h2 class="mt-1 truncate text-base font-semibold text-neutral-900 dark:text-white" x-text="statusMessage"></h2>
+                        <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ $groupDisplayName }}</p>
+
+                        <div class="mt-4 flex flex-wrap items-center gap-2">
+                            <button type="button" x-on:click="acceptCall()" class="brand-button-primary px-4 py-2">
+                                <flux:icon.phone variant="micro" />
+                                {{ __('Accept') }}
+                            </button>
+                            <button type="button" x-on:click="declineGroupCall()" class="brand-button-secondary px-4 py-2">
+                                <flux:icon.phone-x-mark variant="micro" />
+                                {{ __('Decline') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div wire:ignore x-cloak x-show="callStatus === 'active' || callStatus === 'connecting' || callStatus === 'ended'" x-transition.opacity
             x-on:mousemove="showCallChrome()" x-on:click="showCallChrome()" x-on:touchstart.passive="showCallChrome()"
             class="fixed inset-0 z-[70] overflow-hidden bg-neutral-950 text-white">
             <div class="relative h-full w-full overflow-hidden">
@@ -158,7 +201,8 @@
 
                 <video id="group-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="remoteParticipants.length === 0"
-                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover"></video>
+                    x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover transition-opacity duration-200"></video>
                 <div class="absolute inset-0 bg-black/45"></div>
 
                 <div class="absolute inset-0 z-10"
@@ -185,14 +229,41 @@
                 >
                     <div x-cloak x-show="! isMobileViewport" class="h-full w-full" x-bind:class="gridLayoutClass(remoteParticipants.length)">
                         <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0">
-                            <video id="group-call-local-grid-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
-                            <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => auth()->user()->name]) }}</span>
+                            <video id="group-call-local-grid-video" autoplay muted playsinline
+                                x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                                class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
+                            <div
+                                x-cloak
+                                x-show="cameraDisabled"
+                                class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
+                                style="background-color: var(--brand-700);"
+                            >
+                                @if ($authUser?->profile_image)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                        alt="{{ $authUser->name }}"
+                                        class="h-16 w-16 rounded-full object-cover ring-2 ring-white/30">
+                                @else
+                                    <span class="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-xl font-bold text-white">
+                                        {{ $authUser?->initials() ?? '?' }}
+                                    </span>
+                                @endif
+                                <span class="mt-2 text-xs font-semibold text-white/70">{{ __('Camera off') }}</span>
+                            </div>
+                            <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => $authUser?->name]) }}</span>
                         </div>
 
                         <template x-for="participant in remoteParticipants" :key="participant.id">
                             <div class="relative overflow-hidden bg-neutral-900">
-                                <video autoplay playsinline x-bind:id="participant.tileElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
-                                <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
+                                <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
+                                    <span class="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
+                                        style="background-color: var(--brand-600);"
+                                        x-text="participantInitials(participant.id)"></span>
+                                    <span class="mt-2 text-xs text-white/60" x-text="participant.name"></span>
+                                </div>
+                                <video autoplay playsinline x-bind:id="participant.tileElementId" x-effect="$el.volume = Number(volume)"
+                                    x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
+                                    class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
+                                <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
                             </div>
                         </template>
 
@@ -207,7 +278,15 @@
 
                     <div x-cloak x-show="isMobileViewport" class="flex h-full w-full flex-col">
                         <div class="relative min-h-0 flex-1 overflow-hidden bg-neutral-900">
-                            <video id="group-call-speaker-video" autoplay playsinline x-effect="$el.volume = Number(volume)" x-cloak x-show="remoteParticipants.length > 0" class="h-full w-full object-cover"></video>
+                            <div x-cloak x-show="remoteParticipants.length > 0" class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
+                                <span class="flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white"
+                                    style="background-color: var(--brand-600);"
+                                    x-text="speakerParticipant()?.initials ?? '?'"></span>
+                                <span class="mt-2 text-sm text-white/60" x-text="speakerParticipant()?.name"></span>
+                            </div>
+                            <video id="group-call-speaker-video" autoplay playsinline x-effect="$el.volume = Number(volume)" x-cloak x-show="remoteParticipants.length > 0"
+                                x-bind:class="speakerParticipant() && remoteVideoActive.get(speakerParticipant().id) ? 'opacity-100' : 'opacity-0'"
+                                class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
 
                             <div class="flex h-full flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
                                 <div class="relative flex h-24 w-24 items-center justify-center">
@@ -223,14 +302,40 @@
                         <div x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-24 left-0 right-0 z-20 overflow-x-auto px-3">
                             <div class="flex w-max gap-2">
                                 <div class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
-                                    <video id="group-call-local-thumbnail-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
-                                    <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white">{{ __('You') }}</span>
+                                    <video id="group-call-local-thumbnail-video" autoplay muted playsinline
+                                        x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                                        class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
+                                    <div
+                                        x-cloak
+                                        x-show="cameraDisabled"
+                                        class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
+                                        style="background-color: var(--brand-700);"
+                                    >
+                                        @if ($authUser?->profile_image)
+                                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                                alt="{{ $authUser->name }}"
+                                                class="h-10 w-10 rounded-full object-cover ring-2 ring-white/30">
+                                        @else
+                                            <span class="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
+                                                {{ $authUser?->initials() ?? '?' }}
+                                            </span>
+                                        @endif
+                                        <span class="mt-1 text-[9px] font-semibold text-white/70">{{ __('Camera off') }}</span>
+                                    </div>
+                                    <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white">{{ __('You') }}</span>
                                 </div>
 
                                 <template x-for="participant in thumbnailParticipants()" :key="participant.id">
                                     <button type="button" x-on:click="selectSpeaker(participant.id)" class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
-                                        <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
-                                        <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
+                                        <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
+                                            <span class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
+                                                style="background-color: var(--brand-600);"
+                                                x-text="participantInitials(participant.id)"></span>
+                                        </div>
+                                        <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)"
+                                            x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
+                                            class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
+                                        <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
                                     </button>
                                 </template>
                             </div>
@@ -240,7 +345,26 @@
 
                 <div x-cloak x-show="callStatus !== 'idle' && remoteParticipants.length === 0" class="absolute z-30 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
-                    <video id="group-call-local-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] bg-neutral-950 object-cover"></video>
+                    <video id="group-call-local-video" autoplay muted playsinline
+                        x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
+                        class="h-full w-full scale-x-[-1] bg-neutral-950 object-cover transition-opacity duration-200"></video>
+                    <div
+                        x-cloak
+                        x-show="cameraDisabled"
+                        class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
+                        style="background-color: var(--brand-700);"
+                    >
+                        @if ($authUser?->profile_image)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                alt="{{ $authUser->name }}"
+                                class="h-12 w-12 rounded-full object-cover ring-2 ring-white/30">
+                        @else
+                            <span class="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-lg font-bold text-white">
+                                {{ $authUser?->initials() ?? '?' }}
+                            </span>
+                        @endif
+                        <span class="mt-1 text-[10px] font-semibold text-white/70">{{ __('Camera off') }}</span>
+                    </div>
                 </div>
 
                 <div class="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 pb-6 pt-10">
@@ -295,6 +419,15 @@
                                 </div>
                             </div>
                         </div>
+                        <button type="button"
+                            x-cloak
+                            x-show="callStatus === 'active' && remoteParticipants.length > 0 && isPipSupported()"
+                            x-on:click="enterPip()"
+                            class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
+                            title="{{ __('Picture in picture') }}"
+                            aria-label="{{ __('Picture in picture') }}">
+                            <flux:icon.squares-2x2 variant="mini" />
+                        </button>
                         <button type="button" x-on:click="leaveCall()" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
                             <flux:icon.phone-x-mark variant="solid" />
                         </button>

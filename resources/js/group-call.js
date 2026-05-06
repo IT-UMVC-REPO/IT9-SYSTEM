@@ -1,4 +1,4 @@
-import { stripSdp, videoCallIceServers, videoCallResetDelay } from './video-call';
+import { preferCodecs, stripSdp, videoCallIceServers, videoCallResetDelay } from './video-call';
 
 export const groupConversationVideoCall = (config) => ({
     authUserId: config.authUserId,
@@ -17,6 +17,7 @@ export const groupConversationVideoCall = (config) => ({
     hasCheckedCameraDevices: false,
     peerConnections: new Map(),
     remoteStreams: new Map(),
+    remoteVideoActive: new Map(),
     remoteParticipants: [],
     participants: [],
     pendingSignals: new Map(),
@@ -47,10 +48,9 @@ export const groupConversationVideoCall = (config) => ({
                 }
 
                 this.callId = event.call_id;
-                this.callStatus = 'incoming';
+                this.callStatus = 'ringing';
                 this.statusMessage = `${event.caller_name} started a group call.`;
-                this.startCallTimer();
-                this.showCallChrome();
+                window.sukiRingtone?.start();
             })
             .listen('.GroupCallSignal', (event) => {
                 if (event.sender_id === this.authUserId || event.call_id !== this.callId) {
@@ -92,7 +92,7 @@ export const groupConversationVideoCall = (config) => ({
             }
 
             this.callId = callId;
-            this.callStatus = 'incoming';
+            this.callStatus = 'ringing';
             void this.acceptCall();
         };
 
@@ -114,6 +114,10 @@ export const groupConversationVideoCall = (config) => ({
 
     supportsCameraSwitch() {
         return this.hasMultipleCameras;
+    },
+
+    isOverlayVisible() {
+        return this.callStatus === 'active' || this.callStatus === 'connecting' || this.callStatus === 'ended';
     },
 
     normalizeParticipantIds(participants) {
@@ -302,6 +306,7 @@ export const groupConversationVideoCall = (config) => ({
         }
 
         try {
+            window.sukiRingtone?.stop();
             this.callStatus = 'connecting';
             this.statusMessage = 'Joining group call...';
             this.startCallTimer();
@@ -323,6 +328,11 @@ export const groupConversationVideoCall = (config) => ({
         }
     },
 
+    declineGroupCall() {
+        window.sukiRingtone?.stop();
+        this.cleanupGroupCall('idle');
+    },
+
     async leaveCall() {
         if (this.callId !== null) {
             try {
@@ -336,6 +346,8 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     disposeOnLeave() {
+        void this.exitPip();
+
         if (this.localStream === null && this.peerConnections.size === 0) {
             this.teardownRealtimeListeners();
             return;
@@ -404,12 +416,91 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     getBestVideoConstraints(useFallback = false) {
+        const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
+
         return {
-            width: { ideal: useFallback ? 640 : 1280 },
-            height: { ideal: useFallback ? 480 : 720 },
-            frameRate: { ideal: 30 },
+            width: { ideal: isMobile ? 480 : (useFallback ? 640 : 1280) },
+            height: { ideal: isMobile ? 360 : (useFallback ? 480 : 720) },
+            frameRate: { ideal: isMobile ? 15 : 30, max: isMobile ? 20 : 60 },
             facingMode: { ideal: this.facingMode },
         };
+    },
+
+    isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 900);
+    },
+
+    async setMaxBitrate(peer) {
+        const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
+        const videoMaxKbps = isMobile ? 300 : 1200;
+        const audioMaxKbps = 64;
+        const senders = peer.getSenders();
+
+        for (const sender of senders) {
+            const params = sender.getParameters();
+
+            if (!params.encodings || params.encodings.length === 0) {
+                params.encodings = [{}];
+            }
+
+            if (sender.track?.kind === 'video') {
+                params.encodings[0].maxBitrate = videoMaxKbps * 1000;
+                params.encodings[0].maxFramerate = isMobile ? 15 : 30;
+
+                if (isMobile) {
+                    params.encodings[0].scaleResolutionDownBy = 1.5;
+                }
+            } else if (sender.track?.kind === 'audio') {
+                params.encodings[0].maxBitrate = audioMaxKbps * 1000;
+            }
+
+            try {
+                await sender.setParameters(params);
+            } catch {
+                // Some browsers do not support sender parameter updates.
+            }
+        }
+    },
+
+    preferCodecs(sdp, kind = 'video') {
+        return preferCodecs(sdp, kind);
+    },
+
+    isPipSupported() {
+        return Boolean(document.pictureInPictureEnabled);
+    },
+
+    async enterPip() {
+        const speakerVideo = document.getElementById('group-call-speaker-video');
+        const firstRemoteTile = document.querySelector('[id^="group-tile-video-"]');
+        const pipVideo = speakerVideo?.srcObject ? speakerVideo : firstRemoteTile;
+
+        if (!pipVideo || !this.isPipSupported()) {
+            return;
+        }
+
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            }
+
+            await pipVideo.requestPictureInPicture();
+        } catch {
+            // PiP is unavailable or the browser denied the request.
+        }
+    },
+
+    async exitPip() {
+        if (!document.pictureInPictureElement) {
+            return;
+        }
+
+        try {
+            await document.exitPictureInPicture();
+        } catch {
+            // Ignore PiP cleanup failures.
+        }
     },
 
     async updateCameraCapabilities() {
@@ -547,22 +638,39 @@ export const groupConversationVideoCall = (config) => ({
             }
 
             this.remoteStreams.set(peerId, event.streams[0]);
+            this.updateRemoteVideoActive(peerId, event.streams[0]);
+            this.watchRemoteVideoTrack(peerId, event.track, event.streams[0]);
             this.refreshRemoteParticipants();
+            void this.setMaxBitrate(peer);
         };
 
         peer.oniceconnectionstatechange = () => {
             if (peer.iceConnectionState === 'failed') {
                 this.removePeer(peerId);
+                return;
             }
 
             if (peer.iceConnectionState === 'disconnected' && this.callStatus !== 'idle') {
                 this.statusMessage = 'A participant connection was interrupted. Trying to recover...';
+                peer.restartIce?.();
+
+                window.setTimeout(() => {
+                    if (this.peerConnections.get(peerId) === peer && peer.iceConnectionState === 'disconnected') {
+                        this.removePeer(peerId);
+                    }
+                }, 5000);
             }
         };
 
         if (initiator) {
             peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                .then((offer) => peer.setLocalDescription(offer).then(() => offer))
+                .then((offer) => {
+                    const preferredOffer = offer.sdp
+                        ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
+                        : offer;
+
+                    return peer.setLocalDescription(preferredOffer).then(() => preferredOffer);
+                })
                 .then(async (offer) => {
                     const sent = await this.safeSendGroupSignal(peerId, {
                         type: offer.type,
@@ -638,10 +746,14 @@ export const groupConversationVideoCall = (config) => ({
             }));
 
             const answer = await peer.createAnswer();
-            await peer.setLocalDescription(answer);
+            const preferredAnswer = answer.sdp
+                ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
+                : answer;
+
+            await peer.setLocalDescription(preferredAnswer);
             const sent = await this.safeSendGroupSignal(senderId, {
-                type: answer.type,
-                sdp: stripSdp(answer.sdp),
+                type: preferredAnswer.type,
+                sdp: stripSdp(preferredAnswer.sdp),
             });
 
             if (sent) {
@@ -688,6 +800,35 @@ export const groupConversationVideoCall = (config) => ({
             timeoutMs: 10000,
             unavailableMessage: 'Could not sync the group call. Please check your realtime connection.',
         });
+    },
+
+    streamHasActiveVideo(stream) {
+        return stream.getVideoTracks().some((track) => (
+            track.readyState === 'live'
+            && track.enabled !== false
+            && !track.muted
+        ));
+    },
+
+    updateRemoteVideoActive(participantId, stream) {
+        this.remoteVideoActive.set(participantId, this.streamHasActiveVideo(stream));
+        this.remoteVideoActive = new Map(this.remoteVideoActive);
+    },
+
+    setRemoteVideoActive(participantId, active) {
+        this.remoteVideoActive.set(participantId, active);
+        this.remoteVideoActive = new Map(this.remoteVideoActive);
+    },
+
+    watchRemoteVideoTrack(participantId, track, stream) {
+        if (track.kind !== 'video') {
+            return;
+        }
+
+        this.setRemoteVideoActive(participantId, track.readyState === 'live' && !track.muted);
+        track.addEventListener('mute', () => this.setRemoteVideoActive(participantId, false));
+        track.addEventListener('unmute', () => this.updateRemoteVideoActive(participantId, stream));
+        track.addEventListener('ended', () => this.setRemoteVideoActive(participantId, false));
     },
 
     refreshRemoteParticipants() {
@@ -737,14 +878,20 @@ export const groupConversationVideoCall = (config) => ({
 
         this.peerConnections.delete(peerId);
         this.remoteStreams.delete(peerId);
+        this.remoteVideoActive.delete(peerId);
+        this.remoteVideoActive = new Map(this.remoteVideoActive);
         this.refreshRemoteParticipants();
     },
 
     cleanupGroupCall(nextStatus = 'idle', message = '') {
+        void this.exitPip();
+        window.sukiRingtone?.stop();
         this.stopCallTimer();
         this.peerConnections.forEach((peer) => peer.close());
         this.peerConnections.clear();
         this.remoteStreams.clear();
+        this.remoteVideoActive.clear();
+        this.remoteVideoActive = new Map();
         this.remoteParticipants = [];
         this.participants = [];
         this.pendingSignals.clear();

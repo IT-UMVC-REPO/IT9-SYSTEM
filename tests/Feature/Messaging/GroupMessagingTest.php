@@ -156,6 +156,40 @@ test('group conversation ignores stale group call banners', function () {
         ->assertDontSee('Join call');
 });
 
+test('group conversation resolves incoming group call deep links', function () {
+    $caller = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($caller, [$member], [
+        'name' => 'Incoming Call Crew',
+    ]);
+    $call = VideoCall::query()->create([
+        'caller_id' => $caller->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Pending,
+        'created_at' => now(),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $call->getKey(),
+        'user_id' => $caller->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($member)
+        ->get(route('messages.group', [
+            'groupId' => $group->getKey(),
+            'incoming_call' => 1,
+            'call_id' => $call->getKey(),
+        ]))
+        ->assertOk()
+        ->assertSee('Incoming Call Crew')
+        ->assertSee("if ({$call->getKey()} !== null)", false)
+        ->assertSee("callId: {$call->getKey()}", false);
+});
+
 test('create group modal persists creator and selected members', function () {
     $creator = User::factory()->create();
     $member = User::factory()->create([

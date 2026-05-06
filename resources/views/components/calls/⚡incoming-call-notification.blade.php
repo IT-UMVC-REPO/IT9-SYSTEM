@@ -125,9 +125,19 @@ new class extends Component
             return;
         }
 
-        $targetUrl = $this->isGroupCall && $this->groupId !== null
-            ? route('messages.group', ['groupId' => $this->groupId, 'incoming_call' => 1, 'call_id' => $this->callId])
-            : route('messages.conversation', ['conversationReference' => $this->callerId, 'incoming_call' => 1, 'call_id' => $this->callId]);
+        if ($this->isGroupCall && $this->groupId !== null) {
+            $targetUrl = route('messages.group', [
+                'groupId' => $this->groupId,
+                'incoming_call' => 1,
+                'call_id' => $this->callId,
+            ]);
+        } else {
+            $targetUrl = route('messages.conversation', [
+                'conversationReference' => $this->callerId,
+                'incoming_call' => 1,
+                'call_id' => $this->callId,
+            ]);
+        }
 
         $this->dismiss();
         $this->redirect($targetUrl, navigate: true);

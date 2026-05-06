@@ -53,6 +53,35 @@ export function stripSdp(sdp) {
     return filtered.join('\r\n') + '\r\n';
 }
 
+export function preferCodecs(sdp, kind = 'video') {
+    if (!sdp || kind !== 'video') return sdp;
+
+    const lines = sdp.split('\r\n');
+    const mLineIndex = lines.findIndex((line) => line.startsWith('m=video'));
+
+    if (mLineIndex === -1) return sdp;
+
+    const ptMap = {};
+    lines.forEach((line) => {
+        const match = line.match(/^a=rtpmap:(\d+) (VP8|VP9|H264)/i);
+
+        if (match) {
+            ptMap[match[2].toUpperCase()] = match[1];
+        }
+    });
+
+    if (!ptMap.VP8) return sdp;
+
+    const parts = lines[mLineIndex].split(' ');
+    const header = parts.slice(0, 3);
+    const pts = parts.slice(3);
+    const vp8Pt = ptMap.VP8;
+
+    lines[mLineIndex] = [...header, vp8Pt, ...pts.filter((pt) => pt !== vp8Pt)].join(' ');
+
+    return lines.join('\r\n');
+}
+
 export const conversationVideoCall = (config) => ({
     authUserId: config.authUserId,
     conversationKey: config.conversationKey,
@@ -370,6 +399,8 @@ export const conversationVideoCall = (config) => ({
     },
 
     disposeOnLeave() {
+        void this.exitPip();
+
         if (this.localStream === null && this.peer === null) {
             return;
         }
@@ -464,14 +495,31 @@ export const conversationVideoCall = (config) => ({
                 this.markPeerConnected();
             }
 
-            if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
+            if (peer.iceConnectionState === 'disconnected') {
+                peer.restartIce?.();
+
+                window.setTimeout(() => {
+                    if (this.peer === peer && peer.iceConnectionState === 'disconnected') {
+                        void this.endCall(this.connectionFailureMessage());
+                    }
+                }, 5000);
+                return;
+            }
+
+            if (peer.iceConnectionState === 'failed') {
                 void this.endCall(this.connectionFailureMessage());
             }
         };
 
         if (initiator) {
             peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                .then((offer) => peer.setLocalDescription(offer).then(() => offer))
+                .then((offer) => {
+                    const preferredOffer = offer.sdp
+                        ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
+                        : offer;
+
+                    return peer.setLocalDescription(preferredOffer).then(() => preferredOffer);
+                })
                 .then((offer) => {
                     if (this.peer !== peer || !this.callId) {
                         return null;
@@ -496,6 +544,10 @@ export const conversationVideoCall = (config) => ({
         this.clearConnectionTimers();
         this.callStatus = 'active';
         this.statusMessage = 'Connected.';
+
+        if (this.peer !== null) {
+            void this.setMaxBitrate(this.peer);
+        }
     },
 
     startConnectionTimers() {
@@ -578,17 +630,21 @@ export const conversationVideoCall = (config) => ({
                     }
 
                     const answer = await peer.createAnswer();
-                    await peer.setLocalDescription(answer);
+                    const preferredAnswer = answer.sdp
+                        ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
+                        : answer;
+
+                    await peer.setLocalDescription(preferredAnswer);
 
                     if (this.peer !== peer || !this.callId) {
                         return;
                     }
 
-                    const strippedSdp = stripSdp(answer.sdp);
-                    console.log('Outgoing answer SDP size:', new Blob([JSON.stringify({ type: answer.type, sdp: strippedSdp })]).size, 'bytes');
+                    const strippedSdp = stripSdp(preferredAnswer.sdp);
+                    console.log('Outgoing answer SDP size:', new Blob([JSON.stringify({ type: preferredAnswer.type, sdp: strippedSdp })]).size, 'bytes');
 
                     await this.requestJson(this.callRoute('signal'), {
-                        signal_data: { type: answer.type, sdp: strippedSdp },
+                        signal_data: { type: preferredAnswer.type, sdp: strippedSdp },
                     }, { timeoutMs: 15000 });
 
                     this.flushPendingSignals();
@@ -716,12 +772,87 @@ export const conversationVideoCall = (config) => ({
     },
 
     getBestVideoConstraints(useFallback = false) {
+        const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
+
         return {
-            width: { ideal: useFallback ? 640 : 1280 },
-            height: { ideal: useFallback ? 480 : 720 },
-            frameRate: { ideal: 30 },
+            width: { ideal: isMobile ? 480 : (useFallback ? 640 : 1280) },
+            height: { ideal: isMobile ? 360 : (useFallback ? 480 : 720) },
+            frameRate: { ideal: isMobile ? 15 : 30, max: isMobile ? 20 : 60 },
             facingMode: { ideal: this.facingMode },
         };
+    },
+
+    async setMaxBitrate(peer) {
+        const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
+        const videoMaxKbps = isMobile ? 300 : 1200;
+        const audioMaxKbps = 64;
+        const senders = peer.getSenders();
+
+        for (const sender of senders) {
+            const params = sender.getParameters();
+
+            if (!params.encodings || params.encodings.length === 0) {
+                params.encodings = [{}];
+            }
+
+            if (sender.track?.kind === 'video') {
+                params.encodings[0].maxBitrate = videoMaxKbps * 1000;
+                params.encodings[0].maxFramerate = isMobile ? 15 : 30;
+
+                if (isMobile) {
+                    params.encodings[0].scaleResolutionDownBy = 1.5;
+                }
+            } else if (sender.track?.kind === 'audio') {
+                params.encodings[0].maxBitrate = audioMaxKbps * 1000;
+            }
+
+            try {
+                await sender.setParameters(params);
+            } catch {
+                // Some browsers do not support sender parameter updates.
+            }
+        }
+    },
+
+    preferCodecs(sdp, kind = 'video') {
+        return preferCodecs(sdp, kind);
+    },
+
+    isPipSupported() {
+        return Boolean(
+            document.pictureInPictureEnabled
+            && !document.querySelector(`#${remoteVideoElementId}`)?.disablePictureInPicture,
+        );
+    },
+
+    async enterPip() {
+        const remoteVideo = document.getElementById(remoteVideoElementId);
+
+        if (!remoteVideo || !this.isPipSupported()) {
+            return;
+        }
+
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            }
+
+            await remoteVideo.requestPictureInPicture();
+        } catch {
+            // PiP is unavailable or the browser denied the request.
+        }
+    },
+
+    async exitPip() {
+        if (!document.pictureInPictureElement) {
+            return;
+        }
+
+        try {
+            await document.exitPictureInPicture();
+        } catch {
+            // Ignore PiP cleanup failures.
+        }
     },
 
     isMobileDevice() {
@@ -800,6 +931,7 @@ export const conversationVideoCall = (config) => ({
     },
 
     cleanupCall(nextStatus, message = '') {
+        void this.exitPip();
         this.clearConnectionTimers();
         this.stopCallTimer();
 

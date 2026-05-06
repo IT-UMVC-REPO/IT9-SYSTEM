@@ -53,11 +53,14 @@ class GroupConversation extends Component
 
     public ?string $replyingToSender = null;
 
+    public ?int $incomingCallId = null;
+
     public function mount(int $groupId): void
     {
         abort_unless($this->isMember($groupId), 403);
 
         $this->groupId = $groupId;
+        $this->incomingCallId = $this->resolveIncomingGroupCallId();
 
         unset($this->activeGroupCall);
 
@@ -377,6 +380,36 @@ class GroupConversation extends Component
             ->where('group_id', $groupId)
             ->where('user_id', $userId ?? auth()->id())
             ->exists();
+    }
+
+    private function resolveIncomingGroupCallId(): ?int
+    {
+        if (! request()->boolean('incoming_call')) {
+            return null;
+        }
+
+        $requestedCallId = (int) request()->integer('call_id');
+
+        if ($requestedCallId > 0) {
+            $call = VideoCall::query()
+                ->whereKey($requestedCallId)
+                ->where('group_id', $this->groupId)
+                ->where('is_group_call', true)
+                ->where('status', VideoCallStatus::Pending->value)
+                ->first();
+
+            if ($call !== null) {
+                return $call->getKey();
+            }
+        }
+
+        return VideoCall::query()
+            ->where('group_id', $this->groupId)
+            ->where('is_group_call', true)
+            ->where('status', VideoCallStatus::Pending->value)
+            ->where('created_at', '>=', now()->subMinutes(2))
+            ->latest('created_at')
+            ->value('id');
     }
 
     private function validateAttachmentTotalSize(): void

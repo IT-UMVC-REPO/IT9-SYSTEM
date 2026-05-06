@@ -328,6 +328,7 @@ test('video call signaling uses pusher echo credentials', function () {
 
 test('video call client uses native rtc peer connection and server-provided ice configuration', function () {
     $app = file_get_contents(resource_path('js/app.js'));
+    $ringtone = file_get_contents(resource_path('js/ringtone.js'));
     $videoCall = file_get_contents(resource_path('js/video-call.js'));
     $groupCall = file_get_contents(resource_path('js/group-call.js'));
     $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
@@ -338,6 +339,10 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('window.conversationVideoCall')
         ->toContain('window.groupConversationVideoCall')
         ->toContain('window.conversationVideoCallControl')
+        ->and($ringtone)
+        ->toContain("new Audio('/sound/reader.mp3')")
+        ->toContain('loop = true')
+        ->toContain('volume = 0.7')
         ->and($videoCall)
         ->toContain('new RTCPeerConnection({')
         ->toContain('await this.loadIceConfiguration();')
@@ -355,6 +360,10 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('switchCamera')
         ->toContain('sender.replaceTrack(newVideoTrack)')
         ->toContain('Could not switch cameras. Your current camera is still active.')
+        ->toContain('preferCodecs')
+        ->toContain('setMaxBitrate')
+        ->toContain('requestPictureInPicture')
+        ->toContain('peer.restartIce?.()')
         ->and($groupCall)
         ->toContain('groupCallErrorMessage')
         ->toContain('video: false, audio: true')
@@ -379,6 +388,12 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('group-call-local-grid-video')
         ->toContain('group-tile-video')
         ->toContain('hasMultipleCameras')
+        ->toContain("this.callStatus = 'ringing'")
+        ->toContain('declineGroupCall')
+        ->toContain('remoteVideoActive')
+        ->toContain('setMaxBitrate')
+        ->toContain('requestPictureInPicture')
+        ->toContain('peer.restartIce?.()')
         ->and($videoCallControl)
         ->toContain('conversationVideoCallControl')
         ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall')
@@ -418,6 +433,8 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('toggleMicrophone()')
         ->toContain('toggleCamera()')
         ->toContain('phone-x-mark')
+        ->toContain('Camera off')
+        ->toContain('Picture in picture')
         ->toContain("endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')")
         ->toContain('bg-white/60')
         ->toContain('...window.conversationVideoCall({')
@@ -460,8 +477,15 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
         ->toContain('activeParticipantCount()')
         ->toContain('phone-x-mark')
         ->toContain('bg-white/60')
+        ->toContain('incomingCallId')
+        ->toContain('group-call-join\', { callId: @js($incomingCallId) }')
+        ->toContain('callStatus === \'ringing\'')
+        ->toContain('declineGroupCall()')
+        ->toContain('remoteVideoActive.get(participant.id)')
+        ->toContain('Camera off')
+        ->toContain('Picture in picture')
+        ->toContain("callStatus === 'active' || callStatus === 'connecting' || callStatus === 'ended'")
         ->not->toContain('min-h-[40vh]')
-        ->not->toContain('incomingCallId')
         ->not->toContain('group-conversation-auto-answer')
         ->not->toContain('LOCAL PREVIEW')
         ->not->toContain('CALL STATUS');
