@@ -190,6 +190,41 @@ export const groupConversationVideoCall = (config) => ({
         return `right: ${this.previewPosition.right}px; bottom: ${this.previewPosition.bottom}px;`;
     },
 
+    gridStyle(participantCount, viewportWidth = null, viewportHeight = null) {
+        const remoteCount = Number.isFinite(Number(participantCount)) ? Number(participantCount) : 0;
+        const totalTiles = Math.max(1, remoteCount + 1);
+
+        if (totalTiles <= 1) {
+            return 'display: grid; grid-template-columns: 1fr; grid-auto-rows: 1fr;';
+        }
+
+        const width = viewportWidth ?? window.innerWidth;
+        const height = viewportHeight ?? window.innerHeight;
+        const availableHeight = height - 136;
+
+        let bestCols = 1;
+        let bestScore = -Infinity;
+
+        for (let cols = 1; cols <= totalTiles; cols += 1) {
+            const rows = Math.ceil(totalTiles / cols);
+            const emptySlots = (rows * cols) - totalTiles;
+            const tileWidth = width / cols;
+            const tileHeight = availableHeight / rows;
+            const tileAspect = tileWidth / Math.max(tileHeight, 1);
+            const aspectScore = -Math.abs(Math.log(tileAspect / 1.33)) * 3;
+            const emptyPenalty = emptySlots * 4;
+            const narrowTilePenalty = tileWidth < 120 ? (120 - tileWidth) * 0.5 : 0;
+            const score = aspectScore - emptyPenalty - narrowTilePenalty;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCols = cols;
+            }
+        }
+
+        return `display: grid; grid-template-columns: repeat(${bestCols}, 1fr); grid-auto-rows: 1fr;`;
+    },
+
     startPreviewDrag(event) {
         const point = event.touches?.[0] ?? event;
         const startX = point.clientX;
@@ -480,13 +515,33 @@ export const groupConversationVideoCall = (config) => ({
             return;
         }
 
-        const speakerEl = document.getElementById('group-call-speaker-video');
-        const gridEl = document.querySelector('[id^="group-tile-video-"]');
-        const pipVideo = (speakerEl?.srcObject instanceof MediaStream && speakerEl.srcObject.getVideoTracks().length > 0)
-            ? speakerEl
-            : (gridEl?.srcObject instanceof MediaStream && gridEl.srcObject.getVideoTracks().length > 0)
-                ? gridEl
-                : null;
+        let pipVideo = null;
+
+        for (const [participantId, stream] of this.remoteStreams) {
+            if (!(stream instanceof MediaStream) || !stream.getVideoTracks().some((track) => track.readyState === 'live')) {
+                continue;
+            }
+
+            const participant = this.remoteParticipants.find((remoteParticipant) => remoteParticipant.id === participantId);
+
+            if (!participant) {
+                continue;
+            }
+
+            const tileEl = document.getElementById(participant.tileElementId);
+
+            if (tileEl instanceof HTMLVideoElement && tileEl.srcObject instanceof MediaStream) {
+                pipVideo = tileEl;
+                break;
+            }
+
+            const speakerEl = document.getElementById('group-call-speaker-video');
+
+            if (speakerEl instanceof HTMLVideoElement && speakerEl.srcObject instanceof MediaStream) {
+                pipVideo = speakerEl;
+                break;
+            }
+        }
 
         if (!pipVideo) {
             this.statusMessage = 'No remote video available for picture-in-picture.';
@@ -622,7 +677,8 @@ export const groupConversationVideoCall = (config) => ({
             .filter((participantId) => participantId !== this.authUserId)
             .forEach((participantId) => {
                 if (!this.peerConnections.has(participantId)) {
-                    this.createPeerConnection(participantId, this.shouldInitiatePeerConnection(participantId));
+                    const initiator = this.shouldInitiatePeerConnection(participantId);
+                    this.createPeerConnection(participantId, initiator);
                 }
             });
     },
@@ -670,6 +726,22 @@ export const groupConversationVideoCall = (config) => ({
             this.updateRemoteVideoActive(peerId, incomingStream);
             this.watchRemoteVideoTrack(peerId, event.track, incomingStream);
             this.refreshRemoteParticipants();
+
+            const participant = this.remoteParticipants.find((remoteParticipant) => remoteParticipant.id === peerId);
+
+            if (participant) {
+                [participant.tileElementId, participant.thumbnailElementId].forEach((elementId) => {
+                    const element = document.getElementById(elementId);
+
+                    if (element instanceof HTMLVideoElement) {
+                        element.srcObject = incomingStream;
+                        element.play().catch(() => {});
+                    }
+                });
+
+                this.refreshSpeakerVideo();
+            }
+
             void this.setMaxBitrate(peer);
         };
 
@@ -789,7 +861,10 @@ export const groupConversationVideoCall = (config) => ({
             return;
         }
 
-        const peer = this.createPeerConnection(senderId, false);
+        const isOffer = signalData.type === 'offer';
+        const peer = this.peerConnections.has(senderId)
+            ? this.peerConnections.get(senderId)
+            : this.createPeerConnection(senderId, isOffer ? false : !this.shouldInitiatePeerConnection(senderId));
 
         if (!peer) {
             return;
@@ -888,7 +963,12 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     refreshRemoteParticipants() {
-        this.remoteParticipants = Array.from(this.remoteStreams.keys()).map((participantId) => ({
+        const activeParticipantIds = new Set([
+            ...this.remoteStreams.keys(),
+            ...this.peerConnections.keys(),
+        ]);
+
+        this.remoteParticipants = Array.from(activeParticipantIds).map((participantId) => ({
             id: participantId,
             tileElementId: `group-tile-video-${participantId}`,
             thumbnailElementId: `group-thumbnail-video-${participantId}`,
@@ -911,22 +991,46 @@ export const groupConversationVideoCall = (config) => ({
             ));
 
             if (!allMounted && attemptsLeft > 0) {
-                window.setTimeout(() => attemptSources(attemptsLeft - 1), 80);
+                window.setTimeout(() => attemptSources(attemptsLeft - 1), 150);
             }
         };
 
-        window.setTimeout(() => attemptSources(5), 0);
+        window.setTimeout(() => attemptSources(10), 50);
     },
 
     refreshParticipantVideoSources() {
+        this.remoteStreams = new Map(this.remoteStreams);
+        this.remoteVideoActive = new Map(this.remoteVideoActive);
+
         this.remoteParticipants.forEach((participant) => {
-            this.setVideoSource(participant.tileElementId, this.remoteStreams.get(participant.id) ?? null);
-            this.setVideoSource(participant.thumbnailElementId, this.remoteStreams.get(participant.id) ?? null);
+            const stream = this.remoteStreams.get(participant.id) ?? null;
+
+            [participant.tileElementId, participant.thumbnailElementId].forEach((elementId) => {
+                const element = document.getElementById(elementId);
+
+                if (element instanceof HTMLVideoElement && element.srcObject !== stream) {
+                    element.srcObject = stream;
+
+                    if (stream && element.paused) {
+                        element.play().catch(() => {});
+                    }
+                }
+            });
         });
 
         if (this.localStream) {
-            this.setVideoSource('group-call-local-grid-video', this.localStream);
-            this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
+            [
+                'group-call-local-video',
+                'group-call-local-background-video',
+                'group-call-local-grid-video',
+                'group-call-local-thumbnail-video',
+            ].forEach((elementId) => {
+                const element = document.getElementById(elementId);
+
+                if (element instanceof HTMLVideoElement && element.srcObject !== this.localStream) {
+                    element.srcObject = this.localStream;
+                }
+            });
         }
 
         this.refreshSpeakerVideo();
@@ -934,7 +1038,16 @@ export const groupConversationVideoCall = (config) => ({
 
     refreshSpeakerVideo() {
         const speaker = this.speakerParticipant();
-        this.setVideoSource('group-call-speaker-video', speaker === null ? null : this.remoteStreams.get(speaker.id) ?? null);
+        const stream = speaker ? (this.remoteStreams.get(speaker.id) ?? null) : null;
+        const element = document.getElementById('group-call-speaker-video');
+
+        if (element instanceof HTMLVideoElement && element.srcObject !== stream) {
+            element.srcObject = stream;
+
+            if (stream && element.paused) {
+                element.play().catch(() => {});
+            }
+        }
     },
 
     removePeer(peerId) {
@@ -945,11 +1058,16 @@ export const groupConversationVideoCall = (config) => ({
         }
 
         this.peerConnections.delete(peerId);
-        this.remoteStreams.delete(peerId);
-        this.remoteStreams = new Map(this.remoteStreams);
-        this.remoteVideoActive.delete(peerId);
-        this.remoteVideoActive = new Map(this.remoteVideoActive);
-        this.refreshRemoteParticipants();
+
+        window.setTimeout(() => {
+            if (!this.peerConnections.has(peerId)) {
+                this.remoteStreams.delete(peerId);
+                this.remoteStreams = new Map(this.remoteStreams);
+                this.remoteVideoActive.delete(peerId);
+                this.remoteVideoActive = new Map(this.remoteVideoActive);
+                this.refreshRemoteParticipants();
+            }
+        }, 3000);
     },
 
     cleanupGroupCall(nextStatus = 'idle', message = '') {

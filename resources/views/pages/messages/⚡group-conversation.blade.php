@@ -208,26 +208,17 @@
                 <div class="absolute inset-0 z-10"
                     x-data="{
                         isMobileViewport: window.innerWidth < 1024,
-                        updateViewport() { this.isMobileViewport = window.innerWidth < 1024; },
-                        gridLayoutClass(participantCount) {
-                            if (participantCount === 0) {
-                                return 'grid grid-cols-1';
-                            }
-
-                            if (participantCount === 1) {
-                                return 'grid grid-cols-2';
-                            }
-
-                            if (participantCount <= 3) {
-                                return 'grid grid-cols-2 grid-rows-2';
-                            }
-
-                            return 'grid grid-cols-3 grid-rows-2';
+                        viewportWidth: window.innerWidth,
+                        viewportHeight: window.innerHeight,
+                        updateViewport() {
+                            this.isMobileViewport = window.innerWidth < 1024;
+                            this.viewportWidth = window.innerWidth;
+                            this.viewportHeight = window.innerHeight;
                         },
                     }"
-                    x-init="window.addEventListener('resize', () => updateViewport())"
+                    x-init="updateViewport(); window.addEventListener('resize', () => { updateViewport(); })"
                 >
-                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full" x-bind:class="gridLayoutClass(remoteParticipants.length)">
+                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight)">
                         <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0">
                             <video id="group-call-local-grid-video" autoplay muted playsinline
                                 x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
@@ -260,13 +251,9 @@
                                         x-text="participantInitials(participant.id)"></span>
                                     <span class="mt-2 text-xs text-white/60" x-text="participant.name"></span>
                                 </div>
-                                <video autoplay playsinline
+                                <video wire:ignore autoplay playsinline
                                     x-bind:id="participant.tileElementId"
-                                    x-effect="
-                                        const s = $data.remoteStreams?.get(participant.id) ?? null;
-                                        if ($el.srcObject !== s) $el.srcObject = s;
-                                        $el.volume = Number(volume);
-                                    "
+                                    x-effect="$el.volume = Number(volume);"
                                     x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                     class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
                                 <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
@@ -290,13 +277,8 @@
                                     x-text="speakerParticipant()?.initials ?? '?'"></span>
                                 <span class="mt-2 text-sm text-white/60" x-text="speakerParticipant()?.name"></span>
                             </div>
-                            <video id="group-call-speaker-video" autoplay playsinline
-                                x-effect="
-                                    const speaker = speakerParticipant();
-                                    const s = speaker ? ($data.remoteStreams?.get(speaker.id) ?? null) : null;
-                                    if ($el.srcObject !== s) $el.srcObject = s;
-                                    $el.volume = Number(volume);
-                                "
+                            <video wire:ignore id="group-call-speaker-video" autoplay playsinline
+                                x-effect="$el.volume = Number(volume);"
                                 x-cloak x-show="remoteParticipants.length > 0"
                                 x-bind:class="speakerParticipant() && remoteVideoActive.get(speakerParticipant().id) ? 'opacity-100' : 'opacity-0'"
                                 class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
@@ -345,13 +327,9 @@
                                                 style="background-color: var(--brand-600);"
                                                 x-text="participantInitials(participant.id)"></span>
                                         </div>
-                                        <video autoplay playsinline
+                                        <video wire:ignore autoplay playsinline
                                             x-bind:id="participant.thumbnailElementId"
-                                            x-effect="
-                                                const s = $data.remoteStreams?.get(participant.id) ?? null;
-                                                if ($el.srcObject !== s) $el.srcObject = s;
-                                                $el.volume = Number(volume);
-                                            "
+                                            x-effect="$el.volume = Number(volume);"
                                             x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                             class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
                                         <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
