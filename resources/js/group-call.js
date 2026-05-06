@@ -75,7 +75,7 @@ export const groupConversationVideoCall = (config) => ({
 
                 this.participants = this.normalizeParticipantIds(event.participants);
 
-                if (this.localStream !== null && this.callStatus === 'active') {
+                if (this.localStream !== null && (this.callStatus === 'active' || this.callStatus === 'connecting')) {
                     this.connectToParticipants();
                 }
             });
@@ -295,6 +295,10 @@ export const groupConversationVideoCall = (config) => ({
             this.callStatus = 'active';
             this.participants = this.normalizeParticipantIds(payload.participants ?? [this.authUserId]);
             this.statusMessage = 'Group call started.';
+
+            if (this.localStream !== null) {
+                this.connectToParticipants();
+            }
         } catch (error) {
             this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not start the group call.'));
         }
@@ -472,11 +476,23 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     async enterPip() {
-        const speakerVideo = document.getElementById('group-call-speaker-video');
-        const firstRemoteTile = document.querySelector('[id^="group-tile-video-"]');
-        const pipVideo = speakerVideo?.srcObject ? speakerVideo : firstRemoteTile;
+        if (!this.isPipSupported()) {
+            return;
+        }
 
-        if (!pipVideo || !this.isPipSupported()) {
+        const speakerEl = document.getElementById('group-call-speaker-video');
+        const gridEl = document.querySelector('[id^="group-tile-video-"]');
+        const pipVideo = (speakerEl?.srcObject instanceof MediaStream && speakerEl.srcObject.getVideoTracks().length > 0)
+            ? speakerEl
+            : (gridEl?.srcObject instanceof MediaStream && gridEl.srcObject.getVideoTracks().length > 0)
+                ? gridEl
+                : null;
+
+        if (!pipVideo) {
+            this.statusMessage = 'No remote video available for picture-in-picture.';
+            window.setTimeout(() => {
+                this.statusMessage = '';
+            }, 3000);
             return;
         }
 
@@ -487,7 +503,10 @@ export const groupConversationVideoCall = (config) => ({
 
             await pipVideo.requestPictureInPicture();
         } catch {
-            // PiP is unavailable or the browser denied the request.
+            this.statusMessage = 'Picture-in-picture is not available in this browser.';
+            window.setTimeout(() => {
+                this.statusMessage = '';
+            }, 3000);
         }
     },
 
@@ -633,30 +652,67 @@ export const groupConversationVideoCall = (config) => ({
         };
 
         peer.ontrack = (event) => {
-            if (!event.streams[0]) {
-                return;
-            }
+            const incomingStream = (event.streams && event.streams.length > 0)
+                ? event.streams[0]
+                : (() => {
+                    const existing = this.remoteStreams.get(peerId);
 
-            this.remoteStreams.set(peerId, event.streams[0]);
-            this.updateRemoteVideoActive(peerId, event.streams[0]);
-            this.watchRemoteVideoTrack(peerId, event.track, event.streams[0]);
+                    if (existing instanceof MediaStream) {
+                        existing.addTrack(event.track);
+                        return existing;
+                    }
+
+                    return new MediaStream([event.track]);
+                })();
+
+            this.remoteStreams.set(peerId, incomingStream);
+            this.remoteStreams = new Map(this.remoteStreams);
+            this.updateRemoteVideoActive(peerId, incomingStream);
+            this.watchRemoteVideoTrack(peerId, event.track, incomingStream);
             this.refreshRemoteParticipants();
             void this.setMaxBitrate(peer);
         };
 
         peer.oniceconnectionstatechange = () => {
-            if (peer.iceConnectionState === 'failed') {
-                this.removePeer(peerId);
+            if (this.peerConnections.get(peerId) !== peer) {
                 return;
             }
 
-            if (peer.iceConnectionState === 'disconnected' && this.callStatus !== 'idle') {
-                this.statusMessage = 'A participant connection was interrupted. Trying to recover...';
-                peer.restartIce?.();
+            const state = peer.iceConnectionState;
+
+            if (state === 'failed') {
+                this.removePeer(peerId);
+                if (this.callStatus === 'active' && this.callId !== null) {
+                    window.setTimeout(() => {
+                        if (
+                            this.callStatus === 'active'
+                            && !this.peerConnections.has(peerId)
+                            && this.participants.includes(peerId)
+                        ) {
+                            this.createPeerConnection(peerId, this.shouldInitiatePeerConnection(peerId));
+                        }
+                    }, 2000);
+                }
+                return;
+            }
+
+            if (state === 'disconnected' && this.callStatus !== 'idle') {
+                this.statusMessage = 'Connection interrupted. Trying to recover...';
+
+                if (peer.restartIce) {
+                    peer.restartIce();
+                }
 
                 window.setTimeout(() => {
                     if (this.peerConnections.get(peerId) === peer && peer.iceConnectionState === 'disconnected') {
                         this.removePeer(peerId);
+                        if (this.callStatus === 'active' && this.participants.includes(peerId)) {
+                            window.setTimeout(() => {
+                                if (!this.peerConnections.has(peerId) && this.participants.includes(peerId)) {
+                                    this.createPeerConnection(peerId, this.shouldInitiatePeerConnection(peerId));
+                                }
+                            }, 1000);
+                        }
                     }
                 }, 5000);
             }
@@ -847,7 +903,19 @@ export const groupConversationVideoCall = (config) => ({
             this.speakerParticipantId = this.remoteParticipants[0]?.id ?? null;
         }
 
-        window.setTimeout(() => this.refreshParticipantVideoSources(), 0);
+        const attemptSources = (attemptsLeft) => {
+            this.refreshParticipantVideoSources();
+
+            const allMounted = this.remoteParticipants.every((participant) => (
+                document.getElementById(participant.tileElementId) instanceof HTMLVideoElement
+            ));
+
+            if (!allMounted && attemptsLeft > 0) {
+                window.setTimeout(() => attemptSources(attemptsLeft - 1), 80);
+            }
+        };
+
+        window.setTimeout(() => attemptSources(5), 0);
     },
 
     refreshParticipantVideoSources() {
@@ -878,6 +946,7 @@ export const groupConversationVideoCall = (config) => ({
 
         this.peerConnections.delete(peerId);
         this.remoteStreams.delete(peerId);
+        this.remoteStreams = new Map(this.remoteStreams);
         this.remoteVideoActive.delete(peerId);
         this.remoteVideoActive = new Map(this.remoteVideoActive);
         this.refreshRemoteParticipants();
@@ -889,7 +958,7 @@ export const groupConversationVideoCall = (config) => ({
         this.stopCallTimer();
         this.peerConnections.forEach((peer) => peer.close());
         this.peerConnections.clear();
-        this.remoteStreams.clear();
+        this.remoteStreams = new Map();
         this.remoteVideoActive.clear();
         this.remoteVideoActive = new Map();
         this.remoteParticipants = [];

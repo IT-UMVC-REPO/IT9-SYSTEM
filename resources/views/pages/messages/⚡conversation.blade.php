@@ -117,13 +117,32 @@
 
                 <video id="conversation-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="callStatus === 'calling' || callStatus === 'incoming'"
-                    x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover blur-2xl transition-opacity duration-200"
+                    x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100 blur-2xl'"
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover transition-opacity duration-200"
                     style="transform: scaleX(-1) scale(1.1);"></video>
-                <video id="conversation-call-remote-video" autoplay playsinline
-                    x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'"
-                    x-effect="$el.volume = Number(volume)"
-                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover"></video>
+                <div class="absolute inset-0" x-cloak x-show="callStatus === 'active' || callStatus === 'connecting'">
+                    <div
+                        x-show="! remoteVideoActive"
+                        class="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900"
+                    >
+                        <div
+                            class="flex h-24 w-24 items-center justify-center rounded-full text-3xl font-bold text-white ring-4 ring-white/20"
+                            style="background-color: var(--brand-700);"
+                            x-text="otherUserInitials"
+                        ></div>
+                        <p class="mt-3 text-sm font-semibold text-white/80" x-text="otherUserName"></p>
+                        <p class="mt-1 text-xs text-white/50">{{ __('Camera is off') }}</p>
+                    </div>
+
+                    <video
+                        id="conversation-call-remote-video"
+                        autoplay
+                        playsinline
+                        x-effect="$el.volume = Number(volume)"
+                        x-bind:class="remoteVideoActive ? 'opacity-100' : 'opacity-0'"
+                        class="absolute inset-0 h-full w-full bg-neutral-950 object-cover transition-opacity duration-300"
+                    ></video>
+                </div>
                 <div class="absolute inset-0 bg-black/45"></div>
 
                 <div x-cloak x-show="callStatus === 'calling' || callStatus === 'incoming'"

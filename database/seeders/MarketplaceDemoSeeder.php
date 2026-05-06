@@ -855,6 +855,43 @@ class MarketplaceDemoSeeder extends Seeder
         int $targetCount,
     ): int {
         $rows = [];
+        $generalNotificationRow = function (NotificationType $type) use ($users, $vendors, $products): array {
+            $user = $users->random();
+            $vendor = $vendors->random();
+            $product = $products->random();
+            $createdAt = Carbon::now()->subDays(fake()->numberBetween(1, 90))->subMinutes(fake()->numberBetween(0, 1440));
+
+            [$title, $message, $data] = match ($type) {
+                NotificationType::NewProduct => [
+                    'Bagong produkto sa '.$vendor->store_name,
+                    fake()->randomElement(self::newProductNotifications()),
+                    ['route' => 'shop.products.show', 'vendor_id' => $vendor->id, 'product_id' => $product->id],
+                ],
+                NotificationType::Message => [
+                    'May nag-message sa SukiMarket',
+                    'May bagong mensahe mula sa isang suki sa Tagum City.',
+                    ['route' => 'messages.index'],
+                ],
+                default => [
+                    fake()->randomElement(['SukiMarket Tagum update', 'Orchid City market alert', 'Palengke reminder']),
+                    fake()->randomElement(self::systemNotifications()),
+                    ['route' => 'shop.home'],
+                ],
+            };
+
+            return [
+                'user_id' => $user->id,
+                'title' => $title,
+                'message' => strtr($message, [
+                    '{store}' => $vendor->store_name,
+                    '{product}' => $product->name,
+                ]),
+                'type' => $type->value,
+                'data' => json_encode($data),
+                'is_read' => fake()->boolean(58),
+                'created_at' => $createdAt,
+            ];
+        };
 
         foreach ($orders as $order) {
             $createdAt = Carbon::parse($order->created_at)->addMinutes(fake()->numberBetween(5, 90));
@@ -868,6 +905,14 @@ class MarketplaceDemoSeeder extends Seeder
                 'is_read' => fake()->boolean(62),
                 'created_at' => $createdAt,
             ];
+        }
+
+        foreach ([NotificationType::Message, NotificationType::NewProduct, NotificationType::System] as $type) {
+            if (count($rows) >= $targetCount) {
+                break;
+            }
+
+            $rows[] = $generalNotificationRow($type);
         }
 
         foreach ($messageEvents->shuffle()->take(max(1, min($messageEvents->count(), 140))) as $event) {
@@ -888,40 +933,7 @@ class MarketplaceDemoSeeder extends Seeder
 
         while (count($rows) < $targetCount) {
             $type = fake()->randomElement([NotificationType::System, NotificationType::NewProduct, NotificationType::Message]);
-            $user = $users->random();
-            $vendor = $vendors->random();
-            $product = $products->random();
-            $createdAt = Carbon::now()->subDays(fake()->numberBetween(1, 90))->subMinutes(fake()->numberBetween(0, 1440));
-            [$title, $message, $data] = match ($type) {
-                NotificationType::NewProduct => [
-                    'Bagong produkto sa '.$vendor->store_name,
-                    fake()->randomElement(self::newProductNotifications()),
-                    ['route' => 'shop.products.show', 'vendor_id' => $vendor->id, 'product_id' => $product->id],
-                ],
-                NotificationType::Message => [
-                    'May nag-message sa SukiMarket',
-                    'May bagong mensahe mula sa isang suki sa Tagum City.',
-                    ['route' => 'messages.index'],
-                ],
-                default => [
-                    fake()->randomElement(['SukiMarket Tagum update', 'Orchid City market alert', 'Palengke reminder']),
-                    fake()->randomElement(self::systemNotifications()),
-                    ['route' => 'shop.home'],
-                ],
-            };
-
-            $rows[] = [
-                'user_id' => $user->id,
-                'title' => $title,
-                'message' => strtr($message, [
-                    '{store}' => $vendor->store_name,
-                    '{product}' => $product->name,
-                ]),
-                'type' => $type->value,
-                'data' => json_encode($data),
-                'is_read' => fake()->boolean(58),
-                'created_at' => $createdAt,
-            ];
+            $rows[] = $generalNotificationRow($type);
         }
 
         collect($rows)->chunk(500)->each(fn (Collection $chunk): bool => DB::table('notifications')->insert($chunk->all()));

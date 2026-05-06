@@ -107,6 +107,7 @@ export const conversationVideoCall = (config) => ({
     initialized: false,
     microphoneMuted: false,
     cameraDisabled: false,
+    remoteVideoActive: false,
     callStartedAt: null,
     callDurationTimer: null,
     elapsedSeconds: 0,
@@ -474,11 +475,38 @@ export const conversationVideoCall = (config) => ({
         };
 
         peer.ontrack = (event) => {
-            if (this.peer !== peer || !event.streams[0]) {
+            if (this.peer !== peer) {
                 return;
             }
 
-            this.setVideoSource(remoteVideoElementId, event.streams[0]);
+            const incomingStream = (event.streams && event.streams.length > 0)
+                ? event.streams[0]
+                : (() => {
+                    const existing = document.getElementById(remoteVideoElementId)?.srcObject;
+
+                    if (existing instanceof MediaStream) {
+                        existing.addTrack(event.track);
+                        return existing;
+                    }
+
+                    return new MediaStream([event.track]);
+                })();
+
+            this.setVideoSource(remoteVideoElementId, incomingStream);
+
+            if (event.track.kind === 'video') {
+                this.remoteVideoActive = event.track.readyState === 'live' && !event.track.muted;
+                event.track.addEventListener('mute', () => {
+                    this.remoteVideoActive = false;
+                });
+                event.track.addEventListener('unmute', () => {
+                    this.remoteVideoActive = true;
+                });
+                event.track.addEventListener('ended', () => {
+                    this.remoteVideoActive = false;
+                });
+            }
+
             this.markPeerConnected();
         };
 
@@ -496,13 +524,15 @@ export const conversationVideoCall = (config) => ({
             }
 
             if (peer.iceConnectionState === 'disconnected') {
-                peer.restartIce?.();
+                if (peer.restartIce) {
+                    peer.restartIce();
+                }
 
                 window.setTimeout(() => {
                     if (this.peer === peer && peer.iceConnectionState === 'disconnected') {
                         void this.endCall(this.connectionFailureMessage());
                     }
-                }, 5000);
+                }, 8000);
                 return;
             }
 
@@ -828,7 +858,22 @@ export const conversationVideoCall = (config) => ({
     async enterPip() {
         const remoteVideo = document.getElementById(remoteVideoElementId);
 
-        if (!remoteVideo || !this.isPipSupported()) {
+        if (!remoteVideo) {
+            return;
+        }
+
+        const stream = remoteVideo.srcObject;
+        if (!(stream instanceof MediaStream) || stream.getVideoTracks().length === 0) {
+            this.statusMessage = 'No remote video to show in picture-in-picture.';
+            window.setTimeout(() => {
+                if (this.statusMessage.startsWith('No remote')) {
+                    this.statusMessage = '';
+                }
+            }, 3000);
+            return;
+        }
+
+        if (!document.pictureInPictureEnabled) {
             return;
         }
 
@@ -839,7 +884,10 @@ export const conversationVideoCall = (config) => ({
 
             await remoteVideo.requestPictureInPicture();
         } catch {
-            // PiP is unavailable or the browser denied the request.
+            this.statusMessage = 'Picture-in-picture is not available in this browser.';
+            window.setTimeout(() => {
+                this.statusMessage = '';
+            }, 3000);
         }
     },
 
@@ -952,6 +1000,7 @@ export const conversationVideoCall = (config) => ({
         this.iceTransportPolicy = 'all';
         this.microphoneMuted = false;
         this.cameraDisabled = false;
+        this.remoteVideoActive = false;
         this.setVideoSource(localVideoElementId, null);
         this.setVideoSource(localVideoBackgroundElementId, null);
         this.setVideoSource(remoteVideoElementId, null);

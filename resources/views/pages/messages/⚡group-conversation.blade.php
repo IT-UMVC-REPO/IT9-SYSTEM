@@ -260,7 +260,13 @@
                                         x-text="participantInitials(participant.id)"></span>
                                     <span class="mt-2 text-xs text-white/60" x-text="participant.name"></span>
                                 </div>
-                                <video autoplay playsinline x-bind:id="participant.tileElementId" x-effect="$el.volume = Number(volume)"
+                                <video autoplay playsinline
+                                    x-bind:id="participant.tileElementId"
+                                    x-effect="
+                                        const s = $data.remoteStreams?.get(participant.id) ?? null;
+                                        if ($el.srcObject !== s) $el.srcObject = s;
+                                        $el.volume = Number(volume);
+                                    "
                                     x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                     class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
                                 <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
@@ -284,7 +290,14 @@
                                     x-text="speakerParticipant()?.initials ?? '?'"></span>
                                 <span class="mt-2 text-sm text-white/60" x-text="speakerParticipant()?.name"></span>
                             </div>
-                            <video id="group-call-speaker-video" autoplay playsinline x-effect="$el.volume = Number(volume)" x-cloak x-show="remoteParticipants.length > 0"
+                            <video id="group-call-speaker-video" autoplay playsinline
+                                x-effect="
+                                    const speaker = speakerParticipant();
+                                    const s = speaker ? ($data.remoteStreams?.get(speaker.id) ?? null) : null;
+                                    if ($el.srcObject !== s) $el.srcObject = s;
+                                    $el.volume = Number(volume);
+                                "
+                                x-cloak x-show="remoteParticipants.length > 0"
                                 x-bind:class="speakerParticipant() && remoteVideoActive.get(speakerParticipant().id) ? 'opacity-100' : 'opacity-0'"
                                 class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
 
@@ -332,7 +345,13 @@
                                                 style="background-color: var(--brand-600);"
                                                 x-text="participantInitials(participant.id)"></span>
                                         </div>
-                                        <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)"
+                                        <video autoplay playsinline
+                                            x-bind:id="participant.thumbnailElementId"
+                                            x-effect="
+                                                const s = $data.remoteStreams?.get(participant.id) ?? null;
+                                                if ($el.srcObject !== s) $el.srcObject = s;
+                                                $el.volume = Number(volume);
+                                            "
                                             x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                             class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
                                         <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
