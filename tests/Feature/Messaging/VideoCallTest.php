@@ -303,6 +303,7 @@ test('shared-secret turn credentials are temporary and preferred over static cre
 test('video call signaling uses pusher echo credentials', function () {
     $client = file_get_contents(resource_path('js/echo.js'));
     $app = file_get_contents(resource_path('js/app.js'));
+    $broadcasting = file_get_contents(config_path('broadcasting.php'));
     $conversation = messagingBladeSource('conversation');
 
     expect($client)
@@ -312,6 +313,11 @@ test('video call signaling uses pusher echo credentials', function () {
         ->toContain('forceTLS: true')
         ->not->toContain("broadcaster: 'reverb'")
         ->not->toContain('VITE_REVERB_APP_KEY')
+        ->and($broadcasting)
+        ->toContain('PUSHER_CONNECT_TIMEOUT')
+        ->toContain('PUSHER_TIMEOUT')
+        ->toContain('REVERB_CONNECT_TIMEOUT')
+        ->toContain('REVERB_TIMEOUT')
         ->and($app)
         ->toContain("import './echo';")
         ->and($conversation)
@@ -365,6 +371,11 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('this.normalizeParticipantIds(payload.participants ?? [])')
         ->toContain('this.shouldInitiatePeerConnection(participantId)')
         ->toContain('group-call-join')
+        ->toContain('safeHandleGroupSignal')
+        ->toContain('safeSendGroupSignal')
+        ->toContain('refreshParticipantVideoSources')
+        ->toContain('catch(() => {})')
+        ->toContain('Could not sync the group call. Please check your realtime connection.')
         ->toContain('group-call-local-grid-video')
         ->toContain('group-tile-video')
         ->toContain('hasMultipleCameras')
@@ -417,18 +428,22 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->not->toContain('reverbEnabled');
 });
 
-test('group conversation call overlay uses dynamic tiles and one floating local preview', function () {
+test('group conversation call overlay uses desktop tiles and a mobile filmstrip', function () {
     $groupConversation = messagingBladeSource('group-conversation');
 
     expect($groupConversation)
         ->toContain('participantSummaries: @js($this->groupParticipantSummaries())')
         ->toContain('group-call-local-background-video')
         ->toContain('group-call-local-grid-video')
-        ->toContain('group-tile-video')
+        ->toContain('group-call-speaker-video')
+        ->toContain('group-call-local-thumbnail-video')
+        ->toContain('participant.thumbnailElementId')
+        ->toContain('thumbnailParticipants()')
+        ->toContain('selectSpeaker(participant.id)')
+        ->toContain('participant.tileElementId')
         ->toContain('isMobileViewport: window.innerWidth < 1024')
         ->toContain('gridLayoutClass(remoteParticipants.length)')
         ->toContain("return 'grid grid-cols-3 grid-rows-2';")
-        ->toContain('min-h-[40vh]')
         ->toContain('scale-x-[-1]')
         ->toContain('callPreviewStyle()')
         ->toContain('remoteParticipants.length === 0')
@@ -445,8 +460,7 @@ test('group conversation call overlay uses dynamic tiles and one floating local 
         ->toContain('activeParticipantCount()')
         ->toContain('phone-x-mark')
         ->toContain('bg-white/60')
-        ->not->toContain('group-call-speaker-video')
-        ->not->toContain('group-call-thumbnail-video')
+        ->not->toContain('min-h-[40vh]')
         ->not->toContain('incomingCallId')
         ->not->toContain('group-conversation-auto-answer')
         ->not->toContain('LOCAL PREVIEW')

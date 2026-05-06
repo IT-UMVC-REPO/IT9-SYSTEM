@@ -381,7 +381,7 @@ export const conversationVideoCall = (config) => ({
                     'X-CSRF-TOKEN': this.csrfToken(),
                 },
                 keepalive: true,
-            });
+            }).catch(() => {});
         }
 
         this.cleanupCall('idle');

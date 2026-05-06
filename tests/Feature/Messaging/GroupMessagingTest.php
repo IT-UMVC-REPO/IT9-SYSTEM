@@ -116,10 +116,11 @@ test('group conversation renders the polished mobile thread and call controls', 
         ->assertSee('Join call')
         ->assertSee('group-call-join', false)
         ->assertSee('group-call-local-grid-video', false)
-        ->assertSee('group-tile-video', false)
+        ->assertSee('group-call-speaker-video', false)
+        ->assertSee('group-call-local-thumbnail-video', false)
+        ->assertSee('participant.thumbnailElementId', false)
+        ->assertSee('participant.tileElementId', false)
         ->assertSee('Waiting for others to join...')
-        ->assertDontSee('group-call-speaker-video', false)
-        ->assertDontSee('group-call-thumbnail-video', false)
         ->assertDontSee('LOCAL PREVIEW');
 });
 

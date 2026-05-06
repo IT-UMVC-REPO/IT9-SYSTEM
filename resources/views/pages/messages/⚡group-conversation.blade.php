@@ -166,7 +166,7 @@
                         isMobileViewport: window.innerWidth < 1024,
                         updateViewport() { this.isMobileViewport = window.innerWidth < 1024; },
                         gridLayoutClass(participantCount) {
-                            if (this.isMobileViewport || participantCount === 0) {
+                            if (participantCount === 0) {
                                 return 'grid grid-cols-1';
                             }
 
@@ -182,25 +182,59 @@
                         },
                     }"
                     x-init="window.addEventListener('resize', () => updateViewport())"
-                    x-bind:class="gridLayoutClass(remoteParticipants.length)">
-                    <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0" x-bind:class="isMobileViewport ? 'min-h-[40vh]' : ''">
-                        <video id="group-call-local-grid-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
-                        <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => auth()->user()->name]) }}</span>
+                >
+                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full" x-bind:class="gridLayoutClass(remoteParticipants.length)">
+                        <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0">
+                            <video id="group-call-local-grid-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
+                            <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => auth()->user()->name]) }}</span>
+                        </div>
+
+                        <template x-for="participant in remoteParticipants" :key="participant.id">
+                            <div class="relative overflow-hidden bg-neutral-900">
+                                <video autoplay playsinline x-bind:id="participant.tileElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
+                                <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
+                            </div>
+                        </template>
+
+                        <div class="flex flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
+                            <div class="relative flex h-24 w-24 items-center justify-center">
+                                <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
+                                <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
+                            </div>
+                            <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
+                        </div>
                     </div>
 
-                    <template x-for="participant in remoteParticipants" :key="participant.id">
-                        <div class="relative overflow-hidden bg-neutral-900" x-bind:class="isMobileViewport ? 'min-h-[40vh]' : ''">
-                            <video autoplay playsinline x-bind:id="'group-tile-video-' + participant.id" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
-                            <span class="absolute bottom-2 left-2 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
-                        </div>
-                    </template>
+                    <div x-cloak x-show="isMobileViewport" class="flex h-full w-full flex-col">
+                        <div class="relative min-h-0 flex-1 overflow-hidden bg-neutral-900">
+                            <video id="group-call-speaker-video" autoplay playsinline x-effect="$el.volume = Number(volume)" x-cloak x-show="remoteParticipants.length > 0" class="h-full w-full object-cover"></video>
 
-                    <div class="flex flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0" x-bind:class="isMobileViewport ? 'min-h-[40vh]' : ''">
-                        <div class="relative flex h-24 w-24 items-center justify-center">
-                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
-                            <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
+                            <div class="flex h-full flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
+                                <div class="relative flex h-24 w-24 items-center justify-center">
+                                    <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
+                                    <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
+                                </div>
+                                <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
+                            </div>
+
+                            <span x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-56 left-3 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="speakerParticipant()?.name"></span>
                         </div>
-                        <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
+
+                        <div x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-24 left-0 right-0 z-20 overflow-x-auto px-3">
+                            <div class="flex w-max gap-2">
+                                <div class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
+                                    <video id="group-call-local-thumbnail-video" autoplay muted playsinline class="h-full w-full scale-x-[-1] object-cover"></video>
+                                    <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white">{{ __('You') }}</span>
+                                </div>
+
+                                <template x-for="participant in thumbnailParticipants()" :key="participant.id">
+                                    <button type="button" x-on:click="selectSpeaker(participant.id)" class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
+                                        <video autoplay playsinline x-bind:id="participant.thumbnailElementId" x-effect="$el.volume = Number(volume)" class="h-full w-full object-cover"></video>
+                                        <span class="absolute bottom-1 left-1 right-1 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

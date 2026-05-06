@@ -31,6 +31,7 @@ export const groupConversationVideoCall = (config) => ({
     callChromeVisible: true,
     callChromeTimer: null,
     previewPosition: { right: 16, bottom: 96 },
+    groupJoinHandler: null,
 
     init() {
         if (this.initialized || !this.realtimeEnabled || !window.Echo) {
@@ -60,7 +61,7 @@ export const groupConversationVideoCall = (config) => ({
                     return;
                 }
 
-                this.handleGroupSignal(event.sender_id, event.signal_data);
+                void this.safeHandleGroupSignal(event.sender_id, event.signal_data);
             })
             .listen('.GroupCallStatusChanged', (event) => {
                 if (this.callId !== null && event.call_id !== this.callId) {
@@ -79,7 +80,7 @@ export const groupConversationVideoCall = (config) => ({
                 }
             });
 
-        document.addEventListener('group-call-join', (event) => {
+        this.groupJoinHandler = (event) => {
             if (this.callStatus !== 'idle') {
                 return;
             }
@@ -93,7 +94,13 @@ export const groupConversationVideoCall = (config) => ({
             this.callId = callId;
             this.callStatus = 'incoming';
             void this.acceptCall();
-        });
+        };
+
+        document.addEventListener('group-call-join', this.groupJoinHandler);
+    },
+
+    destroy() {
+        this.disposeOnLeave();
     },
 
     supportsVideoCalling() {
@@ -242,7 +249,7 @@ export const groupConversationVideoCall = (config) => ({
 
     selectSpeaker(participantId) {
         this.speakerParticipantId = participantId;
-        this.refreshSpeakerVideo();
+        window.setTimeout(() => this.refreshParticipantVideoSources(), 0);
     },
 
     speakerParticipant() {
@@ -330,6 +337,7 @@ export const groupConversationVideoCall = (config) => ({
 
     disposeOnLeave() {
         if (this.localStream === null && this.peerConnections.size === 0) {
+            this.teardownRealtimeListeners();
             return;
         }
 
@@ -340,10 +348,11 @@ export const groupConversationVideoCall = (config) => ({
                     'X-CSRF-TOKEN': this.csrfToken(),
                 },
                 keepalive: true,
-            });
+            }).catch(() => {});
         }
 
         this.cleanupGroupCall('idle');
+        this.teardownRealtimeListeners();
     },
 
     async ensureLocalStream() {
@@ -388,6 +397,7 @@ export const groupConversationVideoCall = (config) => ({
         this.setVideoSource('group-call-local-video', this.localStream);
         this.setVideoSource('group-call-local-background-video', this.localStream);
         this.setVideoSource('group-call-local-grid-video', this.localStream);
+        this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
         await this.updateCameraCapabilities();
 
         return this.localStream;
@@ -472,6 +482,7 @@ export const groupConversationVideoCall = (config) => ({
         this.setVideoSource('group-call-local-video', this.localStream);
         this.setVideoSource('group-call-local-background-video', this.localStream);
         this.setVideoSource('group-call-local-grid-video', this.localStream);
+        this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
         await this.updateCameraCapabilities();
     },
 
@@ -483,6 +494,7 @@ export const groupConversationVideoCall = (config) => ({
         const payload = await this.requestJson(this.routes.iceServers, null, {
             method: 'GET',
             timeoutMs: 15000,
+            unavailableMessage: 'Could not load group call connection settings.',
         });
 
         this.iceServers = Array.isArray(payload?.ice_servers) && payload.ice_servers.length > 0
@@ -523,10 +535,10 @@ export const groupConversationVideoCall = (config) => ({
                 return;
             }
 
-            void this.sendGroupSignal(peerId, {
+            void this.safeSendGroupSignal(peerId, {
                 type: 'candidate',
                 candidate: candidate.toJSON(),
-            });
+            }, { fatal: false });
         };
 
         peer.ontrack = (event) => {
@@ -539,22 +551,62 @@ export const groupConversationVideoCall = (config) => ({
         };
 
         peer.oniceconnectionstatechange = () => {
-            if (peer.iceConnectionState === 'failed' || peer.iceConnectionState === 'disconnected') {
+            if (peer.iceConnectionState === 'failed') {
                 this.removePeer(peerId);
+            }
+
+            if (peer.iceConnectionState === 'disconnected' && this.callStatus !== 'idle') {
+                this.statusMessage = 'A participant connection was interrupted. Trying to recover...';
             }
         };
 
         if (initiator) {
             peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
                 .then((offer) => peer.setLocalDescription(offer).then(() => offer))
-                .then((offer) => this.sendGroupSignal(peerId, {
-                    type: offer.type,
-                    sdp: stripSdp(offer.sdp),
-                }))
+                .then(async (offer) => {
+                    const sent = await this.safeSendGroupSignal(peerId, {
+                        type: offer.type,
+                        sdp: stripSdp(offer.sdp),
+                    });
+
+                    if (!sent) {
+                        this.removePeer(peerId);
+                    }
+                })
                 .catch(() => this.removePeer(peerId));
         }
 
         return peer;
+    },
+
+    async safeHandleGroupSignal(senderId, signalData) {
+        try {
+            await this.handleGroupSignal(senderId, signalData);
+        } catch (error) {
+            if (this.callStatus !== 'idle') {
+                this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not sync the group call.'));
+            }
+        }
+    },
+
+    async safeSendGroupSignal(recipientId, signalData, options = {}) {
+        const { fatal = true } = options;
+
+        try {
+            await this.sendGroupSignal(recipientId, signalData);
+
+            return true;
+        } catch (error) {
+            const message = this.groupCallErrorMessage(error, 'Could not sync the group call.');
+
+            if (fatal && this.callStatus !== 'idle') {
+                this.cleanupGroupCall('ended', message);
+            } else if (this.callStatus !== 'idle') {
+                this.statusMessage = message;
+            }
+
+            return false;
+        }
     },
 
     async handleGroupSignal(senderId, signalData) {
@@ -587,11 +639,15 @@ export const groupConversationVideoCall = (config) => ({
 
             const answer = await peer.createAnswer();
             await peer.setLocalDescription(answer);
-            await this.sendGroupSignal(senderId, {
+            const sent = await this.safeSendGroupSignal(senderId, {
                 type: answer.type,
                 sdp: stripSdp(answer.sdp),
             });
-            this.flushGroupSignals(senderId);
+
+            if (sent) {
+                this.flushGroupSignals(senderId);
+            }
+
             return;
         }
 
@@ -620,7 +676,7 @@ export const groupConversationVideoCall = (config) => ({
         const signals = this.pendingSignals.get(senderId) ?? [];
         this.pendingSignals.delete(senderId);
         signals.forEach((signalData) => {
-            void this.handleGroupSignal(senderId, signalData);
+            void this.safeHandleGroupSignal(senderId, signalData);
         });
     },
 
@@ -628,14 +684,17 @@ export const groupConversationVideoCall = (config) => ({
         await this.requestJson(this.callRoute('signal'), {
             recipient_id: recipientId,
             signal_data: signalData,
-        }, { timeoutMs: 15000 });
+        }, {
+            timeoutMs: 10000,
+            unavailableMessage: 'Could not sync the group call. Please check your realtime connection.',
+        });
     },
 
     refreshRemoteParticipants() {
         this.remoteParticipants = Array.from(this.remoteStreams.keys()).map((participantId) => ({
             id: participantId,
-            elementId: `group-call-remote-video-${participantId}`,
             tileElementId: `group-tile-video-${participantId}`,
+            thumbnailElementId: `group-thumbnail-video-${participantId}`,
             name: this.participantName(participantId),
             initials: this.participantInitials(participantId),
         }));
@@ -647,16 +706,21 @@ export const groupConversationVideoCall = (config) => ({
             this.speakerParticipantId = this.remoteParticipants[0]?.id ?? null;
         }
 
-        window.setTimeout(() => {
-            this.remoteParticipants.forEach((participant) => {
-                this.setVideoSource(participant.elementId, this.remoteStreams.get(participant.id) ?? null);
-                this.setVideoSource(participant.tileElementId, this.remoteStreams.get(participant.id) ?? null);
-            });
-            if (this.localStream) {
-                this.setVideoSource('group-call-local-grid-video', this.localStream);
-            }
-            this.refreshSpeakerVideo();
-        }, 0);
+        window.setTimeout(() => this.refreshParticipantVideoSources(), 0);
+    },
+
+    refreshParticipantVideoSources() {
+        this.remoteParticipants.forEach((participant) => {
+            this.setVideoSource(participant.tileElementId, this.remoteStreams.get(participant.id) ?? null);
+            this.setVideoSource(participant.thumbnailElementId, this.remoteStreams.get(participant.id) ?? null);
+        });
+
+        if (this.localStream) {
+            this.setVideoSource('group-call-local-grid-video', this.localStream);
+            this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
+        }
+
+        this.refreshSpeakerVideo();
     },
 
     refreshSpeakerVideo() {
@@ -682,8 +746,11 @@ export const groupConversationVideoCall = (config) => ({
         this.peerConnections.clear();
         this.remoteStreams.clear();
         this.remoteParticipants = [];
+        this.participants = [];
         this.pendingSignals.clear();
         this.speakerParticipantId = null;
+        this.iceServers = null;
+        this.iceTransportPolicy = 'all';
 
         if (this.localStream !== null) {
             this.localStream.getTracks().forEach((track) => track.stop());
@@ -698,6 +765,7 @@ export const groupConversationVideoCall = (config) => ({
         this.setVideoSource('group-call-local-video', null);
         this.setVideoSource('group-call-local-background-video', null);
         this.setVideoSource('group-call-local-grid-video', null);
+        this.setVideoSource('group-call-local-thumbnail-video', null);
         this.setVideoSource('group-call-speaker-video', null);
 
         if (nextStatus === 'ended') {
@@ -714,6 +782,19 @@ export const groupConversationVideoCall = (config) => ({
         }
     },
 
+    teardownRealtimeListeners() {
+        if (this.groupJoinHandler !== null) {
+            document.removeEventListener('group-call-join', this.groupJoinHandler);
+            this.groupJoinHandler = null;
+        }
+
+        if (this.initialized && window.Echo) {
+            window.Echo.leave(`group.${this.groupId}`);
+        }
+
+        this.initialized = false;
+    },
+
     callRoute(action) {
         return (this.routes[action] ?? '').replace('__CALL_ID__', String(this.callId ?? ''));
     },
@@ -723,29 +804,47 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     async requestJson(url, body = null, options = {}) {
-        const { method = 'POST', timeoutMs = 5000 } = options;
-        const response = await fetch(url, {
-            method,
-            headers: {
-                ...(body === null ? {} : { 'Content-Type': 'application/json' }),
-                ...(method === 'GET' ? {} : { 'X-CSRF-TOKEN': this.csrfToken() }),
-            },
-            body: body === null ? null : JSON.stringify(body),
-            signal: this.requestSignal(timeoutMs),
-        });
+        const {
+            method = 'POST',
+            timeoutMs = 5000,
+            unavailableMessage = 'Group call server unavailable. Please try again later.',
+        } = options;
+
+        let response;
+
+        try {
+            response = await fetch(url, {
+                method,
+                headers: {
+                    ...(body === null ? {} : { 'Content-Type': 'application/json' }),
+                    ...(method === 'GET' ? {} : { 'X-CSRF-TOKEN': this.csrfToken() }),
+                },
+                body: body === null ? null : JSON.stringify(body),
+                signal: this.requestSignal(timeoutMs),
+            });
+        } catch (error) {
+            this.statusMessage = unavailableMessage;
+            throw new Error(unavailableMessage, { cause: error });
+        }
 
         const payload = (response.headers.get('content-type') ?? '').includes('application/json')
             ? await response.json()
             : null;
 
         if (!response.ok || payload?.realtime_available === false) {
-            throw new Error(payload?.message ?? 'Group call server unavailable.');
+            const message = payload?.message ?? unavailableMessage;
+            this.statusMessage = message;
+            throw new Error(message);
         }
 
         return payload;
     },
 
     requestSignal(timeoutMs) {
+        if (!timeoutMs) {
+            return undefined;
+        }
+
         if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
             return AbortSignal.timeout(timeoutMs);
         }
