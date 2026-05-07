@@ -3,5 +3,5 @@ buildCommand = "composer install --no-dev --optimize-autoloader && npm install &
 
 [deploy]
 startCommand = "php artisan migrate --force && php artisan queue:work --tries=3 &>/dev/null & php artisan serve --host=0.0.0.0 --port=8000"
-healthcheckPath = "/"
+healthcheckPath = "/up"
 healthcheckTimeout = 60
