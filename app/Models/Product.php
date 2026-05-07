@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasStorageImage;
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'image', 'status'])]
+#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'unit', 'image', 'status'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -27,6 +28,7 @@ class Product extends Model
      */
     protected $attributes = [
         'stock_quantity' => 0,
+        'unit' => ProductUnit::Piece->value,
         'status' => ProductStatus::Inactive->value,
     ];
 
@@ -39,8 +41,19 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'unit' => ProductUnit::class,
             'status' => ProductStatus::class,
         ];
+    }
+
+    public function unitLabel(): string
+    {
+        return $this->unit->stockLabel($this->stock_quantity);
+    }
+
+    public function priceWithUnit(): string
+    {
+        return $this->unit->priceLabel($this->price);
     }
 
     public function vendor(): BelongsTo
@@ -72,7 +85,7 @@ class Product extends Model
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'order_items')
-            ->withPivot(['quantity', 'unit_price']);
+            ->withPivot(['quantity', 'unit_price', 'unit']);
     }
 
     public function scopeActive(Builder $query): Builder

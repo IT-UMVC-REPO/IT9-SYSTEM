@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\ReportReason;
 use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -94,7 +96,7 @@ new class extends Component {
         $attachmentPath = $this->attachmentUpload?->store('report-attachments', 'public');
 
         try {
-            Report::query()->create([
+            $report = Report::query()->create([
                 'reporter_id' => auth()->id(),
                 'reported_user_id' => $this->reportedUserId,
                 'order_id' => $this->orderId,
@@ -110,6 +112,8 @@ new class extends Component {
 
             throw $exception;
         }
+
+        AuditLogger::log(AuditEvent::ReportSubmitted, auth()->user()->name." submitted a report against user #{$this->reportedUserId}: {$validated['reason']}.", $report, auth()->id());
 
         $this->reset('reason', 'description', 'attachmentUpload');
 

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['user_id', 'store_name', 'store_description', 'vendor_address', 'store_image', 'status', 'rejection_reason', 'approved_at', 'created_at'])]
+#[Fillable(['user_id', 'store_name', 'store_description', 'vendor_address', 'lat', 'lng', 'store_image', 'status', 'rejection_reason', 'approved_at', 'created_at'])]
 class VendorProfile extends Model
 {
     /** @use HasFactory<VendorProfileFactory> */
@@ -41,7 +41,14 @@ class VendorProfile extends Model
             'status' => VendorStatus::class,
             'approved_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
+            'lat' => 'decimal:6',
+            'lng' => 'decimal:6',
         ];
+    }
+
+    public function hasLocation(): bool
+    {
+        return $this->lat !== null && $this->lng !== null;
     }
 
     public function user(): BelongsTo

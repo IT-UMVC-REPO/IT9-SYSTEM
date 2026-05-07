@@ -3,8 +3,11 @@
 namespace App\Livewire\Pages\Vendor;
 
 use App\Concerns\VendorProductValidationRules;
+use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Events\NotificationCreated;
@@ -12,6 +15,7 @@ use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Product;
 use App\Models\VendorProfile;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -51,6 +55,7 @@ class Registration extends Component
      *     description: string,
      *     price: string,
      *     stock_quantity: string,
+     *     unit: string,
      *     categoryId: string,
      *     status: string,
      *     currentImage: string|null,
@@ -122,6 +127,7 @@ class Registration extends Component
 
         $validated = $this->validate($this->vendorRegistrationRules());
         $storedStoreImagePath = $this->storeImageUpload->store('store-images', 'public');
+        $isReapplication = $vendorProfile !== null;
 
         DB::transaction(function () use ($user, $vendorProfile, $validated, $storedStoreImagePath): void {
             if ($vendorProfile !== null) {
@@ -139,6 +145,7 @@ class Registration extends Component
                     'store_name' => $validated['store_name'],
                     'store_description' => $validated['store_description'],
                     'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
+                    ...TagumCoordinate::random(),
                     'store_image' => $storedStoreImagePath,
                     'status' => VendorStatus::Pending,
                     'rejection_reason' => null,
@@ -150,6 +157,7 @@ class Registration extends Component
                     'store_name' => $validated['store_name'],
                     'store_description' => $validated['store_description'],
                     'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
+                    ...TagumCoordinate::random(),
                     'store_image' => $storedStoreImagePath,
                     'status' => VendorStatus::Pending,
                     'rejection_reason' => null,
@@ -161,6 +169,16 @@ class Registration extends Component
             $this->vendorProfileId = $vendorProfile->getKey();
             $this->currentStoreImage = $storedStoreImagePath;
         });
+
+        $submittedProfile = $this->currentVendorProfileRecord();
+
+        if ($submittedProfile !== null) {
+            AuditLogger::log(
+                $isReapplication ? AuditEvent::VendorApplicationReapplied : AuditEvent::VendorApplicationSubmitted,
+                "{$user->name} submitted a vendor application for '{$submittedProfile->store_name}'.",
+                $submittedProfile,
+            );
+        }
 
         $this->storeImageUpload = null;
         $this->showReapplicationForm = false;
@@ -305,6 +323,7 @@ class Registration extends Component
                 'description' => $validatedProduct['description'],
                 'price' => $validatedProduct['price'],
                 'stock_quantity' => (int) $validatedProduct['stock_quantity'],
+                'unit' => $validatedProduct['unit'] ?? ProductUnit::Piece->value,
                 'status' => ProductStatus::Inactive,
             ];
 
@@ -339,6 +358,7 @@ class Registration extends Component
             'description' => '',
             'price' => '',
             'stock_quantity' => '0',
+            'unit' => ProductUnit::Piece->value,
             'categoryId' => '',
             'status' => ProductStatus::Inactive->value,
             'currentImage' => null,
@@ -354,6 +374,7 @@ class Registration extends Component
             'description' => $product->description,
             'price' => (string) $product->price,
             'stock_quantity' => (string) $product->stock_quantity,
+            'unit' => $product->unit->value,
             'categoryId' => (string) $product->category_id,
             'status' => ProductStatus::Inactive->value,
             'currentImage' => $product->getRawOriginal('image'),

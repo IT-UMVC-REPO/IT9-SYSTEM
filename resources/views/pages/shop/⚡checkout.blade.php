@@ -103,10 +103,9 @@
 
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                        <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __(':qty × ₱:amount', [
-                                            'qty' => $item->quantity,
-                                            'amount' => number_format((float) $item->product->price, 2),
-                                        ]) }}</p>
+                                        <p class="text-xs text-neutral-400 dark:text-zinc-500">
+                                            {{ $item->quantity }} {{ $item->product->unit->abbreviation() }} × ₱{{ number_format((float) $item->product->price, 2) }}
+                                        </p>
                                     </div>
 
                                     <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">

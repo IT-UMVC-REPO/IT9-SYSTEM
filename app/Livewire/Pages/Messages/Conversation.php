@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Messages;
 
+use App\Enums\AuditEvent;
 use App\Enums\UserRole;
 use App\Enums\VideoCallStatus;
 use App\Events\MessageSent;
@@ -10,6 +11,7 @@ use App\Models\MessageAttachment;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\VideoCall;
+use App\Services\AuditLogger;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +126,8 @@ class Conversation extends Component
         } catch (\Throwable $broadcastException) {
             Log::warning('MessageSent broadcast failed (Reverb may be down): '.$broadcastException->getMessage());
         }
+
+        AuditLogger::log(AuditEvent::MessageSent, auth()->user()->name.' sent a message to user #'.$this->otherUserId.'.', $message, null, ['length' => strlen($trimmedMessage)]);
 
         $this->newMessage = '';
         $this->attachmentUploads = [];

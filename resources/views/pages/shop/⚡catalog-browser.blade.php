@@ -311,7 +311,7 @@ new class extends Component {
 
                                             @if ($product->stock_quantity > 0)
                                                 <span class="brand-accent-pill rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm">
-                                                    {{ $product->stock_quantity }} left
+                                                    {{ $product->unitLabel() }}
                                                 </span>
                                             @else
                                                 <span class="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
@@ -334,7 +334,7 @@ new class extends Component {
                                                 <i class="fa-solid fa-arrow-right text-[10px]"></i>
                                             </a>
                                         </div>
-                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">₱{{ number_format((float) $product->price, 2) }}</span>
+                                        <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->priceWithUnit() }}</span>
                                     </div>
 
                                     <a href="{{ route('shop.products.show', $product) }}" class="brand-group-hover-text mt-3 block text-2xl font-semibold text-neutral-900 transition dark:text-zinc-100">

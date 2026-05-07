@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\ConversationGroupMember;
 use App\Models\Order;
 use Illuminate\Support\Facades\Broadcast;
@@ -45,4 +46,8 @@ Broadcast::channel('notifications.{userId}', function ($user, int $userId): bool
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
+});
+
+Broadcast::channel('admin.audit', function ($user): bool {
+    return $user->effectiveMarketplaceRole() === UserRole::Admin;
 });

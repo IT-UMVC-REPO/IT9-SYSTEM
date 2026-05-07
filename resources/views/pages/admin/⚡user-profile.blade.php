@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\VendorStatus;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,8 @@ new #[Title('User profile')] class extends Component {
             ->findOrFail($user->getKey());
 
         $this->lastActivity = $this->resolveLastActivity($this->user->getKey());
+
+        AuditLogger::log(AuditEvent::AdminUserViewed, "Admin viewed user '{$this->user->email}'.", $this->user);
     }
 
     public function toggleActiveStatus(): void
@@ -36,6 +40,12 @@ new #[Title('User profile')] class extends Component {
         $this->user->forceFill([
             'is_active' => ! $this->user->is_active,
         ])->save();
+
+        AuditLogger::log(
+            $this->user->is_active ? AuditEvent::UserReactivated : AuditEvent::UserDeactivated,
+            "Admin ".($this->user->is_active ? 'reactivated' : 'deactivated')." account '{$this->user->email}'.",
+            $this->user,
+        );
 
         $this->user->refresh();
         $this->lastActivity = $this->resolveLastActivity($this->user->getKey());

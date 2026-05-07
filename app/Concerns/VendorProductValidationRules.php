@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use App\Models\Category;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,7 @@ trait VendorProductValidationRules
                 Rule::in(Category::query()->leaves()->pluck('id')->all()),
             ],
             $qualifiedKey('status') => ['required', Rule::enum(ProductStatus::class)],
+            $qualifiedKey('unit') => ['required', Rule::enum(ProductUnit::class)],
             $imageField => array_values(array_filter([
                 $requireImage ? 'required' : 'nullable',
                 'image',

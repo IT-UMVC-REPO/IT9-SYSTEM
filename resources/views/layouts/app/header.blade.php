@@ -32,6 +32,7 @@
                         $homeNavigationItem,
                         $navItem('Dashboard', 'customer.dashboard', ['customer.*'], 'fa-solid fa-table-cells-large'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                        $navItem('Find Stalls', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
                         $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Seller setup', 'vendor.registration', ['vendor.registration'], 'fa-solid fa-shop'),
                     ],
@@ -46,6 +47,7 @@
                     [
                         $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                        $navItem('Find Stalls', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
                         $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
                         $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
@@ -64,6 +66,7 @@
                         $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                         $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
+                        $navItem('Audit Log', 'admin.audit', ['admin.audit'], 'fa-solid fa-clipboard-list'),
                     ],
                     [
                         $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
@@ -99,9 +102,9 @@
                 \App\Enums\UserRole::Customer => [
                     $navItem('Home', 'customer.dashboard', ['customer.dashboard'], 'fa-solid fa-house'),
                     $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                    $navItem('Map', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
                     $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
                     $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
-                    $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                 ],
                 \App\Enums\UserRole::Vendor => [
                     $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
@@ -116,6 +119,7 @@
                     $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                     $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                     $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
+                    $navItem('Audit', 'admin.audit', ['admin.audit'], 'fa-solid fa-clipboard-list'),
                 ],
             };
         }

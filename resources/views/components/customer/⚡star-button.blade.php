@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\VendorCustomerStar;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
@@ -50,6 +52,8 @@ new class extends Component
 
         $this->isStarred = true;
 
+        AuditLogger::log(AuditEvent::CustomerStarred, "Vendor starred customer #{$this->customer->id}.", $this->customer);
+
         Flux::toast(variant: 'success', text: __('Customer marked as valued.'));
 
         $this->dispatch('customer-stars-updated');
@@ -67,6 +71,8 @@ new class extends Component
         });
 
         $this->isStarred = false;
+
+        AuditLogger::log(AuditEvent::CustomerUnstarred, "Vendor unstarred customer #{$this->customer->id}.", $this->customer);
 
         Flux::toast(variant: 'warning', text: __('Customer removed from valued list.'));
 

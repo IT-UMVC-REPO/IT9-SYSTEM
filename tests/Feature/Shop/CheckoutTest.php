@@ -2,6 +2,7 @@
 
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Enums\ProductUnit;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -89,6 +90,7 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
     expect($order->orderItems)->toHaveCount(1);
     expect($order->orderItems->first()->quantity)->toBe(2);
     expect((float) $order->orderItems->first()->unit_price)->toBe(120.0);
+    expect($order->orderItems->first()->unit)->toBe($seeded['product']->unit);
     expect((float) $seeded['product']->fresh()->stock_quantity)->toBe(6.0);
     expect($seeded['cart']->fresh()->cartItems()->count())->toBe(0);
     expect($order->payment)->not->toBeNull();
@@ -96,6 +98,54 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
 
     Queue::assertPushed(SendOrderNotificationJob::class, 1);
     Queue::assertPushed(SendOrderNotificationJob::class, fn (SendOrderNotificationJob $job) => $job->orderId === $order->getKey());
+});
+
+test('checkout decrements stock using the selected quantity', function () {
+    Queue::fake();
+
+    $customer = User::factory()->create([
+        'address' => 'Tagum City Public Market',
+    ]);
+    $seeded = seedCheckoutCart($customer, quantity: 3, productOverrides: [
+        'stock_quantity' => 10,
+        'unit' => ProductUnit::Kilogram,
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', 'Tagum City Public Market')
+        ->set('payment_method', 'cod')
+        ->call('placeOrder')
+        ->assertHasNoErrors();
+
+    expect((int) $seeded['product']->fresh()->stock_quantity)->toBe(7);
+});
+
+test('checkout snapshots the order item unit independently from the product', function () {
+    Queue::fake();
+
+    $customer = User::factory()->create([
+        'address' => 'Magugpo Poblacion, Tagum City',
+    ]);
+    $seeded = seedCheckoutCart($customer, quantity: 2, productOverrides: [
+        'unit' => ProductUnit::Kilogram,
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', 'Magugpo Poblacion, Tagum City')
+        ->set('payment_method', 'cod')
+        ->call('placeOrder')
+        ->assertHasNoErrors();
+
+    $orderItem = Order::query()->firstOrFail()->orderItems()->sole();
+
+    expect($orderItem->getRawOriginal('unit'))->toBe(ProductUnit::Kilogram->value)
+        ->and($orderItem->unit)->toBe(ProductUnit::Kilogram);
+
+    $seeded['product']->update(['unit' => ProductUnit::Piece]);
+
+    expect($orderItem->fresh()->getRawOriginal('unit'))->toBe(ProductUnit::Kilogram->value);
 });
 
 test('delivery address is required at checkout', function () {

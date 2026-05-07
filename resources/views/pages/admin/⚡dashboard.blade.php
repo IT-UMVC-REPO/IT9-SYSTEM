@@ -36,6 +36,54 @@
         @endforeach
     </section>
 
+    <section
+        wire:ignore
+        x-data="{
+            feed: [],
+            init() {
+                if (!window.Echo) return;
+                window.Echo.channel('admin.audit').listen('.AuditLogCreated', (entry) => {
+                    this.feed.unshift(entry);
+                    if (this.feed.length > 30) this.feed.pop();
+                });
+            },
+        }"
+        class="brand-panel flex flex-col gap-5 p-6 sm:p-8"
+    >
+        <div>
+            <span class="brand-kicker">{{ __('Live activity') }}</span>
+            <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Platform feed') }}</h2>
+        </div>
+
+        <div class="min-h-[200px] space-y-2 overflow-y-auto max-h-72 pr-1">
+            <template x-for="(entry, index) in feed" :key="entry.id ?? index">
+                <div
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 -translate-y-2"
+                    x-transition:enter-end="opacity-100 translate-y-0"
+                    class="flex items-start gap-3 rounded-xl border border-stone-100 bg-stone-50/70 px-4 py-2.5 dark:border-white/5 dark:bg-white/[3%]"
+                >
+                    <i :class="entry.icon + ' mt-0.5 text-sm text-[var(--brand-600)] dark:text-[var(--brand-400)]'"></i>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm text-neutral-800 dark:text-zinc-200">
+                            <span class="font-semibold" x-text="entry.user_name"></span>
+                            <span x-text="entry.description"></span>
+                        </p>
+                        <p class="text-xs text-neutral-400 dark:text-zinc-500" x-text="entry.label"></p>
+                    </div>
+                </div>
+            </template>
+
+            <p x-show="feed.length === 0" class="py-10 text-center text-sm text-neutral-400 dark:text-zinc-500">
+                {{ __('Waiting for activity...') }}
+            </p>
+        </div>
+
+        <a href="{{ route('admin.audit') }}" wire:navigate class="brand-button-secondary self-start text-sm">
+            {{ __('View full audit log') }}
+        </a>
+    </section>
+
     <section class="grid gap-6 xl:grid-cols-2">
         <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">

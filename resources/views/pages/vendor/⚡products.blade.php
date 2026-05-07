@@ -1,9 +1,11 @@
 <?php
 
 use App\Concerns\HasVendorGuard;
+use App\Enums\AuditEvent;
 use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -28,6 +30,12 @@ new #[Title('My products')] class extends Component {
     #[Url(as: 'category', except: '')]
     public string $categoryFilter = '';
 
+    public ?int $restockProductId = null;
+
+    public string $restockQuantity = '';
+
+    public bool $showRestockModal = false;
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -41,6 +49,17 @@ new #[Title('My products')] class extends Component {
     public function updatedCategoryFilter(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedShowRestockModal(bool $showRestockModal): void
+    {
+        if ($showRestockModal) {
+            return;
+        }
+
+        $this->restockProductId = null;
+        $this->restockQuantity = '';
+        $this->resetValidation(['restockQuantity']);
     }
 
     public function toggleStatus(int $productId): void
@@ -76,7 +95,48 @@ new #[Title('My products')] class extends Component {
 
         $product->delete();
 
+        AuditLogger::log(AuditEvent::ProductDeleted, "Vendor deleted product '{$product->name}' (ID:{$product->id}).", null, auth()->id());
+
         Flux::toast(variant: 'success', text: __('Listing deleted.'));
+    }
+
+    public function openRestock(int $productId): void
+    {
+        $this->restockProductId = $productId;
+        $this->restockQuantity = '';
+        $this->showRestockModal = true;
+        $this->resetValidation(['restockQuantity']);
+    }
+
+    public function restock(): void
+    {
+        $this->validate([
+            'restockQuantity' => ['required', 'integer', 'min:1', 'max:99999'],
+        ]);
+
+        $product = Product::query()
+            ->forVendor($this->approvedVendorProfile()->getKey())
+            ->findOrFail($this->restockProductId);
+
+        $product->increment('stock_quantity', (int) $this->restockQuantity);
+        $product->refresh();
+
+        AuditLogger::log(AuditEvent::ProductRestocked, "Vendor restocked '{$product->name}' by {$this->restockQuantity} {$product->unit->abbreviation()}. New total: {$product->unitLabel()}.", $product);
+
+        Flux::toast(
+            variant: 'success',
+            text: __('Stock updated. :product now has :stock.', [
+                'product' => $product->name,
+                'stock' => $product->unitLabel(),
+            ]),
+        );
+
+        $this->restockProductId = null;
+        $this->restockQuantity = '';
+        $this->showRestockModal = false;
+
+        unset($this->products);
+        unset($this->stats);
     }
 
     #[Computed]
@@ -133,6 +193,7 @@ new #[Title('My products')] class extends Component {
 
 }; ?>
 
+<div>
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -189,7 +250,7 @@ new #[Title('My products')] class extends Component {
     <section
         class="transition duration-200"
         wire:loading.class="opacity-60"
-        wire:target="search,statusFilter,categoryFilter,toggleStatus,deleteProduct,gotoPage,previousPage,nextPage"
+                wire:target="search,statusFilter,categoryFilter,toggleStatus,deleteProduct,restock,gotoPage,previousPage,nextPage"
     >
         @if ($this->products->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -211,7 +272,7 @@ new #[Title('My products')] class extends Component {
                                 </div>
 
                                 <span class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">
-                                    ₱{{ number_format((float) $product->price, 2) }}
+                                    {{ $product->priceWithUnit() }}
                                 </span>
                             </div>
 
@@ -219,10 +280,10 @@ new #[Title('My products')] class extends Component {
                                 <p @class([
                                     'font-semibold',
                                     'text-rose-600 dark:text-rose-300' => $product->stock_quantity === 0,
-                                    'text-amber-600 dark:text-amber-300' => $product->stock_quantity > 0 && $product->stock_quantity <= 5,
-                                    'text-emerald-600 dark:text-emerald-300' => $product->stock_quantity > 5,
+                                    'text-amber-600 dark:text-amber-300' => $product->stock_quantity > 0 && $product->stock_quantity <= 10,
+                                    'text-emerald-600 dark:text-emerald-300' => $product->stock_quantity > 10,
                                 ])>
-                                    {{ trans_choice(':count in stock|:count in stock', $product->stock_quantity, ['count' => $product->stock_quantity]) }}
+                                    {{ __(':stock in stock', ['stock' => $product->unitLabel()]) }}
                                 </p>
 
                                 <span @class([
@@ -245,10 +306,18 @@ new #[Title('My products')] class extends Component {
                                     {{ $product->status === ProductStatus::Active ? __('Set inactive') : __('Publish listing') }}
                                 </button>
 
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid grid-cols-3 gap-2">
                                     <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary w-full">
                                         {{ __('Edit') }}
                                     </a>
+
+                                    <button
+                                        type="button"
+                                        wire:click="openRestock({{ $product->id }})"
+                                        class="inline-flex w-full items-center justify-center rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-3 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]"
+                                    >
+                                        {{ __('Restock') }}
+                                    </button>
 
                                     <button
                                         type="button"
@@ -304,4 +373,74 @@ new #[Title('My products')] class extends Component {
             </div>
         @endif
     </section>
+</div>
+
+<flux:modal
+    wire:model.self="showRestockModal"
+    name="restock-product-modal"
+    class="max-w-sm"
+>
+    @if ($restockProductId !== null)
+        @php($restockProduct = $this->products->getCollection()->firstWhere('id', $restockProductId))
+
+        <div class="p-6 space-y-5">
+            <div>
+                <flux:heading size="lg">{{ __('Restock product') }}</flux:heading>
+                <flux:text class="mt-2">
+                    @if ($restockProduct)
+                        {{ __('Add to your current :stock for ":name".', [
+                            'stock' => $restockProduct->unitLabel(),
+                            'name' => $restockProduct->name,
+                        ]) }}
+                    @endif
+                </flux:text>
+            </div>
+
+            <div>
+                <flux:field>
+                    <flux:label>
+                        {{ __('How many :units are you adding?', [
+                            'units' => $restockProduct?->unit->label() ?? __('units'),
+                        ]) }}
+                    </flux:label>
+                    <flux:input
+                        wire:model="restockQuantity"
+                        type="number"
+                        min="1"
+                        :placeholder="__('e.g. 50')"
+                        autofocus
+                    />
+                    <flux:error name="restockQuantity" />
+                </flux:field>
+
+                @if ($restockProduct && filled($restockQuantity) && is_numeric($restockQuantity) && (int) $restockQuantity > 0)
+                    <p class="mt-3 text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                        {{ __('New total: :total', [
+                            'total' => $restockProduct->unit->stockLabel($restockProduct->stock_quantity + (int) $restockQuantity),
+                        ]) }}
+                    </p>
+                @endif
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <flux:button
+                    variant="ghost"
+                    wire:click="$set('showRestockModal', false)"
+                >
+                    {{ __('Cancel') }}
+                </flux:button>
+
+                <flux:button
+                    variant="primary"
+                    wire:click="restock"
+                    wire:loading.attr="disabled"
+                    wire:target="restock"
+                >
+                    <span wire:loading.remove wire:target="restock">{{ __('Add stock') }}</span>
+                    <span wire:loading wire:target="restock">{{ __('Saving...') }}</span>
+                </flux:button>
+            </div>
+        </div>
+    @endif
+</flux:modal>
 </div>

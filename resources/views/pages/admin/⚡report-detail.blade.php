@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Models\Report;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -32,6 +34,12 @@ new #[Title('Report detail')] class extends Component
         $this->report->reportedUser->forceFill([
             'is_active' => ! $this->report->reportedUser->is_active,
         ])->save();
+
+        AuditLogger::log(
+            $this->report->reportedUser->is_active ? AuditEvent::UserReactivated : AuditEvent::UserDeactivated,
+            "Admin ".($this->report->reportedUser->is_active ? 'reactivated' : 'deactivated')." account '{$this->report->reportedUser->email}'.",
+            $this->report->reportedUser,
+        );
 
         $this->report = $this->resolveReport($this->report);
 
@@ -64,6 +72,8 @@ new #[Title('Report detail')] class extends Component
             'admin_notes' => filled($notes) ? $notes : null,
         ])->save();
 
+        AuditLogger::log(AuditEvent::ReportReviewed, "Admin reviewed report #{$this->report->id}.", $this->report);
+
         Flux::toast(variant: 'success', text: __('Report marked as reviewed.'));
 
         $this->redirectRoute('admin.reports', navigate: true);
@@ -82,6 +92,8 @@ new #[Title('Report detail')] class extends Component
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
         ])->save();
+
+        AuditLogger::log(AuditEvent::ReportDismissed, "Admin dismissed report #{$this->report->id}.", $this->report);
 
         Flux::toast(variant: 'success', text: __('Report dismissed.'));
 

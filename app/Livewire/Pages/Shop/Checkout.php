@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Shop;
 
 use App\Concerns\OrderValidationRules;
+use App\Enums\AuditEvent;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
@@ -15,6 +16,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -109,8 +111,8 @@ class Checkout extends Component
                     }
 
                     if ($product->stock_quantity < $cartItem->quantity) {
-                        $validationMessages["cart.{$cartItem->getKey()}"] = __('Only :count unit(s) of :product remain in stock.', [
-                            'count' => $product->stock_quantity,
+                        $validationMessages["cart.{$cartItem->getKey()}"] = __('Only :amount of :product remain in stock.', [
+                            'amount' => $product->unitLabel(),
                             'product' => $product->name,
                         ]);
 
@@ -156,6 +158,7 @@ class Checkout extends Component
                             'product_id' => $resolvedItem['product']->getKey(),
                             'quantity' => $resolvedItem['quantity'],
                             'unit_price' => $resolvedItem['unit_price'],
+                            'unit' => $resolvedItem['product']->unit->value,
                         ]);
 
                         $resolvedItem['product']->decrement('stock_quantity', $resolvedItem['quantity']);
@@ -176,6 +179,16 @@ class Checkout extends Component
                         userId: $customer->getKey(),
                         title: 'Order placed',
                         message: 'Your order #'.$order->getKey().' has been placed and is awaiting vendor confirmation.',
+                    );
+
+                    $vendorProfile = $vendorItems->first()['product']->vendor;
+
+                    AuditLogger::log(
+                        AuditEvent::OrderPlaced,
+                        "Order #{$order->id} placed by {$customer->name} with '{$vendorProfile->store_name}'. Total: ₱".number_format($vendorTotal, 2).'.',
+                        $order,
+                        $customer->getKey(),
+                        ['vendor_id' => (int) $vendorId, 'total' => $vendorTotal, 'item_count' => $vendorItems->count()],
                     );
 
                     $createdOrderIds[] = $order->getKey();

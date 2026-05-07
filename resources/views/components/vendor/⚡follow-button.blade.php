@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\UserRole;
 use App\Models\Favorite;
 use App\Models\VendorProfile;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
@@ -47,6 +49,8 @@ new class extends Component
 
         $this->isFollowing = true;
 
+        AuditLogger::log(AuditEvent::VendorFollowed, auth()->user()->name." followed stall '{$this->vendor->store_name}'.", $this->vendor);
+
         Flux::toast(variant: 'success', text: __('Stall added to favourites.'));
 
         $this->dispatch('favorites-updated');
@@ -64,6 +68,8 @@ new class extends Component
         });
 
         $this->isFollowing = false;
+
+        AuditLogger::log(AuditEvent::VendorUnfollowed, auth()->user()->name." unfollowed stall '{$this->vendor->store_name}'.", $this->vendor);
 
         Flux::toast(variant: 'warning', text: __('Stall removed from favourites.'));
 

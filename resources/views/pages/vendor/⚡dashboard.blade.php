@@ -76,11 +76,11 @@ new #[Title('Vendor Dashboard')] class extends Component
         return Product::query()
             ->forVendor($this->vendorProfile->getKey())
             ->active()
-            ->where('stock_quantity', '<=', 5)
+            ->where('stock_quantity', '<=', 10)
             ->orderBy('stock_quantity')
             ->orderBy('name')
             ->limit(5)
-            ->get(['id', 'name', 'stock_quantity']);
+            ->get(['id', 'name', 'stock_quantity', 'unit']);
     }
 
 };
@@ -177,13 +177,18 @@ new #[Title('Vendor Dashboard')] class extends Component
                             <div>
                                 <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</p>
                                 <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">
-                                    {{ trans_choice(':count unit left|:count units left', $product->stock_quantity, ['count' => $product->stock_quantity]) }}
+                                    {{ __(':stock remaining', ['stock' => $product->unitLabel()]) }}
                                 </p>
                             </div>
 
-                            <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary">
-                                {{ __('Edit') }}
-                            </a>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary text-sm px-3 py-2">
+                                    {{ __('Edit') }}
+                                </a>
+                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary text-sm px-3 py-2">
+                                    {{ __('Restock') }}
+                                </a>
+                            </div>
                         </div>
                     </article>
                 @empty
@@ -195,5 +200,35 @@ new #[Title('Vendor Dashboard')] class extends Component
                 @endforelse
             </div>
         </aside>
+    </section>
+
+    <section class="brand-panel p-6 sm:p-8">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <span class="brand-kicker">{{ __('Customer map') }}</span>
+                <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
+                    {{ __('Where your suki buyers are') }}
+                </h2>
+            </div>
+        </div>
+
+        <div
+            x-data="sukiVendorMap()"
+            x-init="initMap('suki-vendor-map-dashboard')"
+            class="mt-6 overflow-hidden rounded-2xl"
+        >
+            <div id="suki-vendor-map-dashboard" class="h-[400px] w-full"></div>
+
+            <div class="mt-4 flex gap-3" x-cloak>
+                <button
+                    type="button"
+                    x-on:click="toggleCustomers()"
+                    x-bind:class="showCustomers ? 'brand-button-primary' : 'brand-button-secondary'"
+                    class="text-sm"
+                >
+                    <span x-text="showCustomers ? @js(__('Hide customers')) : @js(__('Show my customers'))"></span>
+                </button>
+            </div>
+        </div>
     </section>
 </div>

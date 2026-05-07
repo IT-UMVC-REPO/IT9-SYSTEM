@@ -1,7 +1,10 @@
 ﻿<?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\AuditEvent;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
+use App\Services\AuditLogger;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Storage;
 use Flux\Flux;
@@ -71,6 +74,10 @@ new #[Title('Profile settings')] class extends Component {
             'address' => blank($validated['address'] ?? null) ? null : $validated['address'],
         ]);
 
+        if ($user->isDirty('address')) {
+            $user->forceFill(filled($user->address) ? TagumCoordinate::random() : ['lat' => null, 'lng' => null]);
+        }
+
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
@@ -89,12 +96,24 @@ new #[Title('Profile settings')] class extends Component {
         $user->save();
 
         if ($isVendor && $user->vendorProfile !== null) {
-            $user->vendorProfile->update([
+            $vendorAddress = blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'];
+            $vendorProfileAttributes = [
                 'store_name' => $validated['store_name'],
                 'store_description' => blank($validated['store_description'] ?? null) ? null : $validated['store_description'],
-                'vendor_address' => blank($validated['vendor_address'] ?? null) ? null : $validated['vendor_address'],
-            ]);
+                'vendor_address' => $vendorAddress,
+            ];
+
+            if ($user->vendorProfile->vendor_address !== $vendorAddress) {
+                $vendorProfileAttributes = [
+                    ...$vendorProfileAttributes,
+                    ...(filled($vendorAddress) ? TagumCoordinate::random() : ['lat' => null, 'lng' => null]),
+                ];
+            }
+
+            $user->vendorProfile->update($vendorProfileAttributes);
         }
+
+        AuditLogger::log(AuditEvent::UserProfileUpdated, auth()->user()->name.' updated their profile.', auth()->user());
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\MapController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Route;
 $verificationThrottle = 'throttle:'.config('fortify.limiters.verification', '6,1');
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+
+Route::get('/api/map/vendors', [MapController::class, 'vendors'])->name('map.vendors');
 
 Route::middleware(['auth', $verificationThrottle])->group(function () {
     Route::get('/email/verify', [EmailVerificationController::class, 'show'])->name('verification.notice');
@@ -26,10 +29,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::livewire('/notifications', 'pages::notifications.index')->name('notifications.index');
+
+    Route::prefix('api/map')->name('map.')->group(function (): void {
+        Route::get('/customers', [MapController::class, 'customers'])
+            ->middleware('role:vendor,admin')
+            ->name('customers');
+    });
 });
 
 Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('customer')->name('customer.')->group(function () {
     Route::livewire('/dashboard', 'pages::customer.dashboard')->name('dashboard');
+});
+
+Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('shop')->name('shop.')->group(function () {
+    Route::livewire('/map', 'pages::shop.vendor-map')->name('map');
 });
 
 Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('shop')->name('shop.')->group(function () {
@@ -69,6 +82,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::livewire('/users', 'pages::admin.users')->name('users');
     Route::livewire('/users/{user}', 'pages::admin.user-profile')->name('users.show');
     Route::livewire('/orders', 'pages::admin.orders')->name('orders');
+    Route::livewire('/audit', 'pages::admin.audit-log')->name('audit');
     Route::livewire('/reports', 'pages::admin.reports')->name('reports');
     Route::livewire('/reports/{report}', 'pages::admin.report-detail')->name('reports.show');
 });

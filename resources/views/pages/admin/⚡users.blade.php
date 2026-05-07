@@ -1,11 +1,13 @@
 <?php
 
 use App\Concerns\HasPaginationView;
+use App\Enums\AuditEvent;
 use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Models\User;
 use App\Models\VendorProfile;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Computed;
@@ -66,6 +68,12 @@ new #[Title('User management')] class extends Component {
                 'is_active' => !$user->is_active,
             ])
             ->save();
+
+        AuditLogger::log(
+            $user->is_active ? AuditEvent::UserReactivated : AuditEvent::UserDeactivated,
+            "Admin ".($user->is_active ? 'reactivated' : 'deactivated')." account '{$user->email}'.",
+            $user,
+        );
 
         Flux::toast(variant: $user->is_active ? 'success' : 'warning', text: $user->is_active ? __('Account activated. The user can sign in again.') : __('Account deactivated. The user will be unable to log in.'));
     }
@@ -198,6 +206,13 @@ new #[Title('User management')] class extends Component {
                                                     {{ $user->vendorProfile->store_name }}
                                                 </p>
                                             @endif
+
+                                            @if ($user->hasLocation())
+                                                <a href="{{ route('shop.map', ['highlight' => $user->id]) }}" wire:navigate class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-200)] bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">
+                                                    <i class="fa-solid fa-map-location-dot text-[10px]"></i>
+                                                    {{ __('View on map') }}
+                                                </a>
+                                            @endif
                                         </div>
                                     </div>
                                 </flux:table.cell>
@@ -286,6 +301,13 @@ new #[Title('User management')] class extends Component {
                                 @if ($user->vendorProfile !== null)
                                     <p class="mt-2 text-sm text-neutral-600 dark:text-zinc-300">
                                         {{ $user->vendorProfile->store_name }}</p>
+                                @endif
+
+                                @if ($user->hasLocation())
+                                    <a href="{{ route('shop.map', ['highlight' => $user->id]) }}" wire:navigate class="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-200)] bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">
+                                        <i class="fa-solid fa-map-location-dot text-[10px]"></i>
+                                        {{ __('View on map') }}
+                                    </a>
                                 @endif
                             </div>
                         </div>

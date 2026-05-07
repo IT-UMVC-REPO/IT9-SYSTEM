@@ -2,9 +2,12 @@
 
 use App\Concerns\HasVendorGuard;
 use App\Concerns\VendorProductValidationRules;
+use App\Enums\AuditEvent;
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -29,11 +32,14 @@ new #[Title('Create product')] class extends Component {
 
     public string $status = 'inactive';
 
+    public string $unit = '';
+
     public $productImageUpload = null;
 
     public function mount(): void
     {
         $this->status = ProductStatus::Inactive->value;
+        $this->unit = ProductUnit::Piece->value;
     }
 
     public function save(): void
@@ -42,20 +48,32 @@ new #[Title('Create product')] class extends Component {
 
         $imagePath = $this->productImageUpload->store('product-images', 'public');
 
-        Product::query()->create([
+        $product = Product::query()->create([
             'vendor_id' => $this->approvedVendorProfile()->getKey(),
             'category_id' => (int) $validated['categoryId'],
             'name' => $validated['name'],
             'description' => $validated['description'],
             'price' => $validated['price'],
             'stock_quantity' => (int) $validated['stock_quantity'],
+            'unit' => $validated['unit'],
             'image' => $imagePath,
             'status' => $validated['status'],
         ]);
 
+        AuditLogger::log(AuditEvent::ProductCreated, "Vendor created product '{$product->name}' (ID:{$product->id}).", $product);
+
         Flux::toast(variant: 'success', text: __('Product saved.'));
 
         $this->redirectRoute('vendor.products', navigate: true);
+    }
+
+    public function updatedCategoryId(): void
+    {
+        unset($this->categoryUnitSuggestions);
+
+        $suggestions = $this->categoryUnitSuggestions;
+
+        $this->unit = $suggestions !== [] ? $suggestions[0]->value : ProductUnit::Piece->value;
     }
 
     #[Computed]
@@ -67,6 +85,32 @@ new #[Title('Create product')] class extends Component {
             ->orderBy('name')
             ->get()
             ->groupBy(fn (Category $category) => $category->parent?->name ?? __('Other'));
+    }
+
+    /**
+     * @return list<ProductUnit>
+     */
+    #[Computed]
+    public function categoryUnitSuggestions(): array
+    {
+        if (blank($this->categoryId)) {
+            return ProductUnit::cases();
+        }
+
+        $category = Category::query()->find((int) $this->categoryId);
+
+        if ($category === null) {
+            return ProductUnit::cases();
+        }
+
+        $suggestions = ProductUnit::suggestionsForCategory($category->slug ?? '');
+
+        $remaining = array_values(array_filter(
+            ProductUnit::cases(),
+            fn (ProductUnit $unit): bool => ! in_array($unit, $suggestions, true),
+        ));
+
+        return [...$suggestions, ...$remaining];
     }
 
 }; ?>
@@ -183,6 +227,7 @@ new #[Title('Create product')] class extends Component {
                     <flux:input
                         wire:model="price"
                         :label="__('Price')"
+                        :description="filled($unit) && \App\Enums\ProductUnit::tryFrom($unit) ? __('Price per :unit', ['unit' => \App\Enums\ProductUnit::from($unit)->label()]) : __('Price per unit')"
                         type="number"
                         inputmode="decimal"
                         step="0.01"
@@ -195,6 +240,7 @@ new #[Title('Create product')] class extends Component {
                 <flux:input
                     wire:model="stock_quantity"
                     :label="__('Stock quantity')"
+                    :description="filled($unit) && \App\Enums\ProductUnit::tryFrom($unit) ? __('How many :units you have available right now', ['units' => \App\Enums\ProductUnit::from($unit)->abbreviation()]) : __('Available stock')"
                     type="number"
                     min="0"
                     step="1"
@@ -202,7 +248,7 @@ new #[Title('Create product')] class extends Component {
                 />
             </div>
 
-            <flux:select wire:model="categoryId" :label="__('Category')" placeholder="{{ __('Choose a category') }}">
+            <flux:select wire:model.live="categoryId" :label="__('Category')" placeholder="{{ __('Choose a category') }}">
                 @foreach ($this->categoryGroups as $parentName => $categories)
                     <optgroup label="{{ $parentName }}">
                         @foreach ($categories as $category)
@@ -211,6 +257,45 @@ new #[Title('Create product')] class extends Component {
                     </optgroup>
                 @endforeach
             </flux:select>
+
+            <div class="space-y-3" wire:key="unit-selector-{{ $categoryId }}">
+                <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100">{{ __('Selling unit') }}</p>
+                <p class="text-xs leading-6 text-neutral-500 dark:text-neutral-400">
+                    {{ __('Choose the unit customers will buy this product in. Your price and stock quantity apply per unit.') }}
+                </p>
+
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    @foreach ($this->categoryUnitSuggestions as $unitOption)
+                        <button
+                            type="button"
+                            wire:click="$set('unit', '{{ $unitOption->value }}')"
+                            @class([
+                                'rounded-xl border px-3 py-2.5 text-left transition',
+                                'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $unit === $unitOption->value,
+                                'border-stone-200 bg-stone-100 text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-white/5 dark:text-neutral-300' => $unit !== $unitOption->value,
+                            ])
+                        >
+                            <p class="text-sm font-semibold">{{ $unitOption->label() }}</p>
+                            <p class="mt-0.5 text-xs opacity-75">{{ __('per :unit', ['unit' => $unitOption->abbreviation()]) }}</p>
+                        </button>
+                    @endforeach
+                </div>
+
+                @error('unit')
+                    <p class="text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                @enderror
+
+                @php($selectedUnit = \App\Enums\ProductUnit::tryFrom($unit))
+
+                @if ($selectedUnit !== null && filled($price))
+                    <div class="rounded-xl border border-[oklch(from_var(--brand-400)_l_c_h_/_0.32)] bg-[oklch(from_var(--brand-100)_l_c_h_/_0.6)] px-4 py-3 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ __('Price preview') }}</p>
+                        <p class="mt-1 text-lg font-semibold text-neutral-900 dark:text-zinc-100">
+                            {{ $selectedUnit->priceLabel((float) $price) }}
+                        </p>
+                    </div>
+                @endif
+            </div>
 
             <div class="space-y-3">
                 <p class="text-sm font-medium text-neutral-900 dark:text-neutral-100">{{ __('Publishing status') }}</p>

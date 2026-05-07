@@ -205,7 +205,7 @@ new #[Title('Cart')] class extends Component {
 
                                     <div class="grid gap-4 md:min-w-[15rem] md:justify-items-end">
                                         <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                            {{ __('₱:amount each', ['amount' => number_format((float) $item->product->price, 2)]) }}
+                                            {{ $item->product->priceWithUnit() }}
                                         </p>
 
                                         <div class="flex items-center gap-3">
@@ -303,10 +303,7 @@ new #[Title('Cart')] class extends Component {
                                     <div wire:key="cart-summary-item-{{ $item->id }}" class="flex items-center justify-between gap-3 text-sm">
                                         <div class="min-w-0">
                                             <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                            <p class="text-neutral-500 dark:text-zinc-400">{{ __(':qty × ₱:amount', [
-                                                'qty' => $item->quantity,
-                                                'amount' => number_format((float) $item->product->price, 2),
-                                            ]) }}</p>
+                                            <p class="text-neutral-500 dark:text-zinc-400">{{ $item->quantity }} {{ $item->product->unit->abbreviation() }} × ₱{{ number_format((float) $item->product->price, 2) }}</p>
                                         </div>
                                         <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
                                             {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}

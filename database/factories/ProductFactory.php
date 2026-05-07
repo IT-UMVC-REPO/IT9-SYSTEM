@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\VendorProfile;
@@ -58,6 +59,17 @@ class ProductFactory extends Factory
             'description' => sprintf(fake()->randomElement($productDescriptions), $name),
             'price' => fake()->randomFloat(2, 50, 500),
             'stock_quantity' => fake()->numberBetween(0, 100),
+            'unit' => fake()->randomElement([
+                ProductUnit::Kilogram->value,
+                ProductUnit::Kilogram->value,
+                ProductUnit::Kilogram->value,
+                ProductUnit::Piece->value,
+                ProductUnit::Piece->value,
+                ProductUnit::Bundle->value,
+                ProductUnit::Tray->value,
+                ProductUnit::Bottle->value,
+                ProductUnit::Pack->value,
+            ]),
             'image' => fake()->randomElement($foodPhotoUrls),
             'status' => ProductStatus::Inactive,
         ];

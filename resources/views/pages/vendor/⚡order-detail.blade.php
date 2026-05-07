@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
@@ -7,6 +8,8 @@ use App\Enums\VendorStatus;
 use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -57,7 +60,7 @@ new #[Title('Vendor Order Detail')] class extends Component
             return;
         }
 
-        DB::transaction(function () use ($nextStatus): void {
+        $updatedOrder = DB::transaction(function () use ($nextStatus): Order {
             $order = Order::query()
                 ->with('payment')
                 ->lockForUpdate()
@@ -74,11 +77,25 @@ new #[Title('Vendor Order Detail')] class extends Component
                     'paid_at' => now(),
                 ]);
             }
+
+            AuditLogger::log(
+                match ($order->order_status) {
+                    OrderStatus::Confirmed => AuditEvent::OrderConfirmed,
+                    OrderStatus::Preparing => AuditEvent::OrderPreparing,
+                    OrderStatus::Ready => AuditEvent::OrderReady,
+                    OrderStatus::Delivered => AuditEvent::OrderDelivered,
+                    default => AuditEvent::OrderCancelled,
+                },
+                "Order #{$order->id} status changed to '{$order->order_status->value}' by vendor.",
+                $order,
+            );
+
+            return $order;
         });
 
         SendOrderNotificationJob::dispatch(
-            orderId: $this->orderId,
-            userId: $currentOrder->customer_id,
+            orderId: $updatedOrder->getKey(),
+            userId: $updatedOrder->customer_id,
             title: 'Order '.Str::headline($nextStatus->value),
             message: 'Your order #'.$this->orderId.' is now '.Str::lower(Str::headline($nextStatus->value)).'.',
             type: NotificationType::OrderUpdate,
@@ -101,11 +118,21 @@ new #[Title('Vendor Order Detail')] class extends Component
         }
 
         DB::transaction(function (): void {
-            Order::query()
+            $order = Order::query()
+                ->with('payment')
                 ->where('vendor_id', $this->vendorId())
                 ->findOrFail($this->orderId)
-                ->forceFill(['order_status' => OrderStatus::Cancelled])
-                ->save();
+                ->forceFill(['order_status' => OrderStatus::Cancelled]);
+
+            $order->save();
+
+            $order->orderItems()->with('product')->get()->each(function (OrderItem $item): void {
+                if ($item->product !== null) {
+                    $item->product->increment('stock_quantity', $item->quantity);
+                }
+            });
+
+            AuditLogger::log(AuditEvent::OrderCancelled, "Order #{$order->id} cancelled.", $order);
         });
 
         SendOrderNotificationJob::dispatch(
@@ -265,10 +292,10 @@ new #[Title('Vendor Order Detail')] class extends Component
                             </div>
 
                             <div class="flex flex-wrap items-center gap-5 text-sm text-neutral-500 dark:text-zinc-400">
-                                <span>{{ __('Qty :qty', ['qty' => $item->quantity]) }}</span>
-                                <span>{{ __('₱:amount each', ['amount' => number_format((float) $item->unit_price, 2)]) }}</span>
+                                <span>{{ $item->quantity }} {{ $item->unit->abbreviation() }}</span>
+                                <span>{{ $item->unit->priceLabel($item->unit_price) }}</span>
                                 <span class="font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('₱:amount', ['amount' => number_format((float) $item->unit_price * $item->quantity, 2)]) }}
+                                    {{ $item->lineTotal() }}
                                 </span>
                             </div>
                         </div>

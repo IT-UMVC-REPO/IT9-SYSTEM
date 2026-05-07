@@ -3,6 +3,7 @@
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Enums\ProductUnit;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Category;
 use App\Models\Order;
@@ -40,8 +41,8 @@ function seedTrackedOrder(User $customer, array $orderOverrides = [], array $pay
         ->for($category)
         ->active()
         ->sequence(
-            ['name' => 'Fresh Talong', 'price' => 75],
-            ['name' => 'Pechay Bundle', 'price' => 105],
+            ['name' => 'Fresh Talong', 'price' => 75, 'stock_quantity' => 7, 'unit' => ProductUnit::Kilogram],
+            ['name' => 'Pechay Bundle', 'price' => 105, 'stock_quantity' => 4, 'unit' => ProductUnit::Bundle],
         )
         ->create();
 
@@ -50,6 +51,7 @@ function seedTrackedOrder(User $customer, array $orderOverrides = [], array $pay
         'product_id' => $products[0]->getKey(),
         'quantity' => 2,
         'unit_price' => 75,
+        'unit' => $products[0]->unit,
     ]);
 
     OrderItem::query()->create([
@@ -57,6 +59,7 @@ function seedTrackedOrder(User $customer, array $orderOverrides = [], array $pay
         'product_id' => $products[1]->getKey(),
         'quantity' => 1,
         'unit_price' => 105,
+        'unit' => $products[1]->unit,
     ]);
 
     $payment = Payment::factory()
@@ -139,12 +142,36 @@ test('cancel order changes the status and dispatches a vendor notification job',
     expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Cancelled);
     expect($tracked['order']->fresh()->payment_status)->toBe(PaymentStatus::Failed);
     expect($tracked['payment']->fresh()->status)->toBe(PaymentStatus::Failed);
+    expect((int) $tracked['products'][0]->fresh()->stock_quantity)->toBe(9);
+    expect((int) $tracked['products'][1]->fresh()->stock_quantity)->toBe(5);
 
     Queue::assertPushed(SendOrderNotificationJob::class, function (SendOrderNotificationJob $job) use ($tracked) {
         return $job->orderId === $tracked['order']->getKey()
             && $job->userId === $tracked['vendor']->user_id
             && $job->broadcastOrderStatus === true;
     });
+});
+
+test('customer cancellation restores stock for each order item', function () {
+    Queue::fake();
+
+    $customer = User::factory()->create();
+    $tracked = seedTrackedOrder($customer, [
+        'total_amount' => 225,
+    ]);
+
+    $tracked['order']->orderItems()->where('product_id', $tracked['products'][1]->getKey())->delete();
+    $tracked['order']->orderItems()->where('product_id', $tracked['products'][0]->getKey())->update([
+        'quantity' => 3,
+        'unit' => ProductUnit::Kilogram->value,
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.order-detail', ['orderReference' => (string) $tracked['order']->getKey()])
+        ->call('cancelOrder');
+
+    expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Cancelled)
+        ->and((int) $tracked['products'][0]->fresh()->stock_quantity)->toBe(10);
 });
 
 test('cancelled order does not allow further cancellation', function () {

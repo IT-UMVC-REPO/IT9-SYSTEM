@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\VendorProfile;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Title;
@@ -50,6 +52,8 @@ new #[Title('Vendor review')] class extends Component {
             ]);
 
             event(new NotificationCreated($notification));
+
+            AuditLogger::log(AuditEvent::VendorApproved, "Admin approved vendor '{$this->vendorProfile->store_name}'.", $this->vendorProfile);
         });
 
         Flux::toast(variant: 'success', text: __('Vendor approved.'));
@@ -83,6 +87,8 @@ new #[Title('Vendor review')] class extends Component {
             ]);
 
             event(new NotificationCreated($notification));
+
+            AuditLogger::log(AuditEvent::VendorRejected, "Admin rejected vendor '{$this->vendorProfile->store_name}': {$validated['rejection_reason']}.", $this->vendorProfile);
         });
 
         Flux::toast(variant: 'warning', text: __('Application rejected.'));
@@ -163,7 +169,7 @@ new #[Title('Vendor review')] class extends Component {
                             >
                             <h3 class="mt-4 font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</h3>
                             <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">{{ $product->category->name }}</p>
-                            <p class="mt-2 text-sm font-semibold text-neutral-900 dark:text-zinc-100">₱{{ number_format((float) $product->price, 2) }}</p>
+                            <p class="mt-2 text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->priceWithUnit() }}</p>
                         </article>
                     @empty
                         <div class="sm:col-span-2 xl:col-span-3 rounded-[1.5rem] border border-dashed border-stone-200 p-8 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">

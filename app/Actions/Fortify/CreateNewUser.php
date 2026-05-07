@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -33,6 +34,7 @@ class CreateNewUser implements CreatesNewUsers
             'is_active' => true,
             'phone' => $input['phone'] ?? null,
             'address' => $input['address'] ?? null,
+            ...TagumCoordinate::random(),
         ]);
     }
 }

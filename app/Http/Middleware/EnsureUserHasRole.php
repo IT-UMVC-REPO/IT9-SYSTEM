@@ -35,6 +35,10 @@ class EnsureUserHasRole
             $request->session()->flash('toast.warning', __('Admin accounts use the admin portal. Customer shopping actions are disabled for administrators.'));
         }
 
+        if ($request->expectsJson()) {
+            abort(403);
+        }
+
         return redirect()->route($user->homeRoute());
     }
 

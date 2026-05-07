@@ -171,7 +171,7 @@ new class extends Component {
     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Bring this stall to your cart') }}</h2>
     <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-        {{ __('Choose how many you need, then add the item to your cart or head straight to checkout when you are ready.') }}
+        {{ __('Choose how many :units you need, then add the item to your cart or head straight to checkout.', ['units' => $product->unit->label()]) }}
     </p>
 
     @if ($product->stock_quantity > 0)
@@ -179,7 +179,7 @@ new class extends Component {
             <div class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
                     <label for="purchase-quantity" class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Quantity') }}</label>
-                    <span class="text-xs font-medium text-neutral-400 dark:text-zinc-400">{{ __('Up to :count available', ['count' => $product->stock_quantity]) }}</span>
+                    <span class="text-xs font-medium text-neutral-400 dark:text-zinc-400">{{ __('Up to :amount available', ['amount' => $product->unitLabel()]) }}</span>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -203,6 +203,8 @@ new class extends Component {
                         wire:model.live="quantity"
                         class="brand-stepper-input"
                     >
+
+                    <span class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">{{ $product->unit->abbreviation() }}</span>
 
                     <button
                         type="button"

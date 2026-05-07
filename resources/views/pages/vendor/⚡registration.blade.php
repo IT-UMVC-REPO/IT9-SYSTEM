@@ -335,6 +335,17 @@
                                                 @endforeach
                                             </flux:select>
 
+                                            <flux:select
+                                                name="sampleProducts.{{ $index }}.unit"
+                                                wire:model="sampleProducts.{{ $index }}.unit"
+                                                :label="__('Selling unit')"
+                                                :placeholder="__('Choose a unit')"
+                                            >
+                                                @foreach (\App\Enums\ProductUnit::cases() as $unitOption)
+                                                    <option value="{{ $unitOption->value }}">{{ $unitOption->label() }} ({{ $unitOption->abbreviation() }})</option>
+                                                @endforeach
+                                            </flux:select>
+
                                             <flux:callout icon="information-circle" heading="{{ __('This draft stays off the storefront until approval.') }}" />
                                         </div>
                                     </div>

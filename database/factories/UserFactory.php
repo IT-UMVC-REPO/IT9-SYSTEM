@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -33,6 +34,7 @@ class UserFactory extends Factory
             'role' => UserRole::Customer,
             'phone' => null,
             'address' => null,
+            ...TagumCoordinate::random(),
             'profile_image' => null,
             'is_active' => true,
             'brand_color' => null,

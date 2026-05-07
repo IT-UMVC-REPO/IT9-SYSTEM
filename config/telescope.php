@@ -123,6 +123,7 @@ return [
         'pulse*',
         '_boost*',
         '.well-known*',
+        'audit_logs*',
     ],
 
     'ignore_commands' => [
@@ -191,6 +192,9 @@ return [
             'enabled' => env('TELESCOPE_MODEL_WATCHER', true),
             'events' => ['eloquent.*'],
             'hydrations' => true,
+            'ignore_paths' => [
+                'audit_logs*',
+            ],
         ],
 
         Watchers\NotificationWatcher::class => env('TELESCOPE_NOTIFICATION_WATCHER', true),

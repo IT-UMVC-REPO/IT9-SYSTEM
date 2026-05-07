@@ -2,6 +2,7 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\ProductUnit;
 use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Category;
@@ -26,6 +27,8 @@ function createVendorManagedOrder(VendorProfile $vendor, array $orderOverrides =
         ->create([
             'name' => 'Market Fresh Tilapia',
             'price' => 150,
+            'stock_quantity' => 7,
+            'unit' => ProductUnit::Kilogram,
         ]);
 
     $order = Order::factory()
@@ -42,6 +45,7 @@ function createVendorManagedOrder(VendorProfile $vendor, array $orderOverrides =
         'product_id' => $product->getKey(),
         'quantity' => 2,
         'unit_price' => 150,
+        'unit' => $product->unit,
     ]);
 
     $payment = Payment::factory()->for($order)->create(array_merge([
@@ -93,7 +97,7 @@ test('vendor order detail shows the back link and peso totals', function () {
         ->assertOk()
         ->assertSee('Back to order queue')
         ->assertSee("\u{20B1}300.00")
-        ->assertSee("\u{20B1}150.00 each");
+        ->assertSee("\u{20B1}150.00 / kg");
 });
 
 test('status advances correctly from pending to delivered', function () {
@@ -196,6 +200,7 @@ test('cancel works for pending orders', function () {
         ->call('cancelOrder');
 
     expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Cancelled);
+    expect((int) $tracked['product']->fresh()->stock_quantity)->toBe(9);
 
     Queue::assertPushed(SendOrderNotificationJob::class);
 });

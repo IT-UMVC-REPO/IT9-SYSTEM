@@ -115,7 +115,7 @@
                             <div class="flex flex-1 flex-col pt-5">
                                 <div class="flex items-start justify-between gap-4">
                                     <span class="brand-badge">{{ $product->category->name }}</span>
-                                    <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">₱{{ number_format((float) $product->price, 2) }}</span>
+                                    <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->priceWithUnit() }}</span>
                                 </div>
 
                                 <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="mt-4 block text-2xl font-semibold text-neutral-900 dark:text-zinc-100">

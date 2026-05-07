@@ -1,12 +1,15 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -60,6 +63,14 @@ new #[Title('Order Detail')] class extends Component {
                 }
 
                 $order->save();
+
+                $order->orderItems()->with('product')->get()->each(function (OrderItem $item): void {
+                    if ($item->product !== null) {
+                        $item->product->increment('stock_quantity', $item->quantity);
+                    }
+                });
+
+                AuditLogger::log(AuditEvent::OrderCancelled, "Order #{$order->id} cancelled.", $order);
 
                 return $order->fresh([
                     'vendor:id,user_id,store_name',
@@ -285,10 +296,10 @@ new #[Title('Order Detail')] class extends Component {
                             </div>
 
                             <div class="flex flex-wrap items-center gap-5 text-sm text-neutral-500 dark:text-zinc-400">
-                                <span>{{ __('Qty :qty', ['qty' => $item->quantity]) }}</span>
-                                <span>{{ __('₱:amount each', ['amount' => number_format((float) $item->unit_price, 2)]) }}</span>
+                                <span>{{ $item->quantity }} {{ $item->unit->abbreviation() }}</span>
+                                <span>{{ $item->unit->priceLabel($item->unit_price) }}</span>
                                 <span class="font-semibold text-neutral-900 dark:text-zinc-100">
-                                    {{ __('₱:amount', ['amount' => number_format((float) $item->unit_price * $item->quantity, 2)]) }}
+                                    {{ $item->lineTotal() }}
                                 </span>
                             </div>
                         </div>
@@ -327,7 +338,7 @@ new #[Title('Order Detail')] class extends Component {
                                 <div class="min-w-0 flex-1">
                                     <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-zinc-500">{{ $product->category->name }}</p>
                                     <h3 class="mt-0.5 truncate text-sm font-bold text-neutral-900 dark:text-zinc-100 group-hover:text-[var(--brand-600)]">{{ $product->name }}</h3>
-                                    <p class="mt-1 text-sm font-bold text-[var(--brand-600)]">₱{{ number_format($product->price, 2) }}</p>
+                                    <p class="mt-1 text-sm font-bold text-[var(--brand-600)]">{{ $product->priceWithUnit() }}</p>
                                 </div>
                             </a>
                         @endforeach

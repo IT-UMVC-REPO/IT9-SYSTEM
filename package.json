@@ -13,6 +13,7 @@
         "emoji-picker-element": "^1.29.1",
         "events": "^3.3.0",
         "laravel-vite-plugin": "^3.0.0",
+        "leaflet": "^1.9.4",
         "simple-peer": "^9.11.1",
         "tailwindcss": "^4.0.7",
         "vite": "^8.0.0",

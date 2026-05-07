@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Models\User;
@@ -42,6 +43,7 @@ class VendorProfileFactory extends Factory
             'store_name' => $storeName,
             'store_description' => fake()->randomElement($storeDescriptions),
             'store_image' => fake()->randomElement($vendorPhotoUrls),
+            ...TagumCoordinate::random(),
             'status' => VendorStatus::Pending,
             'rejection_reason' => null,
             'approved_at' => null,

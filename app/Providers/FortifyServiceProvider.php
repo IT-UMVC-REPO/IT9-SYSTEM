@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\AuditEvent;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Mail\EmailVerification as EmailVerificationMail;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -73,6 +75,8 @@ class FortifyServiceProvider extends ServiceProvider
             if (! Hash::check($request->string('password')->toString(), $user->password)) {
                 return null;
             }
+
+            AuditLogger::log(AuditEvent::UserLoggedIn, "User {$user->email} logged in.", $user, $user->getKey());
 
             return $user;
         });

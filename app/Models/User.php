@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'phone', 'address', 'profile_image', 'is_active', 'brand_color', 'email_verified_at', 'email_verification_code', 'email_verification_code_expires_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'phone', 'address', 'lat', 'lng', 'profile_image', 'is_active', 'brand_color', 'email_verified_at', 'email_verification_code', 'email_verification_code_expires_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -52,7 +52,14 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'bool',
+            'lat' => 'decimal:6',
+            'lng' => 'decimal:6',
         ];
+    }
+
+    public function hasLocation(): bool
+    {
+        return $this->lat !== null && $this->lng !== null;
     }
 
     public function sendEmailVerificationCode(): void

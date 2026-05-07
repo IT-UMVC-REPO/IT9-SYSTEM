@@ -8,8 +8,10 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use App\Enums\ReportReason;
 use App\Enums\ReportStatus;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Enums\VideoCallStatus;
@@ -245,6 +247,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'role' => $role->value,
                 'phone' => $phone,
                 'address' => $address,
+                ...TagumCoordinate::random(),
                 'profile_image' => null,
                 'is_active' => true,
                 'brand_color' => '#059669',
@@ -260,6 +263,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'store_name' => self::STABLE_VENDOR_STORE_NAME,
                 'store_description' => 'Palengke-style sariwang gulay, prutas, isda, at karne mula Tagum City Public Market. Kilala si Aling Nena sa maagang stock at tapat na presyo para sa mga suki sa Magugpo.',
                 'vendor_address' => 'Stall 12, Tagum City Public Market, Brgy. Magugpo Poblacion, Tagum City, Davao del Norte',
+                ...TagumCoordinate::random(),
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => VendorStatus::Approved->value,
                 'rejection_reason' => null,
@@ -291,6 +295,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'store_name' => $storeName,
                 'store_description' => $descriptions->get($index % $descriptions->count()),
                 'vendor_address' => $this->tagumMarketAddress(),
+                ...TagumCoordinate::random(),
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => VendorStatus::Approved->value,
                 'rejection_reason' => null,
@@ -326,6 +331,7 @@ class MarketplaceDemoSeeder extends Seeder
                     ? fake()->randomElement(self::pendingVendorDescriptions())
                     : fake()->randomElement(self::storeDescriptions()),
                 'vendor_address' => $this->tagumMarketAddress(),
+                ...TagumCoordinate::random(),
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => $status->value,
                 'rejection_reason' => $status === VendorStatus::Rejected
@@ -376,6 +382,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'role' => $role->value,
                 'phone' => $this->tagumPhone(),
                 'address' => $this->tagumAddress(),
+                ...TagumCoordinate::random(),
                 'profile_image' => null,
                 'is_active' => fake()->boolean(96),
                 'brand_color' => fake()->randomElement(['#059669', '#047857', '#0f766e', '#16a34a', '#ea580c', '#c2410c']),
@@ -475,6 +482,7 @@ class MarketplaceDemoSeeder extends Seeder
         $market = fake()->randomElement(self::marketReferences());
         $barangay = fake()->randomElement(self::barangays());
         $vendorName = fake()->randomElement(self::femaleFirstNames());
+        $unit = ProductUnit::suggestionsForCategory($categorySlug)[0] ?? ProductUnit::Piece;
         $price = fake()->numberBetween($catalog['price'][0] * 100, $catalog['price'][1] * 100) / 100;
         $name = strtr($template, [
             '{item}' => Str::headline($item),
@@ -495,6 +503,7 @@ class MarketplaceDemoSeeder extends Seeder
             ]),
             'price' => number_format($price, 2, '.', ''),
             'stock_quantity' => fake()->numberBetween(5, 200),
+            'unit' => $unit->value,
             'image' => $this->unsplashUrl($catalog['image']),
             'status' => $status,
             'created_at' => $createdAt,
@@ -602,6 +611,7 @@ class MarketplaceDemoSeeder extends Seeder
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                     'unit_price' => number_format($unitPrice / 100, 2, '.', ''),
+                    'unit' => $product->unit ?? ProductUnit::Piece->value,
                 ];
             }
 
