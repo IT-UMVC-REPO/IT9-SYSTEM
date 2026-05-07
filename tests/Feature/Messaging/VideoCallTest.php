@@ -300,30 +300,29 @@ test('shared-secret turn credentials are temporary and preferred over static cre
     }
 });
 
-test('video call signaling uses pusher echo credentials', function () {
+test('video call signaling uses reverb echo credentials', function () {
     $client = file_get_contents(resource_path('js/echo.js'));
     $app = file_get_contents(resource_path('js/app.js'));
     $broadcasting = file_get_contents(config_path('broadcasting.php'));
-    $conversation = messagingBladeSource('conversation');
 
     expect($client)
-        ->toContain("broadcaster: 'pusher'")
-        ->toContain('VITE_PUSHER_APP_KEY')
-        ->toContain('VITE_PUSHER_APP_CLUSTER')
-        ->toContain('forceTLS: true')
-        ->not->toContain("broadcaster: 'reverb'")
-        ->not->toContain('VITE_REVERB_APP_KEY')
+        ->toContain('Broadcasting: Laravel Reverb')
+        ->toContain("broadcaster: 'reverb'")
+        ->toContain('VITE_REVERB_APP_KEY')
+        ->toContain('VITE_REVERB_HOST')
+        ->toContain('VITE_REVERB_PORT')
+        ->toContain('VITE_REVERB_SCHEME')
+        ->toContain("enabledTransports: ['ws', 'wss']")
+        ->not->toContain("broadcaster: 'pusher'")
+        ->not->toContain('VITE_PUSHER_APP_KEY')
+        ->not->toContain('VITE_PUSHER_APP_CLUSTER')
         ->and($broadcasting)
         ->toContain('PUSHER_CONNECT_TIMEOUT')
         ->toContain('PUSHER_TIMEOUT')
         ->toContain('REVERB_CONNECT_TIMEOUT')
         ->toContain('REVERB_TIMEOUT')
         ->and($app)
-        ->toContain("import './echo';")
-        ->and($conversation)
-        ->toContain("config('broadcasting.connections.pusher', [])")
-        ->not->toContain("config('broadcasting.connections.reverb.key')")
-        ->not->toContain('reverbEnabled');
+        ->toContain("import './echo';");
 });
 
 test('video call client uses native rtc peer connection and server-provided ice configuration', function () {
