@@ -397,7 +397,7 @@
                                                 <div
                                                     class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
-                                                        @php($attachmentUrl = asset('storage/' . $attachment->path))
+                                                        @php($attachmentUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($attachment->path))
                                                         @php($attachmentMime = $attachment->mime ?? 'application/octet-stream')
 
                                                         @if (\Illuminate\Support\Str::startsWith($attachmentMime, 'image/'))

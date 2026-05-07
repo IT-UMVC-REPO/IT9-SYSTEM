@@ -619,7 +619,7 @@
                                             @if ($message->attachments->isNotEmpty())
                                                 <div class="{{ $message->attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($message->attachments as $attachment)
-                                                        @php($attachmentUrl = asset('storage/'.$attachment->path))
+                                                        @php($attachmentUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($attachment->path))
                                                         @if (\Illuminate\Support\Str::startsWith($attachment->mime, 'image/'))
                                                             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-neutral-200 dark:border-neutral-700' }}">
                                                                 <img src="{{ $attachmentUrl }}" alt="{{ __('Attached image') }}" class="max-h-52 w-full object-cover" loading="lazy">

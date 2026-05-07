@@ -156,6 +156,28 @@ test('legacy attachment metadata still renders through display attachments', fun
         ->and($message->attachmentsForDisplay()->first()->path)->toBe('message-attachments/legacy.pdf');
 });
 
+test('conversation attachment links use the configured public disk url', function () {
+    config(['filesystems.disks.public.url' => 'https://pub.example.test']);
+
+    $sender = User::factory()->create();
+    $receiver = User::factory()->create();
+    $message = createMarketplaceMessage($sender, $receiver, 'Here is the file');
+
+    $message->attachments()->create([
+        'path' => 'message-attachments/r2-proof.jpg',
+        'name' => 'r2-proof.jpg',
+        'mime' => 'image/jpeg',
+        'size' => 1024,
+        'created_at' => now(),
+    ]);
+
+    $this->actingAs($receiver)
+        ->get(route('messages.conversation', ['conversationReference' => $sender->getKey()]))
+        ->assertOk()
+        ->assertSee('https://pub.example.test/message-attachments/r2-proof.jpg', false)
+        ->assertDontSee('/storage/message-attachments/r2-proof.jpg', false);
+});
+
 test('sending a message rejects unsupported attachment types', function () {
     Storage::fake('public');
 

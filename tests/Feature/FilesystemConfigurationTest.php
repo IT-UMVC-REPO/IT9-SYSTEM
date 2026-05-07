@@ -74,6 +74,11 @@ test('railway deploy command refreshes the storage link fallback', function () {
         ->toContain('php artisan storage:link --force');
 });
 
+test('railway web process starts a queue worker for queued verification mail', function () {
+    expect(file_get_contents(base_path('railway.toml')))
+        ->toContain('php artisan queue:work --tries=3 --sleep=1 --timeout=90');
+});
+
 /**
  * @return array<string, mixed>
  */

@@ -251,6 +251,32 @@ test('group conversation sends messages with multiple attachments', function () 
     Event::assertDispatched(GroupMessageSent::class, fn (GroupMessageSent $event) => $event->message->is($message));
 });
 
+test('group attachment links use the configured public disk url', function () {
+    config(['filesystems.disks.public.url' => 'https://pub.example.test']);
+
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member]);
+    $message = GroupMessage::factory()->create([
+        'group_id' => $group->getKey(),
+        'sender_id' => $member->getKey(),
+        'content' => 'Receipt attached',
+    ]);
+
+    GroupMessageAttachment::factory()->create([
+        'group_message_id' => $message->getKey(),
+        'path' => 'group-message-attachments/r2-receipt.pdf',
+        'name' => 'r2-receipt.pdf',
+        'mime' => 'application/pdf',
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('https://pub.example.test/group-message-attachments/r2-receipt.pdf', false)
+        ->assertDontSee('/storage/group-message-attachments/r2-receipt.pdf', false);
+});
+
 test('group conversation sends replies and toggles emoji reactions', function () {
     Event::fake([GroupMessageSent::class]);
 
