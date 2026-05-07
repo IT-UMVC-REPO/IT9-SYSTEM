@@ -4,8 +4,13 @@ use App\Mail\EmailVerification;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+
+test('email verification mailable is queued by default', function () {
+    expect(EmailVerification::class)->toImplement(ShouldQueue::class);
+});
 
 test('email verification screen can be rendered and queues a branded verification email when needed', function () {
     Mail::fake();
@@ -29,7 +34,7 @@ test('email verification screen can be rendered and queues a branded verificatio
         ->and(strlen($user->email_verification_code))->toBe(6)
         ->and($user->email_verification_code_expires_at)->not->toBeNull();
 
-    Mail::assertSent(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
         return $mail->hasTo($user->email)
             && $mail->hasSubject("Welcome to SukiMarket \u{2014} Verify your email")
             && $mail->verificationCode === $user->email_verification_code;
@@ -163,7 +168,7 @@ test('users can resend verification emails', function () {
     expect($user->email_verification_code)->not->toBe('111111')
         ->and($user->email_verification_code_expires_at)->not->toBeNull();
 
-    Mail::assertSent(EmailVerification::class, function (EmailVerification $mail) use ($user) {
+    Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
         return $mail->hasTo($user->email)
             && $mail->verificationCode === $user->email_verification_code;
     });
