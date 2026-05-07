@@ -3,6 +3,7 @@
 use App\Mail\Smtp2goTransport;
 use Illuminate\Mail\Mailer;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mime\Address;
 
 test('resolves the smtp2go transport from the mail manager', function (): void {
     config(['mail.default' => 'smtp2go']);
@@ -22,4 +23,22 @@ test('builds a transport instance with the configured api key', function (): voi
     );
 
     expect((string) $transport)->toBe('smtp2go');
+});
+
+test('formats smtp2go recipients as api address strings', function (): void {
+    $transport = new Smtp2goTransport(
+        apiKey: 'test-api-key',
+        senderName: 'SukiMarket',
+        senderEmail: 'no-reply@sukimarket.app',
+    );
+
+    $method = new ReflectionMethod($transport, 'addressesFor');
+
+    expect($method->invoke($transport, [
+        new Address('buyer@example.com', 'Buyer Mina'),
+        new Address('vendor@example.com'),
+    ]))->toBe([
+        '"Buyer Mina" <buyer@example.com>',
+        'vendor@example.com',
+    ]);
 });

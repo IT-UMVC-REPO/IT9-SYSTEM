@@ -58,6 +58,7 @@ test('example environment documents public R2 filesystem variables', function ()
         ->and($exampleEnvironment['FILESYSTEM_DISK'])->toBe('public')
         ->and($exampleEnvironment['FILESYSTEM_PUBLIC_DRIVER'])->toBe('local')
         ->and($exampleEnvironment['FILESYSTEM_PUBLIC_URL'])->toBe('')
+        ->and($exampleEnvironment['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'])->toBe('local')
         ->and($exampleEnvironment['AWS_DEFAULT_REGION'])->toBe('auto')
         ->and($exampleEnvironment)->toHaveKeys([
             'AWS_ACCESS_KEY_ID',
@@ -67,6 +68,11 @@ test('example environment documents public R2 filesystem variables', function ()
             'AWS_ENDPOINT',
             'AWS_USE_PATH_STYLE_ENDPOINT',
         ]);
+});
+
+test('livewire temporary uploads stay local unless explicitly configured otherwise', function () {
+    expect(livewireTemporaryUploadDiskConfigFor(null))->toBe('local')
+        ->and(livewireTemporaryUploadDiskConfigFor('s3'))->toBe('s3');
 });
 
 test('railway deploy command refreshes the storage link fallback', function () {
@@ -118,6 +124,46 @@ function publicFilesystemDiskConfigForDriver(?string $driver): array
             putenv('FILESYSTEM_PUBLIC_DRIVER');
         } else {
             putenv("FILESYSTEM_PUBLIC_DRIVER={$previousPutenvValue}");
+        }
+    }
+}
+
+function livewireTemporaryUploadDiskConfigFor(?string $disk): ?string
+{
+    $hadEnvValue = array_key_exists('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK', $_ENV);
+    $previousEnvValue = $_ENV['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] ?? null;
+    $hadServerValue = array_key_exists('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK', $_SERVER);
+    $previousServerValue = $_SERVER['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] ?? null;
+    $previousPutenvValue = getenv('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK');
+
+    if ($disk === null) {
+        unset($_ENV['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'], $_SERVER['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK']);
+        putenv('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK');
+    } else {
+        $_ENV['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] = $disk;
+        $_SERVER['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] = $disk;
+        putenv("LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK={$disk}");
+    }
+
+    try {
+        return (require config_path('livewire.php'))['temporary_file_upload']['disk'];
+    } finally {
+        if ($hadEnvValue) {
+            $_ENV['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] = $previousEnvValue;
+        } else {
+            unset($_ENV['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK']);
+        }
+
+        if ($hadServerValue) {
+            $_SERVER['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'] = $previousServerValue;
+        } else {
+            unset($_SERVER['LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK']);
+        }
+
+        if ($previousPutenvValue === false) {
+            putenv('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK');
+        } else {
+            putenv("LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK={$previousPutenvValue}");
         }
     }
 }
