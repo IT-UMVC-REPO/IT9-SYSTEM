@@ -14,3 +14,14 @@ test('product unit category suggestions expose sensible defaults', function (): 
     expect(ProductUnit::suggestionsForCategory('rice')[0])->toBe(ProductUnit::Kilogram)
         ->and(ProductUnit::suggestionsForCategory('eggs')[0])->toBe(ProductUnit::Tray);
 });
+
+test('countable selling units expose piece based conversion options', function (): void {
+    expect(ProductUnit::Dozen->stockLabel(1))->toBe('1 dozen')
+        ->and(ProductUnit::Dozen->stockLabel(3))->toBe('3 dozens')
+        ->and(ProductUnit::Dozen->suggestedBaseUnits())->toBe([
+            ['value' => 'piece', 'label' => 'Pieces'],
+        ])
+        ->and(ProductUnit::Bilao->suggestedBaseUnits())->toBe([])
+        ->and(ProductUnit::Pack->suggestedBaseUnits()[0])->toBe(['value' => 'piece', 'label' => 'Pieces'])
+        ->and(ProductUnit::Dozen->conversionLabel(12, 'piece'))->toBe('1 dozen = 12 pieces');
+});

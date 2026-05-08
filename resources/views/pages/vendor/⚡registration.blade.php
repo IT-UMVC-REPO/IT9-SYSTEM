@@ -52,21 +52,7 @@
             <div
                 class="brand-panel p-6 sm:p-8"
                 x-data="{
-                    previewUrl: @js($this->currentStoreImageUrl),
                     dragOver: false,
-                    handleFile(event) {
-                        const file = event.target.files[0];
-
-                        if (! file) {
-                            return;
-                        }
-
-                        if (this.previewUrl && this.previewUrl.startsWith('blob:')) {
-                            URL.revokeObjectURL(this.previewUrl);
-                        }
-
-                        this.previewUrl = URL.createObjectURL(file);
-                    },
                     setDroppedFile(event) {
                         const files = event.dataTransfer.files;
 
@@ -75,14 +61,16 @@
                         }
 
                         this.$refs.storeImageInput.files = files;
-                        this.handleFile({ target: this.$refs.storeImageInput });
                         this.dragOver = false;
                         this.$refs.storeImageInput.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }"
             >
                 <div class="flex flex-col gap-3">
-                    <span class="brand-kicker">{{ __('Vendor onboarding') }}</span>
+                    <a href="{{ route('shop.home') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                        {{ __('Return to Storefront') }}
+                    </a>
                     <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
                         {{ $showReapplicationForm ? __('Refresh your vendor application') : __('Open your stall on SukiMarket') }}
                     </h1>
@@ -104,15 +92,16 @@
                             id="store-image-upload"
                             type="file"
                             wire:model="storeImageUpload"
-                            x-on:change="handleFile($event)"
                             accept="image/*"
                             class="sr-only"
                         >
 
-                        <template x-if="previewUrl">
+                        @php($storeImagePreviewUrl = $storeImageUpload instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile ? $storeImageUpload->temporaryUrl() : $this->currentStoreImageUrl)
+
+                        @if ($storeImagePreviewUrl)
                             <div class="space-y-4">
                                 <img
-                                    x-bind:src="previewUrl"
+                                    src="{{ $storeImagePreviewUrl }}"
                                     alt="{{ __('Store preview') }}"
                                     class="aspect-[5/3] w-full rounded-[1.5rem] object-cover"
                                 >
@@ -121,9 +110,7 @@
                                     {{ __('Choose a different image') }}
                                 </label>
                             </div>
-                        </template>
-
-                        <template x-if="!previewUrl">
+                        @else
                             <label for="store-image-upload" class="flex cursor-pointer flex-col items-center justify-center gap-4 py-10 text-center">
                                 <span class="brand-soft-surface flex h-14 w-14 items-center justify-center rounded-2xl">
                                     <i class="fa-solid fa-image text-lg"></i>
@@ -137,7 +124,7 @@
                                     </p>
                                 </div>
                             </label>
-                        </template>
+                        @endif
                     </div>
 
                     @error('storeImageUpload')
@@ -215,36 +202,23 @@
 
                                     <div class="mt-6 space-y-4">
                                         <div
-                                            x-data="{
-                                                previewUrl: @js($sampleProduct['currentImageUrl']),
-                                                handleFile(event) {
-                                                    const file = event.target.files[0];
-
-                                                    if (! file) {
-                                                        return;
-                                                    }
-
-                                                    if (this.previewUrl && this.previewUrl.startsWith('blob:')) {
-                                                        URL.revokeObjectURL(this.previewUrl);
-                                                    }
-
-                                                    this.previewUrl = URL.createObjectURL(file);
-                                                }
-                                            }"
+                                            x-data
                                         >
+                                            @php($sampleProductUpload = $sampleProductUploads[$index] ?? null)
+                                            @php($sampleProductPreviewUrl = $sampleProductUpload instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile ? $sampleProductUpload->temporaryUrl() : ($sampleProduct['currentImageUrl'] ?? null))
+
                                             <input
                                                 id="sample-product-image-{{ $index }}"
                                                 type="file"
                                                 wire:model="sampleProductUploads.{{ $index }}"
-                                                x-on:change="handleFile($event)"
                                                 accept="image/*"
                                                 class="sr-only"
                                             >
 
-                                            <template x-if="previewUrl">
+                                            @if ($sampleProductPreviewUrl)
                                                 <div class="space-y-4">
                                                     <img
-                                                        x-bind:src="previewUrl"
+                                                        src="{{ $sampleProductPreviewUrl }}"
                                                         alt="{{ __('Sample product preview') }}"
                                                         class="aspect-video w-full rounded-2xl object-cover"
                                                     >
@@ -253,9 +227,7 @@
                                                         {{ __('Choose a different image') }}
                                                     </label>
                                                 </div>
-                                            </template>
-
-                                            <template x-if="!previewUrl">
+                                            @else
                                                 <label for="sample-product-image-{{ $index }}" class="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
                                                     <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
                                                         <i class="fa-solid fa-camera text-sm"></i>
@@ -269,11 +241,14 @@
                                                         </p>
                                                     </div>
                                                 </label>
-                                            </template>
+                                            @endif
 
                                             @error("sampleProductUploads.$index")
                                                 <p class="mt-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
                                             @enderror
+                                            <p class="mt-2 text-xs text-neutral-500 dark:text-zinc-400">
+                                                {{ __('If saved images do not load locally, run php artisan storage:link once for this checkout.') }}
+                                            </p>
                                         </div>
 
                                         <div class="space-y-4">

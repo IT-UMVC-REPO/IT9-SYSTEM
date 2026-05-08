@@ -351,22 +351,11 @@ new #[Title('Edit product')] class extends Component {
         class="brand-panel overflow-hidden p-0"
         style="border-top: 3px solid var(--brand-600);"
         x-data="{
-            previewUrl: @js($this->currentImageUrl),
             dragOver: false,
             showConversion: @entangle('showUnitConversion').live,
-            handleFile(event) {
-                const file = event.target.files[0];
-
-                if (! file) {
-                    return;
-                }
-
-                this.previewUrl = URL.createObjectURL(file);
-            },
             removePhoto() {
-                this.previewUrl = null;
                 this.$refs.productImageInput.value = null;
-                $wire.set('productImageUpload', null);
+                $wire.$set('productImageUpload', null);
             },
             setDroppedFile(event) {
                 const files = event.dataTransfer.files;
@@ -376,7 +365,6 @@ new #[Title('Edit product')] class extends Component {
                 }
 
                 this.$refs.productImageInput.files = files;
-                this.handleFile({ target: this.$refs.productImageInput });
                 this.dragOver = false;
                 this.$refs.productImageInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
@@ -421,15 +409,16 @@ new #[Title('Edit product')] class extends Component {
                         id="product-image-upload"
                         type="file"
                         wire:model="productImageUpload"
-                        x-on:change="handleFile($event)"
                         accept="image/jpeg,image/png,image/webp"
                         class="sr-only"
                     >
 
-                    <template x-if="previewUrl">
+                    @php($productImagePreviewUrl = $productImageUpload instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile ? $productImageUpload->temporaryUrl() : $this->currentImageUrl)
+
+                    @if ($productImagePreviewUrl)
                         <div class="absolute inset-0">
                             <img
-                                x-bind:src="previewUrl"
+                                src="{{ $productImagePreviewUrl }}"
                                 alt="{{ __('Product preview') }}"
                                 class="h-full w-full object-cover"
                             >
@@ -438,18 +427,18 @@ new #[Title('Edit product')] class extends Component {
                                 {{ __('Change photo') }}
                             </label>
 
-                            <button
-                                type="button"
-                                x-on:click="removePhoto()"
-                                class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow-sm backdrop-blur transition hover:bg-rose-50 dark:bg-zinc-950/85 dark:text-rose-300"
-                                aria-label="{{ __('Remove photo') }}"
-                            >
-                                <i class="fa-solid fa-trash-can text-sm"></i>
-                            </button>
+                            @if ($productImageUpload instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile)
+                                <button
+                                    type="button"
+                                    x-on:click="removePhoto()"
+                                    class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-rose-600 shadow-sm backdrop-blur transition hover:bg-rose-50 dark:bg-zinc-950/85 dark:text-rose-300"
+                                    aria-label="{{ __('Remove photo') }}"
+                                >
+                                    <i class="fa-solid fa-trash-can text-sm"></i>
+                                </button>
+                            @endif
                         </div>
-                    </template>
-
-                    <template x-if="! previewUrl">
+                    @else
                         <label for="product-image-upload" class="flex min-h-full w-full cursor-pointer flex-col items-center justify-center gap-4 p-8 text-center">
                             <span class="brand-soft-surface flex h-16 w-16 items-center justify-center rounded-2xl">
                                 <i class="fa-solid fa-camera text-2xl"></i>
@@ -461,7 +450,7 @@ new #[Title('Edit product')] class extends Component {
                                 </span>
                             </span>
                         </label>
-                    </template>
+                    @endif
 
                     <div
                         wire:loading.flex
@@ -484,6 +473,9 @@ new #[Title('Edit product')] class extends Component {
                     <flux:badge size="sm">{{ __('WEBP') }}</flux:badge>
                     <flux:badge size="sm">{{ __('max 3 MB') }}</flux:badge>
                 </div>
+                <p class="text-xs text-neutral-500 dark:text-zinc-400">
+                    {{ __('If saved images do not load locally, run php artisan storage:link once for this checkout.') }}
+                </p>
 
                 <details class="rounded-2xl border border-stone-200 bg-white/70 p-4 dark:border-white/10 dark:bg-zinc-900/60">
                     <summary class="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-zinc-100">
@@ -532,13 +524,13 @@ new #[Title('Edit product')] class extends Component {
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Pricing & stock') }}</h2>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
                         <flux:field>
                             <flux:label>{{ __('Price') }}</flux:label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute left-0 top-0 flex h-full w-11 items-center justify-center rounded-l-xl border border-stone-200 bg-stone-50 text-sm font-bold text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400">₱</span>
-                                <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class="pl-12" required />
-                            </div>
+                            <flux:input.group>
+                                <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
+                                <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class="h-11" required />
+                            </flux:input.group>
                             <flux:error name="price" />
                             @if ($this->pricePreview)
                                 <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->pricePreview }}</p>
@@ -547,12 +539,12 @@ new #[Title('Edit product')] class extends Component {
 
                         <flux:field>
                             <flux:label>{{ __('Stock quantity') }}</flux:label>
-                            <div class="relative">
-                                <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class="pr-20" required />
+                            <flux:input.group>
+                                <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class="h-11" required />
                                 @if ($selectedUnit)
-                                    <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-neutral-500 dark:bg-zinc-800 dark:text-zinc-300">{{ $selectedUnit->abbreviation() }}</span>
+                                    <flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>
                                 @endif
-                            </div>
+                            </flux:input.group>
                             <flux:error name="stock_quantity" />
                         </flux:field>
                     </div>
@@ -585,7 +577,7 @@ new #[Title('Edit product')] class extends Component {
                     @endif
                 </section>
 
-                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10" wire:key="unit-selector-{{ $categoryId }}">
+                <section class="space-y-4 border-b border-stone-200 pb-8 dark:border-white/10" wire:key="unit-selector-{{ $categoryId }}">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-ruler text-[var(--brand-600)]"></i>
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Selling unit') }}</h2>
@@ -614,7 +606,7 @@ new #[Title('Edit product')] class extends Component {
                         </div>
                     </div>
 
-                    <details class="rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-900">
+                    <details class="mt-2 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-900">
                         <summary class="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Show all units') }}</summary>
                         <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                             @foreach ($this->otherUnitOptions as $unitOption)
@@ -642,13 +634,13 @@ new #[Title('Edit product')] class extends Component {
                     @enderror
 
                     @if ($this->unitFormulaPreview)
-                        <p class="rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-3 text-sm font-semibold text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]">
+                        <p class="mt-3 rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-3 text-sm font-semibold text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]">
                             {{ $this->unitFormulaPreview }}
                         </p>
                     @endif
                 </section>
 
-                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
+                <section class="space-y-4 border-b border-stone-200 pb-8 dark:border-white/10">
                     <label class="brand-soft-surface flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-stone-300 p-4 dark:border-zinc-600">
                         <span class="flex min-w-0 items-start gap-3">
                             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--brand-600)] shadow-sm dark:bg-zinc-900">
@@ -662,7 +654,7 @@ new #[Title('Edit product')] class extends Component {
                         <flux:checkbox wire:model.live="showUnitConversion" />
                     </label>
 
-                    <div x-show="showConversion" x-transition class="space-y-5">
+                    <div x-show="showConversion" x-transition class="space-y-4">
                         <flux:callout icon="information-circle" variant="secondary">
                             <flux:callout.text>
                                 {{ __('Help customers understand the actual quantity. For example, if you sell rice by the sack, you can state that 1 sack = 25 kg. This is shown on the product page alongside your price but does not affect checkout or pricing - it is purely informational.') }}
@@ -696,11 +688,19 @@ new #[Title('Edit product')] class extends Component {
                                 </flux:field>
 
                                 <flux:field>
+                                    @php($usesCountBaseUnit = in_array($base_unit, ['piece', 'dozen', 'each', 'pair'], true))
                                     <flux:label>
-                                        {{ __('How many :base per 1 :unit?', [
-                                            'base' => $base_unit ?: __('base units'),
-                                            'unit' => $selectedUnit ? strtolower($selectedUnit->label()) : __('unit'),
-                                        ]) }}
+                                        @if ($usesCountBaseUnit)
+                                            {{ __('How many :base per 1 :unit?', [
+                                                'base' => $base_unit === 'pair' ? __('pairs') : __('pieces'),
+                                                'unit' => $selectedUnit ? strtolower($selectedUnit->label()) : __('unit'),
+                                            ]) }}
+                                        @else
+                                            {{ __('How many :base per 1 :unit?', [
+                                                'base' => $base_unit ?: __('base units'),
+                                                'unit' => $selectedUnit ? strtolower($selectedUnit->label()) : __('unit'),
+                                            ]) }}
+                                        @endif
                                     </flux:label>
                                     <div class="relative">
                                         <flux:input type="number" wire:model.live.debounce.250ms="base_unit_quantity" step="0.001" min="0.001" :placeholder="__('e.g. 25')" class="pr-16" />
@@ -713,7 +713,7 @@ new #[Title('Edit product')] class extends Component {
                             </div>
 
                             @if ($this->unitConversionPreview)
-                                <div class="brand-panel border-l-4 p-5 transition-all duration-200" style="border-left-color: var(--brand-600);">
+                                <div class="rounded-2xl border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_20%)] p-5 transition-all duration-200 dark:bg-zinc-800/60">
                                     <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">
                                         <i class="fa-solid fa-box mr-2 text-[var(--brand-600)]"></i>
                                         {{ __('Conversion summary') }}
@@ -745,8 +745,9 @@ new #[Title('Edit product')] class extends Component {
 
                     <div class="grid gap-3 sm:grid-cols-2">
                         <button type="button" wire:click="$set('status', '{{ ProductStatus::Inactive->value }}')" @class([
-                            'relative rounded-2xl border bg-stone-100 p-4 text-left transition dark:bg-zinc-900',
-                            'border-l-4 border-l-[var(--brand-600)] border-[var(--brand-300)]' => $status === ProductStatus::Inactive->value,
+                            'relative rounded-2xl bg-stone-100 p-4 text-left transition dark:bg-zinc-900',
+                            'border-2 border-[var(--brand-500)]' => $status === ProductStatus::Inactive->value,
+                            'border' => $status !== ProductStatus::Inactive->value,
                             'border-stone-200 dark:border-white/10' => $status !== ProductStatus::Inactive->value,
                         ])>
                             @if ($status === ProductStatus::Inactive->value)
@@ -758,8 +759,9 @@ new #[Title('Edit product')] class extends Component {
                         </button>
 
                         <button type="button" wire:click="$set('status', '{{ ProductStatus::Active->value }}')" @class([
-                            'relative rounded-2xl border p-4 text-left transition',
-                            'border-l-4 border-l-[var(--brand-600)] border-[var(--brand-300)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
+                            'relative rounded-2xl p-4 text-left transition',
+                            'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
+                            'border' => $status !== ProductStatus::Active->value,
                             'border-stone-200 bg-[var(--brand-50)] text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]' => $status !== ProductStatus::Active->value,
                         ])>
                             @if ($status === ProductStatus::Active->value)

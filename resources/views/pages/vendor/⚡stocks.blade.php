@@ -374,54 +374,66 @@ new #[Title('Stock Management')] class extends Component {
         </div>
     </div>
 
-    <div class="brand-panel-muted p-2">
-        <flux:navbar>
-            <flux:navbar.item
-                icon="squares-2x2"
-                :href="route('vendor.products')"
-                :current="request()->routeIs('vendor.products')"
-                wire:navigate
-            >
-                {{ __('Products') }}
-            </flux:navbar.item>
-
-            <flux:navbar.item
-                icon="archive-box"
-                :href="route('vendor.stocks')"
-                :current="request()->routeIs('vendor.stocks')"
-                wire:navigate
-            >
-                {{ __('Stocks') }}
-            </flux:navbar.item>
-        </flux:navbar>
+    <div class="flex items-center gap-1 rounded-2xl border border-stone-200 bg-stone-100 p-1 dark:border-white/10 dark:bg-zinc-800/60">
+        <a href="{{ route('vendor.products') }}" wire:navigate
+            @class([
+                'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.products'),
+                'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.products'),
+            ])>
+            <i class="fa-solid fa-boxes-stacked text-xs"></i>
+            {{ __('Products') }}
+        </a>
+        <a href="{{ route('vendor.stocks') }}" wire:navigate
+            @class([
+                'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.stocks'),
+                'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.stocks'),
+            ])>
+            <i class="fa-solid fa-warehouse text-xs"></i>
+            {{ __('Stock Manager') }}
+        </a>
     </div>
 
-    <section class="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+    <section class="brand-panel p-6">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
         @foreach ([
-            ['key' => 'all', 'label' => __('Total listings'), 'value' => $this->stockSummary['total'], 'icon' => 'fa-solid fa-layer-group', 'iconClass' => 'bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-300', 'accent' => 'border-b-stone-300', 'clickable' => true],
-            ['key' => 'active', 'label' => __('Active'), 'value' => $this->stockSummary['active'], 'icon' => 'fa-solid fa-eye', 'iconClass' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300', 'accent' => 'border-b-emerald-400', 'clickable' => true],
-            ['key' => 'inactive', 'label' => __('Inactive / Draft'), 'value' => $this->stockSummary['inactive'], 'icon' => 'fa-solid fa-eye-slash', 'iconClass' => 'bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-300', 'accent' => 'border-b-stone-400', 'clickable' => true],
-            ['key' => 'out', 'label' => __('Out of stock'), 'value' => $this->stockSummary['out_of_stock'], 'icon' => 'fa-solid fa-circle-exclamation', 'iconClass' => 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300', 'accent' => 'border-b-rose-400', 'clickable' => true],
-            ['key' => 'low', 'label' => __('Low stock (≤ :n)', ['n' => $lowStockThreshold]), 'value' => $this->stockSummary['low_stock'], 'icon' => 'fa-solid fa-triangle-exclamation', 'iconClass' => 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300', 'accent' => 'border-b-amber-400', 'clickable' => true],
-            ['key' => null, 'label' => __('Total units'), 'value' => number_format($this->stockSummary['total_units']), 'icon' => 'fa-solid fa-cubes', 'iconClass' => 'bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]', 'accent' => 'border-b-[var(--brand-500)]', 'clickable' => false],
+            ['key' => 'all', 'label' => __('Total listings'), 'value' => $this->stockSummary['total'], 'clickable' => true],
+            ['key' => 'active', 'label' => __('Active'), 'value' => $this->stockSummary['active'], 'clickable' => true],
+            ['key' => 'inactive', 'label' => __('Inactive / Draft'), 'value' => $this->stockSummary['inactive'], 'clickable' => true],
+            ['key' => 'out', 'label' => __('Out of stock'), 'value' => $this->stockSummary['out_of_stock'], 'clickable' => true],
+            ['key' => 'low', 'label' => __('Low stock (<= :n)', ['n' => $lowStockThreshold]), 'value' => $this->stockSummary['low_stock'], 'clickable' => true],
+            ['key' => null, 'label' => __('Total units'), 'value' => number_format($this->stockSummary['total_units']), 'clickable' => false],
         ] as $card)
-            <button
-                type="button"
-                @if ($card['clickable']) wire:click="$set('statusFilter', '{{ $card['key'] }}')" @endif
-                @class([
-                    'brand-panel border-b-4 px-4 py-4 text-left transition',
-                    $card['accent'],
-                    'cursor-pointer hover:-translate-y-0.5' => $card['clickable'],
-                    'cursor-default' => ! $card['clickable'],
-                ])
-            >
-                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl {{ $card['iconClass'] }}">
-                    <i class="{{ $card['icon'] }} text-sm"></i>
-                </span>
-                <span class="mt-3 block text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
-                <span class="mt-1 block text-xs font-semibold text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
-            </button>
+            @if ($card['clickable'])
+                <button
+                    type="button"
+                    wire:click="$set('statusFilter', '{{ $card['key'] }}')"
+                    class="flex items-baseline gap-2 text-left transition hover:text-[var(--brand-700)] dark:hover:text-[var(--brand-300)]"
+                >
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ number_format($card['value']) }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
+                    @if ($card['key'] === 'active')
+                        <span class="ml-1 inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+                    @elseif ($card['key'] === 'inactive')
+                        <span class="ml-1 inline-block h-2 w-2 rounded-full bg-stone-400"></span>
+                    @elseif ($card['key'] === 'out')
+                        <span class="ml-1 inline-block h-2 w-2 rounded-full bg-rose-500"></span>
+                    @elseif ($card['key'] === 'low')
+                        <span class="ml-1 inline-block h-2 w-2 rounded-full bg-amber-500"></span>
+                    @endif
+                </button>
+            @else
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
+                </div>
+            @endif
+            @if (! $loop->last)
+                <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
+            @endif
         @endforeach
+        </div>
     </section>
 
     <div class="flex items-center justify-end gap-2 text-sm">
@@ -503,8 +515,7 @@ new #[Title('Stock Management')] class extends Component {
             x-data
             x-show="true"
             x-transition
-            class="brand-panel flex flex-wrap items-center gap-3 border-l-4 px-4 py-3"
-            style="border-left-color: var(--brand-500);"
+            class="brand-panel flex flex-wrap items-center gap-3 border-2 border-[var(--brand-500)] px-4 py-3"
         >
             <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
                 {{ count($selectedIds) }} {{ Str::plural(__('product'), count($selectedIds)) }} {{ __('selected') }}

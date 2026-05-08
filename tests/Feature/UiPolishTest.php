@@ -104,6 +104,76 @@ test('map components keep complex leaflet setup out of inline alpine', function 
         ->not->toContain('distanceInKilometers(');
 });
 
+test('profile map and audit date picker use shared javascript helpers', function () {
+    $profile = uiPolishBlade('views/pages/settings/*profile.blade.php');
+    $auditLog = uiPolishBlade('views/pages/admin/*audit-log.blade.php');
+    $head = uiPolishBlade('views/partials/head.blade.php');
+    $appJs = file_get_contents(resource_path('js/app.js'));
+    $appCss = file_get_contents(resource_path('css/app.css'));
+
+    expect($profile)
+        ->toContain('x-data="sukiProfileMap({')
+        ->toContain("mapId: 'profile-location-map'")
+        ->toContain("x-on:input.debounce.600ms=\"window.dispatchEvent(new CustomEvent('profile-address-updated'")
+        ->and($auditLog)
+        ->toContain('x-data="sukiDatePicker({')
+        ->toContain('type="text"')
+        ->not->toContain('type="date"')
+        ->and($head)
+        ->toContain('flatpickr/4.6.13/flatpickr.min.css')
+        ->toContain('flatpickr/4.6.13/flatpickr.min.js')
+        ->and($appJs)
+        ->toContain('window.sukiProfileMap = (config) => ({')
+        ->toContain('nominatim.openstreetmap.org/search')
+        ->toContain('window.sukiDatePicker = (config) => ({')
+        ->and($appCss)
+        ->toContain('.flatpickr-calendar')
+        ->toContain('.flatpickr-day.selected');
+});
+
+test('group message reactions escape clipping and overlap bubble corners', function () {
+    $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
+
+    expect($groupConversation)
+        ->toContain('x-teleport="body"')
+        ->toContain('x-bind:style="pickerStyle"')
+        ->toContain('relative mb-4 inline-block')
+        ->toContain('absolute -bottom-3 left-2')
+        ->toContain('inline-flex self-start border border-stone-200 bg-stone-50 px-3.5 py-1');
+});
+
+test('vendor product forms use compact conversion controls and temporary upload previews', function () {
+    $productCreate = uiPolishBlade('views/pages/vendor/*product-create.blade.php');
+    $productEdit = uiPolishBlade('views/pages/vendor/*product-edit.blade.php');
+    $registration = uiPolishBlade('views/pages/vendor/*registration.blade.php');
+    $products = uiPolishBlade('views/pages/vendor/*products.blade.php');
+    $stocks = uiPolishBlade('views/pages/vendor/*stocks.blade.php');
+
+    expect($productCreate)
+        ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
+        ->toContain('<flux:input.group.suffix>')
+        ->toContain("__('How many :base per 1 :unit?'")
+        ->toContain('border-2 border-[var(--brand-500)]')
+        ->toContain('$productImageUpload->temporaryUrl()')
+        ->not->toContain('border-l-4 border-l-[var(--brand-600)]')
+        ->and($productEdit)
+        ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
+        ->toContain('<flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>')
+        ->toContain('$productImageUpload->temporaryUrl()')
+        ->not->toContain('border-left-color: var(--brand-600)')
+        ->and($registration)
+        ->toContain('$storeImageUpload->temporaryUrl()')
+        ->toContain('$sampleProductUpload->temporaryUrl()')
+        ->and($products)
+        ->toContain('Stock Manager')
+        ->toContain('flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5')
+        ->not->toContain('<flux:navbar>')
+        ->and($stocks)
+        ->toContain('Stock Manager')
+        ->not->toContain('<flux:navbar>')
+        ->not->toContain('border-b-4 px-4 py-4');
+});
+
 test('message groups anchor sender avatars to the final bubble row', function () {
     $conversation = uiPolishBlade('views/pages/messages/*conversation.blade.php', 'group-conversation');
     $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');

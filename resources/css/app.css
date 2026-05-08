@@ -733,3 +733,40 @@ select:focus[data-flux-control] {
 .rounded-2xl {
     border-radius: var(--rounded-2xl, 1.5rem);
 }
+
+.flatpickr-calendar {
+    @apply rounded-2xl border border-stone-200 bg-white shadow-xl dark:border-white/10 dark:bg-zinc-900;
+}
+
+.flatpickr-months,
+.flatpickr-weekdays {
+    @apply text-neutral-700 dark:text-zinc-200;
+}
+
+.flatpickr-current-month,
+.flatpickr-weekday,
+.flatpickr-day {
+    @apply text-neutral-700 dark:text-zinc-200;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background-color: var(--brand-600);
+    border-color: var(--brand-600);
+    color: white;
+}
+
+.flatpickr-day:hover {
+    background-color: var(--brand-50);
+    color: var(--brand-800);
+}
+
+.dark .flatpickr-day:hover {
+    background-color: oklch(from var(--brand-500) l c h / 0.14);
+    color: var(--brand-200);
+}
+
+.flatpickr-day.today {
+    border-color: var(--brand-500);
+}

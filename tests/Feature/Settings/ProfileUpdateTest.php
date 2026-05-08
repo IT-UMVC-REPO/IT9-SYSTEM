@@ -66,6 +66,26 @@ test('user can update phone and address from profile settings', function () {
         ->and($user->address)->toBe('Blk 3 Lot 5, Mahogany St, Davao City');
 });
 
+test('user can save a pinned delivery location from profile settings', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('name', $user->name)
+        ->set('email', $user->email)
+        ->set('address', 'Tagum City Public Market, Magugpo Poblacion, Tagum City')
+        ->set('lat', 7.4479)
+        ->set('lng', 125.809)
+        ->call('updateProfileInformation')
+        ->assertHasNoErrors();
+
+    $user->refresh();
+
+    expect((float) $user->lat)->toBe(7.4479)
+        ->and((float) $user->lng)->toBe(125.809);
+});
+
 test('approved vendors can update stall information from profile settings', function () {
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create([

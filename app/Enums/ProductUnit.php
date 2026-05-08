@@ -100,8 +100,12 @@ enum ProductUnit: string
     public function suggestedBaseUnits(): array
     {
         return match ($this) {
-            self::Kilogram, self::Gram, self::Liter, self::Milliliter => [],
+            self::Kilogram, self::Gram, self::Liter, self::Milliliter, self::Piece, self::Bilao => [],
+            self::Dozen, self::Pair => [
+                ['value' => 'piece', 'label' => 'Pieces'],
+            ],
             self::Sack, self::Bag => [
+                ['value' => 'piece', 'label' => 'Pieces'],
                 ['value' => 'kg', 'label' => 'Kilograms (kg)'],
                 ['value' => 'g', 'label' => 'Grams (g)'],
             ],
@@ -114,6 +118,7 @@ enum ProductUnit: string
                 ['value' => 'L', 'label' => 'Liters (L)'],
             ],
             self::Box, self::Pack, self::Bundle => [
+                ['value' => 'piece', 'label' => 'Pieces'],
                 ['value' => 'g', 'label' => 'Grams (g)'],
                 ['value' => 'kg', 'label' => 'Kilograms (kg)'],
                 ['value' => 'ml', 'label' => 'Milliliters (ml)'],
@@ -130,6 +135,15 @@ enum ProductUnit: string
 
     public function conversionLabel(float $quantity, string $baseUnit): string
     {
+        if (in_array($baseUnit, ['piece', 'each', 'pair', 'dozen'], true)) {
+            return sprintf(
+                '1 %s = %s %s',
+                strtolower($this->label()),
+                rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.'),
+                self::countBaseUnitLabel($quantity, $baseUnit),
+            );
+        }
+
         return sprintf(
             '1 %s = %s %s',
             strtolower($this->label()),
@@ -162,6 +176,16 @@ enum ProductUnit: string
             in_array($categorySlug, ['kakanin-native-sweets', 'steamed-kakanin', 'native-delicacies'], true) => [self::Bilao, self::Piece, self::Tray, self::Pack, self::Box],
             in_array($categorySlug, ['frozen-processed-goods', 'frozen-ready-to-cook', 'cured-meats'], true) => [self::Pack, self::Piece, self::Kilogram, self::Gram, self::Box],
             default => [self::Piece, self::Kilogram, self::Gram, self::Bundle, self::Pack],
+        };
+    }
+
+    private static function countBaseUnitLabel(float $quantity, string $baseUnit): string
+    {
+        return match ($baseUnit) {
+            'piece', 'each' => $quantity == 1.0 ? 'piece' : 'pieces',
+            'pair' => $quantity == 1.0 ? 'pair' : 'pairs',
+            'dozen' => $quantity == 1.0 ? 'dozen' : 'dozens',
+            default => $baseUnit,
         };
     }
 }

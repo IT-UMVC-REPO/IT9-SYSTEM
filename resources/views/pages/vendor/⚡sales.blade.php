@@ -2,8 +2,11 @@
 
 <div wire:poll.60s="refreshSalesData" class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="brand-panel p-6 sm:p-8">
-        <span class="brand-kicker">{{ __('Vendor analytics') }}</span>
-        <div class="mt-4 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+        <a href="{{ route('vendor.dashboard') }}" wire:navigate class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            {{ __('Return to Dashboard') }}
+        </a>
+        <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Sales overview') }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">

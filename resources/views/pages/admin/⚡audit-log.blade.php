@@ -101,8 +101,11 @@ new #[Title('Audit Log')] class extends Component
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <span class="brand-kicker">{{ __('Admin') }}</span>
-            <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Audit Log') }}</h1>
+            <a href="{{ route('admin.dashboard') }}" wire:navigate class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                {{ __('Return to Dashboard') }}
+            </a>
+            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Audit Log') }}</h1>
             <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
                 {{ __('A live, chronological record of every meaningful action taken by users across the platform.') }}
             </p>
@@ -154,9 +157,41 @@ new #[Title('Audit Log')] class extends Component
                 @endforeach
             </flux:select>
 
-            <flux:input wire:model.live="dateFrom" type="date" :label="__('From date')" />
+            <flux:field>
+                <flux:label>{{ __('From date') }}</flux:label>
+                <div
+                    x-data="sukiDatePicker({ wire: $wire, property: 'dateFrom', value: @js($dateFrom) })"
+                    x-init="init()"
+                    class="relative"
+                >
+                    <input
+                        x-ref="datepicker"
+                        type="text"
+                        placeholder="{{ __('Pick a date') }}"
+                        class="brand-input w-full pr-10"
+                        readonly
+                    >
+                    <i class="fa-regular fa-calendar pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+                </div>
+            </flux:field>
 
-            <flux:input wire:model.live="dateTo" type="date" :label="__('To date')" />
+            <flux:field>
+                <flux:label>{{ __('To date') }}</flux:label>
+                <div
+                    x-data="sukiDatePicker({ wire: $wire, property: 'dateTo', value: @js($dateTo) })"
+                    x-init="init()"
+                    class="relative"
+                >
+                    <input
+                        x-ref="datepicker"
+                        type="text"
+                        placeholder="{{ __('Pick a date') }}"
+                        class="brand-input w-full pr-10"
+                        readonly
+                    >
+                    <i class="fa-regular fa-calendar pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400"></i>
+                </div>
+            </flux:field>
         </div>
     </div>
 

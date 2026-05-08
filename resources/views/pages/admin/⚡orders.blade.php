@@ -87,7 +87,10 @@ new #[Title('Marketplace Order Oversight')] class extends Component
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4">
-        <span class="brand-kicker">{{ __('Admin operations') }}</span>
+        <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            {{ __('Return to Dashboard') }}
+        </a>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Marketplace order oversight') }}</h1>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
             {{ __('Watch customer orders across every stall, filter by fulfillment stage, and review payment context without stepping into vendor workflows.') }}

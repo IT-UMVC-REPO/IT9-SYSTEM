@@ -78,6 +78,7 @@
             ], true);
 
             $mobileOrdersNavigationItem = collect($navigationItems)->firstWhere('label', __('Orders'));
+            $mobileMessagesNavigationItem = collect($quickActionItems)->firstWhere('label', __('Messages'));
             $mobileSellerSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Seller setup'));
             $mobileAccountNavigationItems = array_values(array_filter([
                 $mobileOrdersNavigationItem,
@@ -87,7 +88,10 @@
 
             $mobileNavigationItems = array_values(array_filter(
                 $effectiveMarketplaceRole === \App\Enums\UserRole::Customer
-                    ? $navigationItems
+                    ? [
+                        ...$navigationItems,
+                        ...array_filter([$mobileMessagesNavigationItem]),
+                    ]
                     : [
                         $homeNavigationItem,
                         ...$navigationItems,
@@ -100,6 +104,7 @@
                     $navItem('Home', 'customer.dashboard', ['customer.dashboard'], 'fa-solid fa-house'),
                     $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
                     $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
+                    $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                     $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
                 ],
                 \App\Enums\UserRole::Vendor => [

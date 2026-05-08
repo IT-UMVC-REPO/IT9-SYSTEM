@@ -593,24 +593,38 @@
                                             'left-0 -translate-x-full pr-1' => $isOwnMessage,
                                             'right-0 translate-x-full pl-1' => ! $isOwnMessage,
                                         ])>
-                                            <div class="relative" x-data="{ open: false }">
+                                            <div
+                                                class="relative"
+                                                x-on:click.stop="positionPicker($event)"
+                                                x-data="{
+                                                    open: false,
+                                                    pickerStyle: '',
+                                                    positionPicker(event) {
+                                                        const rect = event.currentTarget.getBoundingClientRect();
+                                                        this.pickerStyle = `left: ${rect.left + rect.width / 2}px; top: ${rect.top - 10}px; transform: translate(-50%, -100%);`;
+                                                    },
+                                                }"
+                                            >
                                                 <button type="button" x-on:click="open = !open" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-sm shadow-sm dark:border-white/10 dark:bg-zinc-800" aria-label="{{ __('React') }}">😊</button>
-                                                <div x-cloak x-show="open" x-on:click.away="open = false" class="absolute bottom-8 flex gap-1 rounded-full border border-stone-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-800">
+                                                <template x-teleport="body">
+                                                    <div x-cloak x-show="open" x-on:click.outside="open = false" x-bind:style="pickerStyle" class="fixed z-[120] flex gap-1 rounded-full border border-stone-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-800">
                                                     @foreach (['👍', '❤️', '😂', '😮', '😢', '🙏'] as $emoji)
                                                         <button type="button" wire:key="group-message-{{ $message->id }}-reaction-picker-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))" x-on:click="open = false" class="text-lg transition-transform hover:scale-125" aria-label="{{ __('React with :emoji', ['emoji' => $emoji]) }}">{{ $emoji }}</button>
                                                     @endforeach
-                                                </div>
+                                                    </div>
+                                                </template>
                                             </div>
                                             <button type="button" wire:click="setReplyTo({{ $message->id }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
                                                 <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
                                             </button>
                                         </div>
 
-                                        <div @class([
-                                            'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
-                                            'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
-                                            'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
-                                        ])>
+                                        <div class="relative mb-4 inline-block max-w-full">
+                                            <div @class([
+                                                'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
+                                                'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
+                                                'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
+                                            ])>
                                             @if ($message->replyTo)
                                                 <div class="mb-1 rounded-lg border-l-2 border-current/40 bg-black/10 px-2 py-1 text-xs opacity-80">
                                                     <p class="font-semibold">{{ $this->memberDisplayName($message->replyTo->sender) }}</p>
@@ -638,27 +652,26 @@
                                                     @endforeach
                                                 </div>
                                             @endif
+                                            </div>
+
+                                            @if ($message->reactions->isNotEmpty())
+                                                <div class="absolute -bottom-3 left-2 flex items-center gap-0.5 rounded-full border border-stone-200 bg-white px-1.5 py-0.5 text-xs shadow-sm dark:border-white/10 dark:bg-zinc-800">
+                                                    @foreach ($message->reactions->groupBy('emoji') as $emoji => $reactors)
+                                                        <button type="button" wire:key="group-message-{{ $message->id }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))" class="inline-flex items-center gap-0.5" aria-label="{{ __('Toggle :emoji reaction', ['emoji' => $emoji]) }}">
+                                                            <span>{{ $emoji }}</span>
+                                                            @if ($reactors->count() > 1)
+                                                                <span class="text-[10px] font-semibold text-neutral-500 dark:text-zinc-400">{{ $reactors->count() }}</span>
+                                                            @endif
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
 
                                         <p class="mt-1 w-full px-1 text-right text-xs text-neutral-500 dark:text-neutral-500">
                                             {{ $this->messageTimestamp($message) }}
                                         </p>
 
-                                        @if ($message->reactions->isNotEmpty())
-                                            <div @class([
-                                                'mb-1 mt-1 flex flex-wrap gap-1',
-                                                'justify-end' => $isOwnMessage,
-                                                'justify-start' => ! $isOwnMessage,
-                                            ])>
-                                                @foreach ($message->reactions->groupBy('emoji') as $emoji => $reactors)
-                                                    <button type="button" wire:key="group-message-{{ $message->id }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))"
-                                                        class="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white px-1.5 py-0.5 text-xs shadow-sm transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800">
-                                                        <span>{{ $emoji }}</span>
-                                                        <span class="text-neutral-500 dark:text-zinc-400">{{ $reactors->count() }}</span>
-                                                    </button>
-                                                @endforeach
-                                            </div>
-                                        @endif
                                     </div>
                                 </div>
                                 </div>
@@ -770,7 +783,7 @@
                     <div class="h-full min-h-0 overflow-y-auto p-5">
                         <div class="flex items-center justify-between gap-3">
                             <div>
-                                <span class="brand-kicker">{{ __('Group') }}</span>
+                                <span class="inline-flex self-start border border-stone-200 bg-stone-50 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400">{{ __('Group') }}</span>
                                 <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Members') }}</h2>
                             </div>
                             <div class="flex items-center gap-2">

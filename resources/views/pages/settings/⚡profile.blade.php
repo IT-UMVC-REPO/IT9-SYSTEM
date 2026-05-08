@@ -25,6 +25,8 @@ new #[Title('Profile settings')] class extends Component {
     public string $store_name = '';
     public string $store_description = '';
     public string $vendor_address = '';
+    public ?float $lat = null;
+    public ?float $lng = null;
     public ?string $currentProfileImage = null;
 
     public $profileImageUpload = null;
@@ -37,6 +39,8 @@ new #[Title('Profile settings')] class extends Component {
         $this->email = $user->email;
         $this->phone = $user->phone ?? '';
         $this->address = $user->address ?? '';
+        $this->lat = $user->lat === null ? null : (float) $user->lat;
+        $this->lng = $user->lng === null ? null : (float) $user->lng;
         $this->currentProfileImage = $user->profile_image;
 
         if ($user->effectiveMarketplaceRole() === UserRole::Vendor && $user->vendorProfile !== null) {
@@ -53,6 +57,8 @@ new #[Title('Profile settings')] class extends Component {
 
         $rules = [
             ...$this->profileRules($user->id),
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'profileImageUpload' => ['nullable', 'image', 'max:2048'],
         ];
 
@@ -72,11 +78,9 @@ new #[Title('Profile settings')] class extends Component {
             'email' => $validated['email'],
             'phone' => blank($validated['phone'] ?? null) ? null : $validated['phone'],
             'address' => blank($validated['address'] ?? null) ? null : $validated['address'],
+            'lat' => ($validated['lat'] ?? null) === null ? null : (float) $validated['lat'],
+            'lng' => ($validated['lng'] ?? null) === null ? null : (float) $validated['lng'],
         ]);
-
-        if ($user->isDirty('address')) {
-            $user->forceFill(filled($user->address) ? TagumCoordinate::random() : ['lat' => null, 'lng' => null]);
-        }
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -319,7 +323,47 @@ new #[Title('Profile settings')] class extends Component {
                         autocomplete="street-address"
                         :placeholder="__('Street, barangay, city, province')"
                         rows="3"
+                        x-on:input.debounce.600ms="window.dispatchEvent(new CustomEvent('profile-address-updated', { detail: $event.target.value }))"
                     />
+
+                    <section
+                        class="brand-panel p-5 sm:p-6"
+                        x-data="sukiProfileMap({
+                            wire: $wire,
+                            mapId: 'profile-location-map',
+                            lat: @js($lat),
+                            lng: @js($lng),
+                            address: @js($address),
+                            center: {
+                                lat: @js(TagumCoordinate::CENTER_LAT),
+                                lng: @js(TagumCoordinate::CENTER_LNG),
+                            },
+                        })"
+                        x-init="init()"
+                    >
+                        <div class="flex items-start gap-3">
+                            <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </span>
+
+                            <div>
+                                <span class="brand-kicker">{{ __('Your location on the map') }}</span>
+                                <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('Drag the marker or type your address above - the pin will update automatically.') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
+                            <div id="profile-location-map" wire:ignore class="h-[300px] w-full"></div>
+                        </div>
+
+                        <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-semibold text-neutral-600 dark:text-zinc-300">
+                            <span>{{ __('Lat:') }} <span x-text="formattedLat"></span></span>
+                            <span>{{ __('Lng:') }} <span x-text="formattedLng"></span></span>
+                        </div>
+
+                    </section>
 
                     @if ($this->isVendor)
                         <div class="border-t border-stone-200 pt-6 dark:border-white/10">

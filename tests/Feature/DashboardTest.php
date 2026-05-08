@@ -74,9 +74,11 @@ test('customer header renders home in mobile navigation surfaces', function () {
     $response->assertOk();
 
     expect(substr_count($response->getContent(), '>Home<'))->toBe(2);
-    expect(substr_count($response->getContent(), 'grid-cols-4'))->toBeGreaterThanOrEqual(1);
+    expect(substr_count($response->getContent(), 'grid-cols-5'))->toBeGreaterThanOrEqual(1);
 
     $response->assertSee('Mobile primary navigation')
+        ->assertSee('Messages')
+        ->assertSee(route('messages.inbox'), false)
         ->assertSee('Open account menu')
         ->assertSee('ACCOUNT')
         ->assertSee('View Profile')

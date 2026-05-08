@@ -186,3 +186,159 @@ window.sukiOrderLocationMap = (options) => ({
     },
 
 });
+
+window.sukiProfileMap = (config) => ({
+    map: null,
+    marker: null,
+    wire: config.wire,
+    mapId: config.mapId,
+    geocodeTimer: null,
+    initialized: false,
+    lat: Number(config.lat ?? config.center?.lat ?? 7.4479),
+    lng: Number(config.lng ?? config.center?.lng ?? 125.8090),
+
+    get formattedLat() {
+        return Number(this.lat).toFixed(4);
+    },
+
+    get formattedLng() {
+        return Number(this.lng).toFixed(4);
+    },
+
+    init() {
+        if (this.initialized) {
+            return;
+        }
+
+        this.initialized = true;
+
+        window.addEventListener('profile-address-updated', (event) => {
+            this.scheduleGeocode(event.detail);
+        });
+
+        this.$nextTick(() => {
+            const L = window.L;
+
+            if (!L || this.map) {
+                return;
+            }
+
+            const center = [this.lat, this.lng];
+
+            this.map = L.map(this.mapId, {
+                center,
+                zoom: 15,
+                zoomControl: true,
+                scrollWheelZoom: false,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19,
+            }).addTo(this.map);
+
+            this.marker = L.marker(center, {
+                draggable: true,
+            }).addTo(this.map);
+
+            this.marker.on('dragend', () => {
+                this.applyLatLng(this.marker.getLatLng());
+            });
+
+            this.map.on('click', (event) => {
+                this.applyLatLng(event.latlng, true);
+            });
+
+            if (config.address) {
+                this.scheduleGeocode(config.address);
+            }
+        });
+    },
+
+    scheduleGeocode(address) {
+        clearTimeout(this.geocodeTimer);
+
+        this.geocodeTimer = window.setTimeout(() => {
+            this.geocode(address);
+        }, 600);
+    },
+
+    async geocode(address) {
+        const query = String(address ?? '').trim();
+
+        if (query.length < 5 || !this.map || !this.marker) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`${query}, Tagum City, Davao del Norte, Philippines`)}&format=json&limit=1`);
+            const results = await response.json();
+            const result = results?.[0];
+
+            if (!result) {
+                return;
+            }
+
+            this.applyLatLng({
+                lat: Number(result.lat),
+                lng: Number(result.lon),
+            }, true);
+        } catch (error) {
+            // Keep the manually selected point when geocoding is unavailable.
+        }
+    },
+
+    applyLatLng(latlng, pan = false) {
+        const lat = Number(latlng.lat);
+        const lng = Number(latlng.lng);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return;
+        }
+
+        this.lat = Number(lat.toFixed(6));
+        this.lng = Number(lng.toFixed(6));
+        this.marker?.setLatLng([this.lat, this.lng]);
+
+        if (pan) {
+            this.map?.panTo([this.lat, this.lng]);
+        }
+
+        const set = this.wire?.$set ?? this.wire?.set;
+
+        if (set) {
+            set.call(this.wire, 'lat', this.lat);
+            set.call(this.wire, 'lng', this.lng);
+        }
+    },
+});
+
+window.sukiDatePicker = (config) => ({
+    picker: null,
+
+    init() {
+        this.$nextTick(() => {
+            if (!window.flatpickr || !this.$refs.datepicker || this.picker) {
+                return;
+            }
+
+            this.picker = window.flatpickr(this.$refs.datepicker, {
+                allowInput: true,
+                dateFormat: 'Y-m-d',
+                defaultDate: config.value || null,
+                disableMobile: true,
+                onChange: (_selectedDates, dateStr) => {
+                    this.setDate(dateStr);
+                },
+            });
+        });
+    },
+
+    setDate(dateStr) {
+        const set = config.wire?.$set ?? config.wire?.set;
+
+        if (set) {
+            set.call(config.wire, config.property, dateStr);
+        }
+    },
+});

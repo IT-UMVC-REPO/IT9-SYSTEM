@@ -88,8 +88,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="brand-panel p-6 sm:p-8">
-        <span class="brand-kicker">{{ __('Vendor home') }}</span>
-        <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+        <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
             {{ __('Welcome back to :store', ['store' => $this->vendorProfile->store_name]) }}
         </h1>
         <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
@@ -110,13 +109,18 @@ new #[Title('Vendor Dashboard')] class extends Component
         </div>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        @foreach ($this->stats as $stat)
-            <article class="brand-panel-muted p-5" wire:key="vendor-dashboard-stat-{{ \Illuminate\Support\Str::slug($stat['label']) }}">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ $stat['label'] }}</p>
-                <p class="mt-3 text-3xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</p>
-            </article>
-        @endforeach
+    <section class="brand-panel p-6">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
+            @foreach ($this->stats as $stat)
+                <div class="flex items-baseline gap-2" wire:key="vendor-dashboard-stat-{{ \Illuminate\Support\Str::slug($stat['label']) }}">
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $stat['label'] }}</span>
+                </div>
+                @if (! $loop->last)
+                    <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
+                @endif
+            @endforeach
+        </div>
     </section>
 
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">

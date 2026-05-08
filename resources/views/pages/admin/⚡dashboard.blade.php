@@ -7,7 +7,6 @@
 
 <div wire:poll.60s="refreshDashboard" class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4">
-        <span class="brand-kicker">{{ __('Admin overview') }}</span>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
             {{ __('Operational overview') }}
         </h1>
@@ -16,24 +15,19 @@
         </p>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        @foreach ($this->kpis as $card)
-            <article class="brand-panel overflow-hidden p-5">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <span class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
-                            {{ $card['label'] }}
-                        </span>
-                        <p class="mt-3 text-3xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</p>
-                        <p class="mt-2 text-sm font-medium {{ $card['delta_class'] }}">{{ $card['delta'] }}</p>
-                    </div>
-
-                    <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-[color:oklch(from_var(--brand-500)_l_c_h_/_0.14)] dark:text-[var(--brand-300)]">
-                        <i class="{{ $card['icon'] }} text-lg"></i>
-                    </span>
+    <section class="brand-panel p-6">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
+            @foreach ($this->kpis as $card)
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
+                    <span class="text-xs font-semibold {{ $card['delta_class'] }}">{{ $card['delta'] }}</span>
                 </div>
-            </article>
-        @endforeach
+                @if (! $loop->last)
+                    <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
+                @endif
+            @endforeach
+        </div>
     </section>
 
     <section
@@ -282,17 +276,20 @@
             </div>
         </div>
 
-        <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
             @foreach ([
                 ['label' => __('Active products'), 'value' => $this->platformHealth['active_products']],
                 ['label' => __('Active storefronts'), 'value' => $this->platformHealth['active_vendor_storefronts']],
                 ['label' => __('Unread messages'), 'value' => $this->platformHealth['unread_messages']],
                 ['label' => __('Notifications sent today'), 'value' => $this->platformHealth['notifications_sent_today']],
             ] as $stat)
-                <article class="brand-panel-muted p-4">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ $stat['label'] }}</p>
-                    <p class="mt-3 text-2xl font-semibold text-neutral-900 dark:text-zinc-100">{{ number_format($stat['value']) }}</p>
-                </article>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ number_format($stat['value']) }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $stat['label'] }}</span>
+                </div>
+                @if (! $loop->last)
+                    <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
+                @endif
             @endforeach
         </div>
     </section>

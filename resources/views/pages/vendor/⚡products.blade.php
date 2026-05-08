@@ -177,12 +177,39 @@ new #[Title('My products')] class extends Component {
     public function stats(): array
     {
         $vendorId = $this->approvedVendorProfile()->getKey();
+        $baseQuery = Product::query()->forVendor($vendorId);
 
         return [
-            'total' => Product::query()->forVendor($vendorId)->count(),
-            'active' => Product::query()->forVendor($vendorId)->where('status', ProductStatus::Active)->count(),
-            'inactive' => Product::query()->forVendor($vendorId)->where('status', ProductStatus::Inactive)->count(),
-            'out_of_stock' => Product::query()->forVendor($vendorId)->where('stock_quantity', 0)->count(),
+            [
+                'label' => __('Total listings'),
+                'value' => number_format((clone $baseQuery)->count()),
+                'dot_color' => null,
+            ],
+            [
+                'label' => __('Active'),
+                'value' => number_format((clone $baseQuery)->where('status', ProductStatus::Active)->count()),
+                'dot_color' => 'bg-emerald-500',
+            ],
+            [
+                'label' => __('Draft'),
+                'value' => number_format((clone $baseQuery)->where('status', ProductStatus::Inactive)->count()),
+                'dot_color' => 'bg-stone-400',
+            ],
+            [
+                'label' => __('Out of stock'),
+                'value' => number_format((clone $baseQuery)->where('stock_quantity', 0)->count()),
+                'dot_color' => 'bg-rose-500',
+            ],
+            [
+                'label' => __('Low stock'),
+                'value' => number_format((clone $baseQuery)->where('stock_quantity', '>', 0)->where('stock_quantity', '<=', 10)->count()),
+                'dot_color' => 'bg-amber-500',
+            ],
+            [
+                'label' => __('Total units'),
+                'value' => number_format((int) (clone $baseQuery)->sum('stock_quantity')),
+                'dot_color' => null,
+            ],
         ];
     }
 
@@ -197,8 +224,11 @@ new #[Title('My products')] class extends Component {
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-            <span class="brand-kicker">{{ __('Vendor catalog') }}</span>
-            <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+            <a href="{{ route('vendor.dashboard') }}" wire:navigate class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                {{ __('Return to Dashboard') }}
+            </a>
+            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
                 {{ __('Manage your product listings') }}
             </h1>
             <p class="mt-3 max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
@@ -212,42 +242,44 @@ new #[Title('My products')] class extends Component {
         </a>
     </section>
 
-    <section class="brand-panel-muted p-2">
-        <flux:navbar>
-            <flux:navbar.item
-                icon="squares-2x2"
-                :href="route('vendor.products')"
-                :current="request()->routeIs('vendor.products')"
-                wire:navigate
-            >
+    <section>
+        <div class="flex items-center gap-1 rounded-2xl border border-stone-200 bg-stone-100 p-1 dark:border-white/10 dark:bg-zinc-800/60">
+            <a href="{{ route('vendor.products') }}" wire:navigate
+                @class([
+                    'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.products'),
+                    'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.products'),
+                ])>
+                <i class="fa-solid fa-boxes-stacked text-xs"></i>
                 {{ __('Products') }}
-            </flux:navbar.item>
-
-            <flux:navbar.item
-                icon="archive-box"
-                :href="route('vendor.stocks')"
-                :current="request()->routeIs('vendor.stocks')"
-                wire:navigate
-            >
-                {{ __('Stocks') }}
-            </flux:navbar.item>
-        </flux:navbar>
+            </a>
+            <a href="{{ route('vendor.stocks') }}" wire:navigate
+                @class([
+                    'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
+                    'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.stocks'),
+                    'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.stocks'),
+                ])>
+                <i class="fa-solid fa-warehouse text-xs"></i>
+                {{ __('Stock Manager') }}
+            </a>
+        </div>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        @foreach ([
-            ['label' => __('Total products'), 'value' => $this->stats['total']],
-            ['label' => __('Active products'), 'value' => $this->stats['active']],
-            ['label' => __('Inactive products'), 'value' => $this->stats['inactive']],
-            ['label' => __('Out of stock'), 'value' => $this->stats['out_of_stock']],
-        ] as $stat)
-            <div class="brand-panel-muted p-5">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
-                    {{ $stat['label'] }}
-                </p>
-                <p class="mt-3 text-3xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</p>
-            </div>
-        @endforeach
+    <section class="brand-panel p-6">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
+            @foreach ($this->stats as $stat)
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</span>
+                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $stat['label'] }}</span>
+                    @if ($stat['dot_color'] ?? null)
+                        <span class="ml-1 inline-block h-2 w-2 rounded-full {{ $stat['dot_color'] }}"></span>
+                    @endif
+                </div>
+                @if (! $loop->last)
+                    <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
+                @endif
+            @endforeach
+        </div>
     </section>
 
     <section class="brand-panel p-6">

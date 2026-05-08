@@ -103,6 +103,39 @@ test('product can be saved with unit conversion fields left null', function () {
     expect($product->conversionDisplayString())->toBeNull();
 });
 
+test('product can be saved with count based unit conversion', function () {
+    Storage::fake('public');
+
+    [$vendorUser, $vendorProfile] = productUnitConversionVendor();
+    $category = productUnitConversionCategory();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('name', 'Egg Dozen')
+        ->set('description', 'Farm eggs counted per dozen for daily market buyers.')
+        ->set('price', '120.00')
+        ->set('stock_quantity', '8')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Dozen->value)
+        ->set('showUnitConversion', true)
+        ->set('base_unit', 'piece')
+        ->set('base_unit_quantity', '12')
+        ->set('status', ProductStatus::Active->value)
+        ->set('productImageUpload', UploadedFile::fake()->createWithContent('eggs.png', productUnitConversionPngFixture()))
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('vendor.products'));
+
+    $product = Product::query()
+        ->where('vendor_id', $vendorProfile->getKey())
+        ->where('name', 'Egg Dozen')
+        ->firstOrFail();
+
+    expect($product->base_unit)->toBe('piece');
+    expect((float) $product->base_unit_quantity)->toBe(12.0);
+    expect($product->conversionDisplayString())->toBe('1 dozen = 12 pieces');
+});
+
 test('base unit quantity is required when base unit is present', function () {
     Storage::fake('public');
 

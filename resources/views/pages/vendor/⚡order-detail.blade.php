@@ -247,7 +247,6 @@ new #[Title('Vendor Order Detail')] class extends Component
             <i class="fa-solid fa-arrow-left text-xs"></i>
             {{ __('Back to order queue') }}
         </a>
-        <span class="brand-kicker">{{ __('Vendor fulfilment') }}</span>
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">

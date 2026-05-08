@@ -29,7 +29,7 @@ trait VendorProductValidationRules
             ],
             $qualifiedKey('status') => ['required', Rule::enum(ProductStatus::class)],
             $qualifiedKey('unit') => ['required', Rule::enum(ProductUnit::class)],
-            $qualifiedKey('base_unit') => ['nullable', 'string', Rule::in(['kg', 'g', 'L', 'ml', ''])],
+            $qualifiedKey('base_unit') => ['nullable', 'string', Rule::in(['kg', 'g', 'L', 'ml', 'piece', 'dozen', 'each', 'pair', ''])],
             $qualifiedKey('base_unit_quantity') => [
                 'nullable',
                 'numeric',

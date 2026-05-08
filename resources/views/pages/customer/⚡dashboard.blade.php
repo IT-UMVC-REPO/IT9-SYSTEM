@@ -128,8 +128,7 @@ new #[Title('Customer Dashboard')] class extends Component
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="brand-panel p-6 sm:p-8">
-            <span class="brand-kicker">{{ __('Customer home') }}</span>
-            <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+            <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
                 {{ $this->greeting }}, {{ auth()->user()->name }}
             </h1>
             <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">

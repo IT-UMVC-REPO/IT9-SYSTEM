@@ -77,8 +77,7 @@ new #[Title('User profile')] class extends Component {
 
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-                <span class="brand-kicker">{{ __('Admin controls') }}</span>
-                <h1 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('User profile') }}</h1>
+                <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('User profile') }}</h1>
             </div>
 
             @if ($user->is_active)
