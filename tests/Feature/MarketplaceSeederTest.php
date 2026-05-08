@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\ProductStatus;
 use App\Enums\ReportStatus;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Enums\VideoCallStatus;
@@ -68,6 +69,13 @@ test('database seeder provisions the Tagum marketplace dataset in the requested 
     $productsAssignedToParentCategories = Product::query()
         ->whereHas('category.children')
         ->exists();
+    $namedTagumAddresses = collect(TagumCoordinate::namedPlaces())->pluck('address');
+    $usersOutsideNamedPlaces = User::query()
+        ->whereNotIn('address', $namedTagumAddresses)
+        ->exists();
+    $vendorsOutsideNamedPlaces = VendorProfile::query()
+        ->whereNotIn('vendor_address', $namedTagumAddresses)
+        ->exists();
 
     expect($stableAdmin->role)->toBe(UserRole::Admin)
         ->and(Hash::check('password', $stableAdmin->password))->toBeTrue()
@@ -80,10 +88,14 @@ test('database seeder provisions the Tagum marketplace dataset in the requested 
         ->and(Role::query()->count())->toBe(3)
         ->and(User::query()->count())->toBeGreaterThanOrEqual(195)
         ->and(User::query()->count())->toBeLessThanOrEqual(220)
+        ->and(User::query()->whereNull('lat')->orWhereNull('lng')->exists())->toBeFalse()
+        ->and($usersOutsideNamedPlaces)->toBeFalse()
         ->and(User::query()->where('role', UserRole::Customer)->count())->toBeGreaterThanOrEqual(151)
         ->and(User::query()->where('role', UserRole::Customer)->count())->toBeLessThanOrEqual(166)
         ->and(VendorProfile::query()->where('status', VendorStatus::Approved)->count())->toBeGreaterThanOrEqual(30)
         ->and(VendorProfile::query()->where('status', VendorStatus::Approved)->count())->toBeLessThanOrEqual(35)
+        ->and(VendorProfile::query()->whereNull('lat')->orWhereNull('lng')->exists())->toBeFalse()
+        ->and($vendorsOutsideNamedPlaces)->toBeFalse()
         ->and(VendorProfile::query()->where('status', VendorStatus::Pending)->count())->toBeGreaterThanOrEqual(8)
         ->and(VendorProfile::query()->where('status', VendorStatus::Pending)->count())->toBeLessThanOrEqual(10)
         ->and(VendorProfile::query()->where('status', VendorStatus::Rejected)->count())->toBeGreaterThanOrEqual(5)

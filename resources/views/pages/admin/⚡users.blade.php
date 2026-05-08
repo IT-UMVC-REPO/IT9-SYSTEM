@@ -207,12 +207,6 @@ new #[Title('User management')] class extends Component {
                                                 </p>
                                             @endif
 
-                                            @if ($user->hasLocation())
-                                                <a href="{{ route('shop.map', ['highlight' => $user->id]) }}" wire:navigate class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-200)] bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">
-                                                    <i class="fa-solid fa-map-location-dot text-[10px]"></i>
-                                                    {{ __('View on map') }}
-                                                </a>
-                                            @endif
                                         </div>
                                     </div>
                                 </flux:table.cell>
@@ -303,12 +297,6 @@ new #[Title('User management')] class extends Component {
                                         {{ $user->vendorProfile->store_name }}</p>
                                 @endif
 
-                                @if ($user->hasLocation())
-                                    <a href="{{ route('shop.map', ['highlight' => $user->id]) }}" wire:navigate class="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--brand-200)] bg-[var(--brand-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--brand-700)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">
-                                        <i class="fa-solid fa-map-location-dot text-[10px]"></i>
-                                        {{ __('View on map') }}
-                                    </a>
-                                @endif
                             </div>
                         </div>
 

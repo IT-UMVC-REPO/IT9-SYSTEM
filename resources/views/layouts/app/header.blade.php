@@ -32,7 +32,6 @@
                         $homeNavigationItem,
                         $navItem('Dashboard', 'customer.dashboard', ['customer.*'], 'fa-solid fa-table-cells-large'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
-                        $navItem('Find Stalls', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
                         $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Seller setup', 'vendor.registration', ['vendor.registration'], 'fa-solid fa-shop'),
                     ],
@@ -47,8 +46,7 @@
                     [
                         $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
-                        $navItem('Find Stalls', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
-                        $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
+                        $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks'], 'fa-solid fa-boxes-stacked'),
                         $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
                     ],
@@ -102,13 +100,12 @@
                 \App\Enums\UserRole::Customer => [
                     $navItem('Home', 'customer.dashboard', ['customer.dashboard'], 'fa-solid fa-house'),
                     $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
-                    $navItem('Map', 'shop.map', ['shop.map'], 'fa-solid fa-map-location-dot'),
                     $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
                     $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
                 ],
                 \App\Enums\UserRole::Vendor => [
                     $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
-                    $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*'], 'fa-solid fa-boxes-stacked'),
+                    $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks'], 'fa-solid fa-boxes-stacked'),
                     $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
                     $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                     $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
@@ -363,7 +360,11 @@
         @auth
             @if ($mobileBottomNavigationItems !== [])
                 <nav class="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 lg:hidden" aria-label="{{ __('Mobile primary navigation') }}">
-                    <div class="mx-auto grid max-w-xl grid-cols-5 gap-1">
+                    <div @class([
+                        'mx-auto grid max-w-xl gap-1',
+                        'grid-cols-4' => count($mobileBottomNavigationItems) === 4,
+                        'grid-cols-5' => count($mobileBottomNavigationItems) !== 4,
+                    ])>
                         @foreach ($mobileBottomNavigationItems as $item)
                             <a
                                 href="{{ $item['route'] }}"

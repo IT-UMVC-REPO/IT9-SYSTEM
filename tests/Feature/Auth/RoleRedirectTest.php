@@ -41,7 +41,7 @@ test('approved vendors can access customer shopping routes', function () {
     $this->actingAs($user)
         ->get(route('shop.vendors'))
         ->assertOk()
-        ->assertSee('Browse market stalls');
+        ->assertSee('Browse Vendors &amp; Find Stalls', false);
 });
 
 test('approved vendor can access the cart page without switching roles', function () {

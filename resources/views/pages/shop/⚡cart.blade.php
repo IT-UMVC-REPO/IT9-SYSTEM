@@ -58,6 +58,20 @@ new #[Title('Cart')] class extends Component {
         $this->dispatch('cart-updated');
     }
 
+    public function decrementQuantity(int $itemId): void
+    {
+        $cartItem = $this->resolveCartItem($itemId);
+
+        $this->updateQuantity($itemId, max(1, $cartItem->quantity - 1));
+    }
+
+    public function incrementQuantity(int $itemId): void
+    {
+        $cartItem = $this->resolveCartItem($itemId);
+
+        $this->updateQuantity($itemId, min(max(1, $cartItem->product->stock_quantity), $cartItem->quantity + 1));
+    }
+
     public function removeItem(int $itemId): void
     {
         $this->resolveCartItem($itemId)->delete();
@@ -174,7 +188,7 @@ new #[Title('Cart')] class extends Component {
                                 wire:key="cart-item-{{ $item->id }}"
                                 class="brand-panel flex flex-col gap-5 p-5 transition duration-200 dark:border-white/10 dark:bg-zinc-900"
                                 wire:loading.class="opacity-60"
-                                wire:target="updateQuantity,removeItem"
+                                wire:target="updateQuantity,incrementQuantity,decrementQuantity,removeItem"
                             >
                                 <div class="flex flex-col gap-5 md:flex-row md:items-center">
                                     <a
@@ -211,8 +225,13 @@ new #[Title('Cart')] class extends Component {
                                         <div class="flex items-center gap-3">
                                             <button
                                                 type="button"
-                                                wire:click="updateQuantity({{ $item->id }}, {{ max(1, $item->quantity - 1) }})"
-                                                wire:loading.attr="disabled"
+                                                x-data="stepperButton(() => $wire.decrementQuantity({{ $item->id }}))"
+                                                x-on:mousedown.prevent="start"
+                                                x-on:touchstart.prevent="start"
+                                                x-on:mouseup.window="stop"
+                                                x-on:mouseleave="stop"
+                                                x-on:touchend.window="stop"
+                                                x-on:touchcancel.window="stop"
                                                 class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                                                 @disabled($item->quantity <= 1)
                                                 aria-label="{{ __('Decrease quantity') }}"
@@ -232,8 +251,13 @@ new #[Title('Cart')] class extends Component {
 
                                             <button
                                                 type="button"
-                                                wire:click="updateQuantity({{ $item->id }}, {{ min(max(1, $item->product->stock_quantity), $item->quantity + 1) }})"
-                                                wire:loading.attr="disabled"
+                                                x-data="stepperButton(() => $wire.incrementQuantity({{ $item->id }}))"
+                                                x-on:mousedown.prevent="start"
+                                                x-on:touchstart.prevent="start"
+                                                x-on:mouseup.window="stop"
+                                                x-on:mouseleave="stop"
+                                                x-on:touchend.window="stop"
+                                                x-on:touchcancel.window="stop"
                                                 class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                                                 @disabled($item->quantity >= $item->product->stock_quantity)
                                                 aria-label="{{ __('Increase quantity') }}"
@@ -241,6 +265,16 @@ new #[Title('Cart')] class extends Component {
                                                 <span aria-hidden="true">+</span>
                                             </button>
                                         </div>
+
+                                        @if ($item->product->convertedQuantityLabel($item->quantity))
+                                            <p class="text-xs font-medium text-neutral-400 dark:text-zinc-500">
+                                                {{ __(':quantity :unit (:converted total)', [
+                                                    'quantity' => $item->quantity,
+                                                    'unit' => $item->product->unit->abbreviation(),
+                                                    'converted' => $item->product->convertedQuantityLabel($item->quantity),
+                                                ]) }}
+                                            </p>
+                                        @endif
 
                                         <div class="flex items-center gap-4">
                                             <p class="text-base font-semibold text-neutral-900 dark:text-zinc-100">
@@ -303,7 +337,13 @@ new #[Title('Cart')] class extends Component {
                                     <div wire:key="cart-summary-item-{{ $item->id }}" class="flex items-center justify-between gap-3 text-sm">
                                         <div class="min-w-0">
                                             <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
-                                            <p class="text-neutral-500 dark:text-zinc-400">{{ $item->quantity }} {{ $item->product->unit->abbreviation() }} × ₱{{ number_format((float) $item->product->price, 2) }}</p>
+                                            <p class="text-neutral-500 dark:text-zinc-400">
+                                                {{ $item->quantity }} {{ $item->product->unit->abbreviation() }}
+                                                @if ($item->product->convertedQuantityLabel($item->quantity))
+                                                    ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                                @endif
+                                                × ₱{{ number_format((float) $item->product->price, 2) }}
+                                            </p>
                                         </div>
                                         <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
                                             {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}

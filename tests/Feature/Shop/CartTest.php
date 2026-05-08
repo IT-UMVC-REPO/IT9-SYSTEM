@@ -145,6 +145,48 @@ test('updating quantity respects stock bounds', function () {
     expect($cartItem->fresh()->quantity)->toBe(4);
 });
 
+test('cart inline steppers use holdable Alpine controls', function () {
+    $customer = User::factory()->create();
+    $product = makeCartProduct([
+        'stock_quantity' => 5,
+    ]);
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+
+    CartItem::query()->create([
+        'cart_id' => $cart->getKey(),
+        'product_id' => $product->getKey(),
+        'quantity' => 2,
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.cart'))
+        ->assertOk()
+        ->assertSee('stepperButton(() => $wire.decrementQuantity', false)
+        ->assertSee('stepperButton(() => $wire.incrementQuantity', false);
+});
+
+test('cart stepper methods adjust quantity against current stock', function () {
+    $customer = User::factory()->create();
+    $product = makeCartProduct([
+        'stock_quantity' => 3,
+    ]);
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+    $cartItem = CartItem::query()->create([
+        'cart_id' => $cart->getKey(),
+        'product_id' => $product->getKey(),
+        'quantity' => 2,
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.cart')
+        ->call('incrementQuantity', $cartItem->getKey())
+        ->call('incrementQuantity', $cartItem->getKey())
+        ->call('decrementQuantity', $cartItem->getKey())
+        ->assertDispatched('cart-updated');
+
+    expect($cartItem->fresh()->quantity)->toBe(2);
+});
+
 test('empty cart shows the empty state', function () {
     $customer = User::factory()->create();
 

@@ -29,6 +29,14 @@ trait VendorProductValidationRules
             ],
             $qualifiedKey('status') => ['required', Rule::enum(ProductStatus::class)],
             $qualifiedKey('unit') => ['required', Rule::enum(ProductUnit::class)],
+            $qualifiedKey('base_unit') => ['nullable', 'string', Rule::in(['kg', 'g', 'L', 'ml', ''])],
+            $qualifiedKey('base_unit_quantity') => [
+                'nullable',
+                'numeric',
+                'min:0.0001',
+                'max:999999',
+                'required_with:'.$qualifiedKey('base_unit'),
+            ],
             $imageField => array_values(array_filter([
                 $requireImage ? 'required' : 'nullable',
                 'image',

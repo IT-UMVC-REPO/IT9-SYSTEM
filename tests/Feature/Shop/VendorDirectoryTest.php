@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Models\VendorProfile;
+use Illuminate\Support\Facades\Route;
 
 test('page renders and shows approved vendors only', function () {
     $customer = User::factory()->create();
@@ -18,6 +19,11 @@ test('page renders and shows approved vendors only', function () {
     $this->actingAs($customer)
         ->get(route('shop.vendors'))
         ->assertOk()
+        ->assertSee('Discover Stalls')
+        ->assertSee('Browse Vendors &amp; Find Stalls', false)
+        ->assertSee('Show Map')
+        ->assertSee('Hide Map')
+        ->assertSee('vendor-selected', false)
         ->assertSee($approvedVendor->store_name)
         ->assertDontSee($pendingVendor->store_name)
         ->assertDontSee($rejectedVendor->store_name);
@@ -65,4 +71,8 @@ test('empty state shows when there are no approved vendors', function () {
         ->get(route('shop.vendors'))
         ->assertOk()
         ->assertSee('No approved stalls found');
+});
+
+test('dedicated shop map route is removed', function (): void {
+    expect(Route::has('shop.map'))->toBeFalse();
 });

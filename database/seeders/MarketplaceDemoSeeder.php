@@ -209,32 +209,39 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function seedStableUsers(): array
     {
+        $adminPlace = TagumCoordinate::place(30);
+        $vendorPlace = TagumCoordinate::place(0);
+        $customerPlace = TagumCoordinate::place(24);
+
         return [
             'admin' => $this->seedStableUser(
                 email: self::STABLE_ADMIN_EMAIL,
                 name: 'SukiMarket Tagum Admin',
                 role: UserRole::Admin,
                 phone: $this->tagumPhone(),
-                address: 'SukiMarket Operations, Magugpo Poblacion, Tagum City, Davao del Norte',
+                place: $adminPlace,
             ),
             'vendor' => $this->seedStableUser(
                 email: self::STABLE_VENDOR_EMAIL,
                 name: 'Aling Nena Santos',
                 role: UserRole::Vendor,
                 phone: $this->tagumPhone(),
-                address: 'Stall 12, Tagum City Public Market, Magugpo Poblacion, Tagum City, Davao del Norte',
+                place: $vendorPlace,
             ),
             'customer' => $this->seedStableUser(
                 email: self::STABLE_CUSTOMER_EMAIL,
                 name: 'Test Customer',
                 role: UserRole::Customer,
                 phone: $this->tagumPhone(),
-                address: $this->tagumAddress(),
+                place: $customerPlace,
             ),
         ];
     }
 
-    private function seedStableUser(string $email, string $name, UserRole $role, string $phone, string $address): User
+    /**
+     * @param  array{lat: float, lng: float, address: string}  $place
+     */
+    private function seedStableUser(string $email, string $name, UserRole $role, string $phone, array $place): User
     {
         return User::query()->updateOrCreate(
             ['email' => $email],
@@ -246,8 +253,9 @@ class MarketplaceDemoSeeder extends Seeder
                 'password' => $this->demoPasswordHash(),
                 'role' => $role->value,
                 'phone' => $phone,
-                'address' => $address,
-                ...TagumCoordinate::random(),
+                'address' => $place['address'],
+                'lat' => $place['lat'],
+                'lng' => $place['lng'],
                 'profile_image' => null,
                 'is_active' => true,
                 'brand_color' => '#059669',
@@ -257,13 +265,16 @@ class MarketplaceDemoSeeder extends Seeder
 
     private function seedStableVendorProfile(User $vendor): VendorProfile
     {
+        $place = TagumCoordinate::place(0);
+
         return VendorProfile::query()->updateOrCreate(
             ['user_id' => $vendor->id],
             [
                 'store_name' => self::STABLE_VENDOR_STORE_NAME,
                 'store_description' => 'Palengke-style sariwang gulay, prutas, isda, at karne mula Tagum City Public Market. Kilala si Aling Nena sa maagang stock at tapat na presyo para sa mga suki sa Magugpo.',
-                'vendor_address' => 'Stall 12, Tagum City Public Market, Brgy. Magugpo Poblacion, Tagum City, Davao del Norte',
-                ...TagumCoordinate::random(),
+                'vendor_address' => $place['address'],
+                'lat' => $place['lat'],
+                'lng' => $place['lng'],
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => VendorStatus::Approved->value,
                 'rejection_reason' => null,
@@ -289,13 +300,15 @@ class MarketplaceDemoSeeder extends Seeder
         foreach ($users->values() as $index => $user) {
             $createdAt = Carbon::now()->subDays(fake()->numberBetween(30, 90))->subHours(fake()->numberBetween(0, 23));
             $storeName = $storeNames->get($index) ?? 'SukiDirect Tagum Stall '.Str::upper(Str::random(4));
+            $place = TagumCoordinate::randomPlace();
 
             $rows[] = [
                 'user_id' => $user->id,
                 'store_name' => $storeName,
                 'store_description' => $descriptions->get($index % $descriptions->count()),
-                'vendor_address' => $this->tagumMarketAddress(),
-                ...TagumCoordinate::random(),
+                'vendor_address' => $place['address'],
+                'lat' => $place['lat'],
+                'lng' => $place['lng'],
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => VendorStatus::Approved->value,
                 'rejection_reason' => null,
@@ -323,6 +336,7 @@ class MarketplaceDemoSeeder extends Seeder
 
         foreach ($users->values() as $index => $user) {
             $createdAt = Carbon::now()->subDays(fake()->numberBetween(3, 45))->subHours(fake()->numberBetween(0, 23));
+            $place = TagumCoordinate::randomPlace();
 
             $rows[] = [
                 'user_id' => $user->id,
@@ -330,8 +344,9 @@ class MarketplaceDemoSeeder extends Seeder
                 'store_description' => $status === VendorStatus::Pending
                     ? fake()->randomElement(self::pendingVendorDescriptions())
                     : fake()->randomElement(self::storeDescriptions()),
-                'vendor_address' => $this->tagumMarketAddress(),
-                ...TagumCoordinate::random(),
+                'vendor_address' => $place['address'],
+                'lat' => $place['lat'],
+                'lng' => $place['lng'],
                 'store_image' => $this->unsplashUrl('vendors'),
                 'status' => $status->value,
                 'rejection_reason' => $status === VendorStatus::Rejected
@@ -370,6 +385,7 @@ class MarketplaceDemoSeeder extends Seeder
             $name = $this->filipinoName();
             $email = $this->uniqueDemoEmail($name, $emailLabel);
             $createdAt = Carbon::now()->subDays(fake()->numberBetween(1, 90))->subMinutes(fake()->numberBetween(0, 1440));
+            $place = TagumCoordinate::randomPlace();
 
             $emails[] = $email;
             $rows[] = [
@@ -381,8 +397,9 @@ class MarketplaceDemoSeeder extends Seeder
                 'password' => $this->demoPasswordHash(),
                 'role' => $role->value,
                 'phone' => $this->tagumPhone(),
-                'address' => $this->tagumAddress(),
-                ...TagumCoordinate::random(),
+                'address' => $place['address'],
+                'lat' => $place['lat'],
+                'lng' => $place['lng'],
                 'profile_image' => null,
                 'is_active' => fake()->boolean(96),
                 'brand_color' => fake()->randomElement(['#059669', '#047857', '#0f766e', '#16a34a', '#ea580c', '#c2410c']),

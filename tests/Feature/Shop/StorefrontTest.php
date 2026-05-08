@@ -629,6 +629,8 @@ test('customers can open a visible product detail page', function () {
         ->assertSee('8')
         ->assertSee("\u{20B1}188.75")
         ->assertSee('Bring this stall to your cart')
+        ->assertSee('stepperButton(() => $wire.decrementQuantity())', false)
+        ->assertSee('stepperButton(() => $wire.incrementQuantity())', false)
         ->assertSee('Message vendor')
         ->assertDontSee('Digital payment options')
         ->assertDontSee('Vendor support');
@@ -777,6 +779,9 @@ test('approved vendor storefront page renders vendor details and products', func
         ->assertSee($vendor->store_name)
         ->assertSee($vendor->store_description)
         ->assertSee('Stall 8, Agdao Public Market, Davao City')
+        ->assertSee('Stall location')
+        ->assertSee('Find this vendor')
+        ->assertSee('vendor-location-map-', false)
         ->assertSee($product->name)
         ->assertSee("\u{20B1}420.50")
         ->assertSee('Message vendor')

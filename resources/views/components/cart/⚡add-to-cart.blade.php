@@ -174,6 +174,19 @@ new class extends Component {
         {{ __('Choose how many :units you need, then add the item to your cart or head straight to checkout.', ['units' => $product->unit->label()]) }}
     </p>
 
+    <div class="mt-5 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Price') }}</p>
+        <p class="mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $product->priceWithUnit() }}</p>
+        @if ($product->conversionDisplayString() && $product->pricePerBaseUnit())
+            <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">
+                {{ __('(≈ :price · :conversion)', [
+                    'price' => $product->pricePerBaseUnit(),
+                    'conversion' => $product->conversionDisplayString(),
+                ]) }}
+            </p>
+        @endif
+    </div>
+
     @if ($product->stock_quantity > 0)
         <div class="mt-6 space-y-5">
             <div class="space-y-3">
@@ -185,9 +198,13 @@ new class extends Component {
                 <div class="flex items-center gap-3">
                     <button
                         type="button"
-                        wire:click="decrementQuantity"
-                        wire:loading.attr="disabled"
-                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow"
+                        x-data="stepperButton(() => $wire.decrementQuantity())"
+                        x-on:mousedown.prevent="start"
+                        x-on:touchstart.prevent="start"
+                        x-on:mouseup.window="stop"
+                        x-on:mouseleave="stop"
+                        x-on:touchend.window="stop"
+                        x-on:touchcancel.window="stop"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                         @disabled((int) $quantity <= 1)
                         aria-label="{{ __('Decrease quantity') }}"
@@ -208,9 +225,13 @@ new class extends Component {
 
                     <button
                         type="button"
-                        wire:click="incrementQuantity"
-                        wire:loading.attr="disabled"
-                        wire:target="decrementQuantity,incrementQuantity,addToCart,buyNow"
+                        x-data="stepperButton(() => $wire.incrementQuantity())"
+                        x-on:mousedown.prevent="start"
+                        x-on:touchstart.prevent="start"
+                        x-on:mouseup.window="stop"
+                        x-on:mouseleave="stop"
+                        x-on:touchend.window="stop"
+                        x-on:touchcancel.window="stop"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
                         @disabled((int) $quantity >= $product->stock_quantity)
                         aria-label="{{ __('Increase quantity') }}"
@@ -253,7 +274,7 @@ new class extends Component {
     @else
         <div class="mt-6 flex flex-col gap-4">
             <span class="inline-flex w-full items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                Sold out &mdash; check back soon
+                {{ __('Sold out - check back soon') }}
             </span>
 
             <a

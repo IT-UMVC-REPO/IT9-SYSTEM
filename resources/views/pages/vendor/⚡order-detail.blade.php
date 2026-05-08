@@ -188,7 +188,8 @@ new #[Title('Vendor Order Detail')] class extends Component
         return Order::query()
             ->where('vendor_id', $this->vendorId())
             ->with([
-                'customer:id,name,address',
+                'customer:id,name,address,lat,lng',
+                'vendor:id,user_id,store_name,vendor_address,lat,lng',
                 'payment',
                 'orderItems.product.category',
             ])
@@ -292,7 +293,12 @@ new #[Title('Vendor Order Detail')] class extends Component
                             </div>
 
                             <div class="flex flex-wrap items-center gap-5 text-sm text-neutral-500 dark:text-zinc-400">
-                                <span>{{ $item->quantity }} {{ $item->unit->abbreviation() }}</span>
+                                <span>
+                                    {{ $item->quantity }} {{ $item->unit->abbreviation() }}
+                                    @if ($item->product?->convertedQuantityLabel($item->quantity))
+                                        ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                    @endif
+                                </span>
                                 <span>{{ $item->unit->priceLabel($item->unit_price) }}</span>
                                 <span class="font-semibold text-neutral-900 dark:text-zinc-100">
                                     {{ $item->lineTotal() }}
@@ -316,6 +322,16 @@ new #[Title('Vendor Order Detail')] class extends Component
                     </p>
                 </div>
             </section>
+
+            <x-order-location-map
+                :customer="$this->order->customer"
+                :vendor-profile="$this->order->vendor"
+                height="250px"
+                customer-label="Customer"
+                vendor-label="Your Stall"
+                vendor-marker="vendorGreen"
+                :show-distance="true"
+            />
         </div>
 
         <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">

@@ -22,6 +22,19 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         $name = fake()->words(3, true);
+        $unit = fake()->randomElement([
+            ProductUnit::Kilogram->value,
+            ProductUnit::Kilogram->value,
+            ProductUnit::Kilogram->value,
+            ProductUnit::Piece->value,
+            ProductUnit::Piece->value,
+            ProductUnit::Bundle->value,
+            ProductUnit::Tray->value,
+            ProductUnit::Bottle->value,
+            ProductUnit::Pack->value,
+            ProductUnit::Sack->value,
+            ProductUnit::Box->value,
+        ]);
         $foodPhotoUrls = [
             'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=640&h=640&fit=crop&auto=format',
             'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=640&h=640&fit=crop&auto=format',
@@ -59,17 +72,8 @@ class ProductFactory extends Factory
             'description' => sprintf(fake()->randomElement($productDescriptions), $name),
             'price' => fake()->randomFloat(2, 50, 500),
             'stock_quantity' => fake()->numberBetween(0, 100),
-            'unit' => fake()->randomElement([
-                ProductUnit::Kilogram->value,
-                ProductUnit::Kilogram->value,
-                ProductUnit::Kilogram->value,
-                ProductUnit::Piece->value,
-                ProductUnit::Piece->value,
-                ProductUnit::Bundle->value,
-                ProductUnit::Tray->value,
-                ProductUnit::Bottle->value,
-                ProductUnit::Pack->value,
-            ]),
+            'unit' => $unit,
+            ...$this->conversionAttributes($unit),
             'image' => fake()->randomElement($foodPhotoUrls),
             'status' => ProductStatus::Inactive,
         ];
@@ -80,5 +84,41 @@ class ProductFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => ProductStatus::Active,
         ]);
+    }
+
+    /**
+     * @return array{base_unit: string|null, base_unit_quantity: float|null}
+     */
+    private function conversionAttributes(string $unit): array
+    {
+        if (! fake()->boolean(30)) {
+            return [
+                'base_unit' => null,
+                'base_unit_quantity' => null,
+            ];
+        }
+
+        return match (ProductUnit::tryFrom($unit)) {
+            ProductUnit::Sack => [
+                'base_unit' => 'kg',
+                'base_unit_quantity' => fake()->randomFloat(4, 25, 50),
+            ],
+            ProductUnit::Bottle => [
+                'base_unit' => 'ml',
+                'base_unit_quantity' => fake()->randomFloat(4, 250, 1000),
+            ],
+            ProductUnit::Tray => [
+                'base_unit' => 'g',
+                'base_unit_quantity' => fake()->randomFloat(4, 600, 1200),
+            ],
+            ProductUnit::Box, ProductUnit::Pack, ProductUnit::Bundle => [
+                'base_unit' => 'g',
+                'base_unit_quantity' => fake()->randomFloat(4, 200, 5000),
+            ],
+            default => [
+                'base_unit' => null,
+                'base_unit_quantity' => null,
+            ],
+        };
     }
 }

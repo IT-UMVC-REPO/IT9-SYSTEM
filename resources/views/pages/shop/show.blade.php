@@ -1,14 +1,16 @@
 <x-layouts::app :title="$product->name">
     @php
         $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value !== 'admin' && ! ($isOwnProduct ?? false);
+        $conversionString = $product->conversionDisplayString();
+        $pricePerBaseUnit = $product->pricePerBaseUnit();
 
         $availabilityClasses = $product->stock_quantity > 0
             ? 'brand-soft-surface border'
             : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300';
 
         $availabilityLabel = $product->stock_quantity > 0
-            ? $product->unitLabel().' in stock'
-            : 'Currently sold out';
+            ? __(':stock in stock', ['stock' => $product->unitLabel()])
+            : __('Currently sold out');
     @endphp
 
     @if ($isOwnProduct ?? false)
@@ -30,7 +32,7 @@
                 class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
             >
                 <i class="fa-solid fa-arrow-left text-xs"></i>
-                Back to storefront
+                {{ __('Back to storefront') }}
             </a>
 
             <div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] xl:items-end">
@@ -49,8 +51,13 @@
                 </div>
 
                 <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
-                    <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">Market price</p>
+                    <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">{{ __('Market price') }}</p>
                     <p class="mt-3 text-4xl font-semibold text-white">{{ $product->priceWithUnit() }}</p>
+                    @if ($conversionString && $pricePerBaseUnit)
+                        <p class="mt-2 text-sm font-medium text-white/80">
+                            {{ __('(≈ :price · :conversion)', ['price' => $pricePerBaseUnit, 'conversion' => $conversionString]) }}
+                        </p>
+                    @endif
 
                     <div class="mt-6 flex flex-wrap gap-3">
                         <span class="rounded-full border border-white/15 bg-white/12 px-3 py-1.5 text-xs font-semibold text-white">
@@ -117,25 +124,32 @@
 
             <div class="self-start space-y-5 xl:sticky xl:top-24">
                 <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">Listing snapshot</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Listing snapshot') }}</p>
 
                     <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                         <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">Category</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Category') }}</p>
                             <p class="mt-2 text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->category->name }}</p>
                         </div>
 
                         <div class="rounded-[1.5rem] border p-4 {{ $availabilityClasses }}">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em]">Availability</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.22em]">{{ __('Availability') }}</p>
                             <p class="mt-2 text-sm font-semibold">{{ $availabilityLabel }}</p>
                         </div>
+
+                        @if ($conversionString)
+                            <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Unit info') }}</p>
+                                <p class="mt-2 text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $conversionString }}</p>
+                            </div>
+                        @endif
                     </div>
 
                     <a
                         href="{{ route('shop.home', ['category' => $product->category->id]) }}"
                         class="brand-button-secondary mt-5 w-full"
                     >
-                        Explore more {{ strtolower($product->category->name) }}
+                        {{ __('Explore more :category', ['category' => strtolower($product->category->name)]) }}
                     </a>
                 </div>
 

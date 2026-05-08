@@ -212,6 +212,28 @@ new #[Title('My products')] class extends Component {
         </a>
     </section>
 
+    <section class="brand-panel-muted p-2">
+        <flux:navbar>
+            <flux:navbar.item
+                icon="squares-2x2"
+                :href="route('vendor.products')"
+                :current="request()->routeIs('vendor.products')"
+                wire:navigate
+            >
+                {{ __('Products') }}
+            </flux:navbar.item>
+
+            <flux:navbar.item
+                icon="archive-box"
+                :href="route('vendor.stocks')"
+                :current="request()->routeIs('vendor.stocks')"
+                wire:navigate
+            >
+                {{ __('Stocks') }}
+            </flux:navbar.item>
+        </flux:navbar>
+    </section>
+
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ([
             ['label' => __('Total products'), 'value' => $this->stats['total']],

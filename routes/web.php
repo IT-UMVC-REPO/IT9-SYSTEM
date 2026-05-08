@@ -41,10 +41,6 @@ Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('custome
     Route::livewire('/dashboard', 'pages::customer.dashboard')->name('dashboard');
 });
 
-Route::middleware(['auth', 'verified', 'role:customer,vendor,admin'])->prefix('shop')->name('shop.')->group(function () {
-    Route::livewire('/map', 'pages::shop.vendor-map')->name('map');
-});
-
 Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('shop')->name('shop.')->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('home');
     Route::livewire('/vendors', 'pages::shop.vendors')->name('vendors');
@@ -68,6 +64,7 @@ Route::middleware(['auth', 'verified', 'role:vendor'])->prefix('vendor')->name('
     Route::livewire('/dashboard', 'pages::vendor.dashboard')->name('dashboard');
     Route::livewire('/products', 'pages::vendor.products')->name('products');
     Route::livewire('/products/create', 'pages::vendor.product-create')->name('products.create');
+    Route::livewire('/products/stocks', 'pages::vendor.stocks')->name('stocks');
     Route::livewire('/products/{product}/edit', 'pages::vendor.product-edit')->name('products.edit');
     Route::livewire('/orders', 'pages::vendor.orders')->name('orders');
     Route::livewire('/orders/{orderReference}', 'pages::vendor.order-detail')->name('orders.show');

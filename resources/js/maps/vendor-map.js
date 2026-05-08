@@ -1,6 +1,8 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+window.L = window.L ?? L;
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
@@ -35,7 +37,7 @@ export function sukiVendorMap() {
             });
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
             }).addTo(this.map);
 
@@ -69,7 +71,7 @@ export function sukiVendorMap() {
                                 transform: rotate(-45deg);
                                 cursor: pointer;
                             ">
-                                <span style="transform: rotate(45deg); font-size: 16px;">🛒</span>
+                                <span style="transform: rotate(45deg); width: 10px; height: 10px; border-radius: 9999px; background: white;"></span>
                             </div>`,
                         iconSize: [40, 40],
                         iconAnchor: [20, 40],
@@ -83,24 +85,11 @@ export function sukiVendorMap() {
                     return marker;
                 },
                 onEachFeature: (feature, layer) => {
-                    const p = feature.properties;
-                    const color = escapeHtml(p.color ?? '#059669');
-
-                    layer.bindPopup(`
-                        <div style="min-width:200px; font-family: sans-serif;">
-                            <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}"
-                                style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" />
-                            <p style="font-weight:700; font-size:14px; margin:0 0 4px;">${escapeHtml(p.name)}</p>
-                            <p style="font-size:12px; color:#666; margin:0 0 8px;">${escapeHtml(p.description)}</p>
-                            <p style="font-size:11px; color:#888; margin:0 0 10px;">📍 ${escapeHtml(p.address || 'Tagum City')}</p>
-                            <a href="${escapeHtml(p.profileUrl)}"
-                                style="display:block; text-align:center; background:${color};
-                                       color:white; border-radius:8px; padding:7px; font-size:13px;
-                                       font-weight:600; text-decoration:none;">
-                                ${escapeHtml('Visit Stall →')}
-                            </a>
-                        </div>
-                    `, { maxWidth: 240 });
+                    layer.on('click', () => {
+                        window.dispatchEvent(new CustomEvent('vendor-selected', {
+                            detail: feature.properties,
+                        }));
+                    });
                 },
             }).addTo(this.map);
 
@@ -118,7 +107,7 @@ export function sukiVendorMap() {
 
             const marker = this.vendorMarkers.get(highlight);
             this.map.flyTo(marker.getLatLng(), 16);
-            marker.openPopup();
+            marker.fire('click');
         },
 
         async toggleCustomers() {
@@ -150,12 +139,13 @@ export function sukiVendorMap() {
                             <div style="
                                 width: 32px; height: 32px;
                                 border-radius: 50%;
-                                background: #3b82f6;
+                                background: var(--map-customer-marker, royalblue);
                                 border: 2px solid white;
                                 box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                                 display: flex; align-items: center; justify-content: center;
-                                font-size: 14px;
-                            ">👤</div>`,
+                            ">
+                                <span style="width: 8px; height: 8px; border-radius: 9999px; background: white;"></span>
+                            </div>`,
                         iconSize: [32, 32],
                         iconAnchor: [16, 16],
                         popupAnchor: [0, -20],
@@ -169,12 +159,12 @@ export function sukiVendorMap() {
                     layer.bindPopup(`
                         <div style="min-width:160px; font-family: sans-serif;">
                             <p style="font-weight:700; font-size:13px; margin:0 0 4px;">${escapeHtml(p.name)}</p>
-                            <p style="font-size:11px; color:#888; margin:0 0 8px;">📍 ${escapeHtml(p.address || 'Tagum City')}</p>
+                            <p style="font-size:11px; color:#888; margin:0 0 8px;">${escapeHtml(p.address || 'Tagum City')}</p>
                             <a href="${escapeHtml(p.profileUrl)}"
-                                style="display:block; text-align:center; background:#3b82f6;
+                                style="display:block; text-align:center; background: var(--map-customer-marker, royalblue);
                                        color:white; border-radius:8px; padding:6px; font-size:12px;
                                        font-weight:600; text-decoration:none;">
-                                ${escapeHtml('View Profile →')}
+                                ${escapeHtml('View Profile ->')}
                             </a>
                         </div>
                     `, { maxWidth: 200 });

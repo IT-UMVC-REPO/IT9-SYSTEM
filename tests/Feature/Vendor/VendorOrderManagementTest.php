@@ -96,6 +96,9 @@ test('vendor order detail shows the back link and peso totals', function () {
         ->get(route('vendor.orders.show', ['orderReference' => $tracked['order']->getKey()]))
         ->assertOk()
         ->assertSee('Back to order queue')
+        ->assertSee('Delivery map')
+        ->assertSee('Customer')
+        ->assertSee('Your Stall')
         ->assertSee("\u{20B1}300.00")
         ->assertSee("\u{20B1}150.00 / kg");
 });

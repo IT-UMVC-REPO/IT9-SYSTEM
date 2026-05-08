@@ -95,6 +95,50 @@ enum ProductUnit: string
     }
 
     /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function suggestedBaseUnits(): array
+    {
+        return match ($this) {
+            self::Kilogram, self::Gram, self::Liter, self::Milliliter => [],
+            self::Sack, self::Bag => [
+                ['value' => 'kg', 'label' => 'Kilograms (kg)'],
+                ['value' => 'g', 'label' => 'Grams (g)'],
+            ],
+            self::Tray => [
+                ['value' => 'g', 'label' => 'Grams (g)'],
+                ['value' => 'kg', 'label' => 'Kilograms (kg)'],
+            ],
+            self::Bottle, self::Can => [
+                ['value' => 'ml', 'label' => 'Milliliters (ml)'],
+                ['value' => 'L', 'label' => 'Liters (L)'],
+            ],
+            self::Box, self::Pack, self::Bundle => [
+                ['value' => 'g', 'label' => 'Grams (g)'],
+                ['value' => 'kg', 'label' => 'Kilograms (kg)'],
+                ['value' => 'ml', 'label' => 'Milliliters (ml)'],
+                ['value' => 'L', 'label' => 'Liters (L)'],
+            ],
+            default => [
+                ['value' => 'kg', 'label' => 'Kilograms (kg)'],
+                ['value' => 'g', 'label' => 'Grams (g)'],
+                ['value' => 'L', 'label' => 'Liters (L)'],
+                ['value' => 'ml', 'label' => 'Milliliters (ml)'],
+            ],
+        };
+    }
+
+    public function conversionLabel(float $quantity, string $baseUnit): string
+    {
+        return sprintf(
+            '1 %s = %s %s',
+            strtolower($this->label()),
+            rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.'),
+            $baseUnit,
+        );
+    }
+
+    /**
      * @return list<self>
      */
     public static function suggestionsForCategory(string $categorySlug): array

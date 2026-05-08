@@ -104,7 +104,11 @@
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
                                         <p class="text-xs text-neutral-400 dark:text-zinc-500">
-                                            {{ $item->quantity }} {{ $item->product->unit->abbreviation() }} × ₱{{ number_format((float) $item->product->price, 2) }}
+                                            {{ $item->quantity }} {{ $item->product->unit->abbreviation() }}
+                                            @if ($item->product->convertedQuantityLabel($item->quantity))
+                                                ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                            @endif
+                                            × ₱{{ number_format((float) $item->product->price, 2) }}
                                         </p>
                                     </div>
 

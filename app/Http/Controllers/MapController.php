@@ -18,6 +18,9 @@ class MapController extends Controller
             ->whereNotNull('lat')
             ->whereNotNull('lng')
             ->with('user:id,name,brand_color')
+            ->withCount([
+                'products as active_products_count' => fn ($query) => $query->active(),
+            ])
             ->select(['id', 'user_id', 'store_name', 'store_description', 'store_image', 'lat', 'lng', 'vendor_address'])
             ->get();
 
@@ -31,11 +34,12 @@ class MapController extends Controller
                 'id' => $vendor->id,
                 'user_id' => $vendor->user_id,
                 'name' => $vendor->store_name,
-                'description' => Str::limit((string) $vendor->store_description, 100),
+                'description' => Str::limit((string) $vendor->store_description, 120),
                 'image' => $vendor->store_image_url,
                 'address' => $vendor->vendor_address,
                 'profileUrl' => route('shop.vendors.show', $vendor),
                 'color' => $vendor->user?->brand_color ?? '#059669',
+                'active_products_count' => (int) $vendor->active_products_count,
             ],
         ]);
 

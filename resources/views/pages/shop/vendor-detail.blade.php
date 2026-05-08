@@ -91,6 +91,19 @@
         </div>
     </section>
 
+    @if ($vendorProfile->hasLocation())
+        <div class="mx-auto max-w-[1500px] px-4 pt-8 sm:px-6 lg:px-8">
+            <section class="space-y-4">
+                <div>
+                    <span class="brand-kicker">{{ __('Stall location') }}</span>
+                    <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Find this vendor') }}</h2>
+                </div>
+
+                <x-vendor-location-map :vendor-profile="$vendorProfile" height="300px" :zoom="15" />
+            </section>
+        </div>
+    @endif
+
     <div class="mx-auto grid max-w-[1500px] gap-8 px-4 py-8 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section class="space-y-6">
             <div class="flex items-center justify-between gap-4">

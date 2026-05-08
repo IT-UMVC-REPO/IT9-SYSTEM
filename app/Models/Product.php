@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'unit', 'image', 'status'])]
+#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'unit', 'base_unit', 'base_unit_quantity', 'image', 'status'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -42,6 +42,7 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
             'unit' => ProductUnit::class,
+            'base_unit_quantity' => 'float',
             'status' => ProductStatus::class,
         ];
     }
@@ -54,6 +55,38 @@ class Product extends Model
     public function priceWithUnit(): string
     {
         return $this->unit->priceLabel($this->price);
+    }
+
+    public function conversionDisplayString(?string $baseUnit = null, ?float $baseQty = null): ?string
+    {
+        $baseUnit ??= $this->base_unit;
+        $baseQty ??= $this->base_unit_quantity === null ? null : (float) $this->base_unit_quantity;
+
+        if (blank($baseUnit) || $baseQty === null) {
+            return null;
+        }
+
+        return $this->unit->conversionLabel($baseQty, $baseUnit);
+    }
+
+    public function pricePerBaseUnit(): ?string
+    {
+        if (blank($this->base_unit) || $this->base_unit_quantity === null || (float) $this->base_unit_quantity <= 0) {
+            return null;
+        }
+
+        return '₱'.number_format((float) $this->price / (float) $this->base_unit_quantity, 2).' per '.$this->base_unit;
+    }
+
+    public function convertedQuantityLabel(int|float $quantity): ?string
+    {
+        if (blank($this->base_unit) || $this->base_unit_quantity === null) {
+            return null;
+        }
+
+        $total = (float) $quantity * (float) $this->base_unit_quantity;
+
+        return rtrim(rtrim(number_format($total, 4, '.', ''), '0'), '.').' '.$this->base_unit;
     }
 
     public function vendor(): BelongsTo

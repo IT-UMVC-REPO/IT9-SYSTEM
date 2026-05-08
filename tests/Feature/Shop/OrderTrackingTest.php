@@ -110,6 +110,9 @@ test('order detail shows correct line items and totals', function () {
         ->assertSee('Back to orders')
         ->assertSee('Poblacion Market Lane, Davao City')
         ->assertSee('Please leave at the guard house.')
+        ->assertSee('Delivery map')
+        ->assertSee('Delivery Point')
+        ->assertSee('Vendor Stall')
         ->assertSee('View full message history in your inbox');
 });
 
