@@ -2,6 +2,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="csrf-token" content="{{ csrf_token() }}" />
 <meta name="description" content="{{ $metaDescription ?? __('SukiMarket — the digital Filipino wet market. Browse fresh produce, seafood, and daily goods from verified local vendors.') }}" />
+<meta property="og:image" content="{{ asset('imgs/sukiheader.webp') }}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta property="og:title" content="{{ filled($title ?? null) ? $title.' - SukiMarket' : 'SukiMarket - Digital Palengke' }}" />
 <meta property="og:description" content="{{ $metaDescription ?? __('Browse fresh goods from verified local market vendors on SukiMarket.') }}" />
 <meta property="og:type" content="website" />
