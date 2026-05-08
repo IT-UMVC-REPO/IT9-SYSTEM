@@ -139,7 +139,8 @@ test('notification bell renders stronger dark mode classes for read and unread i
 
     Livewire::actingAs($user)
         ->test('notifications.notification-bell')
-        ->assertSee('dark:bg-zinc-800', false)
+        ->assertSee('border-2 border-[var(--brand-500)]', false)
+        ->assertSee('dark:bg-zinc-800/90', false)
         ->assertSee('dark:border-[var(--brand-500)]', false)
         ->assertSee('dark:bg-zinc-900', false)
         ->assertSee('dark:text-zinc-300', false)

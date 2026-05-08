@@ -64,7 +64,6 @@
                         $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                         $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
-                        $navItem('Audit Log', 'admin.audit', ['admin.audit'], 'fa-solid fa-clipboard-list'),
                     ],
                     [
                         $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
@@ -116,7 +115,6 @@
                     $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                     $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                     $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
-                    $navItem('Audit', 'admin.audit', ['admin.audit'], 'fa-solid fa-clipboard-list'),
                 ],
             };
         }
@@ -398,7 +396,7 @@
         </button>
 
         @persist('toast')
-            <flux:toast.group>
+            <flux:toast.group position="bottom left">
                 <flux:toast />
             </flux:toast.group>
         @endpersist

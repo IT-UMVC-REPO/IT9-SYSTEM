@@ -26,3 +26,8 @@ test('random place returns coordinates and matching vendor address', function ()
         ->and($place['vendor_address'])->toBe($place['address'])
         ->and(TagumCoordinate::random())->toHaveKeys(['lat', 'lng']);
 });
+
+test('random place selection does not depend on the testing faker helper', function (): void {
+    expect(file_get_contents(__DIR__.'/../../app/Enums/TagumCoordinate.php'))
+        ->not->toContain('fake(');
+});

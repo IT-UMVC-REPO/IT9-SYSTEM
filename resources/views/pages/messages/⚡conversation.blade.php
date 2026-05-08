@@ -359,8 +359,10 @@
                             @php($isOwnMessage = $message->sender_id === auth()->id())
                             @php($messageDateKey = $message->created_at?->toDateString())
                             @php($previousDateKey = $previousMessage?->created_at?->toDateString())
+                            @php($nextMessage = $this->threadMessages->get($loop->index + 1))
                             @php($showDateSeparator = $previousMessage === null || $messageDateKey !== $previousDateKey)
                             @php($isConsecutive = $previousMessage !== null && $previousMessage->sender_id === $message->sender_id && $messageDateKey === $previousDateKey)
+                            @php($isGroupedWithNext = $nextMessage !== null && $nextMessage->sender_id === $message->sender_id && $nextMessage->created_at?->toDateString() === $messageDateKey)
 
                             @if ($showDateSeparator)
                                 <div wire:key="conversation-date-{{ $messageDateKey ?? $message->id }}" class="flex justify-center py-2">
@@ -377,7 +379,7 @@
                                     <div
                                         class="flex max-w-full items-end gap-2 {{ $isOwnMessage ? 'flex-row-reverse' : '' }}">
                                         @unless ($isOwnMessage)
-                                            @if ($isConsecutive)
+                                            @if ($isGroupedWithNext)
                                                 <span class="h-[34px] w-[34px] shrink-0"></span>
                                             @else
                                                 <x-user-avatar :user="$message->sender" size="sm" class="shrink-0" />

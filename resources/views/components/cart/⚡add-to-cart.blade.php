@@ -221,8 +221,6 @@ new class extends Component {
                         class="brand-stepper-input"
                     >
 
-                    <span class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">{{ $product->unit->abbreviation() }}</span>
-
                     <button
                         type="button"
                         x-data="stepperButton(() => $wire.incrementQuantity())"

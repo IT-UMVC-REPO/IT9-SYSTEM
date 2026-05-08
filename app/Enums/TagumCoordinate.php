@@ -105,7 +105,9 @@ class TagumCoordinate
      */
     public static function randomPlace(): array
     {
-        return self::withVendorAddress(fake()->randomElement(self::namedPlaces()));
+        $places = self::namedPlaces();
+
+        return self::withVendorAddress($places[array_rand($places)]);
     }
 
     /**

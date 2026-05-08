@@ -524,13 +524,20 @@
                             @php
                                 $isOwnMessage = $message->sender_id === auth()->id();
                                 $previousMessage = $this->threadMessages->get($loop->index - 1);
+                                $nextMessage = $this->threadMessages->get($loop->index + 1);
                                 $startsNewDate = ! $previousMessage || ! $message->created_at?->isSameDay($previousMessage->created_at);
                                 $isGroupedWithPrevious = $previousMessage
                                     && ! $message->is_system_message
                                     && ! $previousMessage->is_system_message
                                     && $previousMessage->sender_id === $message->sender_id
                                     && $message->created_at?->isSameDay($previousMessage->created_at);
+                                $isGroupedWithNext = $nextMessage
+                                    && ! $message->is_system_message
+                                    && ! $nextMessage->is_system_message
+                                    && $nextMessage->sender_id === $message->sender_id
+                                    && $message->created_at?->isSameDay($nextMessage->created_at);
                                 $showSenderLabel = ! $isOwnMessage && ! $isGroupedWithPrevious;
+                                $showSenderAvatar = ! $isOwnMessage && ! $isGroupedWithNext;
                             @endphp
 
                             @if ($startsNewDate)
@@ -561,13 +568,12 @@
                             ])>
                                 <div @class([
                                     'flex max-w-[75%] gap-2',
-                                    'items-end' => ! $showSenderLabel,
-                                    'items-start' => $showSenderLabel,
+                                    'items-end' => true,
                                     'flex-row-reverse' => $isOwnMessage,
                                 ])>
                                     @unless ($isOwnMessage)
-                                        @if ($showSenderLabel)
-                                            <x-user-avatar :user="$message->sender" size="xs" class="mt-5 shrink-0" />
+                                        @if ($showSenderAvatar)
+                                            <x-user-avatar :user="$message->sender" size="xs" class="shrink-0" />
                                         @else
                                             <span class="w-7 shrink-0"></span>
                                         @endif
@@ -759,54 +765,56 @@
                     x-show="showInfo"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:leave="transition ease-in duration-150"
-                    class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-5 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:shadow-none"
+                    class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-none p-0 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:rounded-3xl lg:shadow-none"
                 >
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <span class="brand-kicker">{{ __('Group') }}</span>
-                            <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Members') }}</h2>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" x-on:click="showInfo = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0 lg:hidden" aria-label="{{ __('Close group info') }}">
-                                <i class="fa-solid fa-xmark text-xs"></i>
-                            </button>
-                            <button type="button" wire:click="leaveGroup" wire:confirm="{{ __('Leave this group?') }}" class="text-xs font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-400">
-                                {{ __('Leave') }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 space-y-3">
-                        @foreach ($this->members as $member)
-                            <div wire:key="group-member-{{ $member->user_id }}" class="flex items-center gap-3">
-                                <x-user-avatar :user="$member->user" size="sm" />
-                                <div class="min-w-0 flex-1">
-                                    <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->memberDisplayName($member->user) }}</p>
-                                    <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }}</p>
-                                </div>
+                    <div class="h-full min-h-0 overflow-y-auto p-5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <span class="brand-kicker">{{ __('Group') }}</span>
+                                <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Members') }}</h2>
                             </div>
-                        @endforeach
-                    </div>
-
-                    @if ($this->isGroupAdmin())
-                        <div class="mt-6 border-t border-stone-200 pt-5 dark:border-white/10">
-                            <flux:field>
-                                <flux:label>{{ __('Add member') }}</flux:label>
-                                <flux:input wire:model.live.debounce.250ms="memberSearch" :placeholder="__('Search users')" />
-                            </flux:field>
-
-                            @if ($this->availableMembers->isNotEmpty())
-                                <div class="mt-3 space-y-2">
-                                    @foreach ($this->availableMembers as $user)
-                                        <button type="button" wire:click="addMember({{ $user->id }})" wire:key="available-member-{{ $user->id }}" class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-stone-50 dark:hover:bg-white/10">
-                                            <x-user-avatar :user="$user" size="sm" />
-                                            <span class="truncate text-sm font-semibold text-neutral-800 dark:text-zinc-100">{{ $user->name }}</span>
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
+                            <div class="flex items-center gap-2">
+                                <button type="button" x-on:click="showInfo = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0 lg:hidden" aria-label="{{ __('Close group info') }}">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                                <button type="button" wire:click="leaveGroup" wire:confirm="{{ __('Leave this group?') }}" class="text-xs font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-400">
+                                    {{ __('Leave') }}
+                                </button>
+                            </div>
                         </div>
-                    @endif
+
+                        <div class="mt-5 space-y-3">
+                            @foreach ($this->members as $member)
+                                <div wire:key="group-member-{{ $member->user_id }}" class="flex items-center gap-3">
+                                    <x-user-avatar :user="$member->user" size="sm" />
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->memberDisplayName($member->user) }}</p>
+                                        <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @if ($this->isGroupAdmin())
+                            <div class="mt-6 border-t border-stone-200 pt-5 dark:border-white/10">
+                                <flux:field>
+                                    <flux:label>{{ __('Add member') }}</flux:label>
+                                    <flux:input wire:model.live.debounce.250ms="memberSearch" :placeholder="__('Search users')" />
+                                </flux:field>
+
+                                @if ($this->availableMembers->isNotEmpty())
+                                    <div class="mt-3 space-y-2">
+                                        @foreach ($this->availableMembers as $user)
+                                            <button type="button" wire:click="addMember({{ $user->id }})" wire:key="available-member-{{ $user->id }}" class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-stone-50 dark:hover:bg-white/10">
+                                                <x-user-avatar :user="$user" size="sm" />
+                                                <span class="truncate text-sm font-semibold text-neutral-800 dark:text-zinc-100">{{ $user->name }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
                 </aside>
             </div>
         </div>

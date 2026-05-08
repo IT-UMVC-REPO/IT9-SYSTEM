@@ -166,7 +166,7 @@ new class extends Component
                     wire:key="header-notification-{{ $notification->id }}"
                     @class([
                         'w-full rounded-2xl border px-4 py-3 text-left transition',
-                        'border-[var(--brand-200)] border-l-4 border-l-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800' => ! $notification->is_read,
+                        'border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => ! $notification->is_read,
                         'border-stone-200 bg-white/72 dark:border-white/10 dark:bg-zinc-900' => $notification->is_read,
                     ])
                 >

@@ -21,7 +21,7 @@
             </div>
         </div>
         @persist('toast')
-            <flux:toast.group>
+            <flux:toast.group position="bottom left">
                 <flux:toast />
             </flux:toast.group>
         @endpersist

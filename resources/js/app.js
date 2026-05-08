@@ -16,6 +16,13 @@ window.groupConversationVideoCall = groupConversationVideoCall;
 window.conversationVideoCallControl = conversationVideoCallControl;
 window.sukiVendorMap = sukiVendorMap;
 
+const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
 window.stepperButton = (callback) => ({
     _timer: null,
     _interval: null,
@@ -34,6 +41,44 @@ window.stepperButton = (callback) => ({
         clearInterval(this._interval);
         this._timer = null;
         this._interval = null;
+    },
+});
+
+window.vendorLocationMap = (mapId, zoom, vendor) => ({
+    map: null,
+
+    init() {
+        this.$nextTick(() => {
+            const L = window.L;
+
+            if (!L || this.map || !vendor) {
+                return;
+            }
+
+            this.map = L.map(mapId, {
+                center: [vendor.lat, vendor.lng],
+                zoom,
+                zoomControl: true,
+                scrollWheelZoom: false,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19,
+            }).addTo(this.map);
+
+            const icon = L.divIcon({
+                className: '',
+                html: '<div style="width:40px;height:40px;border-radius:50% 50% 50% 0;background:var(--brand-600,#059669);border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;transform:rotate(-45deg)"><span style="transform:rotate(45deg);width:10px;height:10px;border-radius:9999px;background:white"></span></div>',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -44],
+            });
+
+            L.marker([vendor.lat, vendor.lng], { icon })
+                .addTo(this.map)
+                .bindPopup(`<strong>${escapeHtml(vendor.name)}</strong><br>${escapeHtml(vendor.address)}`);
+        });
     },
 });
 
@@ -60,40 +105,55 @@ window.sukiOrderLocationMap = (options) => ({
                 zoom: this.zoom,
                 zoomControl: true,
                 scrollWheelZoom: false,
+                attributionControl: false,
             });
+
+            L.control.attribution({ prefix: false }).addTo(this.map);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
             }).addTo(this.map);
 
-            const bounds = [];
-
             this.points.forEach((point) => {
                 const latlng = [point.lat, point.lng];
-                bounds.push(latlng);
 
                 L.marker(latlng, { icon: this.markerIcon(point.kind) })
                     .addTo(this.map)
-                    .bindPopup(`<strong>${this.escapeHtml(point.label)}</strong><br>${this.escapeHtml(point.address)}`);
+                    .bindPopup(`<strong>${escapeHtml(point.label)}</strong><br>${escapeHtml(point.address)}`);
             });
 
-            if (bounds.length > 1) {
-                L.polyline(bounds, {
-                    color: 'var(--brand-600, #059669)',
-                    weight: 4,
-                    opacity: 0.72,
-                    dashArray: '7 9',
-                }).addTo(this.map);
+            if (this.points.length > 1) {
+                const [from, to] = this.points;
+                const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
 
-                this.map.fitBounds(bounds, {
-                    padding: [28, 28],
-                    maxZoom: 15,
-                });
+                fetch(url)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const coords = data.routes?.[0]?.geometry?.coordinates;
 
-                if (this.showDistance) {
-                    this.distanceLabel = `~${this.distanceInKilometers(this.points[0], this.points[1])} km away`;
-                }
+                        if (!coords) {
+                            return;
+                        }
+
+                        const latLngs = coords.map(([lng, lat]) => [lat, lng]);
+                        const routeLine = L.polyline(latLngs, {
+                            color: 'var(--brand-600, #059669)',
+                            weight: 4,
+                            opacity: 0.75,
+                        }).addTo(this.map);
+
+                        this.map.fitBounds(routeLine.getBounds(), {
+                            padding: [28, 28],
+                            maxZoom: 15,
+                        });
+
+                        if (this.showDistance) {
+                            const meters = data.routes[0].distance;
+                            this.distanceLabel = `~${(meters / 1000).toFixed(1)} km by road`;
+                        }
+                    })
+                    .catch(() => {});
             }
         });
     },
@@ -125,25 +185,4 @@ window.sukiOrderLocationMap = (options) => ({
         });
     },
 
-    distanceInKilometers(firstPoint, secondPoint) {
-        const radius = 6371;
-        const toRadians = (value) => value * Math.PI / 180;
-        const dLat = toRadians(secondPoint.lat - firstPoint.lat);
-        const dLng = toRadians(secondPoint.lng - firstPoint.lng);
-        const firstLat = toRadians(firstPoint.lat);
-        const secondLat = toRadians(secondPoint.lat);
-        const a = Math.sin(dLat / 2) ** 2
-            + Math.cos(firstLat) * Math.cos(secondLat) * Math.sin(dLng / 2) ** 2;
-
-        return (radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1);
-    },
-
-    escapeHtml(value) {
-        return String(value ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-    },
 });

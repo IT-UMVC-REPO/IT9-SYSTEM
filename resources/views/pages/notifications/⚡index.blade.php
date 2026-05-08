@@ -185,7 +185,7 @@ new #[Title('Notifications')] class extends Component
                         wire:key="notification-row-{{ $notification->getKey() }}"
                         @class([
                             'brand-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-start',
-                            'border-l-4 border-l-[var(--brand-500)]' => ! $notification->is_read,
+                            'border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => ! $notification->is_read,
                         ])
                     >
                         <button type="button" wire:click="openNotification({{ $notification->getKey() }})" class="flex min-w-0 flex-1 items-start gap-4 text-left">

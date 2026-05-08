@@ -195,7 +195,7 @@ new #[Title('User management')] class extends Component {
                                     <div class="flex items-center gap-3">
                                         <x-user-avatar :user="$user" size="sm" />
 
-                                        <div class="min-w-0">
+                                        <div class="min-w-0 max-w-[16rem] overflow-hidden">
                                             <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">
                                                 {{ $user->name }}</p>
                                             <p class="truncate text-sm text-neutral-500 dark:text-zinc-400">
@@ -293,7 +293,7 @@ new #[Title('User management')] class extends Component {
                                 <p class="truncate text-sm text-neutral-500 dark:text-zinc-400">{{ $user->email }}</p>
 
                                 @if ($user->vendorProfile !== null)
-                                    <p class="mt-2 text-sm text-neutral-600 dark:text-zinc-300">
+                                    <p class="mt-2 truncate text-sm text-neutral-600 dark:text-zinc-300">
                                         {{ $user->vendorProfile->store_name }}</p>
                                 @endif
 

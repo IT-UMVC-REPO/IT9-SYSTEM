@@ -140,22 +140,24 @@ new #[Title('Vendor approvals')] class extends Component {
                     <flux:table.rows>
                         @foreach ($this->vendors as $vendor)
                             <flux:table.row :key="$vendor->id">
-                                <flux:table.cell>
-                                    <div class="flex items-center gap-3">
-                                        <img
-                                            src="{{ $vendor->store_image_url }}"
-                                            alt="{{ $vendor->store_name }}"
-                                            class="h-10 w-10 rounded-full object-cover"
-                                        >
-                                        <div>
-                                            <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</p>
+                                <flux:table.cell class="max-w-[18rem] overflow-hidden">
+                                    <div class="flex min-w-0 items-center gap-3">
+                                        <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
+                                            <img
+                                                src="{{ $vendor->store_image_url }}"
+                                                alt="{{ $vendor->store_name }}"
+                                                class="h-full w-full object-cover"
+                                            >
+                                        </div>
+                                        <div class="min-w-0 max-w-[16rem] overflow-hidden">
+                                            <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</p>
                                         </div>
                                     </div>
                                 </flux:table.cell>
-                                <flux:table.cell>
-                                    <div>
-                                        <p class="font-medium text-neutral-900 dark:text-zinc-100">{{ $vendor->user->name }}</p>
-                                        <p class="text-sm text-neutral-500 dark:text-zinc-400">{{ $vendor->user->email }}</p>
+                                <flux:table.cell class="max-w-[18rem] overflow-hidden">
+                                    <div class="min-w-0 max-w-[16rem] overflow-hidden">
+                                        <p class="truncate font-medium text-neutral-900 dark:text-zinc-100">{{ $vendor->user->name }}</p>
+                                        <p class="truncate text-sm text-neutral-500 dark:text-zinc-400">{{ $vendor->user->email }}</p>
                                     </div>
                                 </flux:table.cell>
                                 <flux:table.cell>
@@ -187,18 +189,20 @@ new #[Title('Vendor approvals')] class extends Component {
                 @foreach ($this->vendors as $vendor)
                     <article class="brand-panel p-5" wire:key="mobile-vendor-{{ $vendor->id }}">
                         <div class="flex items-start gap-4">
-                            <img
-                                src="{{ $vendor->store_image_url }}"
-                                alt="{{ $vendor->store_name }}"
-                                class="h-12 w-12 rounded-full object-cover"
-                            >
+                            <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
+                                <img
+                                    src="{{ $vendor->store_image_url }}"
+                                    alt="{{ $vendor->store_name }}"
+                                    class="h-full w-full object-cover"
+                                >
+                            </div>
                             <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h2>
+                                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                                    <h2 class="max-w-full truncate text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</h2>
                                     <span class="brand-badge">{{ $vendor->products_count }}</span>
                                 </div>
-                                <p class="mt-1 text-sm font-medium text-neutral-900 dark:text-zinc-100">{{ $vendor->user->name }}</p>
-                                <p class="text-sm text-neutral-500 dark:text-zinc-400">{{ $vendor->user->email }}</p>
+                                <p class="mt-1 truncate text-sm font-medium text-neutral-900 dark:text-zinc-100">{{ $vendor->user->name }}</p>
+                                <p class="truncate text-sm text-neutral-500 dark:text-zinc-400">{{ $vendor->user->email }}</p>
                             </div>
                         </div>
 
