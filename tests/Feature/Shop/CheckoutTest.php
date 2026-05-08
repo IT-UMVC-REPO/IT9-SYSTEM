@@ -67,11 +67,19 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
 
     $customer = User::factory()->create([
         'address' => '123 Market Street, Davao City',
+        'lat' => 7.4479,
+        'lng' => 125.8090,
     ]);
     $seeded = seedCheckoutCart($customer, quantity: 2);
 
     $component = Livewire::actingAs($customer)
         ->test('pages::shop.checkout')
+        ->assertSet('delivery_address', '123 Market Street, Davao City')
+        ->assertSet('delivery_lat', 7.4479)
+        ->assertSet('delivery_lng', 125.8090)
+        ->call('updateDeliveryCoordinates', 7.449123, 125.812456)
+        ->assertSet('delivery_lat', 7.449123)
+        ->assertSet('delivery_lng', 125.812456)
         ->set('delivery_address', '123 Market Street, Davao City')
         ->set('notes', 'Please call when outside the gate.')
         ->set('payment_method', 'cod');
@@ -87,6 +95,8 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
     expect((float) $order->total_amount)->toBe(240.0);
     expect($order->payment_method)->toBe(PaymentMethod::Cod);
     expect($order->payment_status)->toBe(PaymentStatus::Pending);
+    expect((float) $order->delivery_lat)->toBe(7.449123);
+    expect((float) $order->delivery_lng)->toBe(125.812456);
     expect($order->orderItems)->toHaveCount(1);
     expect($order->orderItems->first()->quantity)->toBe(2);
     expect((float) $order->orderItems->first()->unit_price)->toBe(120.0);
@@ -98,6 +108,22 @@ test('checkout with cash on delivery creates order records, decrements stock, cl
 
     Queue::assertPushed(SendOrderNotificationJob::class, 1);
     Queue::assertPushed(SendOrderNotificationJob::class, fn (SendOrderNotificationJob $job) => $job->orderId === $order->getKey());
+});
+
+test('checkout leaves the map unpinned when the customer has no saved coordinates', function () {
+    $customer = User::factory()->create([
+        'address' => 'Magugpo Poblacion, Tagum City',
+        'lat' => null,
+        'lng' => null,
+    ]);
+
+    seedCheckoutCart($customer);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->assertSet('delivery_address', 'Magugpo Poblacion, Tagum City')
+        ->assertSet('delivery_lat', null)
+        ->assertSet('delivery_lng', null);
 });
 
 test('checkout decrements stock using the selected quantity', function () {
@@ -157,6 +183,29 @@ test('delivery address is required at checkout', function () {
         ->set('delivery_address', '')
         ->call('placeOrder')
         ->assertHasErrors(['delivery_address' => ['required']]);
+});
+
+test('delivery coordinates must stay inside valid latitude and longitude ranges', function () {
+    $customer = User::factory()->create([
+        'address' => 'Tagum City Public Market',
+        'lat' => null,
+        'lng' => null,
+    ]);
+
+    seedCheckoutCart($customer);
+
+    Livewire::actingAs($customer)
+        ->test('pages::shop.checkout')
+        ->set('delivery_address', 'Tagum City Public Market')
+        ->set('delivery_lat', 91.0)
+        ->set('delivery_lng', 181.0)
+        ->call('placeOrder')
+        ->assertHasErrors([
+            'delivery_lat' => ['between'],
+            'delivery_lng' => ['between'],
+        ]);
+
+    expect(Order::query()->count())->toBe(0);
 });
 
 test('checkout validates stock before creating an order', function () {
@@ -246,6 +295,8 @@ test('checkout only renders cash on delivery as a payment option', function () {
     $this->actingAs($customer)
         ->get(route('shop.checkout'))
         ->assertOk()
+        ->assertSee('checkout-delivery-map')
+        ->assertSee('Use my current location')
         ->assertSee('Cash on Delivery')
         ->assertSee('Cash on Delivery confirmed')
         ->assertDontSee('Digital payments')

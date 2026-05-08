@@ -15,6 +15,8 @@ trait OrderValidationRules
     {
         return [
             'delivery_address' => ['required', 'string', 'max:500'],
+            'delivery_lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'delivery_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'notes' => ['nullable', 'string', 'max:300'],
             'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
         ];

@@ -43,7 +43,7 @@ return [
             'root' => (env('FILESYSTEM_PUBLIC_DRIVER') ?: 'local') === 's3'
                 ? ''
                 : storage_path('app/public'),
-            'url' => env('FILESYSTEM_PUBLIC_URL') ?: env('AWS_URL') ?: '/storage',
+            'url' => env('FILESYSTEM_PUBLIC_URL') ?: env('AWS_URL') ?: env('APP_URL').'/storage',
             'visibility' => 'public',
             'serve' => true,
             'throw' => true,

@@ -373,6 +373,8 @@
                             @endif
 
                             <div wire:key="conversation-message-{{ $message->id }}"
+                                x-data="{ showTime: false }"
+                                x-on:click.stop="showTime = ! showTime"
                                 class="group flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }} {{ $isConsecutive ? 'mt-1' : 'mt-4' }}">
                                 <div
                                     class="flex max-w-[75%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
@@ -393,13 +395,13 @@
                                                 {{ $message->content }}</p>
                                             <?php endif; ?>
 
-                                            @php($attachments = $message->attachmentsForDisplay())
+                                            @php($attachments = $this->attachmentsForDisplay($message))
 
                                             @if ($attachments->isNotEmpty())
                                                 <div
                                                     class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
-                                                        @php($attachmentUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($attachment->path))
+                                                        @php($attachmentUrl = $attachment->public_url)
                                                         @php($attachmentMime = $attachment->mime ?? 'application/octet-stream')
 
                                                         @if (\Illuminate\Support\Str::startsWith($attachmentMime, 'image/'))
@@ -408,6 +410,9 @@
                                                                 class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-stone-300 dark:border-zinc-600' }}">
                                                                 <img src="{{ $attachmentUrl }}"
                                                                     alt="{{ __('Attached image') }}"
+                                                                    referrerpolicy="no-referrer"
+                                                                    crossorigin="anonymous"
+                                                                    onerror="this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';"
                                                                     class="max-h-52 w-full object-cover"
                                                                     loading="lazy">
                                                             </a>
@@ -457,7 +462,16 @@
                                         </div>
                                     </div>
 
-                                    <p class="px-1 text-right text-xs text-neutral-500 dark:text-neutral-400">
+                                    <p
+                                        x-cloak
+                                        x-show="showTime"
+                                        x-transition:enter="transition ease-out duration-150"
+                                        x-transition:enter-start="opacity-0 -translate-y-1"
+                                        x-transition:enter-end="opacity-100 translate-y-0"
+                                        x-transition:leave="transition ease-in duration-100"
+                                        x-transition:leave-start="opacity-100 translate-y-0"
+                                        x-transition:leave-end="opacity-0 -translate-y-1"
+                                        class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
                                         {{ $this->messageTimestamp($message) }}
                                         @if ($isOwnMessage && $message->id === $latestOwnMessageId)
                                             <span>&middot;</span>

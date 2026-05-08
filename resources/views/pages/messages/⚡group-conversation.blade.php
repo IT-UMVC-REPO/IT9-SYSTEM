@@ -489,7 +489,7 @@
                                 type="button"
                                 x-on:click="showInfo = ! showInfo"
                                 x-bind:aria-pressed="showInfo.toString()"
-                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
                                 title="{{ __('Toggle group info') }}"
                                 aria-label="{{ __('Toggle group info') }}"
                             >
@@ -560,7 +560,7 @@
                                     </span>
                                 </div>
                             @else
-                                <div wire:key="group-message-{{ $message->id }}" x-data="{ showActions: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" @class([
+                                <div wire:key="group-message-{{ $message->id }}" x-data="{ showActions: false, showTime: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" x-on:click.stop="showTime = ! showTime" @class([
                                 'relative mb-1 flex',
                                 'mt-4' => ! $isGroupedWithPrevious,
                                 'justify-end' => $isOwnMessage,
@@ -568,12 +568,12 @@
                             ])>
                                 <div @class([
                                     'flex max-w-[75%] gap-2',
-                                    'items-end' => true,
+                                    'items-start' => true,
                                     'flex-row-reverse' => $isOwnMessage,
                                 ])>
                                     @unless ($isOwnMessage)
                                         @if ($showSenderAvatar)
-                                            <x-user-avatar :user="$message->sender" size="xs" class="shrink-0" />
+                                            <x-user-avatar :user="$message->sender" size="xs" class="mt-0 shrink-0" />
                                         @else
                                             <span class="w-7 shrink-0"></span>
                                         @endif
@@ -619,7 +619,10 @@
                                             </button>
                                         </div>
 
-                                        <div class="relative mb-4 inline-block max-w-full">
+                                        <div @class([
+                                            'relative inline-block max-w-full',
+                                            'mb-4' => $message->reactions->isNotEmpty(),
+                                        ])>
                                             <div @class([
                                                 'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
                                                 'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
@@ -636,13 +639,15 @@
                                                 <p class="break-words [overflow-wrap:anywhere]">{{ $message->content }}</p>
                                             @endif
 
-                                            @if ($message->attachments->isNotEmpty())
-                                                <div class="{{ $message->attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
-                                                    @foreach ($message->attachments as $attachment)
-                                                        @php($attachmentUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($attachment->path))
+                                            @php($attachments = $this->attachmentsForDisplay($message))
+
+                                            @if ($attachments->isNotEmpty())
+                                                <div class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
+                                                    @foreach ($attachments as $attachment)
+                                                        @php($attachmentUrl = $attachment->public_url)
                                                         @if (\Illuminate\Support\Str::startsWith($attachment->mime, 'image/'))
                                                             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-neutral-200 dark:border-neutral-700' }}">
-                                                                <img src="{{ $attachmentUrl }}" alt="{{ __('Attached image') }}" class="max-h-52 w-full object-cover" loading="lazy">
+                                                                <img src="{{ $attachmentUrl }}" alt="{{ __('Attached image') }}" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';" class="max-h-52 w-full object-cover" loading="lazy">
                                                             </a>
                                                         @else
                                                             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-neutral-200 bg-white/70 text-neutral-700 hover:bg-white dark:border-neutral-700 dark:bg-neutral-700 dark:text-white dark:hover:bg-neutral-600' }}">
@@ -666,11 +671,22 @@
                                                     @endforeach
                                                 </div>
                                             @endif
-                                        </div>
 
-                                        <p class="mt-1 w-full px-1 text-right text-xs text-neutral-500 dark:text-neutral-500">
-                                            {{ $this->messageTimestamp($message) }}
-                                        </p>
+                                            <div class="absolute -bottom-4 {{ $isOwnMessage ? 'right-0' : 'left-0' }} whitespace-nowrap">
+                                                <p
+                                                    x-cloak
+                                                    x-show="showTime"
+                                                    x-transition:enter="transition ease-out duration-150"
+                                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                                    x-transition:leave="transition ease-in duration-100"
+                                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                                    x-transition:leave-end="opacity-0 -translate-y-1"
+                                                    class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+                                                    {{ $this->messageTimestamp($message) }}
+                                                </p>
+                                            </div>
+                                        </div>
 
                                     </div>
                                 </div>
@@ -778,7 +794,7 @@
                     x-show="showInfo"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:leave="transition ease-in duration-150"
-                    class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-none p-0 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:rounded-3xl lg:shadow-none"
+                    class="brand-panel fixed bottom-0 right-0 top-[52px] z-[60] min-h-0 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-none p-0 shadow-2xl lg:static lg:z-auto lg:block lg:w-auto lg:rounded-none lg:shadow-none"
                 >
                     <div class="h-full min-h-0 overflow-y-auto p-5">
                         <div class="flex items-center justify-between gap-3">

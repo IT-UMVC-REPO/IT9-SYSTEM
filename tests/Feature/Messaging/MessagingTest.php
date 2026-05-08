@@ -170,12 +170,27 @@ test('conversation attachment links use the configured public disk url', functio
         'size' => 1024,
         'created_at' => now(),
     ]);
+    $message->attachments()->create([
+        'path' => 'https://cdn.example.test/message-attachments/external-proof.jpg',
+        'name' => 'external-proof.jpg',
+        'mime' => 'image/jpeg',
+        'size' => 1024,
+        'created_at' => now(),
+    ]);
 
     $this->actingAs($receiver)
         ->get(route('messages.conversation', ['conversationReference' => $sender->getKey()]))
         ->assertOk()
         ->assertSee('https://pub.example.test/message-attachments/r2-proof.jpg', false)
-        ->assertDontSee('/storage/message-attachments/r2-proof.jpg', false);
+        ->assertSee('https://cdn.example.test/message-attachments/external-proof.jpg', false)
+        ->assertSee('referrerpolicy="no-referrer"', false)
+        ->assertSee('crossorigin="anonymous"', false)
+        ->assertSee("onerror=\"this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';\"", false)
+        ->assertSee('x-data="{ showTime: false }"', false)
+        ->assertSee('x-on:click.stop="showTime = ! showTime"', false)
+        ->assertSee('x-show="showTime"', false)
+        ->assertDontSee('/storage/message-attachments/r2-proof.jpg', false)
+        ->assertDontSee('https://pub.example.test/https://cdn.example.test/message-attachments/external-proof.jpg', false);
 });
 
 test('sending a message rejects unsupported attachment types', function () {

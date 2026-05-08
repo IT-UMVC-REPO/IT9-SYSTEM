@@ -20,14 +20,76 @@
 
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <form wire:submit="placeOrder" class="space-y-6">
-            <div class="brand-panel space-y-6 p-6 sm:p-8">
-                <flux:textarea
-                    wire:model="delivery_address"
-                    :label="__('Delivery address')"
-                    rows="4"
-                    required
-                />
+            <div
+                x-data="checkoutDeliveryMap({
+                    initialLat: @js($delivery_lat),
+                    initialLng: @js($delivery_lng),
+                    defaultLat: 7.4479,
+                    defaultLng: 125.8090,
+                    defaultZoom: 14,
+                    mapId: 'checkout-delivery-map',
+                })"
+                x-init="initMap()"
+                x-on:livewire:navigating.window="destroyMap()"
+                class="brand-panel space-y-5 p-6 sm:p-8"
+            >
+                <div>
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">
+                        {{ __('Delivery address') }}
+                    </p>
+                    <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">
+                        {{ __('Where should we deliver?') }}
+                    </h2>
+                    <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                        {{ __('Type your address below, or click the map to drop a pin — the address will fill in automatically.') }}
+                    </p>
+                </div>
 
+                <div>
+                    <flux:textarea
+                        wire:model="delivery_address"
+                        x-on:input.debounce.700ms="geocodeAddress($event.target.value)"
+                        id="checkout-delivery-address"
+                        rows="3"
+                        required
+                        :placeholder="__('Building/House No., Street, Subdivision/Village, Barangay, City')"
+                    />
+                    @error('delivery_address')
+                        <p class="mt-1 text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <div
+                        id="checkout-delivery-map"
+                        wire:ignore
+                        class="h-[240px] w-full overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 sm:h-[320px] dark:border-white/10 dark:bg-zinc-900"
+                    ></div>
+
+                    <input type="hidden" wire:model="delivery_lat" x-bind:value="hasPin ? lat : ''">
+                    <input type="hidden" wire:model="delivery_lng" x-bind:value="hasPin ? lng : ''">
+
+                    <p
+                        x-cloak
+                        x-show="geocoding"
+                        class="mt-2 flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-zinc-400"
+                    >
+                        <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--brand-600)]"></span>
+                        {{ __('Looking up address…') }}
+                    </p>
+
+                    <button
+                        type="button"
+                        x-on:click="useCurrentLocation()"
+                        class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] transition hover:underline dark:text-[var(--brand-400)]"
+                    >
+                        <i class="fa-solid fa-location-crosshairs text-xs"></i>
+                        {{ __('Use my current location') }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="brand-panel space-y-6 p-6 sm:p-8">
                 <flux:textarea
                     wire:model="notes"
                     :label="__('Notes for the vendor')"

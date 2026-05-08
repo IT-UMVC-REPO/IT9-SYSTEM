@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -245,6 +246,19 @@ class Conversation extends Component
         return $message->created_at?->format('g:i A') ?? __('Now');
     }
 
+    /**
+     * @return Collection<int, MessageAttachment>
+     */
+    public function attachmentsForDisplay(Message $message): Collection
+    {
+        return $message->attachmentsForDisplay()
+            ->map(function (MessageAttachment $attachment): MessageAttachment {
+                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment->path));
+
+                return $attachment;
+            });
+    }
+
     private function resolveLinkedOrderId(): ?int
     {
         $orderReference = (int) request()->integer('order');
@@ -317,6 +331,15 @@ class Conversation extends Component
                 'attachmentUploads' => __('Attachments cannot exceed 25 MB total.'),
             ]);
         }
+    }
+
+    private function attachmentPublicUrl(string $path): string
+    {
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     public function render(): View

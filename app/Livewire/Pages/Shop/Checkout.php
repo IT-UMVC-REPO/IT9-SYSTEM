@@ -33,6 +33,10 @@ class Checkout extends Component
 
     public string $delivery_address = '';
 
+    public ?float $delivery_lat = null;
+
+    public ?float $delivery_lng = null;
+
     public string $notes = '';
 
     public string $payment_method = 'cod';
@@ -45,7 +49,17 @@ class Checkout extends Component
             return;
         }
 
-        $this->delivery_address = auth()->user()->address ?? '';
+        $user = auth()->user();
+
+        $this->delivery_address = $user->address ?? '';
+        $this->delivery_lat = $user->lat !== null ? (float) $user->lat : null;
+        $this->delivery_lng = $user->lng !== null ? (float) $user->lng : null;
+    }
+
+    public function updateDeliveryCoordinates(float $lat, float $lng): void
+    {
+        $this->delivery_lat = $lat;
+        $this->delivery_lng = $lng;
     }
 
     public function placeOrder(): mixed
@@ -149,6 +163,8 @@ class Checkout extends Component
                         'payment_status' => PaymentStatus::Pending,
                         'order_status' => OrderStatus::Pending,
                         'delivery_address' => $validated['delivery_address'],
+                        'delivery_lat' => $validated['delivery_lat'] ?? null,
+                        'delivery_lng' => $validated['delivery_lng'] ?? null,
                         'notes' => blank($validated['notes'] ?? null) ? null : $validated['notes'],
                     ]);
 

@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['customer_id', 'vendor_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'notes', 'estimated_delivery_at', 'delay_note'])]
+#[Fillable(['customer_id', 'vendor_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'delivery_lat', 'delivery_lng', 'notes', 'estimated_delivery_at', 'delay_note'])]
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
@@ -43,6 +43,8 @@ class Order extends Model
             'payment_method' => PaymentMethod::class,
             'payment_status' => PaymentStatus::class,
             'order_status' => OrderStatus::class,
+            'delivery_lat' => 'decimal:6',
+            'delivery_lng' => 'decimal:6',
             'estimated_delivery_at' => 'datetime',
         ];
     }

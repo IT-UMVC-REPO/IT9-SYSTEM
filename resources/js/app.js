@@ -82,6 +82,239 @@ window.vendorLocationMap = (mapId, zoom, vendor) => ({
     },
 });
 
+window.checkoutDeliveryMap = (config) => ({
+    map: null,
+    marker: null,
+    dragGeocodeTimer: null,
+    lat: Number(config.initialLat ?? config.defaultLat),
+    lng: Number(config.initialLng ?? config.defaultLng),
+    hasPin: config.initialLat !== null && config.initialLat !== undefined
+        && config.initialLng !== null && config.initialLng !== undefined,
+    geocoding: false,
+
+    initMap() {
+        this.$nextTick(() => {
+            const L = window.L;
+
+            if (!L || this.map) {
+                return;
+            }
+
+            this.map = L.map(config.mapId, {
+                center: [this.lat, this.lng],
+                zoom: this.hasPin ? 17 : config.defaultZoom,
+                zoomControl: true,
+                scrollWheelZoom: false,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19,
+            }).addTo(this.map);
+
+            if (this.hasPin) {
+                this.placeMarker(L.latLng(this.lat, this.lng), { sync: false });
+            }
+
+            this.map.on('click', (event) => {
+                this.placeMarker(event.latlng, { pan: true });
+                this.reverseGeocode(event.latlng.lat, event.latlng.lng);
+            });
+        });
+    },
+
+    markerIcon() {
+        return window.L.divIcon({
+            className: '',
+            html: '<div style="width:38px;height:38px;border-radius:50% 50% 50% 0;background:var(--brand-600,#059669);border:3px solid white;box-shadow:0 4px 14px rgba(0,0,0,.3);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);width:10px;height:10px;border-radius:9999px;background:white"></span></div>',
+            iconSize: [38, 38],
+            iconAnchor: [19, 38],
+            popupAnchor: [0, -42],
+        });
+    },
+
+    placeMarker(latlng, options = {}) {
+        const L = window.L;
+        const nextLat = Number(latlng.lat);
+        const nextLng = Number(latlng.lng);
+
+        if (!L || !this.map || !Number.isFinite(nextLat) || !Number.isFinite(nextLng)) {
+            return;
+        }
+
+        const nextLatLng = L.latLng(nextLat, nextLng);
+
+        if (this.marker) {
+            this.marker.setLatLng(nextLatLng);
+        } else {
+            this.marker = L.marker(nextLatLng, {
+                icon: this.markerIcon(),
+                draggable: true,
+            }).addTo(this.map);
+
+            this.marker.on('dragend', () => {
+                const position = this.marker.getLatLng();
+
+                this.applyCoordinates(position.lat, position.lng);
+                this.scheduleDragReverseGeocode(position.lat, position.lng);
+            });
+        }
+
+        this.applyCoordinates(nextLatLng.lat, nextLatLng.lng, options.sync ?? true);
+
+        if (options.fly) {
+            this.map.flyTo(nextLatLng, 17);
+        } else if (options.pan) {
+            this.map.panTo(nextLatLng);
+        }
+    },
+
+    applyCoordinates(lat, lng, sync = true) {
+        this.lat = Number(Number(lat).toFixed(6));
+        this.lng = Number(Number(lng).toFixed(6));
+        this.hasPin = true;
+
+        if (sync) {
+            this.syncCoordinates();
+        }
+    },
+
+    scheduleDragReverseGeocode(lat, lng) {
+        clearTimeout(this.dragGeocodeTimer);
+
+        this.dragGeocodeTimer = window.setTimeout(() => {
+            this.reverseGeocode(lat, lng);
+        }, 350);
+    },
+
+    syncCoordinates() {
+        if (typeof this.$wire?.updateDeliveryCoordinates === 'function') {
+            this.$wire.updateDeliveryCoordinates(this.lat, this.lng);
+
+            return;
+        }
+
+        this.setWireProperty('delivery_lat', this.lat);
+        this.setWireProperty('delivery_lng', this.lng);
+    },
+
+    setWireProperty(property, value, live = true) {
+        const setter = this.$wire?.$set ?? this.$wire?.set;
+
+        if (setter) {
+            setter.call(this.$wire, property, value, live);
+        } else if (this.$wire) {
+            this.$wire[property] = value;
+        }
+    },
+
+    async reverseGeocode(lat, lng) {
+        const normalizedLat = Number(Number(lat).toFixed(6));
+        const normalizedLng = Number(Number(lng).toFixed(6));
+
+        if (!Number.isFinite(normalizedLat) || !Number.isFinite(normalizedLng)) {
+            return;
+        }
+
+        if (!this.hasPin || this.lat !== normalizedLat || this.lng !== normalizedLng) {
+            this.applyCoordinates(lat, lng);
+        }
+
+        this.geocoding = true;
+
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=en`;
+            const response = await fetch(url, {
+                headers: {
+                    'Accept-Language': 'en',
+                    'User-Agent': 'SukiMarket/1.0 (sukimarket.app)',
+                },
+            });
+            const data = await response.json();
+            const address = data.address ?? {};
+            const parts = [
+                [address.amenity, address.building, address.house_number].filter(Boolean).join(' '),
+                address.road ?? address.pedestrian ?? address.footway ?? '',
+                address.suburb ?? address.neighbourhood ?? address.village ?? address.hamlet ?? '',
+                address.quarter ?? address.district ?? address.county ?? '',
+                address.city ?? address.town ?? address.municipality ?? address.state_district ?? '',
+            ].map((part) => String(part ?? '').trim()).filter(Boolean);
+            const formatted = parts.join(', ');
+
+            if (formatted) {
+                this.setWireProperty('delivery_address', formatted, false);
+            }
+        } catch (error) {
+            // The typed address remains editable when geocoding is unavailable.
+        } finally {
+            this.geocoding = false;
+        }
+    },
+
+    async geocodeAddress(address) {
+        const query = String(address ?? '').trim();
+
+        if (query.length < 5 || !this.map) {
+            return;
+        }
+
+        this.geocoding = true;
+
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`${query}, Tagum City, Davao del Norte, Philippines`)}&format=jsonv2&limit=1&addressdetails=1&accept-language=en`;
+            const response = await fetch(url, {
+                headers: {
+                    'Accept-Language': 'en',
+                    'User-Agent': 'SukiMarket/1.0 (sukimarket.app)',
+                },
+            });
+            const results = await response.json();
+            const result = results?.[0];
+
+            if (!result) {
+                return;
+            }
+
+            this.placeMarker(window.L.latLng(Number(result.lat), Number(result.lon)), { pan: true });
+        } catch (error) {
+            // Keep the manually entered address when lookup is unavailable.
+        } finally {
+            this.geocoding = false;
+        }
+    },
+
+    useCurrentLocation() {
+        if (!navigator.geolocation || !this.map) {
+            return;
+        }
+
+        this.geocoding = true;
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                this.placeMarker(window.L.latLng(lat, lng), { fly: true });
+                this.reverseGeocode(lat, lng);
+            },
+            () => {
+                this.geocoding = false;
+            },
+            { enableHighAccuracy: true, timeout: 8000 },
+        );
+    },
+
+    destroyMap() {
+        clearTimeout(this.dragGeocodeTimer);
+
+        if (this.map) {
+            this.map.remove();
+            this.map = null;
+            this.marker = null;
+        }
+    },
+});
+
 window.sukiOrderLocationMap = (options) => ({
     map: null,
     distanceLabel: '',

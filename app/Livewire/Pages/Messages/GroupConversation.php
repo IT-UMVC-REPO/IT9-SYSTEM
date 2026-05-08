@@ -365,6 +365,19 @@ class GroupConversation extends Component
         return $message->created_at?->format('g:i A') ?? __('Now');
     }
 
+    /**
+     * @return Collection<int, GroupMessageAttachment>
+     */
+    public function attachmentsForDisplay(GroupMessage $message): Collection
+    {
+        return $message->attachments
+            ->map(function (GroupMessageAttachment $attachment): GroupMessageAttachment {
+                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment->path));
+
+                return $attachment;
+            });
+    }
+
     public function isGroupAdmin(): bool
     {
         return ConversationGroupMember::query()
@@ -421,6 +434,15 @@ class GroupConversation extends Component
                 'attachmentUploads' => __('Attachments cannot exceed 25 MB total.'),
             ]);
         }
+    }
+
+    private function attachmentPublicUrl(string $path): string
+    {
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     public function render(): View

@@ -8,7 +8,7 @@ test('public filesystem disk is configured for local serving or R2', function ()
     expect(config('filesystems.default'))->toBe(env('FILESYSTEM_DISK', 'public'))
         ->and($publicDisk['driver'])->toBe($publicDriver)
         ->and($publicDisk['root'])->toBe($publicRoot)
-        ->and($publicDisk['url'])->toBe(env('FILESYSTEM_PUBLIC_URL') ?: env('AWS_URL') ?: '/storage')
+        ->and($publicDisk['url'])->toBe(env('FILESYSTEM_PUBLIC_URL') ?: env('AWS_URL') ?: env('APP_URL').'/storage')
         ->and($publicDisk['visibility'])->toBe('public')
         ->and($publicDisk['serve'])->toBeTrue()
         ->and($publicDisk['throw'])->toBeTrue()
@@ -39,6 +39,13 @@ test('public filesystem disk keeps the storage root when backed by local storage
     'unset driver' => null,
     'local driver' => 'local',
 ]);
+
+test('public filesystem disk falls back to an absolute application storage url', function () {
+    $publicDisk = publicFilesystemDiskConfigForPublicUrl(null, null, 'https://market.example.test');
+
+    expect($publicDisk['url'])->toBe('https://market.example.test/storage')
+        ->and($publicDisk['url'])->not->toBe('/storage');
+});
 
 test('example environment documents public R2 filesystem variables', function () {
     $contents = file_get_contents(base_path('.env.example'));
@@ -90,40 +97,73 @@ test('railway web process starts a queue worker for queued verification mail', f
  */
 function publicFilesystemDiskConfigForDriver(?string $driver): array
 {
-    $hadEnvValue = array_key_exists('FILESYSTEM_PUBLIC_DRIVER', $_ENV);
-    $previousEnvValue = $_ENV['FILESYSTEM_PUBLIC_DRIVER'] ?? null;
-    $hadServerValue = array_key_exists('FILESYSTEM_PUBLIC_DRIVER', $_SERVER);
-    $previousServerValue = $_SERVER['FILESYSTEM_PUBLIC_DRIVER'] ?? null;
-    $previousPutenvValue = getenv('FILESYSTEM_PUBLIC_DRIVER');
+    return filesystemConfigWithEnvironment([
+        'FILESYSTEM_PUBLIC_DRIVER' => $driver,
+    ])['disks']['public'];
+}
 
-    if ($driver === null) {
-        unset($_ENV['FILESYSTEM_PUBLIC_DRIVER'], $_SERVER['FILESYSTEM_PUBLIC_DRIVER']);
-        putenv('FILESYSTEM_PUBLIC_DRIVER');
-    } else {
-        $_ENV['FILESYSTEM_PUBLIC_DRIVER'] = $driver;
-        $_SERVER['FILESYSTEM_PUBLIC_DRIVER'] = $driver;
-        putenv("FILESYSTEM_PUBLIC_DRIVER={$driver}");
+/**
+ * @return array<string, mixed>
+ */
+function publicFilesystemDiskConfigForPublicUrl(?string $publicUrl, ?string $awsUrl, ?string $appUrl): array
+{
+    return filesystemConfigWithEnvironment([
+        'FILESYSTEM_PUBLIC_URL' => $publicUrl,
+        'AWS_URL' => $awsUrl,
+        'APP_URL' => $appUrl,
+    ])['disks']['public'];
+}
+
+/**
+ * @param  array<string, string|null>  $environment
+ * @return array<string, mixed>
+ */
+function filesystemConfigWithEnvironment(array $environment): array
+{
+    $previousValues = [];
+
+    foreach ($environment as $key => $value) {
+        $previousValues[$key] = [
+            'had_env_value' => array_key_exists($key, $_ENV),
+            'env_value' => $_ENV[$key] ?? null,
+            'had_server_value' => array_key_exists($key, $_SERVER),
+            'server_value' => $_SERVER[$key] ?? null,
+            'putenv_value' => getenv($key),
+        ];
+
+        if ($value === null) {
+            unset($_ENV[$key], $_SERVER[$key]);
+            putenv($key);
+
+            continue;
+        }
+
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+        putenv("{$key}={$value}");
     }
 
     try {
-        return (require config_path('filesystems.php'))['disks']['public'];
+        return require config_path('filesystems.php');
     } finally {
-        if ($hadEnvValue) {
-            $_ENV['FILESYSTEM_PUBLIC_DRIVER'] = $previousEnvValue;
-        } else {
-            unset($_ENV['FILESYSTEM_PUBLIC_DRIVER']);
-        }
+        foreach ($previousValues as $key => $previousValue) {
+            if ($previousValue['had_env_value']) {
+                $_ENV[$key] = $previousValue['env_value'];
+            } else {
+                unset($_ENV[$key]);
+            }
 
-        if ($hadServerValue) {
-            $_SERVER['FILESYSTEM_PUBLIC_DRIVER'] = $previousServerValue;
-        } else {
-            unset($_SERVER['FILESYSTEM_PUBLIC_DRIVER']);
-        }
+            if ($previousValue['had_server_value']) {
+                $_SERVER[$key] = $previousValue['server_value'];
+            } else {
+                unset($_SERVER[$key]);
+            }
 
-        if ($previousPutenvValue === false) {
-            putenv('FILESYSTEM_PUBLIC_DRIVER');
-        } else {
-            putenv("FILESYSTEM_PUBLIC_DRIVER={$previousPutenvValue}");
+            if ($previousValue['putenv_value'] === false) {
+                putenv($key);
+            } else {
+                putenv("{$key}={$previousValue['putenv_value']}");
+            }
         }
     }
 }

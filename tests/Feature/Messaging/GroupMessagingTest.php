@@ -265,16 +265,32 @@ test('group attachment links use the configured public disk url', function () {
 
     GroupMessageAttachment::factory()->create([
         'group_message_id' => $message->getKey(),
-        'path' => 'group-message-attachments/r2-receipt.pdf',
-        'name' => 'r2-receipt.pdf',
-        'mime' => 'application/pdf',
+        'path' => 'group-message-attachments/r2-receipt.jpg',
+        'name' => 'r2-receipt.jpg',
+        'mime' => 'image/jpeg',
+    ]);
+    GroupMessageAttachment::factory()->create([
+        'group_message_id' => $message->getKey(),
+        'path' => 'https://cdn.example.test/group-message-attachments/external-receipt.jpg',
+        'name' => 'external-receipt.jpg',
+        'mime' => 'image/jpeg',
     ]);
 
     $this->actingAs($creator)
         ->get(route('messages.group', ['groupId' => $group->getKey()]))
         ->assertOk()
-        ->assertSee('https://pub.example.test/group-message-attachments/r2-receipt.pdf', false)
-        ->assertDontSee('/storage/group-message-attachments/r2-receipt.pdf', false);
+        ->assertSee('https://pub.example.test/group-message-attachments/r2-receipt.jpg', false)
+        ->assertSee('https://cdn.example.test/group-message-attachments/external-receipt.jpg', false)
+        ->assertSee('referrerpolicy="no-referrer"', false)
+        ->assertSee('crossorigin="anonymous"', false)
+        ->assertSee("onerror=\"this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';\"", false)
+        ->assertSee('x-data="{ showActions: false, showTime: false }"', false)
+        ->assertSee('x-on:click.stop="showTime = ! showTime"', false)
+        ->assertSee('x-show="showTime"', false)
+        ->assertSee('rounded-lg text-neutral-500', false)
+        ->assertSee('lg:rounded-none', false)
+        ->assertDontSee('/storage/group-message-attachments/r2-receipt.jpg', false)
+        ->assertDontSee('https://pub.example.test/https://cdn.example.test/group-message-attachments/external-receipt.jpg', false);
 });
 
 test('group conversation sends replies and toggles emoji reactions', function () {
