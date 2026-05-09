@@ -37,6 +37,21 @@ new class extends Component
         return $user->nicknameFor((int) auth()->id()) ?? $user->name;
     }
 
+    /**
+     * @return array<int, array{userId: int, key: string}>
+     */
+    public function directPresenceConversations(): array
+    {
+        return $this->threads
+            ->where('type', 'direct')
+            ->map(fn (array $thread): array => [
+                'userId' => (int) $thread['id'],
+                'key' => Message::conversationKey((int) $thread['id']),
+            ])
+            ->values()
+            ->all();
+    }
+
     private function directThreads(): Collection
     {
         return Message::query()
@@ -128,7 +143,15 @@ new class extends Component
 };
 ?>
 
-<div wire:poll.15s class="h-full">
+<div
+    wire:poll.15s
+    x-data="conversationSidebarPresence({
+        conversations: @js($this->directPresenceConversations()),
+    })"
+    x-init="init()"
+    x-on:destroy="destroy()"
+    class="h-full"
+>
     @if ($this->threads->isNotEmpty())
         <section class="brand-panel flex h-full flex-col overflow-hidden p-3 sm:p-4">
             <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
@@ -153,7 +176,16 @@ new class extends Component
                                 <i class="fa-solid fa-user-group text-sm"></i>
                             </span>
                         @else
-                            <x-user-avatar :user="$thread['user']" size="md" />
+                            <div class="relative shrink-0">
+                                <x-user-avatar :user="$thread['user']" size="md" />
+                                <span
+                                    x-cloak
+                                    x-show="isOnline(@js($thread['id']))"
+                                    x-transition.opacity
+                                    class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
+                                    title="{{ __('Online') }}"
+                                ></span>
+                            </div>
                         @endif
 
                         <div class="min-w-0 flex-1">

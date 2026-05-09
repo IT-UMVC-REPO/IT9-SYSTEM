@@ -272,7 +272,7 @@ new class extends Component {
     @else
         <div class="mt-6 flex flex-col gap-4">
             <span class="inline-flex w-full items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                {{ __('Sold out - check back soon') }}
+                {{ __('Sold out') }} &mdash; {{ __('check back soon') }}
             </span>
 
             <a

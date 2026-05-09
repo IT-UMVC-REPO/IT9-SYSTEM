@@ -121,6 +121,8 @@ test('group conversation renders the polished mobile thread and call controls', 
         ->assertSee('participant.thumbnailElementId', false)
         ->assertSee('participant.tileElementId', false)
         ->assertSee('Waiting for others to join...')
+        ->assertSee('groupOnlinePresence', false)
+        ->assertSee('groupTypingIndicator', false)
         ->assertDontSee('LOCAL PREVIEW');
 });
 
@@ -226,7 +228,7 @@ test('group conversation sends messages with multiple attachments', function () 
     $member = User::factory()->create();
     $group = createMessagingGroup($creator, [$member]);
 
-    Livewire::actingAs($member)
+    $component = Livewire::actingAs($member)
         ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
         ->set('newMessage', 'Sharing the pickup proof.')
         ->set('attachmentUploads', [
@@ -236,6 +238,13 @@ test('group conversation sends messages with multiple attachments', function () 
         ->call('send')
         ->assertHasNoErrors()
         ->assertDispatched('group-message-sent');
+
+    $messages = $component->get('messages');
+
+    expect($messages)->toHaveCount(1)
+        ->and($messages[0]['content'])->toBe('Sharing the pickup proof.')
+        ->and($messages[0]['sender_id'])->toBe($member->getKey())
+        ->and($messages[0]['attachments'])->toHaveCount(2);
 
     $message = GroupMessage::query()
         ->where('group_id', $group->getKey())

@@ -11,6 +11,39 @@ export const videoCallIceServers = [
     { urls: ['stun:stun3.l.google.com:19302'] },
 ];
 
+export function peerConnectionOptions(iceServers, iceTransportPolicy = 'all') {
+    return {
+        iceServers: iceServers ?? videoCallIceServers,
+        iceTransportPolicy,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+        iceCandidatePoolSize: 4,
+    };
+}
+
+export function waitForIceGathering(peer, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+        if (peer.iceGatheringState === 'complete') {
+            resolve();
+            return;
+        }
+
+        const finish = () => {
+            window.clearTimeout(timeout);
+            peer.removeEventListener('icegatheringstatechange', handleStateChange);
+            resolve();
+        };
+        const handleStateChange = () => {
+            if (peer.iceGatheringState === 'complete') {
+                finish();
+            }
+        };
+        const timeout = window.setTimeout(finish, timeoutMs);
+
+        peer.addEventListener('icegatheringstatechange', handleStateChange);
+    });
+}
+
 /**
  * Strip large/unnecessary SDP lines to keep signal payloads small enough
  * for Pusher's free-tier 10KB message limit.
@@ -441,10 +474,7 @@ export const conversationVideoCall = (config) => ({
             return;
         }
 
-        const peer = new RTCPeerConnection({
-            iceServers: this.iceServers ?? videoCallIceServers,
-            iceTransportPolicy: this.iceTransportPolicy,
-        });
+        const peer = new RTCPeerConnection(peerConnectionOptions(this.iceServers, this.iceTransportPolicy));
 
         this.peer = peer;
         this.startConnectionTimers();
@@ -452,27 +482,6 @@ export const conversationVideoCall = (config) => ({
         this.localStream.getTracks().forEach((track) => {
             peer.addTrack(track, this.localStream);
         });
-
-        peer.onicecandidate = async ({ candidate }) => {
-            if (!candidate || !this.callId || this.peer !== peer) {
-                return;
-            }
-
-            console.log('ICE candidate size:', new Blob([JSON.stringify({ candidate: candidate.toJSON() })]).size, 'bytes');
-
-            try {
-                await this.requestJson(this.callRoute('signal'), {
-                    signal_data: {
-                        type: 'candidate',
-                        candidate: candidate.toJSON(),
-                    },
-                }, { timeoutMs: 15000 });
-            } catch (error) {
-                if (this.peer === peer) {
-                    this.cleanupCall('ended', this.callErrorMessage(error, 'Unable to sync the call.'));
-                }
-            }
-        };
 
         peer.ontrack = (event) => {
             if (this.peer !== peer) {
@@ -542,31 +551,32 @@ export const conversationVideoCall = (config) => ({
         };
 
         if (initiator) {
-            peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                .then((offer) => {
+            void (async () => {
+                try {
+                    const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                     const preferredOffer = offer.sdp
                         ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
                         : offer;
 
-                    return peer.setLocalDescription(preferredOffer).then(() => preferredOffer);
-                })
-                .then((offer) => {
+                    await peer.setLocalDescription(preferredOffer);
+                    await waitForIceGathering(peer);
+
                     if (this.peer !== peer || !this.callId) {
-                        return null;
+                        return;
                     }
 
-                    const strippedSdp = stripSdp(offer.sdp);
-                    console.log('Outgoing offer SDP size:', new Blob([JSON.stringify({ type: offer.type, sdp: strippedSdp })]).size, 'bytes');
+                    const localDescription = peer.localDescription ?? preferredOffer;
+                    const strippedSdp = stripSdp(localDescription.sdp);
 
-                    return this.requestJson(this.callRoute('signal'), {
-                        signal_data: { type: offer.type, sdp: strippedSdp },
+                    await this.requestJson(this.callRoute('signal'), {
+                        signal_data: { type: localDescription.type, sdp: strippedSdp },
                     }, { timeoutMs: 15000 });
-                })
-                .catch((error) => {
+                } catch (error) {
                     if (this.peer === peer) {
                         void this.endCall(this.callErrorMessage(error, 'Could not create call offer.'));
                     }
-                });
+                }
+            })();
         }
     },
 
@@ -646,8 +656,6 @@ export const conversationVideoCall = (config) => ({
         const peer = this.peer;
 
         if (signalData.type === 'offer') {
-            console.log('Incoming offer SDP size:', new Blob([JSON.stringify(signalData)]).size, 'bytes');
-
             void (async () => {
                 try {
                     // Strip the remote SDP before setting it so inbound descriptions
@@ -665,16 +673,17 @@ export const conversationVideoCall = (config) => ({
                         : answer;
 
                     await peer.setLocalDescription(preferredAnswer);
+                    await waitForIceGathering(peer);
 
                     if (this.peer !== peer || !this.callId) {
                         return;
                     }
 
-                    const strippedSdp = stripSdp(preferredAnswer.sdp);
-                    console.log('Outgoing answer SDP size:', new Blob([JSON.stringify({ type: preferredAnswer.type, sdp: strippedSdp })]).size, 'bytes');
+                    const localDescription = peer.localDescription ?? preferredAnswer;
+                    const strippedSdp = stripSdp(localDescription.sdp);
 
                     await this.requestJson(this.callRoute('signal'), {
-                        signal_data: { type: preferredAnswer.type, sdp: strippedSdp },
+                        signal_data: { type: localDescription.type, sdp: strippedSdp },
                     }, { timeoutMs: 15000 });
 
                     this.flushPendingSignals();
@@ -689,8 +698,6 @@ export const conversationVideoCall = (config) => ({
         }
 
         if (signalData.type === 'answer') {
-            console.log('Incoming answer SDP size:', new Blob([JSON.stringify(signalData)]).size, 'bytes');
-
             void (async () => {
                 try {
                     // Strip the remote SDP before setting it so inbound descriptions

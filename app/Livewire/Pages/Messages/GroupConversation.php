@@ -55,6 +55,11 @@ class GroupConversation extends Component
 
     public ?int $incomingCallId = null;
 
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    public array $messages = [];
+
     public function mount(int $groupId): void
     {
         abort_unless($this->isMember($groupId), 403);
@@ -65,6 +70,7 @@ class GroupConversation extends Component
         unset($this->activeGroupCall);
 
         $this->markRead();
+        $this->loadMessages();
     }
 
     public function getListeners(): array
@@ -76,7 +82,9 @@ class GroupConversation extends Component
 
     public function handleIncomingMessage(): void
     {
-        $this->refreshThread(shouldScroll: true);
+        $this->loadMessages();
+        $this->markRead();
+        $this->dispatch('group-message-sent');
     }
 
     public function send(): void
@@ -122,6 +130,8 @@ class GroupConversation extends Component
             throw $exception;
         }
 
+        $this->messages[] = $this->messageToArray($message);
+
         try {
             event(new GroupMessageSent($message));
         } catch (\Throwable $broadcastException) {
@@ -133,7 +143,6 @@ class GroupConversation extends Component
         $this->clearReply();
         $this->resetValidation(['newMessage', 'attachmentUploads', 'attachmentUploads.*']);
 
-        unset($this->threadMessages);
         $this->markRead();
         $this->dispatch('group-message-sent');
     }
@@ -141,7 +150,7 @@ class GroupConversation extends Component
     public function refreshThread(bool $shouldScroll = false): void
     {
         $this->markRead();
-        unset($this->threadMessages);
+        $this->loadMessages();
         unset($this->group);
         unset($this->activeGroupCall);
 
@@ -252,7 +261,7 @@ class GroupConversation extends Component
             ]);
         }
 
-        unset($this->threadMessages);
+        $this->loadMessages();
     }
 
     #[Computed]
@@ -280,24 +289,6 @@ class GroupConversation extends Component
             ->where('created_at', '>=', now()->subMinutes(90))
             ->latest('created_at')
             ->first();
-    }
-
-    #[Computed]
-    public function threadMessages(): Collection
-    {
-        return GroupMessage::query()
-            ->where('group_id', $this->groupId)
-            ->with([
-                'sender:id,name,profile_image',
-                'attachments',
-                'replyTo.sender:id,name,profile_image',
-                'reactions.user:id,name',
-            ])
-            ->latest('created_at')
-            ->limit(100)
-            ->get()
-            ->sortBy('created_at')
-            ->values();
     }
 
     #[Computed]
@@ -434,6 +425,84 @@ class GroupConversation extends Component
                 'attachmentUploads' => __('Attachments cannot exceed 25 MB total.'),
             ]);
         }
+    }
+
+    private function loadMessages(): void
+    {
+        $this->messages = GroupMessage::query()
+            ->where('group_id', $this->groupId)
+            ->with([
+                'sender:id,name,profile_image',
+                'attachments',
+                'replyTo.sender:id,name,profile_image',
+                'reactions.user:id,name',
+            ])
+            ->latest('created_at')
+            ->limit(100)
+            ->get()
+            ->sortBy('created_at')
+            ->map(fn (GroupMessage $message): array => $this->messageToArray($message))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function messageToArray(GroupMessage $message): array
+    {
+        $message->loadMissing([
+            'sender:id,name,profile_image',
+            'attachments',
+            'replyTo.sender:id,name,profile_image',
+            'reactions.user:id,name',
+        ]);
+
+        return [
+            'id' => $message->getKey(),
+            'group_id' => $message->group_id,
+            'sender_id' => $message->sender_id,
+            'content' => $message->content,
+            'reply_to_id' => $message->reply_to_id,
+            'is_system_message' => $message->is_system_message,
+            'system_event' => $message->system_event,
+            'created_at' => $message->created_at?->toIso8601String(),
+            'date_key' => $message->created_at?->toDateString(),
+            'time' => $this->messageTimestamp($message),
+            'date_label' => $this->messageDateLabel($message),
+            'sender' => [
+                'id' => $message->sender?->getKey(),
+                'name' => $message->sender?->name,
+                'initials' => $message->sender?->initials(),
+                'profile_image' => $message->sender?->profile_image,
+            ],
+            'sender_display_name' => $message->sender ? $this->memberDisplayName($message->sender) : __('Someone'),
+            'reply_to' => $message->replyTo ? [
+                'id' => $message->replyTo->getKey(),
+                'content' => $message->replyTo->content,
+                'sender_display_name' => $message->replyTo->sender ? $this->memberDisplayName($message->replyTo->sender) : __('Someone'),
+            ] : null,
+            'attachments' => $message->attachments
+                ->map(fn (GroupMessageAttachment $attachment): array => [
+                    'id' => $attachment->getKey(),
+                    'path' => $attachment->path,
+                    'name' => $attachment->name,
+                    'mime' => $attachment->mime,
+                    'size' => $attachment->size,
+                    'public_url' => $this->attachmentPublicUrl($attachment->path),
+                ])
+                ->values()
+                ->all(),
+            'reactions' => $message->reactions
+                ->map(fn (GroupMessageReaction $reaction): array => [
+                    'id' => $reaction->getKey(),
+                    'emoji' => $reaction->emoji,
+                    'user_id' => $reaction->user_id,
+                    'user_name' => $reaction->user?->name,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     private function attachmentPublicUrl(string $path): string

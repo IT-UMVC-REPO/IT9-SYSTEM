@@ -29,6 +29,24 @@ Broadcast::channel('messaging.{conversationKey}', function ($user, string $conve
     return in_array($user->id, [$firstUserId, $secondUserId], true);
 });
 
+Broadcast::channel('presence.conversation.{conversationKey}', function ($user, string $conversationKey): array|false {
+    [$firstUserId, $secondUserId] = array_pad(
+        array_map('intval', explode('-', $conversationKey, 2)),
+        2,
+        0,
+    );
+
+    if (! in_array($user->id, [$firstUserId, $secondUserId], true)) {
+        return false;
+    }
+
+    return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'initials' => $user->initials(),
+    ];
+});
+
 Broadcast::channel('calls.{userId}', function ($user, int $userId): bool {
     return $user->id === $userId;
 });
@@ -38,6 +56,23 @@ Broadcast::channel('group.{groupId}', function ($user, int $groupId): bool {
         ->where('group_id', $groupId)
         ->where('user_id', $user->id)
         ->exists();
+});
+
+Broadcast::channel('presence.group.{groupId}', function ($user, int $groupId): array|false {
+    $isMember = ConversationGroupMember::query()
+        ->where('group_id', $groupId)
+        ->where('user_id', $user->id)
+        ->exists();
+
+    if (! $isMember) {
+        return false;
+    }
+
+    return [
+        'id' => $user->id,
+        'name' => $user->name,
+        'initials' => $user->initials(),
+    ];
 });
 
 Broadcast::channel('notifications.{userId}', function ($user, int $userId): bool {

@@ -50,6 +50,11 @@ class Conversation extends Component
 
     public ?int $incomingCallId = null;
 
+    /**
+     * @var array<int, array<string, mixed>>
+     */
+    public array $messages = [];
+
     public function mount(string $conversationReference): void
     {
         $otherUser = User::query()->findOrFail((int) $conversationReference);
@@ -61,6 +66,7 @@ class Conversation extends Component
         $this->incomingCallId = $this->resolveIncomingCallId();
 
         $this->markMessagesAsRead();
+        $this->loadMessages();
 
         if ($this->incomingCallId !== null) {
             $this->dispatch('conversation-auto-answer', callId: $this->incomingCallId);
@@ -76,7 +82,9 @@ class Conversation extends Component
 
     public function handleIncomingMessage(): void
     {
-        $this->refreshThread(shouldScroll: true);
+        $this->loadMessages();
+        $this->markMessagesAsRead();
+        $this->dispatch('message-sent');
     }
 
     public function send(): void
@@ -122,6 +130,8 @@ class Conversation extends Component
             throw $exception;
         }
 
+        $this->messages[] = $this->messageToArray($message);
+
         try {
             event(new MessageSent($message));
         } catch (\Throwable $broadcastException) {
@@ -133,8 +143,6 @@ class Conversation extends Component
         $this->newMessage = '';
         $this->attachmentUploads = [];
         $this->resetValidation(['newMessage', 'attachmentUploads', 'attachmentUploads.*']);
-
-        unset($this->threadMessages);
 
         $this->dispatch('message-sent');
     }
@@ -153,8 +161,8 @@ class Conversation extends Component
     public function refreshThread(bool $shouldScroll = false): void
     {
         $this->markMessagesAsRead();
+        $this->loadMessages();
 
-        unset($this->threadMessages);
         unset($this->linkedOrder);
 
         if ($shouldScroll) {
@@ -197,24 +205,6 @@ class Conversation extends Component
             ->find($this->linkedOrderId);
     }
 
-    #[Computed]
-    public function threadMessages(): Collection
-    {
-        return Message::query()
-            ->where(function ($query): void {
-                $query
-                    ->where(function ($innerQuery): void {
-                        $innerQuery->where('sender_id', auth()->id())->where('receiver_id', $this->otherUserId);
-                    })
-                    ->orWhere(function ($innerQuery): void {
-                        $innerQuery->where('sender_id', $this->otherUserId)->where('receiver_id', auth()->id());
-                    });
-            })
-            ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
-            ->orderBy('created_at')
-            ->get();
-    }
-
     public function conversationSubtitle(): string
     {
         return __('Active now');
@@ -222,10 +212,11 @@ class Conversation extends Component
 
     public function latestOwnMessageId(): ?int
     {
-        return $this->threadMessages
+        $latestOwnMessage = collect($this->messages)
             ->where('sender_id', auth()->id())
-            ->last()
-            ?->getKey();
+            ->last();
+
+        return is_array($latestOwnMessage) ? (int) $latestOwnMessage['id'] : null;
     }
 
     public function messageDateLabel(Message $message): string
@@ -320,6 +311,67 @@ class Conversation extends Component
         if ($updatedCount > 0) {
             $this->dispatch('message-marked-read');
         }
+    }
+
+    private function loadMessages(): void
+    {
+        $this->messages = Message::query()
+            ->where(function ($query): void {
+                $query
+                    ->where(function ($innerQuery): void {
+                        $innerQuery->where('sender_id', auth()->id())->where('receiver_id', $this->otherUserId);
+                    })
+                    ->orWhere(function ($innerQuery): void {
+                        $innerQuery->where('sender_id', $this->otherUserId)->where('receiver_id', auth()->id());
+                    });
+            })
+            ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (Message $message): array => $this->messageToArray($message))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function messageToArray(Message $message): array
+    {
+        $message->loadMissing(['sender:id,name,profile_image', 'order:id,order_status', 'attachments']);
+
+        return [
+            'id' => $message->getKey(),
+            'sender_id' => $message->sender_id,
+            'receiver_id' => $message->receiver_id,
+            'content' => $message->content,
+            'is_read' => $message->is_read,
+            'created_at' => $message->created_at?->toIso8601String(),
+            'date_key' => $message->created_at?->toDateString(),
+            'time' => $this->messageTimestamp($message),
+            'date_label' => $this->messageDateLabel($message),
+            'sender_name' => $message->sender?->name,
+            'sender_image' => $message->sender?->profile_image,
+            'sender' => [
+                'id' => $message->sender?->getKey(),
+                'name' => $message->sender?->name,
+                'initials' => $message->sender?->initials(),
+                'profile_image' => $message->sender?->profile_image,
+            ],
+            'order_id' => $message->order_id,
+            'order_status' => $message->order?->order_status?->value,
+            'attachments' => $message->attachmentsForDisplay()
+                ->map(fn (MessageAttachment $attachment): array => [
+                    'id' => $attachment->getKey(),
+                    'path' => $attachment->path,
+                    'name' => $attachment->name,
+                    'mime' => $attachment->mime,
+                    'size' => $attachment->size,
+                    'public_url' => $this->attachmentPublicUrl($attachment->path),
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     private function validateAttachmentTotalSize(): void

@@ -8,6 +8,10 @@
 <div
     wire:poll.8s="refreshThread"
     x-data="{
+        ...groupOnlinePresence({
+            groupId: @js($groupId),
+            authUserId: @js((int) auth()->id()),
+        }),
         showInfo: window.innerWidth >= 1024,
         isDesktop() {
             return window.innerWidth >= 1024;
@@ -40,7 +44,8 @@
             });
         },
     }"
-    x-init="initInfoPanel()"
+    x-init="init(); initInfoPanel()"
+    x-on:destroy="destroy()"
     class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-full"
 >
     <div
@@ -468,10 +473,19 @@
 
                             <div class="flex h-11 shrink-0 items-center">
                                 @foreach ($this->members->take(3) as $index => $member)
-                                    <x-user-avatar :user="$member->user" size="sm" @class([
-                                        'border-2 border-white dark:border-neutral-900 shrink-0',
+                                    <div @class([
+                                        'relative inline-flex shrink-0',
                                         '-ml-3' => $index > 0,
-                                    ]) />
+                                    ])>
+                                        <x-user-avatar :user="$member->user" size="sm" class="border-2 border-white dark:border-neutral-900" />
+                                        <span
+                                            x-cloak
+                                            x-show="isOnline(@js($member->user_id))"
+                                            x-transition.opacity
+                                            class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
+                                            title="{{ __('Online') }}"
+                                        ></span>
+                                    </div>
                                 @endforeach
                             </div>
 
@@ -520,47 +534,49 @@
                     @endif
 
                     <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
-                        @forelse ($this->threadMessages as $message)
+                        @forelse ($messages as $message)
                             @php
-                                $isOwnMessage = $message->sender_id === auth()->id();
-                                $previousMessage = $this->threadMessages->get($loop->index - 1);
-                                $nextMessage = $this->threadMessages->get($loop->index + 1);
-                                $startsNewDate = ! $previousMessage || ! $message->created_at?->isSameDay($previousMessage->created_at);
+                                $isOwnMessage = $message['sender_id'] === auth()->id();
+                                $previousMessage = $messages[$loop->index - 1] ?? null;
+                                $nextMessage = $messages[$loop->index + 1] ?? null;
+                                $startsNewDate = ! $previousMessage || $message['date_key'] !== $previousMessage['date_key'];
                                 $isGroupedWithPrevious = $previousMessage
-                                    && ! $message->is_system_message
-                                    && ! $previousMessage->is_system_message
-                                    && $previousMessage->sender_id === $message->sender_id
-                                    && $message->created_at?->isSameDay($previousMessage->created_at);
+                                    && ! $message['is_system_message']
+                                    && ! $previousMessage['is_system_message']
+                                    && $previousMessage['sender_id'] === $message['sender_id']
+                                    && $message['date_key'] === $previousMessage['date_key'];
                                 $isGroupedWithNext = $nextMessage
-                                    && ! $message->is_system_message
-                                    && ! $nextMessage->is_system_message
-                                    && $nextMessage->sender_id === $message->sender_id
-                                    && $message->created_at?->isSameDay($nextMessage->created_at);
+                                    && ! $message['is_system_message']
+                                    && ! $nextMessage['is_system_message']
+                                    && $nextMessage['sender_id'] === $message['sender_id']
+                                    && $message['date_key'] === $nextMessage['date_key'];
                                 $showSenderLabel = ! $isOwnMessage && ! $isGroupedWithPrevious;
                                 $showSenderAvatar = ! $isOwnMessage && ! $isGroupedWithNext;
+                                $attachments = collect($message['attachments'] ?? []);
+                                $reactions = collect($message['reactions'] ?? []);
                             @endphp
 
                             @if ($startsNewDate)
-                                <div wire:key="group-message-date-{{ $message->created_at?->toDateString() ?? $message->id }}" class="my-4 flex justify-center">
+                                <div wire:key="group-message-date-{{ $message['date_key'] ?? $message['id'] }}" class="my-4 flex justify-center">
                                     <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                                        {{ $this->messageDateLabel($message) }}
+                                        {{ $message['date_label'] }}
                                     </span>
                                 </div>
                             @endif
 
-                            @if ($message->is_system_message)
+                            @if ($message['is_system_message'])
                                 <div class="my-2 flex justify-center">
                                     <span class="inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                                        @if ($message->system_event === 'call_started')
+                                        @if ($message['system_event'] === 'call_started')
                                             <flux:icon.video-camera variant="micro" class="h-3 w-3" />
-                                        @elseif ($message->system_event === 'call_ended')
+                                        @elseif ($message['system_event'] === 'call_ended')
                                             <flux:icon.phone-x-mark variant="micro" class="h-3 w-3" />
                                         @endif
-                                        {{ $message->content }}
+                                        {{ $message['content'] }}
                                     </span>
                                 </div>
                             @else
-                                <div wire:key="group-message-{{ $message->id }}" x-data="{ showActions: false, showTime: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" x-on:click.stop="showTime = ! showTime" @class([
+                                <div wire:key="group-message-{{ $message['id'] }}" x-data="{ showActions: false, showTime: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" x-on:click.stop="showTime = ! showTime" @class([
                                 'relative mb-1 flex',
                                 'mt-4' => ! $isGroupedWithPrevious,
                                 'justify-end' => $isOwnMessage,
@@ -568,12 +584,12 @@
                             ])>
                                 <div @class([
                                     'flex max-w-[75%] gap-2',
-                                    'items-start' => true,
+                                    'items-end' => true,
                                     'flex-row-reverse' => $isOwnMessage,
                                 ])>
                                     @unless ($isOwnMessage)
                                         @if ($showSenderAvatar)
-                                            <x-user-avatar :user="$message->sender" size="xs" class="mt-0 shrink-0" />
+                                            <x-user-avatar :user="$message['sender']" size="xs" class="mt-0 shrink-0" />
                                         @else
                                             <span class="w-7 shrink-0"></span>
                                         @endif
@@ -585,7 +601,7 @@
                                         'items-start' => ! $isOwnMessage,
                                     ])>
                                         @if ($showSenderLabel)
-                                            <p class="mb-1 px-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $this->memberDisplayName($message->sender) }}</p>
+                                            <p class="mb-1 px-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $message['sender_display_name'] }}</p>
                                         @endif
 
                                         <div x-cloak x-show="showActions" @class([
@@ -609,49 +625,48 @@
                                                 <template x-teleport="body">
                                                     <div x-cloak x-show="open" x-on:click.outside="open = false" x-bind:style="pickerStyle" class="fixed z-[120] flex gap-1 rounded-full border border-stone-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-zinc-800">
                                                     @foreach (['👍', '❤️', '😂', '😮', '😢', '🙏'] as $emoji)
-                                                        <button type="button" wire:key="group-message-{{ $message->id }}-reaction-picker-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))" x-on:click="open = false" class="text-lg transition-transform hover:scale-125" aria-label="{{ __('React with :emoji', ['emoji' => $emoji]) }}">{{ $emoji }}</button>
+                                                        <button type="button" wire:key="group-message-{{ $message['id'] }}-reaction-picker-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message['id'] }}, @js($emoji))" x-on:click="open = false" class="text-lg transition-transform hover:scale-125" aria-label="{{ __('React with :emoji', ['emoji' => $emoji]) }}">{{ $emoji }}</button>
                                                     @endforeach
                                                     </div>
                                                 </template>
                                             </div>
-                                            <button type="button" wire:click="setReplyTo({{ $message->id }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
+                                            <button type="button" wire:click="setReplyTo({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
                                                 <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
                                             </button>
                                         </div>
 
                                         <div @class([
-                                            'relative inline-block max-w-full',
-                                            'mb-4' => $message->reactions->isNotEmpty(),
+                                            'relative mb-4 inline-block max-w-full' => $reactions->isNotEmpty(),
+                                            'relative inline-block max-w-full' => $reactions->isEmpty(),
                                         ])>
                                             <div @class([
                                                 'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
                                                 'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
                                                 'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
                                             ])>
-                                            @if ($message->replyTo)
+                                            @if ($message['reply_to'])
                                                 <div class="mb-1 rounded-lg border-l-2 border-current/40 bg-black/10 px-2 py-1 text-xs opacity-80">
-                                                    <p class="font-semibold">{{ $this->memberDisplayName($message->replyTo->sender) }}</p>
-                                                    <p class="truncate">{{ \Illuminate\Support\Str::limit($message->replyTo->content ?: __('Attachment'), 60) }}</p>
+                                                    <p class="font-semibold">{{ $message['reply_to']['sender_display_name'] }}</p>
+                                                    <p class="truncate">{{ \Illuminate\Support\Str::limit($message['reply_to']['content'] ?: __('Attachment'), 60) }}</p>
                                                 </div>
                                             @endif
 
-                                            @if (filled($message->content))
-                                                <p class="break-words [overflow-wrap:anywhere]">{{ $message->content }}</p>
+                                            @if (filled($message['content']))
+                                                <p class="break-words [overflow-wrap:anywhere]">{{ $message['content'] }}</p>
                                             @endif
-
-                                            @php($attachments = $this->attachmentsForDisplay($message))
 
                                             @if ($attachments->isNotEmpty())
                                                 <div class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
-                                                        @php($attachmentUrl = $attachment->public_url)
-                                                        @if (\Illuminate\Support\Str::startsWith($attachment->mime, 'image/'))
+                                                        @php($attachmentUrl = $attachment['public_url'])
+                                                        @php($attachmentMime = $attachment['mime'] ?? 'application/octet-stream')
+                                                        @if (\Illuminate\Support\Str::startsWith($attachmentMime, 'image/'))
                                                             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="block overflow-hidden rounded-2xl border {{ $isOwnMessage ? 'border-white/25' : 'border-neutral-200 dark:border-neutral-700' }}">
                                                                 <img src="{{ $attachmentUrl }}" alt="{{ __('Attached image') }}" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';" class="max-h-52 w-full object-cover" loading="lazy">
                                                             </a>
                                                         @else
                                                             <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex max-w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium {{ $isOwnMessage ? 'border-white/30 bg-white/10 text-white hover:bg-white/15' : 'border-neutral-200 bg-white/70 text-neutral-700 hover:bg-white dark:border-neutral-700 dark:bg-neutral-700 dark:text-white dark:hover:bg-neutral-600' }}">
-                                                                <i class="fa-solid {{ \Illuminate\Support\Str::contains($attachment->mime, 'pdf') ? 'fa-file-pdf' : (\Illuminate\Support\Str::contains($attachment->mime, 'word') ? 'fa-file-word' : 'fa-file') }}"></i>
+                                                                <i class="fa-solid {{ \Illuminate\Support\Str::contains($attachmentMime, 'pdf') ? 'fa-file-pdf' : (\Illuminate\Support\Str::contains($attachmentMime, 'word') ? 'fa-file-word' : 'fa-file') }}"></i>
                                                             </a>
                                                         @endif
                                                     @endforeach
@@ -659,10 +674,10 @@
                                             @endif
                                             </div>
 
-                                            @if ($message->reactions->isNotEmpty())
+                                            @if ($reactions->isNotEmpty())
                                                 <div class="absolute -bottom-3 left-2 flex items-center gap-0.5 rounded-full border border-stone-200 bg-white px-1.5 py-0.5 text-xs shadow-sm dark:border-white/10 dark:bg-zinc-800">
-                                                    @foreach ($message->reactions->groupBy('emoji') as $emoji => $reactors)
-                                                        <button type="button" wire:key="group-message-{{ $message->id }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message->id }}, @js($emoji))" class="inline-flex items-center gap-0.5" aria-label="{{ __('Toggle :emoji reaction', ['emoji' => $emoji]) }}">
+                                                    @foreach ($reactions->groupBy('emoji') as $emoji => $reactors)
+                                                        <button type="button" wire:key="group-message-{{ $message['id'] }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message['id'] }}, @js($emoji))" class="inline-flex items-center gap-0.5" aria-label="{{ __('Toggle :emoji reaction', ['emoji' => $emoji]) }}">
                                                             <span>{{ $emoji }}</span>
                                                             @if ($reactors->count() > 1)
                                                                 <span class="text-[10px] font-semibold text-neutral-500 dark:text-zinc-400">{{ $reactors->count() }}</span>
@@ -683,7 +698,7 @@
                                                     x-transition:leave-start="opacity-100 translate-y-0"
                                                     x-transition:leave-end="opacity-0 -translate-y-1"
                                                     class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
-                                                    {{ $this->messageTimestamp($message) }}
+                                                    {{ $message['time'] }}
                                                 </p>
                                             </div>
                                         </div>
@@ -716,6 +731,11 @@
 
                     <form
                         x-data="{
+                            ...groupTypingIndicator({
+                                groupId: @js($groupId),
+                                authUserId: @js((int) auth()->id()),
+                                participantSummaries: @js($this->groupParticipantSummaries()),
+                            }),
                             handlePaste(event) {
                                 const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
 
@@ -734,9 +754,25 @@
                                 return ($wire.newMessage || '').length;
                             },
                         }"
+                        x-init="init()"
+                        x-on:destroy="destroy()"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
                         class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900"
                     >
+                        <div
+                            x-cloak
+                            x-show="isTyping"
+                            x-transition.opacity
+                            class="flex items-center gap-2 px-2 pb-2 text-sm text-neutral-500 dark:text-zinc-400"
+                        >
+                            <span class="flex gap-0.5">
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:0ms"></span>
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:150ms"></span>
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:300ms"></span>
+                            </span>
+                            <span x-text="typingLabel" class="italic"></span>
+                        </div>
+
                         <div class="flex items-center gap-2 relative" x-data="{ showEmoji: false }">
                             <button type="button" x-on:click="showEmoji = !showEmoji" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
                                 <flux:icon.face-smile variant="mini" />
@@ -752,7 +788,7 @@
                             <input id="group-attachment" x-ref="attachments" type="file" multiple wire:model="attachmentUploads" class="sr-only">
 
                             <div class="min-w-0 flex-1">
-                                <flux:textarea wire:model="newMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:paste="handlePaste($event)" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
+                                <flux:textarea wire:model="newMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:paste="handlePaste($event)" x-on:keydown="onKeydown()" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
                             </div>
 
                             <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
@@ -815,7 +851,16 @@
                         <div class="mt-5 space-y-3">
                             @foreach ($this->members as $member)
                                 <div wire:key="group-member-{{ $member->user_id }}" class="flex items-center gap-3">
-                                    <x-user-avatar :user="$member->user" size="sm" />
+                                    <div class="relative inline-flex shrink-0">
+                                        <x-user-avatar :user="$member->user" size="sm" />
+                                        <span
+                                            x-cloak
+                                            x-show="isOnline(@js($member->user_id))"
+                                            x-transition.opacity
+                                            class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
+                                            title="{{ __('Online') }}"
+                                        ></span>
+                                    </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->memberDisplayName($member->user) }}</p>
                                         <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }}</p>

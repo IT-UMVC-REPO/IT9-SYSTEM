@@ -68,11 +68,17 @@ test('sending a message creates a message record', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
 
-    Livewire::actingAs($user)
+    $component = Livewire::actingAs($user)
         ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
         ->set('newMessage', 'Can you confirm today\'s stock?')
         ->call('send')
         ->assertDispatched('message-sent');
+
+    $messages = $component->get('messages');
+
+    expect($messages)->toHaveCount(1)
+        ->and($messages[0]['content'])->toBe('Can you confirm today\'s stock?')
+        ->and($messages[0]['sender_id'])->toBe($user->getKey());
 
     expect(Message::query()
         ->where('sender_id', $user->getKey())
@@ -81,6 +87,10 @@ test('sending a message creates a message record', function () {
         ->exists())->toBeTrue();
 
     Event::assertDispatched(MessageSent::class);
+});
+
+test('reverb allows client whispers on private channels', function () {
+    expect(config('reverb.apps.apps.0.accept_client_events_from'))->toBe('all');
 });
 
 test('sending a message with an attachment stores metadata', function () {
@@ -260,7 +270,10 @@ test('thread shows messages in chronological order', function () {
         ->assertSee('Active now')
         ->assertSee('Read')
         ->assertSee('Write a message...')
-        ->assertSee('Video call');
+        ->assertSee('Video call')
+        ->assertSee('data-conversation-presence', false)
+        ->assertSee('onlinePresence', false)
+        ->assertSee('typingIndicator', false);
 });
 
 test('conversation page shows the shared sidebar and highlights the active thread', function () {

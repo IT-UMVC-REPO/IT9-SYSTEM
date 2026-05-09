@@ -290,7 +290,16 @@
             </aside>
 
             <div class="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-950">
-                <header class="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900">
+                <header
+                    x-data="onlinePresence({
+                        conversationKey: @js(\App\Models\Message::conversationKey($otherUserId)),
+                        authUserId: @js((int) auth()->id()),
+                    })"
+                    x-init="init()"
+                    x-on:destroy="destroy()"
+                    data-conversation-presence
+                    class="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white px-3 py-3 dark:border-neutral-800 dark:bg-neutral-900"
+                >
                     <div class="flex items-center gap-3">
                         <a href="{{ route('messages.inbox') }}" wire:navigate
                             class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white lg:hidden"
@@ -298,7 +307,16 @@
                             <flux:icon.arrow-left variant="mini" />
                         </a>
 
-                        <x-user-avatar :user="$this->otherUser" size="profile" class="shrink-0" />
+                        <div class="relative inline-flex shrink-0">
+                            <x-user-avatar :user="$this->otherUser" size="profile" />
+                            <span
+                                x-cloak
+                                x-show="isOnline(@js($otherUserId))"
+                                x-transition.opacity
+                                class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
+                                title="{{ __('Online') }}"
+                            ></span>
+                        </div>
 
                         <div class="min-w-0 flex-1">
                             <h1 class="truncate text-base font-bold text-neutral-900 dark:text-white">
@@ -355,24 +373,24 @@
                         @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
                         @php($previousMessage = null)
                         @php($latestOwnMessageId = $this->latestOwnMessageId())
-                        @forelse ($this->threadMessages as $message)
-                            @php($isOwnMessage = $message->sender_id === auth()->id())
-                            @php($messageDateKey = $message->created_at?->toDateString())
-                            @php($previousDateKey = $previousMessage?->created_at?->toDateString())
-                            @php($nextMessage = $this->threadMessages->get($loop->index + 1))
+                        @forelse ($messages as $message)
+                            @php($isOwnMessage = $message['sender_id'] === auth()->id())
+                            @php($messageDateKey = $message['date_key'])
+                            @php($previousDateKey = $previousMessage['date_key'] ?? null)
+                            @php($nextMessage = $messages[$loop->index + 1] ?? null)
                             @php($showDateSeparator = $previousMessage === null || $messageDateKey !== $previousDateKey)
-                            @php($isConsecutive = $previousMessage !== null && $previousMessage->sender_id === $message->sender_id && $messageDateKey === $previousDateKey)
-                            @php($isGroupedWithNext = $nextMessage !== null && $nextMessage->sender_id === $message->sender_id && $nextMessage->created_at?->toDateString() === $messageDateKey)
+                            @php($isConsecutive = $previousMessage !== null && $previousMessage['sender_id'] === $message['sender_id'] && $messageDateKey === $previousDateKey)
+                            @php($isGroupedWithNext = $nextMessage !== null && $nextMessage['sender_id'] === $message['sender_id'] && $nextMessage['date_key'] === $messageDateKey)
 
                             @if ($showDateSeparator)
-                                <div wire:key="conversation-date-{{ $messageDateKey ?? $message->id }}" class="flex justify-center py-2">
+                                <div wire:key="conversation-date-{{ $messageDateKey ?? $message['id'] }}" class="flex justify-center py-2">
                                     <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-                                        {{ $this->messageDateLabel($message) }}
+                                        {{ $message['date_label'] }}
                                     </span>
                                 </div>
                             @endif
 
-                            <div wire:key="conversation-message-{{ $message->id }}"
+                            <div wire:key="conversation-message-{{ $message['id'] }}"
                                 x-data="{ showTime: false }"
                                 x-on:click.stop="showTime = ! showTime"
                                 class="group flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }} {{ $isConsecutive ? 'mt-1' : 'mt-4' }}">
@@ -384,25 +402,25 @@
                                             @if ($isGroupedWithNext)
                                                 <span class="h-[34px] w-[34px] shrink-0"></span>
                                             @else
-                                                <x-user-avatar :user="$message->sender" size="sm" class="shrink-0" />
+                                                <x-user-avatar :user="$message['sender']" size="sm" class="shrink-0" />
                                             @endif
                                         @endunless
 
                                         <div
                                             class="min-w-0 w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words {{ $isOwnMessage ? 'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' : 'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' }}">
-                                            <?php if (filled($message->content)): ?>
+                                            <?php if (filled($message['content'])): ?>
                                             <p class="break-words [overflow-wrap:anywhere]">
-                                                {{ $message->content }}</p>
+                                                {{ $message['content'] }}</p>
                                             <?php endif; ?>
 
-                                            @php($attachments = $this->attachmentsForDisplay($message))
+                                            @php($attachments = collect($message['attachments'] ?? []))
 
                                             @if ($attachments->isNotEmpty())
                                                 <div
                                                     class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
-                                                        @php($attachmentUrl = $attachment->public_url)
-                                                        @php($attachmentMime = $attachment->mime ?? 'application/octet-stream')
+                                                        @php($attachmentUrl = $attachment['public_url'])
+                                                        @php($attachmentMime = $attachment['mime'] ?? 'application/octet-stream')
 
                                                         @if (\Illuminate\Support\Str::startsWith($attachmentMime, 'image/'))
                                                             <a href="{{ $attachmentUrl }}" target="_blank"
@@ -472,10 +490,10 @@
                                         x-transition:leave-start="opacity-100 translate-y-0"
                                         x-transition:leave-end="opacity-0 -translate-y-1"
                                         class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
-                                        {{ $this->messageTimestamp($message) }}
-                                        @if ($isOwnMessage && $message->id === $latestOwnMessageId)
+                                        {{ $message['time'] }}
+                                        @if ($isOwnMessage && $message['id'] === $latestOwnMessageId)
                                             <span>&middot;</span>
-                                            {{ $message->is_read ? __('Read') : __('Sent') }}
+                                            {{ $message['is_read'] ? __('Read') : __('Sent') }}
                                         @endif
                                     </p>
                                 </div>
@@ -494,7 +512,13 @@
                         @endforelse
                     </div>
 
-                    <form x-data="{
+                    <form
+                        x-data="{
+                            ...typingIndicator({
+                                conversationKey: @js(\App\Models\Message::conversationKey($otherUserId)),
+                                authUserId: @js((int) auth()->id()),
+                                otherUserName: @js($this->otherUser->name),
+                            }),
                         messageLength() {
                             return ($wire.newMessage || '').length;
                         },
@@ -513,8 +537,24 @@
                             this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
                         },
                     }"
+                        x-init="init()"
+                        x-on:destroy="destroy()"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
                         class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900">
+                        <div
+                            x-cloak
+                            x-show="isTyping"
+                            x-transition.opacity
+                            class="flex items-center gap-2 px-2 pb-2 text-sm text-neutral-500 dark:text-zinc-400"
+                        >
+                            <span class="flex gap-0.5">
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:0ms"></span>
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:150ms"></span>
+                                <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--brand-500)]" style="animation-delay:300ms"></span>
+                            </span>
+                            <span x-text="`${otherUserName} is typing...`" class="italic"></span>
+                        </div>
+
                         <div class="flex items-center gap-2 relative" x-data="{ showEmoji: false }">
                             <button type="button" x-on:click="showEmoji = !showEmoji" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
                                 <flux:icon.face-smile variant="mini" />
@@ -541,6 +581,7 @@
                                         }
                                     }"
                                     x-init="resize()" x-on:input="resize()" x-on:paste="handlePaste($event)"
+                                    x-on:keydown="onKeydown()"
                                     x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
                                     class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-white"
                                     style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />

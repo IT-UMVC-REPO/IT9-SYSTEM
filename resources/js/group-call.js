@@ -1,4 +1,11 @@
-import { preferCodecs, stripSdp, videoCallIceServers, videoCallResetDelay } from './video-call';
+import {
+    peerConnectionOptions,
+    preferCodecs,
+    stripSdp,
+    videoCallIceServers,
+    videoCallResetDelay,
+    waitForIceGathering,
+} from './video-call';
 
 export const groupConversationVideoCall = (config) => ({
     authUserId: config.authUserId,
@@ -688,24 +695,10 @@ export const groupConversationVideoCall = (config) => ({
             return this.peerConnections.get(peerId);
         }
 
-        const peer = new RTCPeerConnection({
-            iceServers: this.iceServers ?? videoCallIceServers,
-            iceTransportPolicy: this.iceTransportPolicy,
-        });
+        const peer = new RTCPeerConnection(peerConnectionOptions(this.iceServers, this.iceTransportPolicy));
 
         this.peerConnections.set(peerId, peer);
         this.localStream.getTracks().forEach((track) => peer.addTrack(track, this.localStream));
-
-        peer.onicecandidate = ({ candidate }) => {
-            if (!candidate || !this.callId) {
-                return;
-            }
-
-            void this.safeSendGroupSignal(peerId, {
-                type: 'candidate',
-                candidate: candidate.toJSON(),
-            }, { fatal: false });
-        };
 
         peer.ontrack = (event) => {
             const incomingStream = (event.streams && event.streams.length > 0)
@@ -791,25 +784,29 @@ export const groupConversationVideoCall = (config) => ({
         };
 
         if (initiator) {
-            peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-                .then((offer) => {
+            void (async () => {
+                try {
+                    const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                     const preferredOffer = offer.sdp
                         ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
                         : offer;
 
-                    return peer.setLocalDescription(preferredOffer).then(() => preferredOffer);
-                })
-                .then(async (offer) => {
+                    await peer.setLocalDescription(preferredOffer);
+                    await waitForIceGathering(peer);
+
+                    const localDescription = peer.localDescription ?? preferredOffer;
                     const sent = await this.safeSendGroupSignal(peerId, {
-                        type: offer.type,
-                        sdp: stripSdp(offer.sdp),
+                        type: localDescription.type,
+                        sdp: stripSdp(localDescription.sdp),
                     });
 
                     if (!sent) {
                         this.removePeer(peerId);
                     }
-                })
-                .catch(() => this.removePeer(peerId));
+                } catch {
+                    this.removePeer(peerId);
+                }
+            })();
         }
 
         return peer;
@@ -882,9 +879,11 @@ export const groupConversationVideoCall = (config) => ({
                 : answer;
 
             await peer.setLocalDescription(preferredAnswer);
+            await waitForIceGathering(peer);
+            const localDescription = peer.localDescription ?? preferredAnswer;
             const sent = await this.safeSendGroupSignal(senderId, {
-                type: preferredAnswer.type,
-                sdp: stripSdp(preferredAnswer.sdp),
+                type: localDescription.type,
+                sdp: stripSdp(localDescription.sdp),
             });
 
             if (sent) {
