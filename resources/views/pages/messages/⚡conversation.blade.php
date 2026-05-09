@@ -429,10 +429,12 @@
                                                                 <img src="{{ $attachmentUrl }}"
                                                                     alt="{{ __('Attached image') }}"
                                                                     referrerpolicy="no-referrer"
-                                                                    crossorigin="anonymous"
-                                                                    onerror="this.onerror=null; this.src='https://placehold.co/320x320/1f1f1f/6b7280?text=Image+unavailable';"
+                                                                    onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
                                                                     class="max-h-52 w-full object-cover"
                                                                     loading="lazy">
+                                                                <span class="hidden min-h-24 w-full items-center justify-center bg-neutral-100 px-4 py-6 text-center text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300">
+                                                                    {{ __('Image unavailable') }}
+                                                                </span>
                                                             </a>
                                                         @elseif (\Illuminate\Support\Str::startsWith($attachmentMime, 'video/'))
                                                             <div
