@@ -175,7 +175,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($this->stats as $stat)
-            <article class="brand-panel-muted suki-reveal p-5" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}" style="transition-delay: {{ $loop->index * 60 }}ms">
+            <article class="brand-panel-muted p-5" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
                     {{ $stat['label'] }}
                 </p>
@@ -200,7 +200,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="suki-reveal rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0">
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>

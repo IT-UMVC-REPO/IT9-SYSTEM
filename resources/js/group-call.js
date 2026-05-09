@@ -119,6 +119,22 @@ export const groupConversationVideoCall = (config) => ({
         );
     },
 
+    videoCallDisabledReason() {
+        if (!this.realtimeEnabled) {
+            return 'Real-time calling is not configured for this app.';
+        }
+
+        if (!window.Echo) {
+            return 'Video calling is still loading. Please try again.';
+        }
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            return 'Video calling is not available in this browser.';
+        }
+
+        return 'Video calling is not available right now.';
+    },
+
     supportsCameraSwitch() {
         return this.hasMultipleCameras;
     },

@@ -1,6 +1,6 @@
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     @if ($this->currentVendorProfile?->status === \App\Enums\VendorStatus::Pending && ! $showReapplicationForm)
-        <section x-data x-show="true" x-transition:enter="transition ease-out duration-400" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="brand-panel mx-auto max-w-3xl px-8 py-14 text-center">
+        <section class="brand-panel mx-auto max-w-3xl px-8 py-14 text-center">
             <span class="brand-kicker border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                 {{ __('Under review') }}
             </span>
@@ -18,7 +18,7 @@
             </a>
         </section>
     @elseif ($this->currentVendorProfile?->status === \App\Enums\VendorStatus::Rejected && ! $showReapplicationForm)
-        <section x-data x-show="true" x-transition:enter="transition ease-out duration-400" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="mx-auto grid max-w-4xl gap-6">
+        <section class="mx-auto grid max-w-4xl gap-6">
             <div class="rounded-[2rem] border border-rose-200 bg-rose-50/90 p-8 shadow-sm dark:border-rose-500/20 dark:bg-rose-500/10">
                 <span class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-700 dark:border-rose-500/30 dark:bg-zinc-900 dark:text-rose-300">
                     {{ __('Needs changes') }}
@@ -50,7 +50,7 @@
     @else
         <section class="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)]">
             <div
-                class="brand-panel suki-reveal p-6 sm:p-8"
+                class="brand-panel p-6 sm:p-8"
                 x-data="{
                     dragOver: false,
                     setDroppedFile(event) {
@@ -180,8 +180,7 @@
                             @foreach ($sampleProducts as $index => $sampleProduct)
                                 <article
                                     wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
-                                    class="brand-panel suki-reveal p-6 sm:p-8"
-                                    style="transition-delay: {{ $loop->index * 100 }}ms"
+                                    class="brand-panel p-6 sm:p-8"
                                 >
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
@@ -346,7 +345,7 @@
                 </form>
             </div>
 
-            <aside class="suki-reveal space-y-6 xl:sticky xl:top-24 xl:self-start" style="transition-delay: 200ms">
+            <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">
                 <div class="brand-panel-muted p-6 sm:p-8">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] brand-accent-text">
                         {{ __('What approved vendors unlock') }}

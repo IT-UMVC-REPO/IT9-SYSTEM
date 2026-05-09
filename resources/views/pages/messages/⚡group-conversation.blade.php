@@ -46,7 +46,7 @@
     }"
     x-init="init(); initInfoPanel()"
     x-on:destroy="destroy()"
-    class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-full"
+    class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
 >
     <div
         wire:key="group-video-call-{{ $groupId }}"
@@ -482,7 +482,7 @@
                                 <p class="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __(':count members', ['count' => $this->members->count()]) }}</p>
                             </div>
 
-                            <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--brand-600)] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500">
+                            <button type="button" x-on:click="$dispatch('group-call-start')" x-bind:disabled="callStatus !== 'idle' || !supportsVideoCalling()" x-bind:title="supportsVideoCalling() ? @js(__('Start group call')) : videoCallDisabledReason()" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--brand-600)] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[var(--brand-700)] disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500">
                                 <flux:icon.video-camera variant="micro" />
                                 {{ __('Start call') }}
                             </button>
@@ -746,7 +746,7 @@
                         x-init="init()"
                         x-on:destroy="destroy()"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900"
+                        class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-2 dark:border-neutral-800 dark:bg-neutral-900"
                     >
                         <div
                             x-cloak

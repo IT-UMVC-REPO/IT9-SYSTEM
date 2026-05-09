@@ -210,6 +210,83 @@ test('shared layouts and compact commerce chrome use the requested polish classe
         ->not->toContain('$product->unit->abbreviation()');
 });
 
+test('scroll reveal and navigation progress have safety fallbacks', function () {
+    $appJs = file_get_contents(resource_path('js/app.js'));
+    $appCss = file_get_contents(resource_path('css/app.css'));
+    $header = uiPolishBlade('views/layouts/app/header.blade.php');
+    $authSimple = uiPolishBlade('views/layouts/auth/simple.blade.php');
+    $authCard = uiPolishBlade('views/layouts/auth/card.blade.php');
+
+    expect($appJs)
+        ->toContain("Array.from(document.querySelectorAll('.suki-reveal:not(.is-visible)'))")
+        ->toContain('getBoundingClientRect()')
+        ->toContain("document.addEventListener('livewire:updated', () => setTimeout(() => window.sukiRevealAll(), 50));")
+        ->toContain("threshold: 0, rootMargin: '0px 0px 0px 0px'")
+        ->toContain('window._sukiRevealFallback')
+        ->toContain("document.body.style.overflow = '';")
+        ->toContain("document.documentElement.style.overflow = '';")
+        ->and($appCss)
+        ->toContain('pointer-events: none;')
+        ->toContain('user-select: none;')
+        ->not->toContain('.brand-floating-card:hover')
+        ->and($header)
+        ->toContain('barSafetyTimer')
+        ->toContain('}, 6000);')
+        ->and($authSimple)
+        ->toContain('barSafetyTimer')
+        ->toContain('}, 6000);')
+        ->and($authCard)
+        ->toContain('barSafetyTimer')
+        ->toContain('}, 6000);');
+});
+
+test('bug fix pass removes reveal dependencies from always visible panels', function () {
+    $vendors = uiPolishBlade('views/pages/shop/*vendors.blade.php');
+    $orders = uiPolishBlade('views/pages/shop/*orders.blade.php');
+    $settings = uiPolishBlade('views/pages/settings/layout.blade.php');
+    $registration = uiPolishBlade('views/pages/vendor/*registration.blade.php');
+    $vendorProducts = uiPolishBlade('views/pages/vendor/*products.blade.php');
+    $customerDashboard = uiPolishBlade('views/pages/customer/*dashboard.blade.php');
+    $vendorDashboard = uiPolishBlade('views/pages/vendor/*dashboard.blade.php');
+    $adminDashboard = uiPolishBlade('views/pages/admin/*dashboard.blade.php');
+    $reportDetail = uiPolishBlade('views/pages/admin/*report-detail.blade.php');
+
+    expect($vendors)
+        ->toContain('bg-neutral-950/40 px-4 py-6 sm:py-6')
+        ->not->toContain('bg-neutral-950/55 px-4 py-6 backdrop-blur-sm')
+        ->and($orders)
+        ->toContain('brand-panel-muted flex flex-wrap gap-2 rounded-[2rem] p-3')
+        ->toContain('class="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.97]"')
+        ->toContain('class="brand-panel overflow-hidden p-6 sm:p-7"')
+        ->not->toContain('brand-panel-muted grid gap-3 rounded-[2rem] p-3')
+        ->not->toContain('class="brand-panel suki-reveal overflow-hidden p-6 sm:p-7"')
+        ->and($settings)
+        ->toContain('settings-content-panel p-4 sm:p-8')
+        ->not->toContain('settings-content-panel suki-reveal')
+        ->and($registration)
+        ->not->toContain('x-show="true"')
+        ->not->toContain('class="brand-panel suki-reveal p-6 sm:p-8"')
+        ->not->toContain('class="suki-reveal space-y-6')
+        ->and($vendorProducts)
+        ->toContain('class="brand-panel flex h-full flex-col p-5 sm:p-6"')
+        ->not->toContain('class="brand-panel suki-reveal flex h-full flex-col p-5 sm:p-6"')
+        ->and($customerDashboard)
+        ->toContain('wire:key="customer-dashboard-stat-{{ Str::slug($stat[\'label\']) }}"')
+        ->not->toContain('customer-dashboard-stat-{{ Str::slug($stat[\'label\']) }}" style="transition-delay')
+        ->not->toContain('wire:key="customer-dashboard-order-{{ $order->id }}" style="transition-delay')
+        ->and($vendorDashboard)
+        ->not->toContain('wire:key="vendor-dashboard-order-{{ $order->id }}" style="transition-delay')
+        ->not->toContain('wire:key="vendor-low-stock-{{ $product->id }}" style="transition-delay')
+        ->and($adminDashboard)
+        ->toContain('max-h-64')
+        ->toContain('<div class="flex items-baseline gap-2">')
+        ->not->toContain('<div class="suki-reveal flex items-baseline gap-2"')
+        ->and($reportDetail)
+        ->toContain("\$this->dispatch('page-updated');")
+        ->toContain('x-on:page-updated.window="$nextTick(() => window.sukiRevealAll && window.sukiRevealAll())"')
+        ->toContain('x-init="$nextTick(() => window.sukiRevealAll && window.sukiRevealAll())"');
+});
+
 test('admin and notification list items constrain long text and unread borders uniformly', function () {
     $vendors = uiPolishBlade('views/pages/admin/*vendors.blade.php');
     $users = uiPolishBlade('views/pages/admin/*users.blade.php');

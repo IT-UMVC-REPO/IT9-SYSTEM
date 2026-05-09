@@ -49,6 +49,8 @@ new #[Title('Report detail')] class extends Component
                 ? __('Account activated. The user can sign in again.')
                 : __('Account deactivated. The user will be unable to log in.'),
         );
+
+        $this->dispatch('page-updated');
     }
 
     public function markReviewed(): void
@@ -209,7 +211,11 @@ new #[Title('Report detail')] class extends Component
         </p>
     </section>
 
-    <section class="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,0.8fr)]">
+    <section
+        x-data
+        x-on:page-updated.window="$nextTick(() => window.sukiRevealAll && window.sukiRevealAll())"
+        class="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,0.8fr)]"
+    >
         <div class="space-y-6">
             <article class="brand-panel p-6 sm:p-8">
                 <div class="grid gap-5 lg:grid-cols-2">
@@ -488,6 +494,8 @@ new #[Title('Report detail')] class extends Component
             @endif
         </aside>
     </section>
+
+    <div x-data x-init="$nextTick(() => window.sukiRevealAll && window.sukiRevealAll())"></div>
 
     <flux:modal name="suspend-reported-user" class="max-w-sm">
         <div class="p-6 space-y-4">

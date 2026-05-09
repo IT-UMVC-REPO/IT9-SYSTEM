@@ -77,7 +77,7 @@
         </div>
     </aside>
 
-    <div class="settings-content-panel suki-reveal p-4 sm:p-8" style="transition-delay: 100ms">
+    <div class="settings-content-panel p-4 sm:p-8">
         <div class="flex items-start gap-3">
             <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
                 <i class="fa-solid fa-sliders"></i>

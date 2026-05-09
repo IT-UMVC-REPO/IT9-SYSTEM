@@ -309,7 +309,7 @@ new #[Title('My products')] class extends Component {
         @if ($this->products->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->products as $product)
-                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel suki-reveal flex h-full flex-col p-5 sm:p-6" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel flex h-full flex-col p-5 sm:p-6">
                         <div class="overflow-hidden rounded-[1.5rem] bg-stone-100 dark:bg-zinc-800">
                             <img
                                 src="{{ $product->image_url }}"

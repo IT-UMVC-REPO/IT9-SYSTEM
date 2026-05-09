@@ -592,13 +592,9 @@
 
     /* Used on the welcome hero floating cards */
     .brand-floating-card {
-        transition: transform var(--transition-bounce), box-shadow var(--transition-base);
-    }
-
-    .brand-floating-card:hover {
-        transform: translateY(-6px) rotate(0deg) !important;
-        box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.18);
-        animation-play-state: paused;
+        transition: box-shadow var(--transition-base);
+        pointer-events: none;
+        user-select: none;
     }
 
     /* Consistent focus visible ring using brand color */

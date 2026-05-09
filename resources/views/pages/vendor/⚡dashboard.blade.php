@@ -138,7 +138,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="suki-reveal rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -176,7 +176,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
             <div class="mt-6 space-y-3">
                 @forelse ($this->lowStockProducts as $product)
-                    <article class="suki-reveal rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                    <article class="rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}">
                         <div class="flex items-center justify-between gap-4">
                             <div>
                                 <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</p>

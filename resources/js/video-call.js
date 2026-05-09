@@ -1,5 +1,5 @@
 export const videoCallResetDelay = 1800;
-export const videoCallConnectingWarningDelay = 5000;
+export const videoCallConnectingWarningDelay = 8000;
 export const videoCallConnectingTimeout = 30000;
 export const localVideoElementId = 'conversation-call-local-video';
 export const localVideoBackgroundElementId = 'conversation-call-local-background-video';

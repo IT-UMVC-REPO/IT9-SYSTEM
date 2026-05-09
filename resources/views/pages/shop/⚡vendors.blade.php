@@ -160,7 +160,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
         x-cloak
         x-show="selectedVendor"
         x-transition.opacity
-        class="fixed inset-0 z-[90] flex items-center justify-center bg-neutral-950/55 px-4 py-6 backdrop-blur-sm"
+        class="fixed inset-0 z-[90] flex items-end justify-center sm:items-center sm:justify-center bg-neutral-950/40 px-4 py-6 sm:py-6"
     >
         <section
             x-show="selectedVendor"

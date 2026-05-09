@@ -390,6 +390,9 @@ window.checkoutDeliveryMap = (config) => ({
                 scrollWheelZoom: false,
             });
 
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
@@ -751,6 +754,9 @@ window.sukiOrderLocationMap = (options) => ({
                 attributionControl: false,
             });
 
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+
             L.control.attribution({ prefix: false }).addTo(this.map);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -932,6 +938,10 @@ window.sukiProfileMap = (config) => ({
         this.lng = Number(lng.toFixed(6));
         this.marker?.setLatLng([this.lat, this.lng]);
 
+        // Ensure Leaflet didn't leave overflow:hidden on body
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+
         if (pan) {
             this.map?.panTo([this.lat, this.lng]);
         }
@@ -977,27 +987,47 @@ window.sukiDatePicker = (config) => ({
 
 /* -- SukiMarket scroll-reveal (IntersectionObserver) --------------- */
 window.sukiRevealAll = function () {
-    const targets = document.querySelectorAll('.suki-reveal:not(.is-visible)');
+    const targets = Array.from(document.querySelectorAll('.suki-reveal:not(.is-visible)'));
 
-    if (!targets.length) {
-        return;
-    }
+    if (!targets.length) return;
+
+    // Immediately reveal anything already inside the viewport — no observer needed
+    const vH = window.innerHeight;
+    const vW = window.innerWidth;
+    targets.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < vH && r.bottom > 0 && r.left < vW && r.right > 0) {
+            el.classList.add('is-visible');
+        }
+    });
+
+    // Observe remaining off-screen elements
+    const remaining = Array.from(document.querySelectorAll('.suki-reveal:not(.is-visible)'));
+    if (!remaining.length) return;
 
     const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry, i) => {
+        entries.forEach((entry) => {
             if (entry.isIntersecting) {
-                entry.target.style.transitionDelay = `${Math.min(i * 60, 300)}ms`;
                 entry.target.classList.add('is-visible');
                 observer.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    }, { threshold: 0, rootMargin: '0px 0px 0px 0px' });
 
-    targets.forEach((el) => observer.observe(el));
+    remaining.forEach(el => observer.observe(el));
+
+    // Nuclear fallback: force-reveal anything still hidden after 1 second
+    clearTimeout(window._sukiRevealFallback);
+    window._sukiRevealFallback = setTimeout(() => {
+        document.querySelectorAll('.suki-reveal:not(.is-visible)').forEach(el => {
+            el.classList.add('is-visible');
+        });
+    }, 1000);
 };
 
 document.addEventListener('DOMContentLoaded', () => window.sukiRevealAll());
 document.addEventListener('livewire:navigated', () => window.sukiRevealAll());
+document.addEventListener('livewire:updated', () => setTimeout(() => window.sukiRevealAll(), 50));
 
 /* -- SukiMarket image progressive load ------------------------------ */
 window.sukiLazyImage = () => ({

@@ -132,7 +132,7 @@ class Dashboard extends Component
         return AuditLog::query()
             ->with('user:id,name')
             ->latest()
-            ->limit(5)
+            ->limit(4)
             ->get()
             ->map(fn (AuditLog $log): array => [
                 'id' => $log->getKey(),

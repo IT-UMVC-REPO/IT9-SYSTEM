@@ -19,7 +19,7 @@
     <section class="brand-panel p-6">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
             @foreach ($this->kpis as $card)
-                <div class="suki-reveal flex items-baseline gap-2" style="transition-delay: {{ $loop->index * 60 }}ms">
+                <div class="flex items-baseline gap-2">
                     <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
                     <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
                     <span class="text-xs font-semibold {{ $card['delta_class'] }}">{{ $card['delta'] }}</span>
@@ -50,7 +50,7 @@
             <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Platform feed') }}</h2>
         </div>
 
-        <div class="min-h-[200px] space-y-2 overflow-y-auto max-h-72 pr-1">
+        <div class="min-h-[200px] space-y-2 overflow-y-auto max-h-64 pr-1">
             <template x-for="(entry, index) in feed" :key="entry.id ?? index">
                 <div
                     x-transition:enter="transition ease-out duration-300"
@@ -82,7 +82,7 @@
     </section>
 
     <section class="grid gap-6 xl:grid-cols-2">
-        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 0ms">
+        <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Platform revenue') }}</p>
@@ -109,7 +109,7 @@
             @endif
         </article>
 
-        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 100ms">
+        <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Orders') }}</p>
@@ -137,7 +137,7 @@
             @endif
         </article>
 
-        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 200ms">
+        <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Vendors') }}</p>
@@ -164,7 +164,7 @@
             @endif
         </article>
 
-        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 300ms">
+        <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Users') }}</p>
@@ -286,7 +286,7 @@
                 ['label' => __('Unread messages'), 'value' => $this->platformHealth['unread_messages']],
                 ['label' => __('Notifications sent today'), 'value' => $this->platformHealth['notifications_sent_today']],
             ] as $stat)
-                <div class="suki-reveal flex items-baseline gap-2" style="transition-delay: {{ $loop->index * 60 }}ms">
+                <div class="flex items-baseline gap-2">
                     <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ number_format($stat['value']) }}</span>
                     <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $stat['label'] }}</span>
                 </div>

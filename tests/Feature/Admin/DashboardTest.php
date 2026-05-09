@@ -131,7 +131,8 @@ test('dashboard platform feed eagerly renders latest audit entries', function ()
         ->assertOk()
         ->assertSee('Platform feed')
         ->assertSee('Audit event 6')
-        ->assertSee('Audit event 2')
+        ->assertSee('Audit event 3')
+        ->assertDontSee('Audit event 2')
         ->assertDontSee('Audit event 1')
         ->assertDontSee('Waiting for activity...');
 });

@@ -277,6 +277,23 @@ test('admin can re-open a handled report from the detail page', function () {
         ->and($report->fresh()->reviewed_at)->toBeNull();
 });
 
+test('admin account actions refresh reveal state on the report detail page', function () {
+    $admin = User::factory()->admin()->create();
+    $scenario = createReportScenario();
+    $report = Report::factory()->open()->create([
+        'reporter_id' => $scenario['customer']->getKey(),
+        'reported_user_id' => $scenario['vendorUser']->getKey(),
+        'reporter_role' => 'customer',
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::admin.report-detail', ['report' => $report])
+        ->call('toggleReportedUserActiveStatus')
+        ->assertDispatched('page-updated');
+
+    expect($scenario['vendorUser']->fresh()->is_active)->toBeFalse();
+});
+
 test('non admins are redirected away from admin reports', function () {
     $customer = User::factory()->create();
 

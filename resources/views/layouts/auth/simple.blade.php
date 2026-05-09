@@ -99,22 +99,37 @@
             });
 
             let bar = null;
+            let barHideTimer = null;
+            let barSafetyTimer = null;
 
             document.addEventListener('livewire:navigating', () => {
+                clearTimeout(barHideTimer);
+                clearTimeout(barSafetyTimer);
+
                 if (!bar) {
                     bar = document.createElement('div');
                     bar.id = 'suki-nprogress-bar';
                     document.body.appendChild(bar);
                 }
 
+                bar.style.opacity = '1';
+                bar.style.transition = '';
                 bar.style.display = 'block';
+
+                barSafetyTimer = setTimeout(() => {
+                    if (bar) {
+                        bar.style.display = 'none';
+                    }
+                }, 6000);
             });
 
             document.addEventListener('livewire:navigated', () => {
+                clearTimeout(barSafetyTimer);
+
                 if (bar) {
                     bar.style.opacity = '0';
                     bar.style.transition = 'opacity 300ms ease';
-                    setTimeout(() => {
+                    barHideTimer = setTimeout(() => {
                         if (bar) {
                             bar.style.display = 'none';
                             bar.style.opacity = '';

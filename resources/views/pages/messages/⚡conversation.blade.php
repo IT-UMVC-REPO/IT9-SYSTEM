@@ -5,7 +5,7 @@
     $authUser = auth()->user();
 @endphp
 
-<div wire:poll.5s="refreshThread" class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-full">
+<div wire:poll.5s="refreshThread" class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]">
     <div wire:key="conversation-video-call-{{ $otherUserId }}" wire:ignore.self data-conversation-video-call
         x-data="{ volume: 1.0, ...window.conversationVideoCall({
             authUserId: @js((int) auth()->id()),
@@ -152,6 +152,10 @@
                         <span>&middot;</span>
                         <span x-text="formattedCallDuration()"></span>
                     </p>
+                </div>
+
+                <div x-cloak x-show="showTurnWarning" class="absolute bottom-32 left-4 right-4 z-30 rounded-2xl border border-amber-400/30 bg-amber-950/80 px-4 py-3 text-center text-xs text-amber-200 backdrop-blur-sm">
+                    {{ __('Cross-network calls require TURN credentials. See Settings → Video Call Support.') }}
                 </div>
 
                 <div class="absolute z-20 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
@@ -530,7 +534,7 @@
                         x-init="init()"
                         x-on:destroy="destroy()"
                         x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
-                        class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800 dark:bg-neutral-900">
+                        class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-3 dark:border-neutral-800 dark:bg-neutral-900">
                         <div
                             x-cloak
                             x-show="isTyping"

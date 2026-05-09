@@ -121,7 +121,7 @@ new #[Title('My Orders')] class extends Component {
         </div>
     </div>
 
-    <div class="brand-panel-muted grid gap-3 rounded-[2rem] p-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="brand-panel-muted flex flex-wrap gap-2 rounded-[2rem] p-3">
         @foreach ([
             'all' => 'All',
             'pending' => 'Pending',
@@ -134,7 +134,7 @@ new #[Title('My Orders')] class extends Component {
                 wire:key="orders-tab-{{ $value }}"
                 wire:click="$set('status', '{{ $value }}')"
                 wire:loading.attr="disabled"
-                class="flex items-center justify-between gap-3 rounded-[1.5rem] px-4 py-3 text-left transition-all duration-200 active:scale-[0.97]"
+                class="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.97]"
                 @class([
                     'brand-accent-pill border border-transparent' => $status === $value,
                     'border border-stone-200 bg-white text-neutral-700 hover:border-stone-300 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-white/20' => $status !== $value,
@@ -155,7 +155,7 @@ new #[Title('My Orders')] class extends Component {
     >
         @if ($this->orders->isNotEmpty())
             @foreach ($this->orders as $order)
-                <article wire:key="customer-order-{{ $order->id }}" class="brand-panel suki-reveal overflow-hidden p-6 sm:p-7" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                <article wire:key="customer-order-{{ $order->id }}" class="brand-panel overflow-hidden p-6 sm:p-7">
                     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div class="flex min-w-0 gap-4">
                             <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
