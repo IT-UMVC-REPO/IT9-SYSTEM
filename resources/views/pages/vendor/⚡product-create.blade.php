@@ -311,7 +311,12 @@ new #[Title('Create product')] class extends Component {
             }
         }"
     >
-        <div class="sticky top-0 z-10 border-b border-stone-200 bg-white/85 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-zinc-950/80 sm:px-6">
+        <div
+            x-data="{ scrolled: false }"
+            x-on:scroll.window.passive="scrolled = window.scrollY > 16"
+            x-bind:class="scrolled ? 'shadow-lg' : ''"
+            class="sticky top-0 z-10 border-b border-stone-200 bg-white/85 px-5 py-4 backdrop-blur transition-shadow duration-200 dark:border-white/10 dark:bg-zinc-950/80 sm:px-6"
+        >
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div class="space-y-1">
                     <a href="{{ route('vendor.products') }}" wire:navigate class="brand-hover-text inline-flex items-center gap-2 text-xs font-semibold text-neutral-500 dark:text-zinc-400">
@@ -328,7 +333,7 @@ new #[Title('Create product')] class extends Component {
                     type="submit"
                     wire:loading.attr="disabled"
                     wire:target="save,productImageUpload"
-                    class="w-full sm:w-auto"
+                    class="w-full transition-all duration-150 active:scale-[0.97] sm:w-auto"
                 >
                     <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
                     <span wire:loading wire:target="save">{{ __('Saving product…') }}</span>
@@ -339,7 +344,7 @@ new #[Title('Create product')] class extends Component {
         <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:p-8">
             <section class="space-y-4 self-start">
                 <div
-                    class="relative flex min-h-[320px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900 lg:min-h-[320px]"
+                    class="relative flex min-h-[320px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition-all duration-250 hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900 lg:min-h-[320px]"
                     x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[var(--brand-50)] dark:bg-[var(--brand-500)]/10' : ''"
                     x-on:dragover.prevent="dragOver = true"
                     x-on:dragleave.prevent="dragOver = false"
@@ -360,6 +365,7 @@ new #[Title('Create product')] class extends Component {
                                 src="{{ $productImageUpload->temporaryUrl() }}"
                                 alt="{{ __('Product preview') }}"
                                 class="h-full w-full object-cover"
+                                loading="lazy"
                             >
 
                             <label for="product-image-upload" class="absolute bottom-4 right-4 cursor-pointer rounded-full bg-neutral-950/70 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition hover:bg-neutral-950/85">
@@ -557,7 +563,7 @@ new #[Title('Create product')] class extends Component {
                                     type="button"
                                     wire:click="$set('unit', '{{ $unitOption->value }}')"
                                     @class([
-                                        'relative rounded-2xl border px-4 py-3 text-left transition',
+                                        'relative rounded-2xl border px-4 py-3 text-left transition-all duration-150 active:scale-[0.97]',
                                         'border-[var(--brand-600)] bg-[var(--brand-600)] text-white shadow-sm' => $unit === $unitOption->value,
                                         'border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $unit !== $unitOption->value,
                                     ])
@@ -582,7 +588,7 @@ new #[Title('Create product')] class extends Component {
                                     type="button"
                                     wire:click="$set('unit', '{{ $unitOption->value }}')"
                                     @class([
-                                        'relative rounded-xl border px-3 py-2 text-left transition',
+                                        'relative rounded-xl border px-3 py-2 text-left transition-all duration-150 active:scale-[0.97]',
                                         'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $unit === $unitOption->value,
                                         'border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-300' => $unit !== $unitOption->value,
                                     ])
@@ -622,7 +628,16 @@ new #[Title('Create product')] class extends Component {
                         <flux:checkbox wire:model.live="showUnitConversion" />
                     </label>
 
-                    <div x-show="showConversion" x-transition class="space-y-4">
+                    <div
+                        x-show="showConversion"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 -translate-y-3 scale-98"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave-end="opacity-0 -translate-y-3 scale-98"
+                        class="space-y-4"
+                    >
                         <flux:callout icon="information-circle" variant="secondary">
                             <flux:callout.text>
                                 {{ __('Help customers understand the actual quantity. For example, if you sell rice by the sack, you can state that 1 sack = 25 kg. This is shown on the product page alongside your price but does not affect checkout or pricing - it is purely informational.') }}
@@ -643,7 +658,7 @@ new #[Title('Create product')] class extends Component {
                                                 type="button"
                                                 wire:click="$set('base_unit', '{{ $baseUnitOption['value'] }}')"
                                                 @class([
-                                                    'rounded-xl border px-4 py-2 text-sm font-bold transition',
+                                                    'rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-150 active:scale-[0.97]',
                                                     'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $base_unit === $baseUnitOption['value'],
                                                     'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $base_unit !== $baseUnitOption['value'],
                                                 ])
@@ -690,7 +705,7 @@ new #[Title('Create product')] class extends Component {
                             </div>
 
                             @if ($this->unitConversionPreview)
-                                <div class="rounded-2xl border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_20%)] p-5 transition-all duration-200 dark:bg-zinc-800/60">
+                                <div class="rounded-2xl border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_20%)] p-5 transition-all duration-300 ease-out dark:bg-zinc-800/60">
                                     <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">
                                         <i class="fa-solid fa-box mr-2 text-[var(--brand-600)]"></i>
                                         {{ __('Conversion summary') }}
@@ -731,7 +746,7 @@ new #[Title('Create product')] class extends Component {
                             type="button"
                             wire:click="$set('status', '{{ ProductStatus::Inactive->value }}')"
                             @class([
-                                'relative rounded-2xl bg-stone-100 p-4 text-left transition dark:bg-zinc-900',
+                                'relative rounded-2xl bg-stone-100 p-4 text-left transition-all duration-200 active:scale-[0.97] dark:bg-zinc-900',
                                 'border-2 border-[var(--brand-500)]' => $status === ProductStatus::Inactive->value,
                                 'border' => $status !== ProductStatus::Inactive->value,
                                 'border-stone-200 dark:border-white/10' => $status !== ProductStatus::Inactive->value,
@@ -751,7 +766,7 @@ new #[Title('Create product')] class extends Component {
                             type="button"
                             wire:click="$set('status', '{{ ProductStatus::Active->value }}')"
                             @class([
-                                'relative rounded-2xl p-4 text-left transition',
+                                'relative rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97]',
                                 'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
                                 'border' => $status !== ProductStatus::Active->value,
                                 'border-stone-200 bg-[var(--brand-50)] text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]' => $status !== ProductStatus::Active->value,
@@ -781,7 +796,7 @@ new #[Title('Create product')] class extends Component {
                         type="submit"
                         wire:loading.attr="disabled"
                         wire:target="save,productImageUpload"
-                        class="w-full justify-center py-4 text-base"
+                        class="w-full justify-center py-4 text-base transition-all duration-150 active:scale-[0.97]"
                     >
                         <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
                         <span wire:loading wire:target="save">{{ __('Saving product…') }}</span>

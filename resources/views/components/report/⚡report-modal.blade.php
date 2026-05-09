@@ -153,7 +153,7 @@ new class extends Component {
         </flux:modal.close>
 
         <div class="rounded-t-[1.75rem] px-6 py-6 pr-16 sm:px-7 sm:pr-20">
-            <div class="flex items-start gap-4">
+            <div class="suki-reveal flex items-start gap-4" style="transition-delay: 50ms">
                 <span
                     class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-zinc-800 dark:text-[var(--brand-200)]">
                     <i class="fa-solid fa-flag text-lg"></i>
@@ -173,7 +173,7 @@ new class extends Component {
 
         <div class="px-6 py-6 sm:px-7 sm:py-7">
             <div class="space-y-5">
-                <div class="space-y-2">
+                <div class="suki-reveal space-y-2" style="transition-delay: 100ms">
                     <flux:select wire:model="reason" :label="__('Reason')"
                         :description="__('Choose the report category that best matches what happened.')"
                         :invalid="$errors->has('reason')" required>
@@ -189,7 +189,7 @@ new class extends Component {
                     @enderror
                 </div>
 
-                <div class="space-y-2">
+                <div class="suki-reveal space-y-2" style="transition-delay: 160ms">
                     <flux:textarea wire:model="description" :label="__('Description')"
                         :description="__('Optional, but helpful when the report needs order or message context.')"
                         :invalid="$errors->has('description')" rows="5"
@@ -201,7 +201,8 @@ new class extends Component {
                 </div>
 
                 <div
-                    class="rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 p-4 dark:border-white/10 dark:bg-zinc-900/70">
+                    class="suki-reveal rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/80 p-4 transition-all duration-200 dark:border-white/10 dark:bg-zinc-900/70"
+                    style="transition-delay: 220ms">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
@@ -248,13 +249,13 @@ new class extends Component {
         <div class="border-t border-stone-200/80 px-6 py-5 dark:border-white/10 sm:px-7">
             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <flux:modal.close>
-                    <button type="button" class="brand-button-secondary w-full sm:w-auto">
+                    <button type="button" class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97] sm:w-auto">
                         {{ __('Cancel') }}
                     </button>
                 </flux:modal.close>
 
                 <button type="submit" wire:loading.attr="disabled" wire:target="submit,attachmentUpload"
-                    class="brand-button-primary w-full sm:w-auto">
+                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97] sm:w-auto">
                     <span wire:loading.remove wire:target="submit">{{ __('Submit report') }}</span>
                     <span wire:loading wire:target="submit">{{ __('Submitting...') }}</span>
                 </button>

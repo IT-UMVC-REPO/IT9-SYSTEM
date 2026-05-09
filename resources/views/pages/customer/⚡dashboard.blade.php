@@ -127,7 +127,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div class="brand-panel p-6 sm:p-8">
+        <div class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 0ms">
             <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
                 {{ $this->greeting }}, {{ auth()->user()->name }}
             </h1>
@@ -148,7 +148,7 @@ new #[Title('Customer Dashboard')] class extends Component
             </div>
         </div>
 
-        <aside class="brand-panel-muted p-6">
+        <aside class="brand-panel-muted suki-reveal p-6" style="transition-delay: 80ms">
             <p class="brand-kicker !mb-0">{{ __('Checkout progress') }}</p>
             <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Resume checkout') }}</h2>
 
@@ -175,7 +175,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($this->stats as $stat)
-            <article class="brand-panel-muted p-5" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}">
+            <article class="brand-panel-muted suki-reveal p-5" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}" style="transition-delay: {{ $loop->index * 60 }}ms">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
                     {{ $stat['label'] }}
                 </p>
@@ -200,7 +200,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}">
+                    <article class="suki-reveal rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0">
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -248,7 +248,9 @@ new #[Title('Customer Dashboard')] class extends Component
                 @forelse ($this->favoriteVendors as $favorite)
                     @php($vendor = $favorite->vendor)
                     @if ($vendor !== null)
-                        <x-vendor-card :vendor="$vendor" :compact="true" wire:key="customer-dashboard-favourite-{{ $favorite->id }}" />
+                        <div class="suki-reveal" style="transition-delay: {{ $loop->index * 80 }}ms">
+                            <x-vendor-card :vendor="$vendor" :compact="true" wire:key="customer-dashboard-favourite-{{ $favorite->id }}" />
+                        </div>
                     @endif
                 @empty
                     <x-empty-state

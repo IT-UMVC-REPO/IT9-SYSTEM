@@ -3,7 +3,7 @@
         <x-auth-header :title="__('Reset password')" :description="__('Please enter your new password below')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('password.update') }}" class="suki-reveal flex flex-col gap-6" style="transition-delay: 120ms">
             @csrf
             <input type="hidden" name="token" value="{{ request()->route('token') }}">
             <flux:input
@@ -34,7 +34,7 @@
             />
 
             <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full" data-test="reset-password-button">
+                <flux:button type="submit" variant="primary" class="w-full transition-all duration-150 active:scale-[0.97]" data-test="reset-password-button">
                     {{ __('Reset password') }}
                 </flux:button>
             </div>

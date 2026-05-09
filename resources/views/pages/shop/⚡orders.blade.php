@@ -111,7 +111,7 @@ new #[Title('My Orders')] class extends Component {
             </div>
 
             <p
-                class="hidden items-center gap-2 text-xs font-medium text-neutral-500 dark:text-zinc-400 sm:inline-flex"
+                class="hidden animate-pulse items-center gap-2 text-xs font-medium text-neutral-500 dark:text-zinc-400 sm:inline-flex"
                 wire:loading.flex
                 wire:target="status,gotoPage,previousPage,nextPage"
             >
@@ -134,7 +134,7 @@ new #[Title('My Orders')] class extends Component {
                 wire:key="orders-tab-{{ $value }}"
                 wire:click="$set('status', '{{ $value }}')"
                 wire:loading.attr="disabled"
-                class="flex items-center justify-between gap-3 rounded-[1.5rem] px-4 py-3 text-left transition"
+                class="flex items-center justify-between gap-3 rounded-[1.5rem] px-4 py-3 text-left transition-all duration-200 active:scale-[0.97]"
                 @class([
                     'brand-accent-pill border border-transparent' => $status === $value,
                     'border border-stone-200 bg-white text-neutral-700 hover:border-stone-300 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-white/20' => $status !== $value,
@@ -150,12 +150,12 @@ new #[Title('My Orders')] class extends Component {
 
     <div
         class="space-y-5 transition duration-200"
-        wire:loading.class="opacity-60"
+        wire:loading.class="opacity-60 blur-[0.5px]"
         wire:target="status,gotoPage,previousPage,nextPage"
     >
         @if ($this->orders->isNotEmpty())
             @foreach ($this->orders as $order)
-                <article wire:key="customer-order-{{ $order->id }}" class="brand-panel overflow-hidden p-6 sm:p-7">
+                <article wire:key="customer-order-{{ $order->id }}" class="brand-panel suki-reveal overflow-hidden p-6 sm:p-7" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div class="flex min-w-0 gap-4">
                             <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
@@ -164,6 +164,7 @@ new #[Title('My Orders')] class extends Component {
                                     alt="{{ $order->vendor->store_name }}"
                                     class="h-full w-full object-cover"
                                     onerror="this.src='https://placehold.co/320x320/e7e5e4/9ca3af?text=Store'"
+                                    loading="lazy"
                                 >
                             </div>
 

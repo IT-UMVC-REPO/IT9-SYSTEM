@@ -9,6 +9,6 @@
     };
 @endphp
 
-<span {{ $attributes->merge(['class' => "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] {$classes}"]) }}>
+<span {{ $attributes->merge(['class' => "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] transition-all duration-200 {$classes}"]) }}>
     {{ $label ?? __(Str::headline($status->value)) }}
 </span>

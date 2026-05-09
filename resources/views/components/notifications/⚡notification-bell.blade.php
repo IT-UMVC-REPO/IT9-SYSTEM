@@ -118,16 +118,25 @@ new class extends Component
 <div x-data="{ open: false }" x-on:keydown.escape.window="open = false" class="relative">
     <button
         type="button"
+        x-data="{ prevCount: 0 }"
+        x-effect="
+            const newCount = $wire.unreadCount;
+            if (newCount > prevCount && prevCount !== undefined) {
+                $el.classList.add('suki-bell-ring');
+                setTimeout(() => $el.classList.remove('suki-bell-ring'), 750);
+            }
+            prevCount = newCount;
+        "
         x-on:click="open = !open"
         x-bind:aria-expanded="open.toString()"
-        class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
+        class="relative flex h-9 w-9 items-center justify-center rounded-xl text-stone-500 transition-transform duration-200 hover:scale-110 hover:bg-stone-100 hover:text-stone-900 active:scale-90 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white"
         title="{{ __('Notifications') }}"
         aria-label="{{ __('Notifications') }}"
     >
         <i class="fa-regular fa-bell text-sm"></i>
 
         @if ($this->unreadCount > 0)
-            <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm" style="background-color: var(--brand-600);">
+            <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-transform duration-300" style="background-color: var(--brand-600);">
                 {{ $this->unreadCount > 99 ? '99+' : $this->unreadCount }}
             </span>
         @endif
@@ -136,7 +145,12 @@ new class extends Component
     <div
         x-cloak
         x-show="open"
-        x-transition.origin.top.right
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+        x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
         x-on:click.outside="open = false"
         class="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900"
     >
@@ -165,7 +179,7 @@ new class extends Component
                     wire:click="markAsRead({{ $notification->id }})"
                     wire:key="header-notification-{{ $notification->id }}"
                     @class([
-                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'w-full rounded-2xl border px-4 py-3 text-left transition-all duration-150',
                         'border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => ! $notification->is_read,
                         'border-stone-200 bg-white/72 dark:border-white/10 dark:bg-zinc-900' => $notification->is_read,
                     ])

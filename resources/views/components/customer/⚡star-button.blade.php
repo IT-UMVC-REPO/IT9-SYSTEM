@@ -96,7 +96,7 @@ new class extends Component
             x-data
             x-on:click="$flux.modal('{{ $modalName }}').show()"
             wire:loading.attr="disabled"
-            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--brand-300)] bg-[var(--brand-100)] text-sm text-[var(--brand-700)] shadow-sm transition hover:bg-[var(--brand-50)] disabled:cursor-not-allowed disabled:opacity-60 dark:border-[var(--brand-500)] dark:bg-zinc-800 dark:text-[var(--brand-200)]"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--brand-300)] bg-[var(--brand-100)] text-sm text-[var(--brand-700)] shadow-sm transition-all duration-200 hover:rotate-12 hover:bg-[var(--brand-50)] active:scale-90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-[var(--brand-500)] dark:bg-zinc-800 dark:text-[var(--brand-200)]"
             title="{{ __('Unstar customer') }}"
             aria-label="{{ __('Unstar customer') }}"
         >
@@ -130,7 +130,7 @@ new class extends Component
             type="button"
             wire:click="star"
             wire:loading.attr="disabled"
-            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-sm text-stone-500 shadow-sm transition hover:border-stone-300 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-sm text-stone-500 shadow-sm transition-all duration-200 hover:rotate-12 hover:border-stone-300 hover:text-stone-700 active:scale-90 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
             title="{{ __('Star customer') }}"
             aria-label="{{ __('Star customer') }}"
         >

@@ -44,6 +44,14 @@
                 },
                 options: this.options(labelColor, gridColor),
             });
+
+            this.$refs.canvas.style.opacity = '0';
+            this.$refs.canvas.style.transition = 'opacity 600ms ease';
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.$refs.canvas.style.opacity = '1';
+                });
+            });
         },
         destroy() {
             this.chart?.destroy();

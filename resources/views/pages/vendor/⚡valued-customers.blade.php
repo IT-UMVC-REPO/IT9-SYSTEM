@@ -90,7 +90,7 @@ new #[Title('Valued Customers')] class extends Component
         </p>
     </section>
 
-    <section class="brand-panel p-6">
+    <section class="brand-panel suki-reveal p-6">
         <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <flux:input
                 wire:model.live.debounce.250ms="search"
@@ -107,14 +107,14 @@ new #[Title('Valued Customers')] class extends Component
 
     <section
         class="transition duration-200"
-        wire:loading.class="opacity-60"
+        wire:loading.class="opacity-60 blur-[0.5px]"
         wire:target="search,gotoPage,previousPage,nextPage"
     >
         @if ($this->stars->isNotEmpty())
             <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->stars as $star)
                     @php($customer = $star->customer)
-                    <article class="brand-panel p-5" wire:key="valued-customer-{{ $star->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="valued-customer-{{ $star->id }}">
                         <div class="flex items-start gap-4">
                             <x-user-avatar :user="$customer" size="md" />
 
@@ -141,7 +141,7 @@ new #[Title('Valued Customers')] class extends Component
                                 </div>
 
                                 <div class="mt-5 flex gap-2">
-                                    <a href="{{ route('shop.customers.show', $customer) }}" wire:navigate class="brand-button-secondary w-full text-center">
+                                    <a href="{{ route('shop.customers.show', $customer) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.97]">
                                         {{ __('Open profile') }}
                                     </a>
                                 </div>

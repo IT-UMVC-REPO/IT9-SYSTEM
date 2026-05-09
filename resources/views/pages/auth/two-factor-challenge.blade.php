@@ -43,7 +43,7 @@
                 />
             </div>
 
-            <form method="POST" action="{{ route('two-factor.login.store') }}">
+            <form method="POST" action="{{ route('two-factor.login.store') }}" class="suki-reveal" style="transition-delay: 120ms">
                 @csrf
 
                 <div class="space-y-5 text-center">
@@ -84,7 +84,7 @@
                     <flux:button
                         variant="primary"
                         type="submit"
-                        class="w-full"
+                        class="w-full transition-all duration-150 active:scale-[0.97]"
                     >
                         {{ __('Continue') }}
                     </flux:button>

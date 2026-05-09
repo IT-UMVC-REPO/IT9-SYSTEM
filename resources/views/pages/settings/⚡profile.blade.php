@@ -218,6 +218,9 @@ new #[Title('Profile settings')] class extends Component {
                                 <img
                                     :src="previewUrl"
                                     alt="Preview"
+                                    x-transition:enter="transition ease-out duration-300"
+                                    x-transition:enter-start="opacity-0 scale-90"
+                                    x-transition:enter-end="opacity-100 scale-100"
                                     class="h-16 w-16 rounded-full object-cover shadow-sm ring-2 ring-emerald-400 dark:ring-emerald-500"
                                 >
                             </template>
@@ -226,6 +229,7 @@ new #[Title('Profile settings')] class extends Component {
                                     <img
                                         src="{{ Storage::disk('public')->url($currentProfileImage) }}"
                                         alt="{{ $user->name }}"
+                                        loading="lazy"
                                         class="h-16 w-16 rounded-full object-cover shadow-sm ring-2 ring-stone-200 dark:ring-white/10"
                                     >
                                 @else
@@ -251,7 +255,7 @@ new #[Title('Profile settings')] class extends Component {
                             <div class="flex flex-wrap items-center gap-2">
                                 <label
                                     for="profile-image-upload"
-                                    class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-xs"
+                                    class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-xs transition-all duration-150 active:scale-[0.97]"
                                 >
                                     <i class="fa-solid fa-arrow-up-from-bracket"></i>
                                     <span x-text="previewUrl ? @js(__('Change selection')) : @js(__('Upload photo'))"></span>
@@ -270,7 +274,7 @@ new #[Title('Profile settings')] class extends Component {
                                         type="button"
                                         x-data
                                         x-on:click="$flux.modal('remove-profile-photo').show()"
-                                        class="text-xs font-medium text-rose-500 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+                                        class="text-xs font-medium text-rose-500 transition-all duration-150 hover:text-rose-700 active:scale-[0.97] dark:text-rose-400 dark:hover:text-rose-300"
                                     >
                                         {{ __('Remove photo') }}
                                     </button>
@@ -327,7 +331,8 @@ new #[Title('Profile settings')] class extends Component {
                     />
 
                     <section
-                        class="brand-panel p-5 sm:p-6"
+                        class="brand-panel suki-reveal p-5 sm:p-6"
+                        style="transition-delay: 200ms"
                         x-data="sukiProfileMap({
                             wire: $wire,
                             mapId: 'profile-location-map',
@@ -366,7 +371,7 @@ new #[Title('Profile settings')] class extends Component {
                     </section>
 
                     @if ($this->isVendor)
-                        <div class="border-t border-stone-200 pt-6 dark:border-white/10">
+                        <div x-data x-show="true" x-transition:enter="transition ease-out duration-350" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="border-t border-stone-200 pt-6 dark:border-white/10">
                             <div class="flex items-start gap-3">
                                 <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
                                     <i class="fa-solid fa-store"></i>
@@ -407,7 +412,7 @@ new #[Title('Profile settings')] class extends Component {
                     @endif
 
                     <div class="flex items-center gap-4">
-                        <flux:button variant="primary" type="submit" data-test="update-profile-button">
+                        <flux:button variant="primary" type="submit" class="transition-all duration-150 active:scale-[0.97]" data-test="update-profile-button">
                             {{ __('Save') }}
                         </flux:button>
                     </div>

@@ -213,7 +213,7 @@ new #[Title('Report detail')] class extends Component
         <div class="space-y-6">
             <article class="brand-panel p-6 sm:p-8">
                 <div class="grid gap-5 lg:grid-cols-2">
-                    <section class="brand-panel-muted p-5">
+                    <section class="brand-panel-muted suki-reveal p-5" style="transition-delay: 0ms">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Reporter') }}</p>
 
                         <div class="mt-4 flex items-start gap-4">
@@ -238,7 +238,7 @@ new #[Title('Report detail')] class extends Component
                         </div>
                     </section>
 
-                    <section class="brand-panel-muted p-5">
+                    <section class="brand-panel-muted suki-reveal p-5" style="transition-delay: 80ms">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Reported user') }}</p>
 
                         <div class="mt-4 flex items-start gap-4">
@@ -265,7 +265,7 @@ new #[Title('Report detail')] class extends Component
                 </div>
             </article>
 
-            <article class="brand-panel p-6 sm:p-8">
+            <article class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 100ms">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Case summary') }}</p>
@@ -323,7 +323,7 @@ new #[Title('Report detail')] class extends Component
             @if ($report->attachment_path !== null)
                 @php($attachmentUrl = $this->attachmentUrl())
                 @php($attachmentName = $this->attachmentName())
-                <article class="brand-panel p-6 sm:p-8">
+                <article class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 160ms">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Attachment') }}</p>
@@ -339,7 +339,7 @@ new #[Title('Report detail')] class extends Component
 
                     @if ($this->hasImageAttachment() && $attachmentUrl !== null)
                         <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" class="mt-6 block overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
-                            <img src="{{ $attachmentUrl }}" alt="{{ $attachmentName ?? __('Report attachment') }}" class="max-h-[34rem] w-full object-contain">
+                            <img src="{{ $attachmentUrl }}" alt="{{ $attachmentName ?? __('Report attachment') }}" loading="lazy" class="max-h-[34rem] w-full object-contain">
                         </a>
                     @endif
 
@@ -385,7 +385,7 @@ new #[Title('Report detail')] class extends Component
             @endif
         </div>
 
-        <aside class="brand-panel h-fit p-6 xl:sticky xl:top-24">
+        <aside class="brand-panel suki-reveal h-fit p-6 xl:sticky xl:top-24" style="transition-delay: 200ms">
             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Action panel') }}</p>
 
             <div class="mt-5 space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/70">
@@ -408,14 +408,14 @@ new #[Title('Report detail')] class extends Component
             </div>
 
             <div class="mt-6 space-y-4">
-                <a href="{{ route('messages.conversation', ['conversationReference' => $report->reportedUser->id]) }}" wire:navigate class="brand-button-secondary w-full text-center">
+                <a href="{{ route('messages.conversation', ['conversationReference' => $report->reportedUser->id]) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.97]">
                     {{ __('Send message to reported user') }}
                 </a>
 
                 @if ($report->reportedUser->is_active)
                     <flux:button
                         variant="danger"
-                        class="w-full justify-center"
+                        class="w-full justify-center transition-all duration-150 active:scale-[0.97]"
                         type="button"
                         x-data
                         x-on:click="$flux.modal('suspend-reported-user').show()"
@@ -427,7 +427,7 @@ new #[Title('Report detail')] class extends Component
                         type="button"
                         x-data
                         x-on:click="$flux.modal('reactivate-reported-user').show()"
-                        class="brand-button-primary w-full"
+                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
                     >
                         {{ __('Reactivate account') }}
                     </button>
@@ -454,13 +454,13 @@ new #[Title('Report detail')] class extends Component
                     </div>
 
                     <div class="mt-5 space-y-3">
-                        <button type="submit" class="brand-button-primary w-full">
+                        <button type="submit" class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]">
                             {{ __('Mark as reviewed') }}
                         </button>
 
                         <flux:button
                             variant="danger"
-                            class="w-full justify-center"
+                            class="w-full justify-center transition-all duration-150 active:scale-[0.97]"
                             type="button"
                             x-data
                             x-on:click="$flux.modal('dismiss-report').show()"

@@ -344,7 +344,7 @@ new #[Title('Vendor Order Detail')] class extends Component
 
                     @foreach ($statusSteps as $status)
                         @php($isCompleted = $currentStatusIndex !== false && $loop->index < $currentStatusIndex)
-                        <div class="flex items-center gap-3" wire:key="vendor-order-status-step-{{ $status->value }}">
+                        <div class="suki-reveal flex items-center gap-3" wire:key="vendor-order-status-step-{{ $status->value }}" style="transition-delay: {{ $loop->index * 80 }}ms">
                             <span
                                 @class([
                                     'inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold',
@@ -381,7 +381,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                         <flux:input type="datetime-local" wire:model="estimated_delivery_at" :label="__('Estimated delivery')" />
                         <flux:input wire:model="delay_note" :label="__('Delay note (optional)')" :placeholder="__('e.g. Delayed due to weather')" />
 
-                        <button type="button" wire:click="saveDeliveryEstimate" wire:loading.attr="disabled" wire:target="saveDeliveryEstimate" class="brand-button-secondary w-full">
+                        <button type="button" wire:click="saveDeliveryEstimate" wire:loading.attr="disabled" wire:target="saveDeliveryEstimate" class="brand-button-secondary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.97]">
                             {{ __('Save estimate') }}
                         </button>
                     </div>
@@ -394,7 +394,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                             wire:click="advanceStatus"
                             wire:loading.attr="disabled"
                             wire:target="advanceStatus"
-                            class="brand-button-primary w-full"
+                            class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.97]"
                         >
                             {{ __('Advance to :status', ['status' => Str::headline($this->nextStatus->value)]) }}
                         </button>
@@ -406,7 +406,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                             type="button"
                             x-data
                             x-on:click="$flux.modal('cancel-vendor-order').show()"
-                            class="w-full justify-center border-zinc-600"
+                            class="w-full justify-center border-zinc-600 transition-all duration-150 active:scale-95"
                         >
                             {{ __('Cancel order') }}
                         </flux:button>
@@ -415,7 +415,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                     <a
                         href="{{ route('shop.customers.show', $this->order->customer_id) }}"
                         wire:navigate
-                        class="brand-button-secondary w-full"
+                        class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
                     >
                         {{ __('View customer profile') }}
                     </a>
@@ -423,7 +423,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                     <a
                         href="{{ route('messages.conversation', ['conversationReference' => $this->order->customer_id, 'order' => $this->order->id]) }}"
                         wire:navigate
-                        class="brand-button-secondary w-full"
+                        class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
                     >
                         {{ __('Message customer') }}
                     </a>
@@ -432,7 +432,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                         <flux:button
                             variant="ghost"
                             type="button"
-                            class="w-full justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+                            class="w-full justify-center text-rose-600 transition-all duration-150 hover:bg-rose-50 hover:text-rose-700 active:scale-95 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
                         >
                             <i class="fa-solid fa-flag text-xs"></i>
                             {{ __('Report this customer') }}
@@ -459,7 +459,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                     {{ __('Keep order') }}
                 </flux:button>
 
-                <flux:button variant="danger" wire:click="cancelOrder">
+                <flux:button variant="danger" wire:click="cancelOrder" class="transition-all duration-150 active:scale-95">
                     {{ __('Cancel order') }}
                 </flux:button>
             </div>

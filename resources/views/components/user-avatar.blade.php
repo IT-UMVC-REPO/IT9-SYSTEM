@@ -26,12 +26,13 @@
     };
 @endphp
 
-<span {{ $attributes->class(['relative inline-flex shrink-0 rounded-full']) }}>
+<span {{ $attributes->class(['relative inline-flex shrink-0 rounded-full transition-transform duration-200']) }}>
     @if ($profileImage)
         <img
             src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($profileImage) }}"
             alt="{{ $userName ?? __('User') }}"
-            class="{{ $sizeClasses }} rounded-full object-cover shadow-sm ring-2 ring-stone-200 dark:ring-white/10"
+            class="{{ $sizeClasses }} rounded-full object-cover shadow-sm ring-2 ring-stone-200 transition-opacity duration-300 dark:ring-white/10"
+            loading="lazy"
         >
     @else
         <span class="{{ $sizeClasses }} brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm">

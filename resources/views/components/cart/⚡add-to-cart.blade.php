@@ -167,7 +167,7 @@ new class extends Component {
     }
 }; ?>
 
-<div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
+<div class="brand-panel p-6 transition-all duration-200 dark:border-white/10 dark:bg-zinc-900">
     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Bring this stall to your cart') }}</h2>
     <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
@@ -218,7 +218,7 @@ new class extends Component {
                         min="1"
                         max="{{ $product->stock_quantity }}"
                         wire:model.live="quantity"
-                        class="brand-stepper-input"
+                        class="brand-stepper-input transition-colors duration-150"
                     >
 
                     <button
@@ -245,7 +245,7 @@ new class extends Component {
                     wire:click="addToCart"
                     wire:loading.attr="disabled"
                     wire:target="addToCart"
-                    class="brand-button-primary w-full"
+                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
                 >
                     <span wire:loading.remove wire:target="addToCart" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-cart-plus text-xs"></i>
@@ -259,7 +259,7 @@ new class extends Component {
                     wire:click="buyNow"
                     wire:loading.attr="disabled"
                     wire:target="buyNow"
-                    class="brand-button-secondary w-full"
+                    class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]"
                 >
                     <span wire:loading.remove wire:target="buyNow" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-bolt text-xs"></i>
@@ -270,7 +270,14 @@ new class extends Component {
             </div>
         </div>
     @else
-        <div class="mt-6 flex flex-col gap-4">
+        <div
+            x-data
+            x-show="true"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            class="mt-6 flex flex-col gap-4"
+        >
             <span class="inline-flex w-full items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                 {{ __('Sold out') }} &mdash; {{ __('check back soon') }}
             </span>

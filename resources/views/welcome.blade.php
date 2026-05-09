@@ -52,16 +52,16 @@
         <section class="relative overflow-hidden py-2 lg:py-8">
             <div class="mx-auto grid max-w-7xl items-center gap-16 px-4 sm:px-6 lg:grid-cols-2">
                 <div class="max-w-2xl">
-                    <h1 class="brand-serif mt-6 text-5xl font-bold leading-tight tracking-tight text-neutral-900 dark:text-zinc-100 sm:text-6xl">
+                    <h1 class="brand-serif suki-reveal mt-6 text-5xl font-bold leading-tight tracking-tight text-neutral-900 dark:text-zinc-100 sm:text-6xl">
                         Fresh from the palengke,
                         <span class="brand-accent-text">with your suki still in view.</span>
                     </h1>
 
-                    <p class="mt-6 max-w-xl text-lg leading-8 text-neutral-500 dark:text-zinc-400">
+                    <p class="suki-reveal mt-6 max-w-xl text-lg leading-8 text-neutral-500 dark:text-zinc-400" style="transition-delay: 80ms">
                         SukiMarket brings the warmth of the Filipino wet market online with recognizable stalls, fresh listings, and a browsing experience that keeps your favorite vendors front and center.
                     </p>
 
-                    <div class="mt-8 flex flex-wrap gap-3">
+                    <div class="suki-reveal mt-8 flex flex-wrap gap-3" style="transition-delay: 160ms">
                         @foreach ($heroActions as $action)
                             <a href="{{ $action['href'] }}" class="{{ $action['class'] }}">
                                 {{ $action['label'] }}
@@ -81,7 +81,7 @@
 
                 <div class="relative hidden h-130 items-center justify-center overflow-hidden lg:flex">
                     @if ($featuredVendor)
-                        <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72">
+                        <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72" style="will-change: transform; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex items-center gap-3">
                                     <span class="brand-soft-surface flex h-11 w-11 items-center justify-center rounded-2xl">
@@ -111,7 +111,7 @@
                             </div>
                         </div>
 
-                        <div class="brand-floating-card brand-float-b absolute bottom-8 right-0 w-72">
+                        <div class="brand-floating-card brand-float-b absolute bottom-8 right-0 w-72" style="will-change: transform; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="flex items-center gap-3">
                                 <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
                                     <i class="fa-solid fa-basket-shopping text-lg"></i>
@@ -135,7 +135,7 @@
                             </ul>
                         </div>
                     @else
-                        <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72">
+                        <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72" style="will-change: transform; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="flex items-center gap-3">
                                 <span class="brand-soft-surface flex h-11 w-11 items-center justify-center rounded-2xl">
                                     <i class="fa-solid fa-store text-lg"></i>
@@ -156,7 +156,7 @@
 
         <div class="overflow-hidden border-y border-stone-200 bg-white py-4 dark:border-white/10 dark:bg-zinc-900/80">
             <div class="overflow-hidden">
-                <div class="brand-marquee-track flex min-w-full w-max gap-0">
+                <div class="brand-marquee-track flex min-w-full w-max gap-0" style="will-change: transform;">
                     @foreach ($marketStream as $item)
                         <span class="flex shrink-0 items-center gap-3 px-6 text-sm font-medium text-neutral-500 dark:text-zinc-400">
                             <i class="{{ $item['icon'] }} brand-accent-text"></i>
@@ -179,7 +179,7 @@
                 </div>
 
                 <div class="mt-16 grid gap-8 lg:grid-cols-3">
-                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
+                    <article class="suki-reveal group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900" style="transition-delay: 0ms">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
                             style="background-image: url('{{ asset('imgs/sukifruits.webp') }}')">
                         </div>
@@ -193,7 +193,7 @@
                         </div>
                     </article>
 
-                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
+                    <article class="suki-reveal group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900" style="transition-delay: 80ms">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
                             style="background-image: url('{{ asset('imgs/sukivendor.webp') }}')">
                         </div>
@@ -207,7 +207,7 @@
                         </div>
                     </article>
 
-                    <article class="group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900">
+                    <article class="suki-reveal group relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-white/10 dark:bg-zinc-900" style="transition-delay: 160ms">
                         <div class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-15 transition duration-300 group-hover:scale-105 group-hover:opacity-20"
                             style="background-image: url('{{ asset('imgs/sukisda.png') }}')">
                         </div>
@@ -232,7 +232,7 @@
                 </div>
 
                 <div class="mt-16 grid gap-8 md:grid-cols-3">
-                    <article class="brand-panel p-7">
+                    <article class="brand-panel suki-reveal p-7" style="transition-delay: 0ms">
                         <div class="flex items-start gap-4">
                             <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">01</span>
                             <div>
@@ -245,7 +245,7 @@
 
 
 
-                    <article class="brand-panel p-7">
+                    <article class="brand-panel suki-reveal p-7" style="transition-delay: 100ms">
                         <div class="flex items-start gap-4">
                             <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">02</span>
                             <div>
@@ -256,7 +256,7 @@
                         </div>
                     </article>
 
-                    <article class="brand-panel p-7">
+                    <article class="brand-panel suki-reveal p-7" style="transition-delay: 200ms">
                         <div class="flex items-start gap-4">
                             <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">03</span>
                             <div>
@@ -278,7 +278,7 @@
                 </div>
 
                 <div class="mt-14 grid gap-6 xl:grid-cols-2">
-                    <article class="brand-gradient-card relative overflow-hidden rounded-4xl p-10 text-white shadow-lg">
+                    <article class="brand-gradient-card suki-reveal relative overflow-hidden rounded-4xl p-10 text-white shadow-lg" style="transition-delay: 0ms">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer dashboard</h3>
                         <p class="brand-hero-copy mt-4 text-sm leading-7">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and following upcoming orders.</p>
@@ -287,7 +287,7 @@
                         </a>
                     </article>
 
-                    <article class="relative overflow-hidden rounded-4xl bg-linear-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg">
+                    <article class="suki-reveal relative overflow-hidden rounded-4xl bg-linear-to-br from-amber-500 to-orange-600 p-10 text-white shadow-lg" style="transition-delay: 120ms">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-shop"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Vendor workspace</h3>
                         <p class="mt-4 text-sm leading-7 text-amber-100">A seller portal built around onboarding, catalog management, order handling, and sales visibility.</p>

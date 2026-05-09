@@ -80,7 +80,7 @@ new #[Title('Appearance settings')] class extends Component {
                     </div>
                 </div>
 
-                <div class="mt-6 rounded-[1.5rem] border border-stone-200 bg-white/80 p-4 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
+                <div class="mt-6 rounded-[1.5rem] border border-stone-200 bg-white/80 p-4 shadow-sm transition-all duration-200 dark:border-white/10 dark:bg-white/5 sm:p-6">
                     <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="w-full">
                         <flux:radio value="light" icon="sun">{{ __('Light') }}</flux:radio>
                         <flux:radio value="dark" icon="moon">{{ __('Dark') }}</flux:radio>
@@ -124,7 +124,7 @@ new #[Title('Appearance settings')] class extends Component {
                                 aria-label="{{ __('Choose :color', ['color' => $preset['label']]) }}"
                                 aria-pressed="{{ $brand_color === $preset['hex'] ? 'true' : 'false' }}"
                                 @class([
-                                    'h-9 w-9 rounded-full border border-white/70 shadow-sm transition focus-visible:outline-hidden',
+                                    'h-9 w-9 rounded-full border border-white/70 shadow-sm transition-all duration-150 hover:scale-110 active:scale-90 focus-visible:outline-hidden',
                                     'ring-2 ring-offset-2 ring-offset-stone-50 dark:ring-offset-zinc-900' => $brand_color === $preset['hex'],
                                 ])
                                 style="background-color: {{ $preset['hex'] }}; {{ $brand_color === $preset['hex'] ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.75);' : '' }}"

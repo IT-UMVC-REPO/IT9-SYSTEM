@@ -10,8 +10,8 @@ new #[Title('Messages')] class extends Component {};
     <section class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <span class="brand-kicker">{{ __('Messaging') }}</span>
-            <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Messages inbox') }}</h1>
-            <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
+            <h1 class="brand-serif suki-reveal mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Messages inbox') }}</h1>
+            <p class="suki-reveal mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400" style="transition-delay: 80ms">
                 {{ __('Check the latest buyer and vendor conversations, spot unread replies quickly, and jump straight into the thread that needs your attention.') }}
             </p>
         </div>

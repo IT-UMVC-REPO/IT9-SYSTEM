@@ -3,7 +3,7 @@
         <x-auth-header :title="__('Create your SukiMarket account')" :description="__('Register to access the customer storefront and follow the next marketplace features as they launch.')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('register.store') }}" class="suki-reveal flex flex-col gap-6" style="transition-delay: 120ms">
             @csrf
             <flux:input
                 name="name"
@@ -62,7 +62,7 @@
             />
 
             <div class="flex items-center justify-end">
-                <flux:button type="submit" variant="primary" class="w-full" data-test="register-user-button">
+                <flux:button type="submit" variant="primary" class="w-full transition-all duration-150 active:scale-[0.97]" data-test="register-user-button">
                     {{ __('Create account') }}
                 </flux:button>
             </div>

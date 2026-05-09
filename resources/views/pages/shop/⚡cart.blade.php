@@ -154,7 +154,7 @@ new #[Title('Cart')] class extends Component {
                 @foreach ($this->groupedCartItems as $vendorId => $items)
                     @php($vendor = $items->first()->product->vendor)
 
-                    <section wire:key="cart-vendor-{{ $vendorId }}" class="space-y-4">
+                    <section wire:key="cart-vendor-{{ $vendorId }}" class="suki-reveal space-y-4" style="transition-delay: {{ $loop->index * 80 }}ms">
                         <div class="brand-panel-muted flex flex-col gap-4 rounded-[2rem] p-5 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-center gap-4">
                                 <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
@@ -163,6 +163,7 @@ new #[Title('Cart')] class extends Component {
                                         alt="{{ $vendor->store_name }}"
                                         class="h-full w-full object-cover"
                                         onerror="this.src='https://placehold.co/320x320/e7e5e4/9ca3af?text=Store'"
+                                        loading="lazy"
                                     >
                                 </div>
 
@@ -186,8 +187,8 @@ new #[Title('Cart')] class extends Component {
                         @foreach ($items as $item)
                             <article
                                 wire:key="cart-item-{{ $item->id }}"
-                                class="brand-panel flex flex-col gap-5 p-5 transition duration-200 dark:border-white/10 dark:bg-zinc-900"
-                                wire:loading.class="opacity-60"
+                                class="brand-panel flex flex-col gap-5 p-5 transition-all duration-300 dark:border-white/10 dark:bg-zinc-900"
+                                wire:loading.class="opacity-60 scale-[0.99] blur-[0.5px]"
                                 wire:target="updateQuantity,incrementQuantity,decrementQuantity,removeItem"
                             >
                                 <div class="flex flex-col gap-5 md:flex-row md:items-center">
@@ -200,6 +201,7 @@ new #[Title('Cart')] class extends Component {
                                             src="{{ $item->product->image }}"
                                             alt="{{ $item->product->name }}"
                                             class="h-full w-full object-cover"
+                                            loading="lazy"
                                         >
                                     </a>
 
@@ -316,7 +318,14 @@ new #[Title('Cart')] class extends Component {
                 @endforeach
             </div>
 
-            <aside class="self-start xl:sticky xl:top-24">
+            <aside
+                x-data
+                x-init
+                x-transition:enter="transition ease-out duration-400 delay-200"
+                x-transition:enter-start="opacity-0 translate-x-4"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="self-start xl:sticky xl:top-24"
+            >
                 <div class="brand-panel space-y-5 p-6 dark:border-white/10 dark:bg-zinc-900">
                     <div>
                         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Order summary') }}</p>

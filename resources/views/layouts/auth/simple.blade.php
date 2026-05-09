@@ -9,6 +9,11 @@
     <div class="mx-auto flex min-h-screen max-w-7xl items-stretch p-4 sm:p-6 lg:p-8">
         <div class="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)]">
             <section
+                x-data
+                x-init
+                x-transition:enter="transition ease-out duration-500 delay-100"
+                x-transition:enter-start="opacity-0 -translate-x-4"
+                x-transition:enter-end="opacity-100 translate-x-0"
                 class="relative hidden overflow-hidden rounded-[2rem] bg-[linear-gradient(160deg,var(--brand-700)_0%,var(--brand-900)_100%)] p-8 text-white shadow-xl lg:flex lg:flex-col lg:justify-between">
                 <div class="absolute -right-16 top-0 h-56 w-56 rounded-full bg-[oklch(from_var(--brand-400)_l_c_h_/_0.22)] blur-3xl"></div>
                 <div class="absolute -left-10 bottom-0 h-48 w-48 rounded-full bg-[oklch(from_var(--brand-200)_l_c_h_/_0.22)] blur-3xl"></div>
@@ -44,7 +49,14 @@
                 </div>
             </section>
 
-            <section class="flex items-center justify-center">
+            <section
+                x-data
+                x-init
+                x-transition:enter="transition ease-out duration-400"
+                x-transition:enter-start="opacity-0 translate-x-6"
+                x-transition:enter-end="opacity-100 translate-x-0"
+                class="flex items-center justify-center"
+            >
                 <div class="brand-panel w-full max-w-xl p-6 shadow-xl sm:p-8 lg:p-10">
                     <a href="{{ route('home') }}" class="brand-link mb-6" wire:navigate>
                         <i class="fa-solid fa-arrow-left text-xs"></i>
@@ -65,6 +77,54 @@
     @endpersist
 
     @fluxScripts
+    <script>
+        (() => {
+            const ENTER_CLASS = 'suki-page-enter';
+
+            function applyEnter(el) {
+                el.classList.remove(ENTER_CLASS);
+                void el.offsetWidth;
+                el.classList.add(ENTER_CLASS);
+                el.addEventListener('animationend', () => el.classList.remove(ENTER_CLASS), { once: true });
+            }
+
+            document.addEventListener('livewire:navigated', () => {
+                const main = document.querySelector('main');
+
+                if (main) {
+                    applyEnter(main);
+                }
+
+                window.sukiRevealAll?.();
+            });
+
+            let bar = null;
+
+            document.addEventListener('livewire:navigating', () => {
+                if (!bar) {
+                    bar = document.createElement('div');
+                    bar.id = 'suki-nprogress-bar';
+                    document.body.appendChild(bar);
+                }
+
+                bar.style.display = 'block';
+            });
+
+            document.addEventListener('livewire:navigated', () => {
+                if (bar) {
+                    bar.style.opacity = '0';
+                    bar.style.transition = 'opacity 300ms ease';
+                    setTimeout(() => {
+                        if (bar) {
+                            bar.style.display = 'none';
+                            bar.style.opacity = '';
+                            bar.style.transition = '';
+                        }
+                    }, 320);
+                }
+            });
+        })();
+    </script>
 </body>
 
 </html>

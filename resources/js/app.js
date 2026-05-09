@@ -974,3 +974,80 @@ window.sukiDatePicker = (config) => ({
         }
     },
 });
+
+/* -- SukiMarket scroll-reveal (IntersectionObserver) --------------- */
+window.sukiRevealAll = function () {
+    const targets = document.querySelectorAll('.suki-reveal:not(.is-visible)');
+
+    if (!targets.length) {
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+            if (entry.isIntersecting) {
+                entry.target.style.transitionDelay = `${Math.min(i * 60, 300)}ms`;
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    targets.forEach((el) => observer.observe(el));
+};
+
+document.addEventListener('DOMContentLoaded', () => window.sukiRevealAll());
+document.addEventListener('livewire:navigated', () => window.sukiRevealAll());
+
+/* -- SukiMarket image progressive load ------------------------------ */
+window.sukiLazyImage = () => ({
+    loaded: false,
+    error: false,
+    load(el) {
+        if (!(el instanceof HTMLImageElement)) {
+            return;
+        }
+
+        if (el.complete) {
+            this.loaded = true;
+
+            return;
+        }
+
+        el.addEventListener('load', () => {
+            this.loaded = true;
+        }, { once: true });
+        el.addEventListener('error', () => {
+            this.error = true;
+        }, { once: true });
+    },
+});
+
+/* -- Counter animation (used on stat numbers) ----------------------- */
+window.sukiCounter = (target, duration = 1200) => ({
+    value: 0,
+    start() {
+        const end = parseInt(String(target).replace(/[^0-9]/g, ''), 10);
+
+        if (isNaN(end)) {
+            this.value = target;
+
+            return;
+        }
+
+        const startTime = performance.now();
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const ease = 1 - ((1 - progress) ** 3);
+
+            this.value = Math.round(ease * end).toLocaleString('en-PH');
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            }
+        };
+
+        requestAnimationFrame(step);
+    },
+});

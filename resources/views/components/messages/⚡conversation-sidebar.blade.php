@@ -166,7 +166,7 @@ new class extends Component
                         wire:navigate
                         @if ($isActiveConversation || $isActiveGroup) aria-current="page" @endif
                         @class([
-                            'flex items-start gap-4 rounded-[1.5rem] border px-4 py-4 transition',
+                            'flex items-start gap-4 rounded-[1.5rem] border px-4 py-4 transition-all duration-200',
                             'border-[var(--brand-200)] bg-[color:color-mix(in_oklab,var(--brand-50),white_30%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => $isActiveConversation || $isActiveGroup,
                             'border-transparent hover:border-stone-200 hover:bg-stone-50/70 dark:hover:border-white/10 dark:hover:bg-white/5' => ! $isActiveConversation && ! $isActiveGroup,
                         ])

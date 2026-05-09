@@ -93,7 +93,7 @@ new class extends Component
             x-data
             x-on:click="$flux.modal('{{ $modalName }}').show()"
             wire:loading.attr="disabled"
-            class="{{ $overlay ? 'h-8 w-8' : 'h-10 w-10' }} flex items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            class="{{ $overlay ? 'h-8 w-8' : 'h-10 w-10' }} flex items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm transition-all duration-200 hover:bg-emerald-500 active:scale-75 disabled:cursor-not-allowed disabled:opacity-60"
             title="{{ __('Unfollow stall') }}"
             aria-label="{{ __('Unfollow stall') }}"
         >
@@ -120,7 +120,7 @@ new class extends Component
             type="button"
             wire:click="follow"
             wire:loading.attr="disabled"
-            class="{{ $overlay ? 'h-8 w-8' : 'h-10 w-10' }} flex items-center justify-center rounded-full bg-zinc-800 text-zinc-400 shadow-sm transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+            class="{{ $overlay ? 'h-8 w-8' : 'h-10 w-10' }} flex items-center justify-center rounded-full bg-zinc-800 text-zinc-400 shadow-sm transition-all duration-200 hover:scale-110 hover:bg-zinc-700 active:scale-75 disabled:cursor-not-allowed disabled:opacity-60"
             title="{{ __('Follow stall') }}"
             aria-label="{{ __('Follow stall') }}"
         >

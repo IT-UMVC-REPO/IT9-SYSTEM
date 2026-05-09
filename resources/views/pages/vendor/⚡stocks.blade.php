@@ -414,7 +414,7 @@ new #[Title('Stock Management')] class extends Component {
                 <button
                     type="button"
                     wire:click="$set('statusFilter', '{{ $card['key'] }}')"
-                    class="flex items-baseline gap-2 text-left transition hover:text-[var(--brand-700)] dark:hover:text-[var(--brand-300)]"
+                    class="flex items-baseline gap-2 text-left transition-all duration-200 hover:text-[var(--brand-700)] active:scale-[0.97] dark:hover:text-[var(--brand-300)]"
                 >
                     <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ number_format($card['value']) }}</span>
                     <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
@@ -488,7 +488,7 @@ new #[Title('Stock Management')] class extends Component {
                         type="button"
                         wire:click="$set('statusFilter', '{{ $filter }}')"
                         @class([
-                            'rounded-full border px-3 py-1 text-xs font-bold transition',
+                            'rounded-full border px-3 py-1 text-xs font-bold transition-all duration-200 active:scale-[0.97]',
                             'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $statusFilter === $filter,
                             'border-stone-200 bg-white text-neutral-500 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $statusFilter !== $filter,
                         ])
@@ -519,7 +519,9 @@ new #[Title('Stock Management')] class extends Component {
         <div
             x-data
             x-show="true"
-            x-transition
+            x-transition:enter="transition ease-out duration-250"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
             class="brand-panel flex flex-wrap items-center gap-3 border-2 border-[var(--brand-500)] px-4 py-3"
         >
             <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
@@ -564,13 +566,13 @@ new #[Title('Stock Management')] class extends Component {
                                     : $product->category?->name;
                             @endphp
 
-                            <tr wire:key="stock-row-{{ $product->id }}" class="group transition hover:bg-stone-50/80 dark:hover:bg-white/5">
+                            <tr wire:key="stock-row-{{ $product->id }}" class="group transition-colors duration-150 hover:bg-stone-50/80 dark:hover:bg-white/5">
                                 <td class="px-4 py-5 align-top">
                                     <flux:checkbox wire:model.live="selectedIds" :value="$product->id" />
                                 </td>
                                 <td class="px-4 py-5 align-top">
                                     <div class="flex items-center gap-3">
-                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-12 w-12 rounded-xl object-cover">
+                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-12 w-12 rounded-xl object-cover" loading="lazy">
                                         <div class="min-w-0">
                                             <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="block max-w-xs truncate font-semibold text-neutral-900 transition hover:text-[var(--brand-700)] dark:text-zinc-100">
                                                 {{ $product->name }}
@@ -599,7 +601,14 @@ new #[Title('Stock Management')] class extends Component {
                                 </td>
                                 <td class="px-4 py-5 align-top">
                                     @if (isset($inlineEdits[$product->id]))
-                                        <div class="flex min-w-[260px] flex-col gap-2">
+                                        <div
+                                            x-data
+                                            x-show="true"
+                                            x-transition:enter="transition ease-out duration-200"
+                                            x-transition:enter-start="opacity-0 scale-95"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            class="flex min-w-[260px] flex-col gap-2"
+                                        >
                                             <div class="flex overflow-hidden rounded-lg border border-stone-200 text-xs font-semibold dark:border-zinc-700">
                                                 @foreach (['set' => __('Set to'), 'add' => __('+ Add'), 'subtract' => __('- Remove')] as $mode => $label)
                                                     <button
@@ -653,7 +662,7 @@ new #[Title('Stock Management')] class extends Component {
                                         <div class="min-w-[240px] space-y-2">
                                             <div class="h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-zinc-800">
                                                 <div @class([
-                                                    'h-full rounded-full',
+                                                    'h-full rounded-full transition-all duration-500 ease-out',
                                                     'bg-rose-500' => $stockTone === 'rose',
                                                     'bg-amber-500' => $stockTone === 'amber',
                                                     'bg-emerald-500' => $stockTone === 'emerald',

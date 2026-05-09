@@ -108,7 +108,7 @@ new #[Title('Vendor approvals')] class extends Component {
                         type="button"
                         wire:click="$set('status', '{{ $tab['value'] }}')"
                         @class([
-                            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
+                            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97]',
                             'border-transparent bg-[var(--brand-600)] text-white' => $status === $tab['value'],
                             'border-stone-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100' => $status !== $tab['value'],
                         ])
@@ -122,14 +122,15 @@ new #[Title('Vendor approvals')] class extends Component {
             </div>
 
             <div class="w-full max-w-md">
-                <flux:input wire:model.live.debounce.250ms="search" :label="__('Search applications')" type="search" :placeholder="__('Search by store, owner, or email')" />
+                <flux:input wire:model.live.debounce.250ms="search" :label="__('Search applications')" type="search" :placeholder="__('Search by store, owner, or email')" class="transition-shadow duration-150"
+                />
             </div>
         </div>
     </section>
 
-    <section wire:loading.class="opacity-60" wire:target="status,search,gotoPage,previousPage,nextPage" class="transition duration-200">
+    <section wire:loading.class="opacity-60 blur-[0.5px]" wire:target="status,search,gotoPage,previousPage,nextPage" class="transition duration-200">
         @if ($this->vendors->isNotEmpty())
-            <div class="hidden lg:block">
+            <div class="hidden transition-opacity duration-200 lg:block">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('Store') }}</flux:table.column>
@@ -147,6 +148,7 @@ new #[Title('Vendor approvals')] class extends Component {
                                     <div class="flex min-w-0 items-center gap-3">
                                         <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
                                             <img
+                                                loading="lazy"
                                                 src="{{ $vendor->store_image_url }}"
                                                 alt="{{ $vendor->store_name }}"
                                                 class="h-full w-full object-cover"
@@ -190,10 +192,11 @@ new #[Title('Vendor approvals')] class extends Component {
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->vendors as $vendor)
-                    <article class="brand-panel p-5" wire:key="mobile-vendor-{{ $vendor->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-vendor-{{ $vendor->id }}">
                         <div class="flex items-start gap-4">
                             <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
                                 <img
+                                    loading="lazy"
                                     src="{{ $vendor->store_image_url }}"
                                     alt="{{ $vendor->store_name }}"
                                     class="h-full w-full object-cover"

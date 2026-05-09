@@ -138,7 +138,12 @@
             'overflow-hidden' => $isConversationSurface,
         ])
     >
-        <header class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/70">
+        <header
+            x-data="{ scrolled: false }"
+            x-on:scroll.window.passive="scrolled = window.scrollY > 8"
+            x-bind:class="scrolled ? 'shadow-md shadow-black/8' : 'shadow-sm shadow-black/5'"
+            class="sticky top-0 z-50 border-b border-white/40 bg-white/70 shadow-sm shadow-black/5 backdrop-blur-xl backdrop-saturate-150 transition-shadow duration-200 dark:border-white/10 dark:bg-zinc-900/70"
+        >
             <nav class="mx-auto flex h-[52px] max-w-[1500px] items-stretch gap-4 px-4 sm:px-6 lg:px-8">
                 <div class="flex shrink-0 items-center">
                     <x-app-logo href="{{ $logoHref }}" wire:navigate class="shrink-0" />
@@ -151,7 +156,7 @@
                             <a
                                 href="{{ $item['route'] }}"
                                 wire:navigate
-                                class="flex h-full items-center gap-2 border-b-2 px-5 text-sm transition-colors {{ request()->routeIs(...$item['patterns']) ? 'nav-active font-semibold' : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-zinc-300 dark:hover:text-white' }}"
+                                class="flex h-full items-center gap-2 border-b-2 px-5 text-sm transition-colors duration-150 {{ request()->routeIs(...$item['patterns']) ? 'nav-active font-semibold' : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-zinc-300 dark:hover:text-white' }}"
                             >
                                 <i class="{{ $item['icon'] }} text-sm"></i>
                                 <span>{{ $item['label'] }}</span>
@@ -171,7 +176,7 @@
                                     href="{{ $item['route'] }}"
                                     title="{{ $item['label'] }}"
                                     wire:navigate
-                                    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ request()->routeIs(...$item['patterns']) ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+                                    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors duration-150 {{ request()->routeIs(...$item['patterns']) ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
                                 >
                                     <i class="{{ $item['icon'] }} text-sm"></i>
                                 </a>
@@ -246,7 +251,7 @@
                 x-transition:enter="transition ease-out duration-200"
                 x-transition:enter-start="-translate-y-3 opacity-0"
                 x-transition:enter-end="translate-y-0 opacity-100"
-                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="translate-y-0 opacity-100"
                 x-transition:leave-end="-translate-y-3 opacity-0"
                 class="fixed inset-x-3 top-[60px] z-[60] max-h-[calc(100vh-76px)] overflow-y-auto rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40 lg:hidden"
@@ -277,7 +282,7 @@
                                     wire:navigate
                                     x-on:click="mobileMenuOpen = false"
                                     @class([
-                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition dark:bg-neutral-800 dark:text-white',
+                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition-all duration-150 active:scale-90 dark:bg-neutral-800 dark:text-white',
                                         'is-active' => request()->routeIs(...$item['patterns']),
                                     ])
                                 >
@@ -302,7 +307,7 @@
                                     wire:navigate
                                     x-on:click="mobileMenuOpen = false"
                                     @class([
-                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition dark:bg-neutral-800 dark:text-white',
+                                        'brand-mobile-nav-link flex items-center justify-between gap-3 rounded-xl bg-neutral-100 px-4 py-3 text-sm font-semibold text-neutral-800 transition-all duration-150 active:scale-90 dark:bg-neutral-800 dark:text-white',
                                         'is-active' => request()->routeIs(...$item['patterns']),
                                     ])
                                 >
@@ -362,7 +367,15 @@
 
         @auth
             @if ($mobileBottomNavigationItems !== [])
-                <nav class="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 lg:hidden" aria-label="{{ __('Mobile primary navigation') }}">
+                <nav
+                    x-data
+                    x-show="true"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="translate-y-full opacity-0"
+                    x-transition:enter-end="translate-y-0 opacity-100"
+                    class="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/95 lg:hidden"
+                    aria-label="{{ __('Mobile primary navigation') }}"
+                >
                     <div @class([
                         'mx-auto grid max-w-xl gap-1',
                         'grid-cols-4' => count($mobileBottomNavigationItems) === 4,
@@ -373,7 +386,7 @@
                                 href="{{ $item['route'] }}"
                                 wire:navigate
                                 @class([
-                                    'flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition',
+                                    'flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition-all duration-150 active:scale-90',
                                     'bg-[var(--brand-50)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]' => request()->routeIs(...$item['patterns']),
                                     'text-neutral-500 hover:bg-stone-100 hover:text-neutral-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100' => ! request()->routeIs(...$item['patterns']),
                                 ])
@@ -415,5 +428,53 @@
         @endauth
 
         @fluxScripts
+        <script>
+            (() => {
+                const ENTER_CLASS = 'suki-page-enter';
+
+                function applyEnter(el) {
+                    el.classList.remove(ENTER_CLASS);
+                    void el.offsetWidth;
+                    el.classList.add(ENTER_CLASS);
+                    el.addEventListener('animationend', () => el.classList.remove(ENTER_CLASS), { once: true });
+                }
+
+                document.addEventListener('livewire:navigated', () => {
+                    const main = document.querySelector('main');
+
+                    if (main) {
+                        applyEnter(main);
+                    }
+
+                    window.sukiRevealAll?.();
+                });
+
+                let bar = null;
+
+                document.addEventListener('livewire:navigating', () => {
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.id = 'suki-nprogress-bar';
+                        document.body.appendChild(bar);
+                    }
+
+                    bar.style.display = 'block';
+                });
+
+                document.addEventListener('livewire:navigated', () => {
+                    if (bar) {
+                        bar.style.opacity = '0';
+                        bar.style.transition = 'opacity 300ms ease';
+                        setTimeout(() => {
+                            if (bar) {
+                                bar.style.display = 'none';
+                                bar.style.opacity = '';
+                                bar.style.transition = '';
+                            }
+                        }, 320);
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

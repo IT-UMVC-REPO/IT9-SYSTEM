@@ -23,7 +23,7 @@
                     <button
                         type="button"
                         wire:click="$set('period', '{{ $value }}')"
-                        class="inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold transition {{ $period === $value ? 'text-white' : 'bg-white text-neutral-700 dark:bg-zinc-900 dark:text-zinc-100' }}"
+                        class="inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97] {{ $period === $value ? 'text-white' : 'bg-white text-neutral-700 dark:bg-zinc-900 dark:text-zinc-100' }}"
                         style="{{ $period === $value
                             ? 'border-color: transparent; background-color: var(--brand-600);'
                             : 'border-color: rgb(231 229 228);' }}"
@@ -41,7 +41,7 @@
             ['label' => __('Orders fulfilled'), 'value' => number_format($this->summary['total_orders'])],
             ['label' => __('Average order value'), 'value' => $this->peso($this->summary['average_order_value'])],
         ] as $stat)
-            <article class="brand-panel-muted p-5">
+            <article class="brand-panel-muted suki-reveal p-5" style="transition-delay: {{ $loop->index * 80 }}ms">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ $stat['label'] }}</p>
                 <p class="mt-3 text-3xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</p>
             </article>
@@ -49,7 +49,7 @@
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <article class="brand-panel overflow-hidden p-5">
+        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 100ms">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Revenue trend') }}</p>
@@ -76,7 +76,7 @@
             @endif
         </article>
 
-        <article class="brand-panel p-6">
+        <article class="brand-panel suki-reveal p-6" style="transition-delay: 200ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Top products') }}</p>
@@ -86,12 +86,13 @@
 
             <div class="mt-6 space-y-3">
                 @forelse ($this->topProducts as $productPerformance)
-                    <article class="brand-panel-muted flex items-center gap-4 p-4" wire:key="vendor-top-product-{{ $productPerformance->product_id }}">
+                    <article class="brand-panel-muted flex items-center gap-4 p-4 transition-all duration-200 hover:shadow-md" wire:key="vendor-top-product-{{ $productPerformance->product_id }}">
                         <div class="h-14 w-14 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
                             <img
                                 src="{{ $productPerformance->product?->image_url ?? 'https://placehold.co/112x112/e7e5e4/9ca3af?text=Item' }}"
                                 alt="{{ $productPerformance->product?->name ?? __('Deleted product') }}"
                                 class="h-full w-full object-cover"
+                                loading="lazy"
                             >
                         </div>
 

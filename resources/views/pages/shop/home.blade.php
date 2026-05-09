@@ -1,4 +1,5 @@
 ﻿<x-layouts::app :title="__('SukiMarket Storefront')">
+    <div class="suki-reveal">
     <section class="relative min-h-[420px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0 z-0">
           
@@ -48,6 +49,7 @@
             </div>
         </div>
     </section>
+    </div>
 
     @if ($popularVendors->isNotEmpty())
         <div class="border-b border-stone-200 bg-white dark:border-white/10 dark:bg-zinc-900/80">
@@ -69,7 +71,7 @@
 
                 <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ($popularVendors as $vendor)
-                        <x-vendor-card :vendor="$vendor" :compact="true" wire:key="popular-vendor-{{ $vendor->id }}" />
+                        <x-vendor-card :vendor="$vendor" :compact="true" class="suki-reveal" wire:key="popular-vendor-{{ $vendor->id }}" />
                     @endforeach
                 </div>
             </div>

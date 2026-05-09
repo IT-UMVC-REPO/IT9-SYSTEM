@@ -285,10 +285,10 @@ new #[Title('Order Detail')] class extends Component {
 
                 <div class="divide-y divide-stone-200 dark:divide-white/10">
                     @foreach ($this->order->orderItems as $item)
-                        <div wire:key="order-detail-item-{{ $item->id }}" class="flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                        <div wire:key="order-detail-item-{{ $item->id }}" class="suki-reveal flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8" style="transition-delay: {{ $loop->index * 80 }}ms">
                             <div class="flex min-w-0 items-center gap-4">
                                 <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
-                                    <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover">
+                                    <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover" loading="lazy">
                                 </div>
 
                                 <div class="min-w-0">
@@ -347,9 +347,9 @@ new #[Title('Order Detail')] class extends Component {
 
                     <div class="grid gap-4 grid-cols-2">
                         @foreach ($this->suggestedProducts as $product)
-                            <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-panel group flex items-center gap-4 overflow-hidden p-3 transition hover:scale-[1.02] hover:shadow-lg dark:bg-zinc-900/50">
+                            <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-panel suki-reveal group flex items-center gap-4 overflow-hidden p-3 transition hover:scale-[1.02] hover:shadow-lg dark:bg-zinc-900/50" style="transition-delay: {{ min($loop->index * 80, 320) }}ms">
                                 <div class="h-20 w-20 shrink-0 overflow-hidden rounded-xl">
-                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-110">
+                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-110" loading="lazy">
                                 </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-zinc-500">{{ $product->category->name }}</p>
@@ -372,8 +372,8 @@ new #[Title('Order Detail')] class extends Component {
 
                 <ol class="space-y-4">
                     @foreach ($this->timelineSteps as $step)
-                        <li wire:key="order-step-{{ $step['value'] }}" class="flex items-start gap-4">
-                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold {{ $this->stepMarkerClasses($step['state']) }}">
+                        <li wire:key="order-step-{{ $step['value'] }}" class="suki-reveal flex items-start gap-4" style="transition-delay: {{ $loop->index * 80 }}ms">
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-transform duration-300 {{ $this->stepMarkerClasses($step['state']) }}">
                                 @if ($step['state'] === 'current-cancelled')
                                     <i class="fa-solid fa-xmark"></i>
                                 @else

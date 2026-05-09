@@ -46,11 +46,11 @@
                         </span>
                     </div>
 
-                    <h1 class="brand-serif mt-5 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">{{ $product->name }}</h1>
-                    <p class="brand-hero-copy mt-5 max-w-2xl text-base leading-8">{{ $product->description }}</p>
+                    <h1 class="brand-serif suki-reveal mt-5 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl" style="transition-delay: 0ms">{{ $product->name }}</h1>
+                    <p class="brand-hero-copy suki-reveal mt-5 max-w-2xl text-base leading-8" style="transition-delay: 80ms">{{ $product->description }}</p>
                 </div>
 
-                <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
+                <div class="suki-reveal rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm" style="transition-delay: 160ms">
                     <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">{{ __('Market price') }}</p>
                     <p class="mt-3 text-4xl font-semibold text-white">{{ $product->priceWithUnit() }}</p>
                     @if ($conversionString && $pricePerBaseUnit)
@@ -78,12 +78,16 @@
         <section class="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]">
             <div class="self-start">
                 <div class="overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
-                    <div class="aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                    <div x-data="sukiLazyImage()" x-init="load($refs.img)" class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                        <div x-show="!loaded && !error" class="suki-skeleton absolute inset-0 rounded-[2rem]"></div>
                         <img
+                            x-ref="img"
+                            x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
                             src="{{ $product->image }}"
                             alt="{{ $product->name }}"
                             onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
-                            class="h-full w-full object-cover"
+                            class="h-full w-full object-cover transition-opacity duration-500"
+                            loading="lazy"
                         >
                     </div>
                 </div>
@@ -126,7 +130,7 @@
                 <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Listing snapshot') }}</p>
 
-                    <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                    <div class="suki-reveal mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1" style="transition-delay: 100ms">
                         <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
                             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Category') }}</p>
                             <p class="mt-2 text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->category->name }}</p>

@@ -16,7 +16,7 @@
             </p>
         @endif
 
-        <form method="POST" action="{{ route('verification.code.verify') }}" class="flex flex-col gap-4">
+        <form method="POST" action="{{ route('verification.code.verify') }}" class="suki-reveal flex flex-col gap-4" style="transition-delay: 120ms">
             @csrf
 
             <div class="flex flex-col items-center gap-2">
@@ -33,7 +33,7 @@
                 @enderror
             </div>
 
-            <flux:button type="submit" variant="primary" class="w-full">
+            <flux:button type="submit" variant="primary" class="w-full transition-all duration-150 active:scale-[0.97]">
                 {{ __('Verify email') }}
             </flux:button>
         </form>
@@ -41,14 +41,14 @@
         <div class="flex items-center justify-center gap-3 text-sm text-neutral-500 dark:text-zinc-400">
             <form method="POST" action="{{ route('verification.send') }}">
                 @csrf
-                <button type="submit" class="font-medium underline hover:text-neutral-800 dark:hover:text-zinc-100">
+                <button type="submit" class="font-medium underline transition-colors duration-150 hover:text-neutral-800 dark:hover:text-zinc-100">
                     {{ __('Resend email') }}
                 </button>
             </form>
             <span aria-hidden="true">&middot;</span>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="font-medium underline hover:text-neutral-800 dark:hover:text-zinc-100">
+                <button type="submit" class="font-medium underline transition-colors duration-150 hover:text-neutral-800 dark:hover:text-zinc-100">
                     {{ __('Log out') }}
                 </button>
             </form>

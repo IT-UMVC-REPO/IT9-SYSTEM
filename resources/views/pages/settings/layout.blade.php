@@ -21,7 +21,7 @@
                     href="{{ route($item['route']) }}"
                     wire:navigate
                     @class([
-                        'inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition',
+                        'inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.97]',
                         'border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:border-[var(--brand-500)] dark:bg-[color:oklch(from_var(--brand-500)_l_c_h_/_0.14)] dark:text-[var(--brand-300)]' => request()->routeIs($item['route']),
                         'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] hover:text-[var(--brand-700)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => ! request()->routeIs($item['route']),
                     ])
@@ -77,7 +77,7 @@
         </div>
     </aside>
 
-    <div class="settings-content-panel p-4 sm:p-8">
+    <div class="settings-content-panel suki-reveal p-4 sm:p-8" style="transition-delay: 100ms">
         <div class="flex items-start gap-3">
             <span class="brand-soft-surface flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
                 <i class="fa-solid fa-sliders"></i>

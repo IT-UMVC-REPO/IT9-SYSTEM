@@ -24,13 +24,13 @@
                         </span>
                     </div>
 
-                    <h1 class="brand-serif mt-5 text-4xl font-bold sm:text-5xl lg:text-6xl">{{ $customer->name }}</h1>
-                    <p class="mt-5 max-w-2xl text-base leading-8 text-white/90">
+                    <h1 class="brand-serif suki-reveal mt-5 text-4xl font-bold sm:text-5xl lg:text-6xl">{{ $customer->name }}</h1>
+                    <p class="suki-reveal mt-5 max-w-2xl text-base leading-8 text-white/90" style="transition-delay: 80ms">
                         {{ $customer->address ?: __('No customer bio is available. Reach out via message for delivery details and preferences.') }}
                     </p>
                 </div>
 
-                <div class="rounded-4xl border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
+                <div class="suki-reveal rounded-4xl border border-white/15 bg-white/10 p-6 backdrop-blur-sm" style="transition-delay: 160ms">
                     @if ($canVendorStar)
                         <div class="flex items-center gap-3">
                             <livewire:customer.star-button :customer="$customer" :key="'customer-star-'.$customer->id" />
@@ -43,7 +43,7 @@
                     <a
                         href="{{ route('messages.conversation', ['conversationReference' => $customer->id]) }}"
                         wire:navigate
-                        class="brand-button-primary mt-5 w-full"
+                        class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.97]"
                     >
                         {{ __('Message customer') }}
                     </a>
@@ -73,7 +73,7 @@
 
     <div class="mx-auto grid max-w-[1500px] gap-8 px-4 py-8 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section class="space-y-6">
-            <div class="brand-panel p-6">
+            <div class="brand-panel suki-reveal p-6" style="transition-delay: 100ms">
                 <span class="brand-kicker">{{ __('Profile details') }}</span>
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     <article class="brand-panel-muted p-4">

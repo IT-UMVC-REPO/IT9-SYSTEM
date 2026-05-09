@@ -156,7 +156,7 @@ new #[Title('Notifications')] class extends Component
                         type="button"
                         wire:click="setFilter('{{ $filterKey }}')"
                         @class([
-                            'shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition',
+                            'shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97]',
                             'border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-700)] dark:border-[var(--brand-500)] dark:bg-[color:oklch(from_var(--brand-500)_l_c_h_/_0.14)] dark:text-[var(--brand-300)]' => $filter === $filterKey,
                             'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] hover:text-[var(--brand-700)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $filter !== $filterKey,
                         ])
@@ -173,7 +173,7 @@ new #[Title('Notifications')] class extends Component
         </div>
     </section>
 
-    <section wire:loading.class="opacity-60" wire:target="filter,setFilter,markAllAsRead,openNotification,deleteNotification,gotoPage,previousPage,nextPage" class="space-y-4 transition">
+    <section wire:loading.class="opacity-60 blur-[0.5px]" wire:target="filter,setFilter,markAllAsRead,openNotification,deleteNotification,gotoPage,previousPage,nextPage" class="space-y-4 transition">
         @forelse ($this->notifications->groupBy(fn ($notification) => $notification->created_at?->format('F j, Y') ?? __('Earlier')) as $date => $notifications)
             <div class="space-y-3" wire:key="notification-date-{{ Str::slug($date) }}">
                 <p class="px-1 text-xs font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ $date }}</p>
@@ -183,8 +183,9 @@ new #[Title('Notifications')] class extends Component
 
                     <article
                         wire:key="notification-row-{{ $notification->getKey() }}"
+                        style="transition-delay: {{ min($loop->index * 60, 400) }}ms"
                         @class([
-                            'brand-panel flex flex-col gap-4 p-5 sm:flex-row sm:items-start',
+                            'brand-panel suki-reveal flex flex-col gap-4 p-5 transition-all duration-300 sm:flex-row sm:items-start',
                             'border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => ! $notification->is_read,
                         ])
                     >

@@ -49,7 +49,9 @@ new #[Title('Favourites')] class extends Component
                 @php($vendor = $favorite->vendor)
 
                 @if ($vendor !== null)
-                    <x-vendor-card :vendor="$vendor" wire:key="favorite-stall-{{ $favorite->id }}" />
+                    <div class="suki-reveal" style="transition-delay: {{ $loop->index * 80 }}ms" wire:key="favorite-stall-{{ $favorite->id }}">
+                        <x-vendor-card :vendor="$vendor" />
+                    </div>
                 @endif
             @endforeach
         </section>

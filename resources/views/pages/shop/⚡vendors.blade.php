@@ -78,7 +78,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     x-on:keydown.escape.window="selectedVendor = null"
     class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8"
 >
-    <section class="brand-panel overflow-hidden p-6 sm:p-8">
+    <section class="brand-panel suki-reveal overflow-hidden p-6 sm:p-8">
         <span class="brand-kicker">{{ __('Discover Stalls') }}</span>
         <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)] lg:items-end">
             <div>
@@ -92,7 +92,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
                 <button
                     type="button"
                     x-on:click="toggleMap()"
-                    class="brand-button-secondary w-full justify-center"
+                    class="brand-button-secondary w-full justify-center transition-all duration-150 active:scale-[0.97]"
                 >
                     <i class="fa-solid fa-map-location-dot text-xs"></i>
                     <span x-show="! showMap">{{ __('Show Map') }}</span>
@@ -112,7 +112,12 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     <section
         x-cloak
         x-show="showMap"
-        x-transition.opacity
+        x-transition:enter="transition ease-out duration-350"
+        x-transition:enter-start="opacity-0 scale-[0.98] translate-y-2"
+        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-250"
+        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+        x-transition:leave-end="opacity-0 scale-[0.98] translate-y-2"
         class="brand-panel overflow-hidden p-4 transition sm:p-5"
     >
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -127,13 +132,13 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
 
     <section
         class="transition duration-200"
-        wire:loading.class="opacity-60"
+        wire:loading.class="opacity-60 blur-[0.5px]"
         wire:target="search,gotoPage,previousPage,nextPage"
     >
         @if ($this->vendors->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->vendors as $vendor)
-                    <x-vendor-card :vendor="$vendor" wire:key="market-stall-{{ $vendor->id }}" />
+                    <x-vendor-card :vendor="$vendor" class="suki-reveal" style="transition-delay: {{ min($loop->index * 60, 400) }}ms" wire:key="market-stall-{{ $vendor->id }}" />
                 @endforeach
             </div>
 
@@ -159,12 +164,18 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     >
         <section
             x-show="selectedVendor"
-            x-transition.scale.origin.center
+            x-transition:enter="transition ease-out duration-350"
+            x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-90 translate-y-4"
             x-on:click.outside="selectedVendor = null"
             class="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/40 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900"
         >
             <div class="flex items-start gap-4 border-b border-stone-200 p-5 dark:border-white/10">
                 <img
+                    loading="lazy"
                     x-bind:src="selectedVendor?.image || 'https://placehold.co/160x160/e7e5e4/9ca3af?text=Store'"
                     x-bind:alt="selectedVendor?.name || @js(__('Vendor stall'))"
                     class="h-16 w-16 shrink-0 rounded-2xl object-cover"

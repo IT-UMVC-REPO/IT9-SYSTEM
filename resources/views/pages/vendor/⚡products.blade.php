@@ -303,18 +303,19 @@ new #[Title('My products')] class extends Component {
 
     <section
         class="transition duration-200"
-        wire:loading.class="opacity-60"
+        wire:loading.class="opacity-60 blur-[0.5px]"
                 wire:target="search,statusFilter,categoryFilter,toggleStatus,deleteProduct,restock,gotoPage,previousPage,nextPage"
     >
         @if ($this->products->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->products as $product)
-                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel flex h-full flex-col p-5 sm:p-6">
+                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel suki-reveal flex h-full flex-col p-5 sm:p-6" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="overflow-hidden rounded-[1.5rem] bg-stone-100 dark:bg-zinc-800">
                             <img
                                 src="{{ $product->image_url }}"
                                 alt="{{ $product->name }}"
                                 class="aspect-[4/3] w-full object-cover"
+                                loading="lazy"
                             >
                         </div>
 
@@ -355,20 +356,20 @@ new #[Title('My products')] class extends Component {
                                     wire:click="toggleStatus({{ $product->id }})"
                                     wire:loading.attr="disabled"
                                     wire:target="toggleStatus({{ $product->id }})"
-                                    class="brand-button-secondary w-full"
+                                    class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
                                 >
                                     {{ $product->status === ProductStatus::Active ? __('Set inactive') : __('Publish listing') }}
                                 </button>
 
                                 <div class="grid grid-cols-3 gap-2">
-                                    <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary w-full">
+                                    <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]">
                                         {{ __('Edit') }}
                                     </a>
 
                                     <button
                                         type="button"
                                         wire:click="openRestock({{ $product->id }})"
-                                        class="inline-flex w-full items-center justify-center rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-3 text-sm font-semibold text-[var(--brand-700)] transition hover:bg-[var(--brand-100)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]"
+                                        class="inline-flex w-full items-center justify-center rounded-xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-3 text-sm font-semibold text-[var(--brand-700)] transition-all duration-150 hover:bg-[var(--brand-100)] active:scale-[0.97] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]"
                                     >
                                         {{ __('Restock') }}
                                     </button>
@@ -377,7 +378,7 @@ new #[Title('My products')] class extends Component {
                                         type="button"
                                         x-data
                                         x-on:click="$flux.modal('delete-vendor-product-{{ $product->id }}').show()"
-                                        class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
+                                        class="inline-flex w-full items-center justify-center rounded-xl border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-600 transition-all duration-150 hover:bg-rose-50 active:scale-[0.97] dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
                                     >
                                         {{ __('Delete') }}
                                     </button>
@@ -437,7 +438,7 @@ new #[Title('My products')] class extends Component {
     @if ($restockProductId !== null)
         @php($restockProduct = $this->products->getCollection()->firstWhere('id', $restockProductId))
 
-        <div class="p-6 space-y-5">
+        <div class="animate-in p-6 space-y-5">
             <div>
                 <flux:heading size="lg">{{ __('Restock product') }}</flux:heading>
                 <flux:text class="mt-2">

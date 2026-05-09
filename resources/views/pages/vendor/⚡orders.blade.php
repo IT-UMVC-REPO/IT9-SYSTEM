@@ -117,7 +117,7 @@ new #[Title('Vendor Orders')] class extends Component
                     <button
                         type="button"
                         wire:click="$set('status', '{{ $value }}')"
-                        class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition {{ $status === $value ? 'text-white' : 'bg-white text-neutral-700 dark:bg-zinc-900 dark:text-zinc-100' }}"
+                        class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97] {{ $status === $value ? 'text-white' : 'bg-white text-neutral-700 dark:bg-zinc-900 dark:text-zinc-100' }}"
                         style="{{ $status === $value
                             ? 'border-color: transparent; background-color: var(--brand-600);'
                             : 'border-color: rgb(231 229 228);' }}"
@@ -141,11 +141,11 @@ new #[Title('Vendor Orders')] class extends Component
 
     <section
         class="transition duration-200"
-        wire:loading.class="opacity-60"
+        wire:loading.class="opacity-60 blur-[0.5px]"
         wire:target="status,search,gotoPage,previousPage,nextPage"
     >
         @if ($this->orders->isNotEmpty())
-            <div class="hidden lg:block">
+            <div class="hidden transition-opacity duration-200 lg:block">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('Order') }}</flux:table.column>
@@ -181,7 +181,7 @@ new #[Title('Vendor Orders')] class extends Component
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->orders as $order)
-                    <article class="brand-panel p-5" wire:key="mobile-vendor-order-{{ $order->id }}">
+                    <article class="brand-panel suki-reveal p-5" wire:key="mobile-vendor-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>

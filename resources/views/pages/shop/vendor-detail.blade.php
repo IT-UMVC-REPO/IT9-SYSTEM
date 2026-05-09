@@ -11,6 +11,7 @@
     <section class="relative min-h-[380px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0">
             <img
+                loading="lazy"
                 src="{{ $vendorProfile->store_image_url }}"
                 alt="{{ $vendorProfile->store_name }}"
                 class="h-full w-full object-cover"
@@ -40,12 +41,12 @@
                         </span>
                     </div>
 
-                    <h1 class="brand-serif mt-5 text-4xl font-bold sm:text-5xl lg:text-6xl">{{ $vendorProfile->store_name }}</h1>
-                    <p class="mt-5 max-w-2xl text-base leading-8 text-white/90">{{ $vendorProfile->store_description }}</p>
+                    <h1 class="brand-serif suki-reveal mt-5 text-4xl font-bold sm:text-5xl lg:text-6xl">{{ $vendorProfile->store_name }}</h1>
+                    <p class="suki-reveal mt-5 max-w-2xl text-base leading-8 text-white/90" style="transition-delay: 80ms">{{ $vendorProfile->store_description }}</p>
                     <p class="mt-4 text-sm font-medium text-white/80">{{ __('Managed by :name', ['name' => $vendorProfile->user->name]) }}</p>
                 </div>
 
-                <div class="rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm">
+                <div class="suki-reveal rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm" style="transition-delay: 160ms">
                     @if ($isOwnStall ?? false)
                         <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white">
                             <i class="fa-solid fa-circle-check mr-2"></i>
@@ -62,7 +63,7 @@
                         <a
                             href="{{ route('messages.conversation', ['conversationReference' => $vendorProfile->user_id]) }}"
                             wire:navigate
-                            class="brand-button-primary mt-5 w-full"
+                            class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.97]"
                         >
                             {{ __('Message vendor') }}
                         </a>
@@ -116,9 +117,10 @@
             @if ($products->isNotEmpty())
                 <div class="grid gap-6 md:grid-cols-2">
                     @foreach ($products as $product)
-                        <article class="brand-panel flex h-full flex-col overflow-hidden p-5">
+                        <article class="brand-panel suki-reveal flex h-full flex-col overflow-hidden p-5" style="transition-delay: {{ min($loop->index * 60, 400) }}ms">
                             <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="overflow-hidden rounded-[1.75rem] bg-stone-100 dark:bg-zinc-800">
                                 <img
+                                    loading="lazy"
                                     src="{{ $product->image_url }}"
                                     alt="{{ $product->name }}"
                                     class="aspect-[5/4] w-full object-cover transition duration-300 hover:scale-[1.02]"
@@ -141,7 +143,7 @@
                                             {{ __('Your listing') }}
                                         </span>
                                     @else
-                                        <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full">
+                                        <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]">
                                             {{ __('View product') }}
                                         </a>
                                     @endif
@@ -169,7 +171,7 @@
             @endif
         </section>
 
-        <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">
+        <aside class="suki-reveal space-y-6 xl:sticky xl:top-24 xl:self-start" style="transition-delay: 200ms">
             <section class="brand-panel p-6">
                 <span class="brand-kicker">{{ __('Vendor info') }}</span>
                 <div class="mt-5 space-y-4 text-sm">

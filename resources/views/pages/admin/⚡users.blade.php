@@ -161,7 +161,8 @@ new #[Title('User management')] class extends Component {
     <section class="brand-panel p-6">
         <div class="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)_minmax(0,0.7fr)]">
             <flux:input wire:model.live.debounce.250ms="search" :label="__('Search users')" type="search"
-                :placeholder="__('Search by name or email')" />
+                :placeholder="__('Search by name or email')" class="transition-shadow duration-150"
+                />
 
             <flux:select wire:model.live="roleFilter" :label="__('Role')">
                 <flux:select.option value="">{{ __('All roles') }}</flux:select.option>
@@ -178,10 +179,10 @@ new #[Title('User management')] class extends Component {
         </div>
     </section>
 
-    <section wire:loading.class="opacity-60" wire:target="search,roleFilter,statusFilter,gotoPage,previousPage,nextPage"
+    <section wire:loading.class="opacity-60 blur-[0.5px]" wire:target="search,roleFilter,statusFilter,gotoPage,previousPage,nextPage"
         class="transition duration-200">
         @if ($this->users->isNotEmpty())
-            <div class="hidden lg:block">
+            <div class="hidden transition-opacity duration-200 lg:block">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('User') }}</flux:table.column>
@@ -272,7 +273,7 @@ new #[Title('User management')] class extends Component {
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->users as $user)
-                    <article class="brand-panel p-5" wire:key="mobile-user-{{ $user->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-user-{{ $user->id }}">
                         <div class="flex items-start gap-3">
                             <x-user-avatar :user="$user" size="sm" />
 

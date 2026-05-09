@@ -88,14 +88,14 @@ new #[Title('Vendor Dashboard')] class extends Component
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="brand-panel p-6 sm:p-8">
-        <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
+        <h1 class="brand-serif suki-reveal text-4xl font-bold text-neutral-900 dark:text-zinc-100" style="transition-delay: 0ms">
             {{ __('Welcome back to :store', ['store' => $this->vendorProfile->store_name]) }}
         </h1>
-        <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
+        <p class="suki-reveal mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400" style="transition-delay: 80ms">
             {{ __('Check what needs attention, keep new orders moving, and review how your stall is performing today.') }}
         </p>
 
-        <div class="mt-6 flex flex-wrap gap-3">
+        <div class="suki-reveal mt-6 flex flex-wrap gap-3" style="transition-delay: 160ms">
             <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary">
                 <i class="fa-solid fa-plus text-xs"></i>
                 {{ __('Add product') }}
@@ -112,7 +112,7 @@ new #[Title('Vendor Dashboard')] class extends Component
     <section class="brand-panel p-6">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
             @foreach ($this->stats as $stat)
-                <div class="flex items-baseline gap-2" wire:key="vendor-dashboard-stat-{{ \Illuminate\Support\Str::slug($stat['label']) }}">
+                <div class="suki-reveal flex items-baseline gap-2" wire:key="vendor-dashboard-stat-{{ \Illuminate\Support\Str::slug($stat['label']) }}" style="transition-delay: {{ $loop->index * 60 }}ms">
                     <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</span>
                     <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $stat['label'] }}</span>
                 </div>
@@ -138,7 +138,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}">
+                    <article class="suki-reveal rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -176,7 +176,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
             <div class="mt-6 space-y-3">
                 @forelse ($this->lowStockProducts as $product)
-                    <article class="rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}">
+                    <article class="suki-reveal rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="flex items-center justify-between gap-4">
                             <div>
                                 <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</p>
@@ -206,7 +206,7 @@ new #[Title('Vendor Dashboard')] class extends Component
         </aside>
     </section>
 
-    <section class="brand-panel p-6 sm:p-8">
+    <section class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 300ms">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <span class="brand-kicker">{{ __('Customer map') }}</span>

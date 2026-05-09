@@ -137,7 +137,7 @@ new #[Title('User Reports')] class extends Component
                         type="button"
                         wire:click="$set('status', '{{ $tab['value'] }}')"
                         @class([
-                            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition',
+                            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97]',
                             'border-transparent bg-[var(--brand-600)] text-white' => $status === $tab['value'],
                             'border-stone-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100' => $status !== $tab['value'],
                         ])
@@ -156,14 +156,15 @@ new #[Title('User Reports')] class extends Component
                     :label="__('Search reports')"
                     type="search"
                     :placeholder="__('Search by reporter or reported user')"
+                class="transition-shadow duration-150"
                 />
             </div>
         </div>
     </section>
 
-    <section wire:loading.class="opacity-60" wire:target="status,search,gotoPage,previousPage,nextPage" class="transition duration-200">
+    <section wire:loading.class="opacity-60 blur-[0.5px]" wire:target="status,search,gotoPage,previousPage,nextPage" class="transition duration-200">
         @if ($this->reports->isNotEmpty())
-            <div class="hidden lg:block">
+            <div class="hidden transition-opacity duration-200 lg:block">
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('Reporter') }}</flux:table.column>
@@ -247,7 +248,7 @@ new #[Title('User Reports')] class extends Component
                         href="{{ route('admin.reports.show', $report) }}"
                         wire:key="mobile-report-{{ $report->id }}"
                         wire:navigate
-                        class="brand-panel block p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
+                        class="brand-panel suki-reveal block p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style="transition-delay: {{ min($loop->index * 60, 360) }}ms"
                     >
                         <div class="flex items-start justify-between gap-4">
                             <div class="min-w-0">

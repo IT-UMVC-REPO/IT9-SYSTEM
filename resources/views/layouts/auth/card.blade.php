@@ -27,5 +27,53 @@
         @endpersist
 
         @fluxScripts
+        <script>
+            (() => {
+                const ENTER_CLASS = 'suki-page-enter';
+
+                function applyEnter(el) {
+                    el.classList.remove(ENTER_CLASS);
+                    void el.offsetWidth;
+                    el.classList.add(ENTER_CLASS);
+                    el.addEventListener('animationend', () => el.classList.remove(ENTER_CLASS), { once: true });
+                }
+
+                document.addEventListener('livewire:navigated', () => {
+                    const main = document.querySelector('main');
+
+                    if (main) {
+                        applyEnter(main);
+                    }
+
+                    window.sukiRevealAll?.();
+                });
+
+                let bar = null;
+
+                document.addEventListener('livewire:navigating', () => {
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.id = 'suki-nprogress-bar';
+                        document.body.appendChild(bar);
+                    }
+
+                    bar.style.display = 'block';
+                });
+
+                document.addEventListener('livewire:navigated', () => {
+                    if (bar) {
+                        bar.style.opacity = '0';
+                        bar.style.transition = 'opacity 300ms ease';
+                        setTimeout(() => {
+                            if (bar) {
+                                bar.style.display = 'none';
+                                bar.style.opacity = '';
+                                bar.style.transition = '';
+                            }
+                        }, 320);
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

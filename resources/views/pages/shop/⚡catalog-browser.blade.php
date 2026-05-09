@@ -185,7 +185,12 @@ new class extends Component {
             <div
                 x-cloak
                 x-show="isDesktop || filtersOpen"
-                x-transition
+                x-transition:enter="transition ease-out duration-250"
+                x-transition:enter-start="opacity-0 -translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 -translate-y-2"
                 class="brand-panel flex flex-col gap-5 p-5"
             >
                 <div class="space-y-5">
@@ -199,13 +204,13 @@ new class extends Component {
                         wire:model.live.debounce.250ms="search"
                         placeholder="{{ __('Try ampalaya or seafood') }}"
                         autocomplete="off"
-                        class="brand-input"
+                        class="brand-input transition-shadow duration-150"
                     >
                     </div>
 
                     <flux:field>
                         <flux:label>{{ __('Category') }}</flux:label>
-                        <flux:select wire:model.change.live="selectedCategory" placeholder="{{ __('All categories') }}">
+                        <flux:select wire:model.change.live="selectedCategory" placeholder="{{ __('All categories') }}" class="transition-shadow duration-150">
                             <flux:select.option value="" :label="__('All categories')" />
                             @foreach ($this->categories as $category)
                                 <optgroup label="{{ $category->name }}" wire:key="catalog-category-group-{{ $category->id }}">
@@ -220,7 +225,7 @@ new class extends Component {
 
                     <flux:field>
                         <flux:label>{{ __('Max price (:currency)', ['currency' => '₱']) }}</flux:label>
-                        <flux:select wire:model.change.live="maxPrice" placeholder="{{ __('Any price') }}">
+                        <flux:select wire:model.change.live="maxPrice" placeholder="{{ __('Any price') }}" class="transition-shadow duration-150">
                             <flux:select.option value="" :label="__('Any price')" />
                             <flux:select.option value="50" :label="__('Under ₱50')" />
                             <flux:select.option value="100" :label="__('Under ₱100')" />
@@ -232,7 +237,7 @@ new class extends Component {
 
                     <flux:field>
                         <flux:label>{{ __('Sort by') }}</flux:label>
-                        <flux:select wire:model.change.live="sort" placeholder="{{ __('Recently added') }}">
+                        <flux:select wire:model.change.live="sort" placeholder="{{ __('Recently added') }}" class="transition-shadow duration-150">
                             <flux:select.option value="" :label="__('Recently added')" />
                             <flux:select.option value="price_asc" :label="__('Price: low to high')" />
                             <flux:select.option value="price_desc" :label="__('Price: high to low')" />
@@ -247,7 +252,7 @@ new class extends Component {
                                 wire:click="clearFilters"
                                 wire:loading.attr="disabled"
                                 wire:target="clearFilters"
-                                class="brand-button-secondary w-full"
+                                class="brand-button-secondary w-full transition-all duration-200 active:scale-95"
                             >
                                 {{ __('Clear filters') }}
                             </button>
@@ -267,8 +272,9 @@ new class extends Component {
 
         <section id="storefront-results">
             <div
-                class="transition duration-200"
-                wire:loading.class="opacity-60"
+                class="scale-100 transition-all duration-300"
+                wire:loading.class="opacity-50 scale-[0.99] blur-[0.5px]"
+                wire:loading.class.remove="scale-100"
                 wire:target="search,selectedCategory,maxPrice,sort,clearFilters,gotoPage,previousPage,nextPage"
             >
                 <p
@@ -281,16 +287,16 @@ new class extends Component {
                 </p>
 
                 @if ($this->products->isNotEmpty())
-                    <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                    <div class="grid gap-6 transition-all duration-300 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($this->products as $product)
-                            <article wire:key="catalog-product-{{ $product->id }}" class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900">
+                            <article wire:key="catalog-product-{{ $product->id }}" class="suki-reveal group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900" style="transition-delay: {{ min($loop->index * 50, 400) }}ms">
                                 <a href="{{ route('shop.products.show', $product) }}" class="block">
                                     <div class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
                                         <img
                                             src="{{ $product->image }}"
                                             alt="{{ $product->name }}"
                                             onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
-                                            class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                            class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 will-change-transform"
                                             loading="lazy"
                                         >
 
@@ -360,7 +366,7 @@ new class extends Component {
                             Try a different keyword or category to discover more approved listings.
                         </p>
                         @if ($this->hasActiveFilters)
-                            <button type="button" wire:click="clearFilters" class="brand-button-primary mt-5">
+                            <button type="button" wire:click="clearFilters" class="brand-button-primary mt-5 transition-all duration-200 active:scale-95">
                                 <span class="text-accent-foreground">Clear filters</span>
                             </button>
                         @endif

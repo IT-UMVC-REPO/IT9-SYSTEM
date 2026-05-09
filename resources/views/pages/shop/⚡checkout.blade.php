@@ -31,7 +31,8 @@
                 })"
                 x-init="initMap()"
                 x-on:livewire:navigating.window="destroyMap()"
-                class="brand-panel space-y-5 p-6 sm:p-8"
+                class="brand-panel suki-reveal space-y-5 p-6 sm:p-8"
+                style="transition-delay: 0ms"
             >
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">
@@ -63,7 +64,8 @@
                     <div
                         id="checkout-delivery-map"
                         wire:ignore
-                        class="h-[240px] w-full overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 sm:h-[320px] dark:border-white/10 dark:bg-zinc-900"
+                        x-bind:class="hasPin ? 'opacity-100' : 'opacity-60'"
+                        class="h-[240px] w-full overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 transition-opacity duration-500 sm:h-[320px] dark:border-white/10 dark:bg-zinc-900"
                     ></div>
 
                     <input type="hidden" wire:model="delivery_lat" x-bind:value="hasPin ? lat : ''">
@@ -81,7 +83,7 @@
                     <button
                         type="button"
                         x-on:click="useCurrentLocation()"
-                        class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] transition hover:underline dark:text-[var(--brand-400)]"
+                        class="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-700)] transition-all duration-150 hover:gap-3 hover:underline active:scale-95 dark:text-[var(--brand-400)]"
                     >
                         <i class="fa-solid fa-location-crosshairs text-xs"></i>
                         {{ __('Use my current location') }}
@@ -89,7 +91,7 @@
                 </div>
             </div>
 
-            <div class="brand-panel space-y-6 p-6 sm:p-8">
+            <div class="brand-panel suki-reveal space-y-6 p-6 sm:p-8" style="transition-delay: 100ms">
                 <flux:textarea
                     wire:model="notes"
                     :label="__('Notes for the vendor')"
@@ -98,7 +100,7 @@
                 />
             </div>
 
-            <div class="brand-panel space-y-5 p-6 sm:p-8">
+            <div class="brand-panel suki-reveal space-y-5 p-6 sm:p-8" style="transition-delay: 200ms">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Payment method') }}</p>
                     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Cash on Delivery') }}</h2>
@@ -123,14 +125,14 @@
                 type="submit"
                 wire:loading.attr="disabled"
                 wire:target="placeOrder"
-                class="brand-button-primary w-full"
+                class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg hover:shadow-[var(--brand-600)]/20 active:scale-[0.97]"
             >
                 <span wire:loading.remove wire:target="placeOrder">{{ __('Place order') }}</span>
                 <span wire:loading wire:target="placeOrder">{{ __('Placing order...') }}</span>
             </button>
         </form>
 
-        <aside class="self-start xl:sticky xl:top-24">
+        <aside class="suki-reveal self-start xl:sticky xl:top-24" style="transition-delay: 300ms">
             <div class="brand-panel space-y-5 p-6 dark:border-white/10 dark:bg-zinc-900">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Order summary') }}</p>
@@ -153,6 +155,7 @@
                                         alt="{{ $vendor->store_name }}"
                                         class="h-full w-full object-cover"
                                         onerror="this.src='https://placehold.co/320x320/e7e5e4/9ca3af?text=Store'"
+                                        loading="lazy"
                                     >
                                 </div>
                             </div>
@@ -160,7 +163,7 @@
                             @foreach ($items as $item)
                                 <div wire:key="checkout-item-{{ $item->id }}" class="flex items-center gap-3">
                                     <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
-                                        <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover">
+                                        <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover" loading="lazy">
                                     </div>
 
                                     <div class="min-w-0 flex-1">

@@ -60,12 +60,19 @@ new class extends Component
     title="{{ __('Messages') }}"
     wire:navigate
     wire:poll.15s
-    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition {{ $isActive ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-150 active:scale-90 {{ $isActive ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
 >
     <i class="fa-solid fa-comments text-sm"></i>
 
     @if ($this->unreadCount > 0)
-        <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm">
+        <span
+            x-data
+            x-show="$wire.unreadCount > 0"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-50"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-300"
+        >
             {{ $this->unreadCount > 99 ? '99+' : $this->unreadCount }}
         </span>
     @endif

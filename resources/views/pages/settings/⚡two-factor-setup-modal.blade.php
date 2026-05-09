@@ -154,8 +154,12 @@ new class extends Component {
             </div>
 
             @if ($showVerificationStep)
-                <div class="space-y-6">
-                    <div class="flex flex-col items-center justify-center space-y-3">
+                <div x-data x-show="true"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-3 scale-98"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     class="space-y-6">
+                    <div class="flex flex-col items-center justify-center space-y-3 transition-all duration-200">
                         <flux:otp
                             name="code"
                             wire:model="code"
@@ -190,7 +194,7 @@ new class extends Component {
                     <flux:callout variant="danger" icon="x-circle" heading="{{ $message }}"/>
                 @enderror
 
-                <div class="flex justify-center">
+                <div class="suki-reveal flex justify-center" style="transition-delay: 100ms">
                     <div class="relative aspect-square w-64 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm dark:border-white/10 dark:bg-zinc-950">
                         @empty($qrCodeSvg)
                             <div class="absolute inset-0 flex animate-pulse items-center justify-center bg-white dark:bg-zinc-900">
@@ -213,7 +217,7 @@ new class extends Component {
                     <flux:button
                         :disabled="$errors->has('setupData')"
                         variant="primary"
-                        class="w-full"
+                        class="w-full transition-all duration-150 active:scale-[0.97]"
                         wire:click="showVerificationIfNecessary"
                     >
                         {{ $this->modalConfig['buttonText'] }}

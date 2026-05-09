@@ -121,11 +121,15 @@ new #[Title('Vendor review')] class extends Component {
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,0.8fr)]">
         <div class="space-y-6">
             <div class="brand-panel overflow-hidden p-6 sm:p-8">
-                <div class="overflow-hidden rounded-[2rem] bg-stone-100 dark:bg-zinc-800">
+                <div x-data="sukiLazyImage()" x-init="load($refs.img)" class="relative overflow-hidden rounded-[2rem] bg-stone-100 dark:bg-zinc-800">
+                    <div x-show="!loaded && !error" class="suki-skeleton absolute inset-0"></div>
                     <img
+                        x-ref="img"
+                        x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
                         src="{{ $vendorProfile->store_image_url }}"
                         alt="{{ $vendorProfile->store_name }}"
-                        class="aspect-[16/9] w-full object-cover"
+                        loading="lazy"
+                        class="aspect-[16/9] w-full object-cover transition-opacity duration-500"
                     >
                 </div>
 
@@ -161,8 +165,9 @@ new #[Title('Vendor review')] class extends Component {
 
                 <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     @forelse ($vendorProfile->products as $product)
-                        <article class="rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-4 dark:border-white/10 dark:bg-zinc-800/70">
+                        <article class="suki-reveal rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-4 dark:border-white/10 dark:bg-zinc-800/70" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                             <img
+                                loading="lazy"
                                 src="{{ $product->image_url }}"
                                 alt="{{ $product->name }}"
                                 class="aspect-[4/3] w-full rounded-[1.25rem] object-cover"
@@ -180,7 +185,7 @@ new #[Title('Vendor review')] class extends Component {
             </div>
         </div>
 
-        <aside class="brand-panel h-fit p-6 xl:sticky xl:top-24">
+        <aside class="brand-panel suki-reveal h-fit p-6 xl:sticky xl:top-24" style="transition-delay: 150ms">
             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
                 {{ __('Decision panel') }}
             </p>
@@ -232,12 +237,12 @@ new #[Title('Vendor review')] class extends Component {
 
             @if ($vendorProfile->status === VendorStatus::Pending)
                 <div class="mt-8 grid grid-cols-2 gap-3">
-                    <flux:button type="button" variant="primary" wire:click="approve" class="h-11 w-full justify-center">
+                    <flux:button type="button" variant="primary" wire:click="approve" class="h-11 w-full justify-center transition-all duration-150 active:scale-[0.97]">
                         {{ __('Approve vendor') }}
                     </flux:button>
 
                     <flux:modal.trigger name="reject-vendor">
-                        <flux:button variant="danger" type="button" class="h-11 w-full justify-center">
+                        <flux:button variant="danger" type="button" class="h-11 w-full justify-center transition-all duration-150 active:scale-[0.97]">
                             {{ __('Reject vendor') }}
                         </flux:button>
                     </flux:modal.trigger>

@@ -1,6 +1,6 @@
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     @if ($this->currentVendorProfile?->status === \App\Enums\VendorStatus::Pending && ! $showReapplicationForm)
-        <section class="brand-panel mx-auto max-w-3xl px-8 py-14 text-center">
+        <section x-data x-show="true" x-transition:enter="transition ease-out duration-400" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="brand-panel mx-auto max-w-3xl px-8 py-14 text-center">
             <span class="brand-kicker border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                 {{ __('Under review') }}
             </span>
@@ -18,7 +18,7 @@
             </a>
         </section>
     @elseif ($this->currentVendorProfile?->status === \App\Enums\VendorStatus::Rejected && ! $showReapplicationForm)
-        <section class="mx-auto grid max-w-4xl gap-6">
+        <section x-data x-show="true" x-transition:enter="transition ease-out duration-400" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" class="mx-auto grid max-w-4xl gap-6">
             <div class="rounded-[2rem] border border-rose-200 bg-rose-50/90 p-8 shadow-sm dark:border-rose-500/20 dark:bg-rose-500/10">
                 <span class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-rose-700 dark:border-rose-500/30 dark:bg-zinc-900 dark:text-rose-300">
                     {{ __('Needs changes') }}
@@ -50,7 +50,7 @@
     @else
         <section class="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(24rem,0.9fr)]">
             <div
-                class="brand-panel p-6 sm:p-8"
+                class="brand-panel suki-reveal p-6 sm:p-8"
                 x-data="{
                     dragOver: false,
                     setDroppedFile(event) {
@@ -81,7 +81,7 @@
 
                 <form wire:submit="submit" class="mt-8 space-y-8">
                     <div
-                        class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 transition dark:border-white/10 dark:bg-zinc-800/60"
+                        class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 transition-all duration-200 dark:border-white/10 dark:bg-zinc-800/60"
                         x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[color:oklch(from_var(--brand-50)_l_c_h_/_0.9)] dark:bg-zinc-800' : ''"
                         x-on:dragover.prevent="dragOver = true"
                         x-on:dragleave.prevent="dragOver = false"
@@ -101,6 +101,7 @@
                         @if ($storeImagePreviewUrl)
                             <div class="space-y-4">
                                 <img
+                                    loading="lazy"
                                     src="{{ $storeImagePreviewUrl }}"
                                     alt="{{ __('Store preview') }}"
                                     class="aspect-[5/3] w-full rounded-[1.5rem] object-cover"
@@ -165,7 +166,7 @@
                                 </p>
                             </div>
 
-                            <button type="button" wire:click="addSampleProduct" class="brand-button-secondary">
+                            <button type="button" wire:click="addSampleProduct" class="brand-button-secondary transition-all duration-150 active:scale-[0.97]">
                                 <i class="fa-solid fa-plus text-xs"></i>
                                 {{ __('Add another sample product') }}
                             </button>
@@ -179,7 +180,8 @@
                             @foreach ($sampleProducts as $index => $sampleProduct)
                                 <article
                                     wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
-                                    class="brand-panel p-6 sm:p-8"
+                                    class="brand-panel suki-reveal p-6 sm:p-8"
+                                    style="transition-delay: {{ $loop->index * 100 }}ms"
                                 >
                                     <div class="flex items-start justify-between gap-4">
                                         <div>
@@ -192,7 +194,7 @@
                                             <button
                                                 type="button"
                                                 wire:click="removeSampleProduct({{ $index }})"
-                                                class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:border-rose-500/30 dark:hover:bg-rose-500/15"
+                                                class="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition-all duration-150 hover:border-rose-300 hover:bg-rose-100 active:scale-[0.97] dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:border-rose-500/30 dark:hover:bg-rose-500/15"
                                             >
                                                 <i class="fa-solid fa-trash text-xs"></i>
                                                 {{ __('Remove') }}
@@ -218,6 +220,7 @@
                                             @if ($sampleProductPreviewUrl)
                                                 <div class="space-y-4">
                                                     <img
+                                                        loading="lazy"
                                                         src="{{ $sampleProductPreviewUrl }}"
                                                         alt="{{ __('Sample product preview') }}"
                                                         class="aspect-video w-full rounded-2xl object-cover"
@@ -228,7 +231,7 @@
                                                     </label>
                                                 </div>
                                             @else
-                                                <label for="sample-product-image-{{ $index }}" class="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
+                                                <label for="sample-product-image-{{ $index }}" class="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/80 px-4 text-center transition-all duration-200 hover:bg-stone-50 dark:border-white/10 dark:bg-zinc-800/60 dark:hover:bg-zinc-800/80">
                                                     <span class="brand-soft-surface flex h-12 w-12 items-center justify-center rounded-2xl">
                                                         <i class="fa-solid fa-camera text-sm"></i>
                                                     </span>
@@ -333,7 +336,7 @@
                         type="submit"
                         wire:loading.attr="disabled"
                         wire:target="submit,storeImageUpload,sampleProductUploads"
-                        class="brand-button-primary w-full"
+                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
                     >
                         <span wire:loading.remove wire:target="submit">
                             {{ $showReapplicationForm ? __('Submit reapplication') : __('Submit application') }}
@@ -343,7 +346,7 @@
                 </form>
             </div>
 
-            <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">
+            <aside class="suki-reveal space-y-6 xl:sticky xl:top-24 xl:self-start" style="transition-delay: 200ms">
                 <div class="brand-panel-muted p-6 sm:p-8">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] brand-accent-text">
                         {{ __('What approved vendors unlock') }}

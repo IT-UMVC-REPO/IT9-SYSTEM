@@ -74,7 +74,7 @@ new #[Title('Security settings')] class extends Component {
         <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
 
         <x-pages::settings.layout :heading="__('Security')" :subheading="__('Protect your account and manage sign-in safeguards')">
-            <section class="settings-section-card">
+            <section class="settings-section-card suki-reveal" style="transition-delay: 80ms">
                 <div class="flex items-start gap-4">
                     <span class="brand-soft-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
                         <i class="fa-solid fa-key text-lg"></i>
@@ -115,7 +115,7 @@ new #[Title('Security settings')] class extends Component {
                     />
 
                     <div class="flex items-center gap-4">
-                        <flux:button variant="primary" type="submit" data-test="update-password-button">
+                        <flux:button variant="primary" type="submit" class="transition-all duration-150 active:scale-[0.97]" data-test="update-password-button">
                             {{ __('Save') }}
                         </flux:button>
                     </div>
@@ -123,7 +123,7 @@ new #[Title('Security settings')] class extends Component {
             </section>
 
             @if ($canManageTwoFactor)
-                <section class="settings-section-card">
+                <section class="settings-section-card suki-reveal" style="transition-delay: 160ms">
                     <div class="flex items-start gap-4">
                         <span class="brand-soft-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
                             <i class="fa-solid fa-shield-halved text-lg"></i>
@@ -171,6 +171,7 @@ new #[Title('Security settings')] class extends Component {
                                     <flux:button
                                         variant="primary"
                                         wire:click="$dispatch('start-two-factor-setup')"
+                                        class="transition-all duration-150 active:scale-[0.97]"
                                     >
                                         {{ __('Enable 2FA') }}
                                     </flux:button>
