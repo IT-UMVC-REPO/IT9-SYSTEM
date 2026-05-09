@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\VendorStatus;
+use App\Models\AuditLog;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\Order;
@@ -108,6 +110,30 @@ test('dashboard preview widgets only show three newest rows', function () {
         ->assertSee($orders[1]->customer->name)
         ->assertSee($orders[2]->customer->name)
         ->assertDontSee($orders[3]->customer->name);
+});
+
+test('dashboard platform feed eagerly renders latest audit entries', function () {
+    $admin = User::factory()->admin()->create([
+        'name' => 'Admin Liza',
+    ]);
+
+    $entries = collect(range(1, 6))->map(function (int $index) use ($admin): AuditLog {
+        return AuditLog::query()->create([
+            'user_id' => $admin->id,
+            'event' => AuditEvent::UserLoggedIn,
+            'description' => "Audit event {$index}",
+            'created_at' => now()->subMinutes(6 - $index),
+        ]);
+    });
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertSee('Platform feed')
+        ->assertSee('Audit event 6')
+        ->assertSee('Audit event 2')
+        ->assertDontSee('Audit event 1')
+        ->assertDontSee('Waiting for activity...');
 });
 
 test('non admin users are redirected away from the admin dashboard', function () {

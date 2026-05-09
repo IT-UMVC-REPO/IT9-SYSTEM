@@ -164,6 +164,7 @@ window.groupTypingIndicator = (config) => ({
 window.onlinePresence = (config) => ({
     onlineUserIds: new Set(),
     channelRef: null,
+    initialized: false,
 
     init() {
         if (!window.Echo) {
@@ -173,6 +174,7 @@ window.onlinePresence = (config) => ({
         this.channelRef = window.Echo.join(`presence.conversation.${config.conversationKey}`)
             .here((users) => {
                 this.onlineUserIds = new Set(users.map((user) => Number(user.id)));
+                this.initialized = true;
             })
             .joining((user) => {
                 this.onlineUserIds = new Set([...this.onlineUserIds, Number(user.id)]);
@@ -198,6 +200,7 @@ window.onlinePresence = (config) => ({
 window.groupOnlinePresence = (config) => ({
     onlineUserIds: new Set(),
     channelRef: null,
+    initialized: false,
 
     init() {
         if (!window.Echo) {
@@ -207,6 +210,7 @@ window.groupOnlinePresence = (config) => ({
         this.channelRef = window.Echo.join(`presence.group.${config.groupId}`)
             .here((users) => {
                 this.onlineUserIds = new Set(users.map((user) => Number(user.id)));
+                this.initialized = true;
             })
             .joining((user) => {
                 this.onlineUserIds = new Set([...this.onlineUserIds, Number(user.id)]);
@@ -232,13 +236,23 @@ window.groupOnlinePresence = (config) => ({
 window.conversationSidebarPresence = (config) => ({
     onlineUsers: new Set(),
     channels: [],
+    initialized: false,
+    pendingHydrations: 0,
 
     init() {
         if (!window.Echo) {
             return;
         }
 
-        (config.conversations ?? []).forEach((conversation) => {
+        const conversations = config.conversations ?? [];
+        this.pendingHydrations = conversations.length;
+
+        if (this.pendingHydrations === 0) {
+            this.initialized = true;
+            return;
+        }
+
+        conversations.forEach((conversation) => {
             const channelName = `presence.conversation.${conversation.key}`;
             const otherUserId = Number(conversation.userId);
             const channel = window.Echo.join(channelName)
@@ -246,6 +260,8 @@ window.conversationSidebarPresence = (config) => ({
                     if (users.some((user) => Number(user.id) === otherUserId)) {
                         this.onlineUsers = new Set([...this.onlineUsers, otherUserId]);
                     }
+
+                    this.markHydrated();
                 })
                 .joining((user) => {
                     if (Number(user.id) === otherUserId) {
@@ -268,6 +284,11 @@ window.conversationSidebarPresence = (config) => ({
         });
     },
 
+    markHydrated() {
+        this.pendingHydrations = Math.max(0, this.pendingHydrations - 1);
+        this.initialized = this.pendingHydrations === 0;
+    },
+
     isOnline(userId) {
         return this.onlineUsers.has(Number(userId));
     },
@@ -282,19 +303,41 @@ window.conversationSidebarPresence = (config) => ({
     },
 });
 
+function ensureLeafletDefaultIcon(L) {
+    if (!L?.Icon?.Default || L.Icon.Default.prototype._sukiMarketDefaultIconPatched) {
+        return;
+    }
+
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+        iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+        shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
+    });
+    L.Icon.Default.prototype._sukiMarketDefaultIconPatched = true;
+}
+
 window.vendorLocationMap = (mapId, zoom, vendor) => ({
     map: null,
 
     init() {
         this.$nextTick(() => {
             const L = window.L;
+            const vendorLat = Number(vendor?.lat);
+            const vendorLng = Number(vendor?.lng);
 
             if (!L || this.map || !vendor) {
                 return;
             }
 
+            if (!Number.isFinite(vendorLat) || !Number.isFinite(vendorLng)) {
+                return;
+            }
+
+            ensureLeafletDefaultIcon(L);
+
             this.map = L.map(mapId, {
-                center: [vendor.lat, vendor.lng],
+                center: [vendorLat, vendorLng],
                 zoom,
                 zoomControl: true,
                 scrollWheelZoom: false,
@@ -313,9 +356,11 @@ window.vendorLocationMap = (mapId, zoom, vendor) => ({
                 popupAnchor: [0, -44],
             });
 
-            L.marker([vendor.lat, vendor.lng], { icon })
+            L.marker([vendorLat, vendorLng], { icon })
                 .addTo(this.map)
                 .bindPopup(`<strong>${escapeHtml(vendor.name)}</strong><br>${escapeHtml(vendor.address)}`);
+
+            window.setTimeout(() => this.map?.invalidateSize(), 100);
         });
     },
 });

@@ -228,7 +228,7 @@ new #[Title('Vendor Dashboard')] class extends Component
                     type="button"
                     x-on:click="toggleCustomers()"
                     x-bind:class="showCustomers ? 'brand-button-primary' : 'brand-button-secondary'"
-                    class="text-sm"
+                    class="text-sm rounded-xl"
                 >
                     <span x-text="showCustomers ? @js(__('Hide customers')) : @js(__('Show my customers'))"></span>
                 </button>

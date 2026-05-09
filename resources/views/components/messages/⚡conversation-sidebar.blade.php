@@ -180,7 +180,7 @@ new class extends Component
                                 <x-user-avatar :user="$thread['user']" size="md" />
                                 <span
                                     x-cloak
-                                    x-show="isOnline(@js($thread['id']))"
+                                    x-show="initialized && isOnline(@js($thread['id']))"
                                     x-transition.opacity
                                     class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
                                     title="{{ __('Online') }}"

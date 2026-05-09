@@ -6,6 +6,7 @@ use App\Concerns\BuildsDailyChartSeries;
 use App\Enums\PaymentStatus;
 use App\Enums\ProductStatus;
 use App\Enums\VendorStatus;
+use App\Models\AuditLog;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\Order;
@@ -123,6 +124,28 @@ class Dashboard extends Component
             ->latest('created_at')
             ->take(3)
             ->get();
+    }
+
+    #[Computed]
+    public function recentAuditEvents(): Collection
+    {
+        return AuditLog::query()
+            ->with('user:id,name')
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn (AuditLog $log): array => [
+                'id' => $log->getKey(),
+                'event' => $log->event->value,
+                'label' => $log->event->label(),
+                'icon' => $log->event->icon(),
+                'color' => $log->event->color(),
+                'description' => $log->description,
+                'user_id' => $log->user_id,
+                'user_name' => $log->user?->name ?? 'System',
+                'created_at' => $log->created_at?->toIso8601String(),
+                'ip_address' => $log->ip_address,
+            ]);
     }
 
     #[Computed]

@@ -45,8 +45,30 @@ test('inbox shows threads the user is part of', function () {
         ->assertOk()
         ->assertSee('Vendor Ramon')
         ->assertSee('Buyer Lea')
+        ->assertSee('Add contact')
         ->assertSee('Latest vendor reply')
         ->assertDontSee('Older vendor note');
+});
+
+test('direct message modal searches contacts and redirects to the selected conversation', function () {
+    $user = User::factory()->create([
+        'name' => 'Current User',
+    ]);
+    $target = User::factory()->create([
+        'name' => 'Aling Marta',
+    ]);
+    $other = User::factory()->create([
+        'name' => 'Kuya Ben',
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('messaging.create-direct-modal')
+        ->set('search', 'Marta')
+        ->assertSee('Aling Marta')
+        ->assertDontSee('Current User')
+        ->assertDontSee('Kuya Ben')
+        ->call('openConversation', $target->getKey())
+        ->assertRedirect(route('messages.conversation', ['conversationReference' => $target->getKey()]));
 });
 
 test('inbox does not show other users threads', function () {

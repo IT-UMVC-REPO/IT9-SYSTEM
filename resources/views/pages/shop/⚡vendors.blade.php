@@ -56,33 +56,10 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     x-data="{
         showMap: true,
         selectedVendor: null,
-        mapFullscreen: false,
         activeProductSingular: @js(__('active product')),
         activeProductPlural: @js(__('active products')),
-        init() {
-            document.addEventListener('fullscreenchange', () => this.syncFullscreen());
-        },
         toggleMap() {
             this.showMap = ! this.showMap;
-            this.$nextTick(() => window.dispatchEvent(new CustomEvent('vendor-map-resize')));
-        },
-        toggleFullscreen() {
-            const target = this.$refs.mapShell;
-
-            if (! target?.requestFullscreen) {
-                return;
-            }
-
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-
-                return;
-            }
-
-            target.requestFullscreen();
-        },
-        syncFullscreen() {
-            this.mapFullscreen = document.fullscreenElement === this.$refs.mapShell;
             this.$nextTick(() => window.dispatchEvent(new CustomEvent('vendor-map-resize')));
         },
         truncateDescription(value) {
@@ -136,26 +113,13 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
         x-cloak
         x-show="showMap"
         x-transition.opacity
-        x-ref="mapShell"
-        x-bind:class="mapFullscreen ? 'fixed inset-0 z-[80] overflow-auto rounded-none border-0 bg-white p-4 dark:bg-zinc-950 sm:p-6' : 'brand-panel overflow-hidden p-4 sm:p-5'"
-        class="transition"
+        class="brand-panel overflow-hidden p-4 transition sm:p-5"
     >
         <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p class="brand-kicker !mb-0">{{ __('Find stalls') }}</p>
                 <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Tagum vendor map') }}</h2>
             </div>
-
-            <button
-                type="button"
-                x-on:click="toggleFullscreen()"
-                class="brand-button-secondary justify-center"
-            >
-                <i x-show="! mapFullscreen" class="fa-solid fa-expand text-xs"></i>
-                <i x-show="mapFullscreen" class="fa-solid fa-compress text-xs"></i>
-                <span x-show="! mapFullscreen">{{ __('Fullscreen') }}</span>
-                <span x-show="mapFullscreen">{{ __('Exit fullscreen') }}</span>
-            </button>
         </div>
 
         <x-vendor-location-map browse height="400px" map-id="shop-vendors-map" />

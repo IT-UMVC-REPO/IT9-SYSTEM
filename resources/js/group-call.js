@@ -326,6 +326,7 @@ export const groupConversationVideoCall = (config) => ({
             this.startCallTimer();
             this.showCallChrome();
             await this.ensureLocalStream();
+            this.syncLocalVideoSources();
             this.statusMessage = 'Loading call connection settings...';
             await this.loadIceConfiguration();
 
@@ -358,6 +359,7 @@ export const groupConversationVideoCall = (config) => ({
             this.startCallTimer();
             this.showCallChrome();
             await this.ensureLocalStream();
+            this.syncLocalVideoSources();
             await this.loadIceConfiguration();
 
             const payload = await this.requestJson(this.callRoute('answer'), null, { timeoutMs: 15000 });
@@ -415,6 +417,8 @@ export const groupConversationVideoCall = (config) => ({
 
     async ensureLocalStream() {
         if (this.localStream !== null) {
+            this.setVideoSource('group-call-local-video', this.localStream);
+            this.syncLocalVideoSources();
             await this.updateCameraCapabilities();
             return this.localStream;
         }
@@ -453,9 +457,7 @@ export const groupConversationVideoCall = (config) => ({
             track.enabled = !this.cameraDisabled;
         });
         this.setVideoSource('group-call-local-video', this.localStream);
-        this.setVideoSource('group-call-local-background-video', this.localStream);
-        this.setVideoSource('group-call-local-grid-video', this.localStream);
-        this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
+        this.syncLocalVideoSources();
         await this.updateCameraCapabilities();
 
         return this.localStream;
@@ -651,10 +653,7 @@ export const groupConversationVideoCall = (config) => ({
         previousVideoTracks.forEach((track) => track.stop());
         this.localStream = new MediaStream([...audioTracks, newVideoTrack]);
         newVideoTrack.enabled = !this.cameraDisabled;
-        this.setVideoSource('group-call-local-video', this.localStream);
-        this.setVideoSource('group-call-local-background-video', this.localStream);
-        this.setVideoSource('group-call-local-grid-video', this.localStream);
-        this.setVideoSource('group-call-local-thumbnail-video', this.localStream);
+        this.syncLocalVideoSources();
         await this.updateCameraCapabilities();
     },
 
@@ -1213,5 +1212,16 @@ export const groupConversationVideoCall = (config) => ({
         if (element instanceof HTMLVideoElement) {
             element.srcObject = stream;
         }
+    },
+
+    syncLocalVideoSources() {
+        window.setTimeout(() => {
+            [
+                'group-call-local-video',
+                'group-call-local-background-video',
+                'group-call-local-grid-video',
+                'group-call-local-thumbnail-video',
+            ].forEach((elementId) => this.setVideoSource(elementId, this.localStream));
+        }, 0);
     },
 });

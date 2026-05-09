@@ -191,64 +191,54 @@ new class extends Component {
                 <div class="space-y-5">
                     <div>
                     <label for="storefront-search" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
-                        Search
+                        {{ __('Search') }}
                     </label>
                     <input
                         id="storefront-search"
                         type="search"
                         wire:model.live.debounce.250ms="search"
-                        placeholder="Try ampalaya or seafood"
+                        placeholder="{{ __('Try ampalaya or seafood') }}"
                         autocomplete="off"
                         class="brand-input"
                     >
                     </div>
 
-                    <div>
-                    <label for="storefront-category" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
-                        Category
-                    </label>
-                    <select id="storefront-category" wire:model.change.live="selectedCategory" class="brand-select">
-                        <option value="">All categories</option>
-                        @foreach ($this->categories as $category)
-                            <optgroup label="{{ $category->name }}" wire:key="catalog-category-group-{{ $category->id }}">
-                                <option value="{{ $category->id }}">
-                                    All {{ $category->name }}
-                                </option>
-                                @foreach ($category->children as $childCategory)
-                                    <option value="{{ $childCategory->id }}" wire:key="catalog-category-option-{{ $childCategory->id }}">
-                                        - {{ $childCategory->name }}
-                                    </option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </select>
-                    </div>
+                    <flux:field>
+                        <flux:label>{{ __('Category') }}</flux:label>
+                        <flux:select wire:model.change.live="selectedCategory" placeholder="{{ __('All categories') }}">
+                            <flux:select.option value="" :label="__('All categories')" />
+                            @foreach ($this->categories as $category)
+                                <optgroup label="{{ $category->name }}" wire:key="catalog-category-group-{{ $category->id }}">
+                                    <flux:select.option :value="$category->id" :label="__('All :category', ['category' => $category->name])" />
+                                    @foreach ($category->children as $childCategory)
+                                        <flux:select.option :value="$childCategory->id" :label="$childCategory->name" wire:key="catalog-category-option-{{ $childCategory->id }}" />
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </flux:select>
+                    </flux:field>
 
-                    <div>
-                    <label for="storefront-max-price" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
-                        Max price (₱)
-                    </label>
-                    <select id="storefront-max-price" wire:model.change.live="maxPrice" class="brand-select">
-                        <option value="">Any price</option>
-                        <option value="50">Under &#8369;50</option>
-                        <option value="100">Under &#8369;100</option>
-                        <option value="200">Under &#8369;200</option>
-                        <option value="500">Under &#8369;500</option>
-                        <option value="1000">Under &#8369;1,000</option>
-                    </select>
-                    </div>
+                    <flux:field>
+                        <flux:label>{{ __('Max price (:currency)', ['currency' => '₱']) }}</flux:label>
+                        <flux:select wire:model.change.live="maxPrice" placeholder="{{ __('Any price') }}">
+                            <flux:select.option value="" :label="__('Any price')" />
+                            <flux:select.option value="50" :label="__('Under ₱50')" />
+                            <flux:select.option value="100" :label="__('Under ₱100')" />
+                            <flux:select.option value="200" :label="__('Under ₱200')" />
+                            <flux:select.option value="500" :label="__('Under ₱500')" />
+                            <flux:select.option value="1000" :label="__('Under ₱1,000')" />
+                        </flux:select>
+                    </flux:field>
 
-                    <div>
-                    <label for="storefront-sort" class="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-stone-500 dark:text-zinc-400">
-                        Sort by
-                    </label>
-                    <select id="storefront-sort" wire:model.change.live="sort" class="brand-select">
-                        <option value="">Recently added</option>
-                        <option value="price_asc">Price: low to high</option>
-                        <option value="price_desc">Price: high to low</option>
-                        <option value="name_asc">Name: A&ndash;Z</option>
-                    </select>
-                    </div>
+                    <flux:field>
+                        <flux:label>{{ __('Sort by') }}</flux:label>
+                        <flux:select wire:model.change.live="sort" placeholder="{{ __('Recently added') }}">
+                            <flux:select.option value="" :label="__('Recently added')" />
+                            <flux:select.option value="price_asc" :label="__('Price: low to high')" />
+                            <flux:select.option value="price_desc" :label="__('Price: high to low')" />
+                            <flux:select.option value="name_asc" :label="__('Name: A-Z')" />
+                        </flux:select>
+                    </flux:field>
 
                     @if ($this->hasActiveFilters)
                         <div class="pt-1">
@@ -259,7 +249,7 @@ new class extends Component {
                                 wire:target="clearFilters"
                                 class="brand-button-secondary w-full"
                             >
-                                Clear filters
+                                {{ __('Clear filters') }}
                             </button>
                         </div>
                     @endif

@@ -33,8 +33,8 @@ trait VendorProductValidationRules
             $qualifiedKey('base_unit_quantity') => [
                 'nullable',
                 'numeric',
-                'min:0.0001',
-                'max:999999',
+                'min:0.001',
+                'max:99999',
                 'required_with:'.$qualifiedKey('base_unit'),
             ],
             $imageField => array_values(array_filter([
@@ -42,6 +42,18 @@ trait VendorProductValidationRules
                 'image',
                 'max:3072',
             ])),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function vendorProductValidationMessages(string $prefix = ''): array
+    {
+        $qualifiedKey = static fn (string $key): string => $prefix !== '' ? $prefix.'.'.$key : $key;
+
+        return [
+            $qualifiedKey('base_unit_quantity').'.max' => __('Base unit quantity cannot exceed 99,999.'),
         ];
     }
 }

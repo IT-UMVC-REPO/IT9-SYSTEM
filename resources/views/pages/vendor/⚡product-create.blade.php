@@ -54,7 +54,7 @@ new #[Title('Create product')] class extends Component {
             $this->clearUnitConversion();
         }
 
-        $validated = $this->validate($this->vendorProductRules());
+        $validated = $this->validate($this->vendorProductRules(), $this->vendorProductValidationMessages());
 
         $imagePath = $this->productImageUpload->store('product-images', 'public');
 
@@ -216,7 +216,29 @@ new #[Title('Create product')] class extends Component {
             return null;
         }
 
+        if ($this->unitConversionPreviewTooLarge) {
+            return __('Value is too large - please enter a realistic quantity.');
+        }
+
         return $this->selectedUnit?->conversionLabel((float) $this->base_unit_quantity, $this->base_unit);
+    }
+
+    #[Computed]
+    public function unitConversionPreviewTooLarge(): bool
+    {
+        if (! is_numeric($this->base_unit_quantity)) {
+            return false;
+        }
+
+        $quantityValue = (float) $this->base_unit_quantity;
+
+        if (! is_finite($quantityValue)) {
+            return true;
+        }
+
+        $quantity = rtrim(rtrim(number_format($quantityValue, 4, '.', ''), '0'), '.');
+
+        return mb_strlen(str_replace('.', '', $quantity)) > 20 || $quantityValue > 99999;
     }
 
     #[Computed]
@@ -259,7 +281,7 @@ new #[Title('Create product')] class extends Component {
         $this->base_unit = '';
         $this->base_unit_quantity = '';
 
-        unset($this->suggestedBaseUnits, $this->unitConversionPreview, $this->pricePerBaseUnit, $this->customerConversionSummary);
+        unset($this->suggestedBaseUnits, $this->unitConversionPreview, $this->unitConversionPreviewTooLarge, $this->pricePerBaseUnit, $this->customerConversionSummary);
     }
 
 }; ?>
@@ -314,10 +336,10 @@ new #[Title('Create product')] class extends Component {
             </div>
         </div>
 
-        <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-12 lg:p-8">
-            <section class="space-y-4 lg:col-span-5">
+        <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:p-8">
+            <section class="space-y-4 self-start">
                 <div
-                    class="relative flex min-h-[320px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900 lg:min-h-[420px]"
+                    class="relative flex min-h-[320px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900 lg:min-h-[320px]"
                     x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[var(--brand-50)] dark:bg-[var(--brand-500)]/10' : ''"
                     x-on:dragover.prevent="dragOver = true"
                     x-on:dragleave.prevent="dragOver = false"
@@ -405,7 +427,7 @@ new #[Title('Create product')] class extends Component {
                 </details>
             </section>
 
-            <section class="space-y-8 lg:col-span-7">
+            <section class="space-y-8">
                 @php($selectedUnit = $this->selectedUnit)
 
                 <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
@@ -508,7 +530,7 @@ new #[Title('Create product')] class extends Component {
                         @foreach ($this->categoryGroups as $parentName => $categories)
                             <optgroup label="{{ $parentName }}">
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    <flux:select.option :value="$category->id" :label="$category->name" />
                                 @endforeach
                             </optgroup>
                         @endforeach
@@ -654,6 +676,8 @@ new #[Title('Create product')] class extends Component {
                                             wire:model.live.debounce.250ms="base_unit_quantity"
                                             step="0.001"
                                             min="0.001"
+                                            max="99999"
+                                            x-on:input="if (parseFloat($el.value) > 99999) { $el.value = 99999; $wire.$set('base_unit_quantity', '99999'); }"
                                             :placeholder="__('e.g. 25')"
                                             class="pr-16"
                                         />
@@ -672,6 +696,11 @@ new #[Title('Create product')] class extends Component {
                                         {{ __('Conversion summary') }}
                                     </p>
                                     <div class="mt-4 space-y-2">
+                                        @if ($this->unitConversionPreviewTooLarge)
+                                            <p class="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                                                {{ __('Value is too large - please enter a realistic quantity.') }}
+                                            </p>
+                                        @else
                                         <p class="text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->unitConversionPreview }}</p>
                                         @if ($this->pricePerBaseUnit)
                                             <p class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">
@@ -682,6 +711,7 @@ new #[Title('Create product')] class extends Component {
                                             <p class="text-sm text-neutral-500 dark:text-zinc-400">
                                                 {{ __('Customers will see: ":summary"', ['summary' => $this->customerConversionSummary]) }}
                                             </p>
+                                        @endif
                                         @endif
                                     </div>
                                 </div>

@@ -304,7 +304,7 @@
                                                 @foreach ($this->categoryGroups as $parentName => $categories)
                                                     <optgroup label="{{ $parentName }}">
                                                         @foreach ($categories as $category)
-                                                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                                            <flux:select.option :value="$category->id" :label="$category->name" />
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach

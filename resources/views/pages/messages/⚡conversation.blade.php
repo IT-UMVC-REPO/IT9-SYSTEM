@@ -80,18 +80,6 @@
                                     <flux:icon.device-phone-mobile variant="micro" class="h-4 w-4" />
                                     {{ __('Device settings') }}
                                 </button>
-                                <button type="button" x-on:click="
-                                    const el = $el.closest('.fixed.inset-0');
-                                    if (! document.fullscreenElement) {
-                                        el?.requestFullscreen?.();
-                                    } else {
-                                        document.exitFullscreen?.();
-                                    }
-                                    open = false;
-                                " class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
-                                    <flux:icon.arrows-pointing-out variant="micro" class="h-4 w-4" />
-                                    {{ __('Full screen') }}
-                                </button>
                             </div>
                             <div x-cloak x-show="devicesOpen" x-on:click.away="devicesOpen = false" class="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
                                 <p class="mb-3 text-sm font-semibold text-white">{{ __('Available devices') }}</p>
@@ -311,7 +299,7 @@
                             <x-user-avatar :user="$this->otherUser" size="profile" />
                             <span
                                 x-cloak
-                                x-show="isOnline(@js($otherUserId))"
+                                x-show="isOnline(@js($otherUserId)) && initialized"
                                 x-transition.opacity
                                 class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
                                 title="{{ __('Online') }}"
@@ -323,7 +311,7 @@
                                 <livewire:messaging.nickname-editor :target-user-id="$otherUserId" :profile-route="$this->otherUserProfileRoute"
                                     :key="'nickname-editor-' . $otherUserId" />
                             </h1>
-                            <p class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ $this->conversationSubtitle() }}</p>
+                            <p x-cloak x-show="initialized && isOnline(@js($otherUserId))" class="truncate text-xs text-neutral-500 dark:text-neutral-400">{{ __('Active now') }}</p>
                         </div>
 
                         <a href="{{ $this->otherUserProfileRoute }}" wire:navigate

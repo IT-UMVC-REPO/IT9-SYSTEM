@@ -151,6 +151,9 @@ export function sukiVendorMap() {
         customerLayer: null,
         vendorMarkers: new Map(),
         showCustomers: false,
+        _toggling: false,
+        _customerLayerPending: false,
+        _customerLayerController: null,
 
         async initMap(elementId = 'suki-vendor-map') {
             if (this.map) {
@@ -238,31 +241,56 @@ export function sukiVendorMap() {
         },
 
         async toggleCustomers() {
-            this.showCustomers = !this.showCustomers;
+            if (this._customerLayerPending) {
+                this._customerLayerController?.abort();
+                this._customerLayerPending = false;
+                this.showCustomers = false;
+                this.removeCustomerLayer();
+                return;
+            }
 
-            if (!this.showCustomers) {
-                if (this.customerLayer) {
-                    this.map.removeLayer(this.customerLayer);
-                    this.customerLayer = null;
+            if (this._toggling) {
+                return;
+            }
+
+            this._toggling = true;
+
+            try {
+                this.showCustomers = !this.showCustomers;
+
+                if (!this.showCustomers) {
+                    this._customerLayerController?.abort();
+                    this.removeCustomerLayer();
+                    return;
                 }
 
-                return;
-            }
+                this.removeCustomerLayer();
 
-            const response = await fetch('/api/map/customers');
+                const controller = new AbortController();
+                this._customerLayerController = controller;
+                this._customerLayerPending = true;
 
-            if (response.status === 403) {
-                this.showCustomers = false;
-                return;
-            }
+                const response = await fetch('/api/map/customers', {
+                    signal: controller.signal,
+                });
 
-            const geojson = await response.json();
+                if (response.status === 403) {
+                    this.showCustomers = false;
+                    this.removeCustomerLayer();
+                    return;
+                }
 
-            this.customerLayer = L.geoJSON(geojson, {
-                pointToLayer: (feature, latlng) => {
-                    const icon = L.divIcon({
-                        className: '',
-                        html: `
+                const geojson = await response.json();
+
+                if (!this.showCustomers) {
+                    return;
+                }
+
+                this.customerLayer = L.geoJSON(geojson, {
+                    pointToLayer: (feature, latlng) => {
+                        const icon = L.divIcon({
+                            className: '',
+                            html: `
                             <div style="
                                 width: 32px; height: 32px;
                                 border-radius: 50%;
@@ -273,17 +301,17 @@ export function sukiVendorMap() {
                             ">
                                 <span style="width: 8px; height: 8px; border-radius: 9999px; background: white;"></span>
                             </div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16],
-                        popupAnchor: [0, -20],
-                    });
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16],
+                            popupAnchor: [0, -20],
+                        });
 
-                    return L.marker(latlng, { icon });
-                },
-                onEachFeature: (feature, layer) => {
-                    const p = feature.properties;
+                        return L.marker(latlng, { icon });
+                    },
+                    onEachFeature: (feature, layer) => {
+                        const p = feature.properties;
 
-                    layer.bindPopup(`
+                        layer.bindPopup(`
                         <div style="min-width:160px; font-family: sans-serif;">
                             <p style="font-weight:700; font-size:13px; margin:0 0 4px;">${escapeHtml(p.name)}</p>
                             <p style="font-size:11px; color:#888; margin:0 0 8px;">${escapeHtml(p.address || 'Tagum City')}</p>
@@ -295,8 +323,25 @@ export function sukiVendorMap() {
                             </a>
                         </div>
                     `, { maxWidth: 200 });
-                },
-            }).addTo(this.map);
+                    },
+                }).addTo(this.map);
+            } catch (error) {
+                if (!(error instanceof DOMException && error.name === 'AbortError')) {
+                    this.showCustomers = false;
+                    this.removeCustomerLayer();
+                }
+            } finally {
+                this._customerLayerPending = false;
+                this._customerLayerController = null;
+                this._toggling = false;
+            }
+        },
+
+        removeCustomerLayer() {
+            if (this.customerLayer) {
+                this.map.removeLayer(this.customerLayer);
+                this.customerLayer = null;
+            }
         },
     };
 }

@@ -30,7 +30,7 @@
             id="{{ $mapId }}"
             wire:ignore
             class="w-full"
-            x-bind:style="(typeof mapFullscreen !== 'undefined' && mapFullscreen) ? 'height: calc(100vh - 8rem)' : @js('height: '.$height)"
+            style="height: {{ $height }}"
         ></div>
     </div>
 @elseif ($hasLocation)

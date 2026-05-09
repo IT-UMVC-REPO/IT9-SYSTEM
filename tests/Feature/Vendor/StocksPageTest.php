@@ -143,6 +143,18 @@ test('inline edit subtract mode decrements and does not go below zero', function
     expect($product->fresh()->stock_quantity)->toBe(0);
 });
 
+test('inline edit subtract mode warns when the preview will be capped at zero', function () {
+    [$vendorUser, $vendorProfile] = stocksPageVendor();
+    $product = stocksPageProduct($vendorProfile, ['stock_quantity' => 5]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.stocks')
+        ->call('startInlineEdit', $product->getKey())
+        ->set("inlineEdits.{$product->id}.mode", 'subtract')
+        ->set("inlineEdits.{$product->id}.quantity", '10')
+        ->assertSee('This would empty the stock - result will be capped at 0.');
+});
+
 test('inline edit validates quantity is numeric and non negative', function () {
     [$vendorUser, $vendorProfile] = stocksPageVendor();
     $product = stocksPageProduct($vendorProfile, ['stock_quantity' => 5]);
@@ -153,9 +165,11 @@ test('inline edit validates quantity is numeric and non negative', function () {
         ->set("inlineEdits.{$product->id}.quantity", 'abc')
         ->call('saveInlineEdit', $product->getKey())
         ->assertHasErrors(["inlineEdits.{$product->id}.quantity" => 'numeric'])
+        ->assertSee('Quantity must be a number.')
         ->set("inlineEdits.{$product->id}.quantity", '-1')
         ->call('saveInlineEdit', $product->getKey())
-        ->assertHasErrors(["inlineEdits.{$product->id}.quantity" => 'min']);
+        ->assertHasErrors(["inlineEdits.{$product->id}.quantity" => 'min'])
+        ->assertSee('Quantity cannot go below zero.');
 });
 
 test('quick adjust up increments by one', function () {

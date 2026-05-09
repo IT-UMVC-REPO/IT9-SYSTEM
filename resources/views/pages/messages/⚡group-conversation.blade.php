@@ -168,18 +168,6 @@
                                         <flux:icon.device-phone-mobile variant="micro" class="h-4 w-4" />
                                         {{ __('Device settings') }}
                                     </button>
-                                    <button type="button" x-on:click="
-                                        const el = $el.closest('.fixed.inset-0');
-                                        if (! document.fullscreenElement) {
-                                            el?.requestFullscreen?.();
-                                        } else {
-                                            document.exitFullscreen?.();
-                                        }
-                                        open = false;
-                                    " class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-200 dark:hover:bg-white/10">
-                                        <flux:icon.arrows-pointing-out variant="micro" class="h-4 w-4" />
-                                        {{ __('Full screen') }}
-                                    </button>
                                 </div>
                                 <div x-cloak x-show="devicesOpen" x-on:click.away="devicesOpen = false" class="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-xl">
                                     <p class="mb-3 text-sm font-semibold text-white">{{ __('Available devices') }}</p>
@@ -480,7 +468,7 @@
                                         <x-user-avatar :user="$member->user" size="sm" class="border-2 border-white dark:border-neutral-900" />
                                         <span
                                             x-cloak
-                                            x-show="isOnline(@js($member->user_id))"
+                                            x-show="initialized && isOnline(@js($member->user_id))"
                                             x-transition.opacity
                                             class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
                                             title="{{ __('Online') }}"
@@ -856,7 +844,7 @@
                                         <x-user-avatar :user="$member->user" size="sm" />
                                         <span
                                             x-cloak
-                                            x-show="isOnline(@js($member->user_id))"
+                                            x-show="initialized && isOnline(@js($member->user_id))"
                                             x-transition.opacity
                                             class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
                                             title="{{ __('Online') }}"

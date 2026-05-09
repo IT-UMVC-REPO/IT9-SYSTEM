@@ -182,6 +182,44 @@ test('base unit must be one of the allowed values', function () {
         ->assertHasErrors(['base_unit' => 'in']);
 });
 
+test('base unit quantity cannot exceed the realistic maximum', function () {
+    Storage::fake('public');
+
+    [$vendorUser] = productUnitConversionVendor();
+    $category = productUnitConversionCategory();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('name', 'Dinorado Sack')
+        ->set('description', 'Freshly milled rice packed for family meals.')
+        ->set('price', '850.00')
+        ->set('stock_quantity', '10')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Sack->value)
+        ->set('showUnitConversion', true)
+        ->set('base_unit', 'kg')
+        ->set('base_unit_quantity', '100000')
+        ->set('status', ProductStatus::Active->value)
+        ->set('productImageUpload', UploadedFile::fake()->createWithContent('rice.png', productUnitConversionPngFixture()))
+        ->call('save')
+        ->assertHasErrors(['base_unit_quantity' => 'max'])
+        ->assertSee('Base unit quantity cannot exceed 99,999.');
+});
+
+test('large conversion preview is replaced with a realistic quantity warning', function () {
+    [$vendorUser] = productUnitConversionVendor();
+    $category = productUnitConversionCategory();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Sack->value)
+        ->set('showUnitConversion', true)
+        ->set('base_unit', 'kg')
+        ->set('base_unit_quantity', '100000000000000000000')
+        ->assertSee('Value is too large - please enter a realistic quantity.');
+});
+
 test('storefront product detail shows conversion string when set', function () {
     [$vendorUser, $vendorProfile] = productUnitConversionVendor();
     $category = productUnitConversionCategory();

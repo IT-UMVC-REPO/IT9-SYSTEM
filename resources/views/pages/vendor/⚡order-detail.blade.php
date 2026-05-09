@@ -337,13 +337,21 @@ new #[Title('Vendor Order Detail')] class extends Component
             <section class="brand-panel p-6">
                 <span class="brand-kicker">{{ __('Status timeline') }}</span>
                 <div class="mt-5 space-y-3">
-                    @foreach ([OrderStatus::Pending, OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Delivered] as $status)
+                    @php
+                        $statusSteps = [OrderStatus::Pending, OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Delivered];
+                        $currentStatusIndex = array_search($this->order->order_status, $statusSteps, true);
+                    @endphp
+
+                    @foreach ($statusSteps as $status)
+                        @php($isCompleted = $currentStatusIndex !== false && $loop->index < $currentStatusIndex)
                         <div class="flex items-center gap-3" wire:key="vendor-order-status-step-{{ $status->value }}">
                             <span
-                                class="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold {{ $status === $this->order->order_status ? 'text-white' : 'text-neutral-600 dark:text-zinc-300' }}"
-                                style="{{ $status === $this->order->order_status
-                                    ? 'background-color: var(--brand-600);'
-                                    : 'background-color: color-mix(in oklab, var(--brand-50) 72%, white 28%);' }}"
+                                @class([
+                                    'inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold',
+                                    'bg-[var(--brand-600)] text-white' => $status === $this->order->order_status,
+                                    'bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-[var(--brand-900)] dark:text-[var(--brand-300)]' => $isCompleted,
+                                    'bg-stone-200 text-stone-600 dark:bg-zinc-700 dark:text-zinc-300' => $status !== $this->order->order_status && ! $isCompleted,
+                                ])
                             >
                                 {{ $loop->iteration }}
                             </span>

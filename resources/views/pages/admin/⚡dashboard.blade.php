@@ -3,6 +3,7 @@
     $orderVolumeChartData = $this->orderVolumeChartData;
     $vendorStatusChartData = $this->vendorStatusChartData;
     $userRegistrationChartData = $this->userRegistrationChartData;
+    $recentAuditEvents = $this->recentAuditEvents;
 @endphp
 
 <div wire:poll.60s="refreshDashboard" class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -33,7 +34,7 @@
     <section
         wire:ignore
         x-data="{
-            feed: [],
+            feed: @js($recentAuditEvents),
             init() {
                 if (!window.Echo) return;
                 window.Echo.channel('admin.audit').listen('.AuditLogCreated', (entry) => {
@@ -68,9 +69,11 @@
                 </div>
             </template>
 
-            <p x-show="feed.length === 0" class="py-10 text-center text-sm text-neutral-400 dark:text-zinc-500">
-                {{ __('Waiting for activity...') }}
-            </p>
+            @if ($recentAuditEvents->isEmpty())
+                <p x-show="feed.length === 0" class="py-10 text-center text-sm text-neutral-400 dark:text-zinc-500">
+                    {{ __('Waiting for activity...') }}
+                </p>
+            @endif
         </div>
 
         <a href="{{ route('admin.audit') }}" wire:navigate class="brand-button-secondary self-start text-sm">

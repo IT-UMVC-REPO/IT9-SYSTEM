@@ -16,7 +16,10 @@ new #[Title('Messages')] class extends Component {};
             </p>
         </div>
 
-        <livewire:messaging.create-group-modal :key="'create-group-modal'" />
+        <div class="flex flex-wrap gap-2">
+            <livewire:messaging.create-group-modal :key="'create-group-modal'" />
+            <livewire:messaging.create-direct-modal :key="'create-direct-modal'" />
+        </div>
     </section>
 
     <livewire:messages.conversation-sidebar :key="'messages-inbox-sidebar'" />

@@ -177,6 +177,11 @@ new #[Title('Stock Management')] class extends Component {
 
         $this->validateOnly("inlineEdits.{$productId}.quantity", [
             "inlineEdits.{$productId}.quantity" => ['required', 'numeric', 'min:0', 'max:999999'],
+        ], [
+            "inlineEdits.{$productId}.quantity.min" => __('Quantity cannot go below zero.'),
+            "inlineEdits.{$productId}.quantity.max" => __('Quantity cannot exceed 999,999 units.'),
+            "inlineEdits.{$productId}.quantity.required" => __('Please enter a quantity.'),
+            "inlineEdits.{$productId}.quantity.numeric" => __('Quantity must be a number.'),
         ]);
 
         $product = $this->findOwnedProduct($productId);
@@ -627,6 +632,12 @@ new #[Title('Stock Management')] class extends Component {
                                                     'unit' => $product->unit->abbreviation(),
                                                 ]) }}
                                             </p>
+
+                                            @if ($edit['mode'] === 'subtract' && $inputQty > $product->stock_quantity)
+                                                <span class="inline-flex w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                                    {{ __('This would empty the stock - result will be capped at 0.') }}
+                                                </span>
+                                            @endif
 
                                             <div class="flex items-center gap-2">
                                                 <flux:input type="number" wire:model.live="inlineEdits.{{ $product->id }}.quantity" min="0" max="999999" size="sm" class="w-28 tabular-nums" placeholder="{{ $product->stock_quantity }}" />
