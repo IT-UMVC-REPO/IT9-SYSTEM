@@ -182,6 +182,7 @@ new #[Title('Profile settings')] class extends Component {
         $roleLabel = match ($user->effectiveMarketplaceRole()) {
             \App\Enums\UserRole::Admin => 'Admin',
             \App\Enums\UserRole::Vendor => 'Vendor',
+            \App\Enums\UserRole::Rider => 'Rider',
             \App\Enums\UserRole::Customer => 'Customer',
         };
     @endphp

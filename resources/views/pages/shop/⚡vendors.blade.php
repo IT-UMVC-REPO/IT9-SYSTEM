@@ -84,7 +84,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
             <div>
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Browse Vendors & Find Stalls') }}</h1>
                 <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-                    {{ __('Explore approved wet-market stalls, compare what each vendor carries, and use the map to find nearby suki spots around Tagum City.') }}
+                    {{ __('Explore approved wet-market stalls, compare what each vendor carries, and use the map to find nearby local stalls around Tagum City.') }}
                 </p>
             </div>
 
@@ -135,7 +135,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
                 x-show="selectedVendor"
                 x-transition.opacity
                 x-on:click.self="selectedVendor = null"
-                class="absolute inset-0 z-[1100] flex items-center justify-center rounded-[1.5rem] bg-neutral-950/35 px-3 py-4 backdrop-blur-[2px]"
+                class="absolute inset-0 z-[1100] flex items-center justify-center rounded-[1.5rem] bg-neutral-950/40 px-4 py-6 sm:py-6"
             >
                 <section
                     x-show="selectedVendor"

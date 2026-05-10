@@ -463,7 +463,7 @@ new #[Title('Create product')] class extends Component {
                             wire:model.live.debounce.250ms="description"
                             rows="4"
                             maxlength="1000"
-                            :placeholder="__('Describe freshness, sourcing, how it is prepared, and anything suki buyers should know before ordering.')"
+                            :placeholder="__('Describe freshness, sourcing, how it is prepared, and anything local buyers should know before ordering.')"
                             required
                         />
                         <flux:error name="description" />

@@ -81,6 +81,13 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function rider(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Rider,
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [

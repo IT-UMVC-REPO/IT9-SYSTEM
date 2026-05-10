@@ -1,6 +1,6 @@
-# SukiMarket
+# LocalPalengke
 
-SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, a seeded customer storefront, and separate customer, vendor, and admin experiences.
+LocalPalengke is a Laravel + Livewire marketplace prototype for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, a seeded customer storefront, and customer, vendor, rider, and admin experiences.
 
 ## Current Product Surface
 
@@ -9,7 +9,8 @@ SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market
 - Customer storefront with search, category filtering, visible-product rules, and seeded vendor/product data
 - Featured vendor links on the storefront that now open the placeholder vendor directory and vendor detail pages
 - Product detail page with a dedicated purchase block, vendor messaging call-to-action, and trust badges
-- Minimal placeholder pages for customer, vendor, admin, and messaging flows that are wired to real routes instead of dead links
+- Rider registration, admin approval, delivery claiming, rider location updates, and order tracking surfaces
+- Messaging, maps, order tracking, and marketplace management routes wired into the shared role-aware shell
 
 ## Stack
 
@@ -28,8 +29,8 @@ SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market
 1. Install PHP and Node.js dependencies:
 
    ```bash
-   git clone [REPO GIT LINK] sukimarket
-   cd sukimarket
+   git clone [REPO GIT LINK] localpalengke
+   cd localpalengke
    git checkout devtest
    composer install
    npm install
@@ -66,9 +67,10 @@ After seeding, you can sign in with these stable accounts:
 | --- | --- | --- | --- |
 | Customer | `test@example.com` | `password` | `shop.home` |
 | Approved vendor | `vendor@example.com` | `password` | `vendor.dashboard` |
+| Approved rider | `rider@example.com` | `password` | `rider.dashboard` |
 | Admin | `admin@example.com` | `password` | `admin.dashboard` |
 
-Pending or rejected vendors do not get the vendor dashboard until they are approved.
+Pending or inactive vendors and riders do not get their role dashboards until they are approved.
 
 ## Route Overview
 
@@ -80,6 +82,7 @@ Pending or rejected vendors do not get the vendor dashboard until they are appro
 - `shop.vendors` and `shop.vendors.show`: placeholder vendor browse/detail pages linked from the storefront
 - `messages.inbox` and `messages.conversation`: placeholder messaging pages for customers and vendors
 - `vendor.dashboard`: vendor portal entry
+- `rider.registration`, `rider.dashboard`, `rider.deliveries`, and `rider.history`: rider onboarding and delivery workspace
 - `admin.dashboard`: admin portal entry
 
 ## Placeholder Pages

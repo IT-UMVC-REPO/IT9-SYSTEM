@@ -17,7 +17,7 @@
             return window.innerWidth >= 1024;
         },
         initInfoPanel() {
-            const stored = window.localStorage.getItem('sukimarket_group_info_open');
+            const stored = window.localStorage.getItem('localpalengke_group_info_open');
 
             if (this.isDesktop() && stored !== null) {
                 this.showInfo = stored === 'true';
@@ -29,7 +29,7 @@
 
             this.$watch('showInfo', (value) => {
                 if (this.isDesktop()) {
-                    window.localStorage.setItem('sukimarket_group_info_open', value ? 'true' : 'false');
+                    window.localStorage.setItem('localpalengke_group_info_open', value ? 'true' : 'false');
                 }
             });
 
@@ -39,7 +39,7 @@
                     return;
                 }
 
-                const latestStored = window.localStorage.getItem('sukimarket_group_info_open');
+                const latestStored = window.localStorage.getItem('localpalengke_group_info_open');
                 this.showInfo = latestStored === null ? true : latestStored === 'true';
             });
         },

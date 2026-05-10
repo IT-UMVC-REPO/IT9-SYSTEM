@@ -1,6 +1,6 @@
-# Contributing to SukiMarket
+# Contributing to LocalPalengke
 
-SukiMarket is a Laravel 13 + Livewire 4 marketplace for the Filipino wet market experience. This document reflects the current implementation state in the repository so contributors can verify what is already shipped before planning new work.
+LocalPalengke is a Laravel 13 + Livewire 4 marketplace for the Filipino wet market experience. This document reflects the current implementation state in the repository so contributors can verify what is already shipped before planning new work.
 
 ---
 
@@ -9,7 +9,7 @@ SukiMarket is a Laravel 13 + Livewire 4 marketplace for the Filipino wet market 
 The current codebase includes the following implemented features:
 
 - Public landing page at `/` with branded marketing content and role-aware CTAs
-- Role-aware `/dashboard` redirect to `customer.dashboard`, `vendor.dashboard`, or `admin.dashboard`
+- Role-aware `/dashboard` redirect to `customer.dashboard`, `vendor.dashboard`, `rider.dashboard`, or `admin.dashboard`
 - Full Laravel Fortify authentication flow with email verification, password reset, and two-factor authentication
 - Customer storefront with live search, category filtering, price filtering, sorting, and paginated product browsing
 - Customer dashboard with recent orders, cart summary, followed stalls, and unread notification count
@@ -20,6 +20,7 @@ The current codebase includes the following implemented features:
 - Cart, checkout, customer order history, and customer order detail tracking
 - Vendor registration and approval workflow, including admin review and notifications
 - Vendor dashboard, product management, order management, and sales reporting
+- Rider registration, admin approval, delivery claiming, live location updates, and delivery history
 - Admin dashboard, vendor approvals, user management, and marketplace-wide order oversight
 - Seeded demo dataset with customers, vendors, products, orders, payments, messages, notifications, and cart data
 - Pest feature coverage across authentication, storefront, dashboards, messaging, notifications, vendor tools, admin tools, and settings
@@ -47,9 +48,10 @@ There are currently no routed marketplace pages using the shared `placeholder-pa
 | I | Vendor: Order Management | Done |
 | J | Vendor: Sales Reporting | Done |
 | K | Messaging (Buyer and Vendor) | Done |
-| L | Favorites (Suki System) | Done |
+| L | Favorites (Your Local Stall) | Done |
 | M | Vendor and Product Discovery Pages | Done |
 | N | Notifications | Done |
+| O | Rider Delivery Workflow | Done |
 
 ---
 
@@ -60,8 +62,8 @@ There are currently no routed marketplace pages using the shared `placeholder-pa
 1. Clone the repository and install dependencies:
 
    ```bash
-   git clone [REPO GIT LINK] sukimarket
-   cd sukimarket
+   git clone [REPO GIT LINK] localpalengke
+   cd localpalengke
    composer install
    npm install
    ```
@@ -93,9 +95,10 @@ There are currently no routed marketplace pages using the shared `placeholder-pa
 |---|---|---|---|
 | Customer | `test@example.com` | `password` | `shop.home` |
 | Approved vendor | `vendor@example.com` | `password` | `vendor.dashboard` |
+| Approved rider | `rider@example.com` | `password` | `rider.dashboard` |
 | Admin | `admin@example.com` | `password` | `admin.dashboard` |
 
-Pending or rejected vendors remain customer-facing until approval.
+Pending or inactive vendors and riders remain customer-facing until approval.
 
 ### Quality Checks
 

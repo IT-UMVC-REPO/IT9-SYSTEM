@@ -1,9 +1,9 @@
 @component('mail::message')
-# Reset your SukiMarket password
+# Reset your LocalPalengke password
 
 Hello {{ $user->name }},
 
-We received a request to reset the password for your SukiMarket account. Click the button below to choose a new one.
+We received a request to reset the password for your LocalPalengke account. Click the button below to choose a new one.
 
 @component('mail::button', ['url' => $resetUrl])
 Reset my password
@@ -11,5 +11,5 @@ Reset my password
 
 This password reset link expires in {{ $expirationMinutes }} minutes. If you did not request a password reset, you can safely ignore this email.
 
-The SukiMarket Team
+The LocalPalengke Team
 @endcomponent

@@ -3,6 +3,7 @@
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\RiderLocationController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +59,10 @@ Route::middleware(['auth', 'verified'])->prefix('vendor')->name('vendor.')->grou
     Route::livewire('/register', 'pages::vendor.registration')->name('registration');
 });
 
+Route::middleware(['auth', 'verified'])->prefix('rider')->name('rider.')->group(function () {
+    Route::livewire('/register', 'pages::rider.registration')->name('registration');
+});
+
 Route::view('/support/video-calls', 'pages.support.video-calls')->name('support.video-calls');
 
 Route::middleware(['auth', 'verified', 'role:vendor'])->prefix('vendor')->name('vendor.')->group(function () {
@@ -72,10 +77,23 @@ Route::middleware(['auth', 'verified', 'role:vendor'])->prefix('vendor')->name('
     Route::livewire('/sales', 'pages::vendor.sales')->name('sales');
 });
 
+Route::middleware(['auth', 'verified', 'role:rider'])->prefix('rider')->name('rider.')->group(function () {
+    Route::livewire('/dashboard', 'pages::rider.dashboard')->name('dashboard');
+    Route::livewire('/deliveries', 'pages::rider.deliveries')->name('deliveries');
+    Route::livewire('/deliveries/{orderReference}', 'pages::rider.delivery-detail')->name('deliveries.show');
+    Route::livewire('/history', 'pages::rider.history')->name('history');
+});
+
+Route::middleware(['auth', 'verified', 'role:rider'])->prefix('api/rider')->name('rider.')->group(function (): void {
+    Route::post('/location', [RiderLocationController::class, 'update'])->name('location.update');
+});
+
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin.dashboard')->name('dashboard');
     Route::livewire('/vendors', 'pages::admin.vendors')->name('vendors');
     Route::livewire('/vendors/{vendorProfile}', 'pages::admin.vendor-detail')->name('vendors.show');
+    Route::livewire('/riders', 'pages::admin.riders')->name('riders');
+    Route::livewire('/riders/{riderProfile}', 'pages::admin.rider-detail')->name('riders.show');
     Route::livewire('/users', 'pages::admin.users')->name('users');
     Route::livewire('/users/{user}', 'pages::admin.user-profile')->name('users.show');
     Route::livewire('/orders', 'pages::admin.orders')->name('orders');

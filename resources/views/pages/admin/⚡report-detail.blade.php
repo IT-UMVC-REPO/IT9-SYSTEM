@@ -126,6 +126,7 @@ new #[Title('Report detail')] class extends Component
         return match ($role) {
             UserRole::Customer->value => 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300',
             UserRole::Vendor->value => 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+            UserRole::Rider->value => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300',
             UserRole::Admin->value => 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
             default => 'bg-stone-100 text-stone-700 dark:bg-zinc-800 dark:text-zinc-200',
         };

@@ -400,7 +400,7 @@ new #[Title('Cart')] class extends Component {
             </span>
             <h2 class="brand-serif mt-5 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Your cart is empty') }}</h2>
             <p class="mx-auto mt-2 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                {{ __('Head to the storefront and find your suki.') }}
+                {{ __('Head to the storefront and find your local stall.') }}
             </p>
             <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary active:scale-[0.96] mt-5">
                 {{ __('Browse the market') }}

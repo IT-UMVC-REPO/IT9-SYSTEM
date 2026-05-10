@@ -30,7 +30,7 @@ test('valued customers search filters by customer name', function () {
     $vendor = User::factory()->vendor()->create();
     VendorProfile::factory()->for($vendor, 'user')->approved()->create();
 
-    $matchingCustomer = User::factory()->create(['name' => 'Maria Suki']);
+    $matchingCustomer = User::factory()->create(['name' => 'Maria Local']);
     $otherCustomer = User::factory()->create(['name' => 'Jose Buyer']);
 
     VendorCustomerStar::query()->create([
@@ -46,7 +46,7 @@ test('valued customers search filters by customer name', function () {
     $this->actingAs($vendor)
         ->get(route('vendor.valued-customers', ['search' => 'Maria']))
         ->assertOk()
-        ->assertSee('Maria Suki')
+        ->assertSee('Maria Local')
         ->assertDontSee('Jose Buyer');
 });
 

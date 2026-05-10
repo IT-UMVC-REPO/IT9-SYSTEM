@@ -72,7 +72,7 @@
                         {{ __('Return to Storefront') }}
                     </a>
                     <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
-                        {{ $showReapplicationForm ? __('Refresh your vendor application') : __('Open your stall on SukiMarket') }}
+                        {{ $showReapplicationForm ? __('Refresh your vendor application') : __('Open your stall on LocalPalengke') }}
                     </h1>
                     <p class="text-base leading-8 text-neutral-500 dark:text-zinc-400">
                         {{ __('Tell us about your store, upload a market-facing cover image, and add sample products so the admin team can review what your stall plans to sell.') }}

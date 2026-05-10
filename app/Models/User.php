@@ -107,6 +107,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(VendorProfile::class);
     }
 
+    public function riderProfile(): HasOne
+    {
+        return $this->hasOne(RiderProfile::class);
+    }
+
     public function cart(): HasOne
     {
         return $this->hasOne(Cart::class, 'customer_id');
@@ -211,9 +216,27 @@ class User extends Authenticatable implements MustVerifyEmail
             return UserRole::Admin;
         }
 
-        if ($this->role === UserRole::Vendor || $this->vendorProfile !== null) {
+        if ($this->role === UserRole::Vendor) {
             return $this->hasApprovedVendorProfile()
                 ? UserRole::Vendor
+                : UserRole::Customer;
+        }
+
+        if ($this->role === UserRole::Rider) {
+            return $this->hasApprovedRiderProfile()
+                ? UserRole::Rider
+                : UserRole::Customer;
+        }
+
+        if ($this->vendorProfile !== null) {
+            return $this->hasApprovedVendorProfile()
+                ? UserRole::Vendor
+                : UserRole::Customer;
+        }
+
+        if ($this->riderProfile !== null) {
+            return $this->hasApprovedRiderProfile()
+                ? UserRole::Rider
                 : UserRole::Customer;
         }
 
@@ -225,11 +248,17 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->vendorProfile?->status === VendorStatus::Approved;
     }
 
+    public function hasApprovedRiderProfile(): bool
+    {
+        return $this->riderProfile?->status === 'approved';
+    }
+
     public function homeRoute(): string
     {
         return match ($this->effectiveMarketplaceRole()) {
             UserRole::Admin => 'admin.dashboard',
             UserRole::Vendor => 'vendor.dashboard',
+            UserRole::Rider => 'rider.dashboard',
             UserRole::Customer => 'customer.dashboard',
         };
     }

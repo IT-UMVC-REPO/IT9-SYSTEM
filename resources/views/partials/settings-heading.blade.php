@@ -3,6 +3,7 @@
     $roleLabel = match ($user->effectiveMarketplaceRole()) {
         \App\Enums\UserRole::Admin => 'Admin workspace',
         \App\Enums\UserRole::Vendor => 'Vendor workspace',
+        \App\Enums\UserRole::Rider => 'Rider workspace',
         \App\Enums\UserRole::Customer => 'Customer workspace',
     };
 @endphp
@@ -19,7 +20,7 @@
         </h1>
 
         <p class="mt-4 max-w-2xl text-base leading-8 text-stone-600 dark:text-zinc-400">
-            {{ __('Manage your identity, sign-in protection, and visual preferences from one focused SukiMarket workspace.') }}
+            {{ __('Manage your identity, sign-in protection, and visual preferences from one focused LocalPalengke workspace.') }}
         </p>
     </div>
 

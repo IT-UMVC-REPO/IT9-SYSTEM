@@ -17,6 +17,7 @@ use App\Enums\VendorStatus;
 use App\Enums\VideoCallStatus;
 use App\Models\Cart;
 use App\Models\Category;
+use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Database\Seeder;
@@ -33,6 +34,8 @@ class MarketplaceDemoSeeder extends Seeder
     public const STABLE_VENDOR_EMAIL = 'vendor@example.com';
 
     public const STABLE_CUSTOMER_EMAIL = 'test@example.com';
+
+    public const STABLE_RIDER_EMAIL = 'rider@example.com';
 
     public const STABLE_VENDOR_STORE_NAME = "Aling Nena's Palengke";
 
@@ -86,6 +89,7 @@ class MarketplaceDemoSeeder extends Seeder
                     ->where('status', ProductStatus::Active->value)
                     ->groupBy('vendor_id'),
                 targetCount: fake()->numberBetween(400, 500),
+                demoRider: $stableUsers['rider'],
             );
 
             $directMessageResult = $this->seedDirectMessages(
@@ -144,7 +148,7 @@ class MarketplaceDemoSeeder extends Seeder
             );
 
             return [
-                'users' => 3 + ($approvedVendorTarget - 1) + $pendingVendorTarget + $rejectedVendorTarget + $additionalCustomerTarget,
+                'users' => 4 + ($approvedVendorTarget - 1) + $pendingVendorTarget + $rejectedVendorTarget + $additionalCustomerTarget,
                 'approved_vendors' => $approvedVendors->count(),
                 'pending_vendors' => $pendingVendors->count(),
                 'rejected_vendors' => $rejectedVendors->count(),
@@ -205,18 +209,19 @@ class MarketplaceDemoSeeder extends Seeder
     }
 
     /**
-     * @return array{admin: User, vendor: User, customer: User}
+     * @return array{admin: User, vendor: User, customer: User, rider: User}
      */
     private function seedStableUsers(): array
     {
         $adminPlace = TagumCoordinate::place(30);
         $vendorPlace = TagumCoordinate::place(0);
         $customerPlace = TagumCoordinate::place(24);
+        $riderPlace = TagumCoordinate::place(12);
 
-        return [
+        $users = [
             'admin' => $this->seedStableUser(
                 email: self::STABLE_ADMIN_EMAIL,
-                name: 'SukiMarket Tagum Admin',
+                name: 'LocalPalengke Tagum Admin',
                 role: UserRole::Admin,
                 phone: $this->tagumPhone(),
                 place: $adminPlace,
@@ -235,7 +240,30 @@ class MarketplaceDemoSeeder extends Seeder
                 phone: $this->tagumPhone(),
                 place: $customerPlace,
             ),
+            'rider' => $this->seedStableUser(
+                email: self::STABLE_RIDER_EMAIL,
+                name: 'Demo Rider',
+                role: UserRole::Rider,
+                phone: '+63 912 345 6789',
+                place: $riderPlace,
+            ),
         ];
+
+        RiderProfile::query()->updateOrCreate(
+            ['user_id' => $users['rider']->getKey()],
+            [
+                'vehicle_type' => 'motorcycle',
+                'plate_number' => 'ABC-1234',
+                'contact_number' => '+63 912 345 6789',
+                'status' => 'approved',
+                'is_available' => true,
+                'current_lat' => 7.4479,
+                'current_lng' => 125.8090,
+                'approved_at' => Carbon::now(),
+            ],
+        );
+
+        return $users;
     }
 
     /**
@@ -271,7 +299,7 @@ class MarketplaceDemoSeeder extends Seeder
             ['user_id' => $vendor->id],
             [
                 'store_name' => self::STABLE_VENDOR_STORE_NAME,
-                'store_description' => 'Palengke-style sariwang gulay, prutas, isda, at karne mula Tagum City Public Market. Kilala si Aling Nena sa maagang stock at tapat na presyo para sa mga suki sa Magugpo.',
+                'store_description' => 'Palengke-style sariwang gulay, prutas, isda, at karne mula Tagum City Public Market. Kilala si Aling Nena sa maagang stock at tapat na presyo para sa mga ka-palengke sa Magugpo.',
                 'vendor_address' => $place['address'],
                 'lat' => $place['lat'],
                 'lng' => $place['lng'],
@@ -535,14 +563,32 @@ class MarketplaceDemoSeeder extends Seeder
     private function seedCarts(Collection $customers, Collection $activeProducts, int $targetCount): int
     {
         $cartCustomers = $customers->shuffle()->take(min($targetCount, $customers->count()));
+        $cartRows = [];
         $itemRows = [];
 
         foreach ($cartCustomers as $customer) {
             $createdAt = Carbon::now()->subDays(fake()->numberBetween(1, 30))->subMinutes(fake()->numberBetween(0, 1440));
-            $cart = Cart::query()->updateOrCreate(
-                ['customer_id' => $customer->id],
-                ['created_at' => $createdAt],
-            );
+
+            $cartRows[] = [
+                'customer_id' => $customer->id,
+                'created_at' => $createdAt,
+            ];
+        }
+
+        collect($cartRows)->chunk(300)->each(fn (Collection $chunk): int => DB::table('carts')->insertOrIgnore($chunk->all()));
+
+        $cartsByCustomer = Cart::query()
+            ->whereIn('customer_id', $cartCustomers->pluck('id'))
+            ->get(['id', 'customer_id'])
+            ->keyBy('customer_id');
+
+        foreach ($cartCustomers as $customer) {
+            $cart = $cartsByCustomer->get($customer->id);
+
+            if ($cart === null) {
+                continue;
+            }
+
             $products = $activeProducts->shuffle()->take(fake()->numberBetween(1, min(5, $activeProducts->count())));
 
             foreach ($products as $product) {
@@ -600,7 +646,7 @@ class MarketplaceDemoSeeder extends Seeder
      * @param  Collection<int, Collection<int, object>>  $productsByVendor
      * @return Collection<int, object>
      */
-    private function seedOrders(Collection $customers, Collection $vendors, Collection $productsByVendor, int $targetCount): Collection
+    private function seedOrders(Collection $customers, Collection $vendors, Collection $productsByVendor, int $targetCount, User $demoRider): Collection
     {
         $orders = collect();
 
@@ -645,18 +691,38 @@ class MarketplaceDemoSeeder extends Seeder
             $updatedAt = $status === OrderStatus::Pending
                 ? $createdAt
                 : $createdAt->copy()->addHours(fake()->numberBetween(1, 72));
+            $hasRider = in_array($status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery, OrderStatus::Delivered], true);
+            $pickedUpAt = $hasRider
+                ? $updatedAt->copy()->subMinutes(fake()->numberBetween(35, 90))
+                : null;
+            $outForDeliveryAt = in_array($status, [OrderStatus::OutForDelivery, OrderStatus::Delivered], true)
+                ? $updatedAt->copy()->subMinutes(fake()->numberBetween(10, 35))
+                : null;
+            $activeRiderLat = $hasRider && $status !== OrderStatus::Delivered
+                ? (float) $customer->lat + fake()->randomFloat(7, -0.003, 0.003)
+                : null;
+            $activeRiderLng = $hasRider && $status !== OrderStatus::Delivered
+                ? (float) $customer->lng + fake()->randomFloat(7, -0.003, 0.003)
+                : null;
 
             $orderId = DB::table('orders')->insertGetId([
                 'customer_id' => $customer->id,
                 'vendor_id' => $vendor->id,
+                'rider_id' => $hasRider ? $demoRider->id : null,
                 'total_amount' => $total,
                 'payment_method' => PaymentMethod::Cod->value,
                 'payment_status' => $paymentStatus->value,
                 'order_status' => $status->value,
                 'delivery_address' => $customer->address ?? $this->tagumAddress(),
+                'delivery_lat' => $customer->lat,
+                'delivery_lng' => $customer->lng,
+                'rider_lat' => $activeRiderLat,
+                'rider_lng' => $activeRiderLng,
                 'notes' => fake()->boolean(35) ? fake()->randomElement(self::orderNotes()) : null,
                 'estimated_delivery_at' => $estimatedDeliveryAt,
                 'delay_note' => $delayNote,
+                'picked_up_at' => $pickedUpAt,
+                'out_for_delivery_at' => $outForDeliveryAt,
                 'created_at' => $createdAt,
                 'updated_at' => $updatedAt,
             ]);
@@ -685,6 +751,7 @@ class MarketplaceDemoSeeder extends Seeder
                 'vendor_id' => $vendor->id,
                 'vendor_user_id' => $vendor->user_id,
                 'vendor_store_name' => $vendor->store_name,
+                'rider_id' => $hasRider ? $demoRider->id : null,
                 'status' => $status->value,
                 'created_at' => $createdAt,
             ]);
@@ -790,7 +857,7 @@ class MarketplaceDemoSeeder extends Seeder
             $members = $users->shuffle()->take(fake()->numberBetween(3, min(8, $users->count())))->values();
             $creator = $members->random();
             $groupId = DB::table('conversation_groups')->insertGetId([
-                'name' => $groupNames->get($i) ?? 'Tagum Suki Group '.($i + 1),
+                'name' => $groupNames->get($i) ?? 'Tagum Local Stall Group '.($i + 1),
                 'created_by' => $creator->id,
                 'avatar_path' => $this->unsplashUrl('vendors'),
                 'created_at' => $createdAt,
@@ -895,12 +962,12 @@ class MarketplaceDemoSeeder extends Seeder
                     ['route' => 'shop.products.show', 'vendor_id' => $vendor->id, 'product_id' => $product->id],
                 ],
                 NotificationType::Message => [
-                    'May nag-message sa SukiMarket',
-                    'May bagong mensahe mula sa isang suki sa Tagum City.',
+                    'May nag-message sa LocalPalengke',
+                    'May bagong mensahe mula sa isang customer sa Tagum City.',
                     ['route' => 'messages.index'],
                 ],
                 default => [
-                    fake()->randomElement(['SukiMarket Tagum update', 'Orchid City market alert', 'Palengke reminder']),
+                    fake()->randomElement(['LocalPalengke Tagum update', 'Orchid City market alert', 'Palengke reminder']),
                     fake()->randomElement(self::systemNotifications()),
                     ['route' => 'shop.home'],
                 ],
@@ -1225,6 +1292,8 @@ class MarketplaceDemoSeeder extends Seeder
             OrderStatus::Confirmed, OrderStatus::Confirmed, OrderStatus::Confirmed,
             OrderStatus::Preparing, OrderStatus::Preparing,
             OrderStatus::Ready, OrderStatus::Ready,
+            OrderStatus::PickedUp,
+            OrderStatus::OutForDelivery,
             OrderStatus::Delivered, OrderStatus::Delivered, OrderStatus::Delivered, OrderStatus::Delivered, OrderStatus::Delivered, OrderStatus::Delivered, OrderStatus::Delivered,
             OrderStatus::Cancelled, OrderStatus::Cancelled,
         ]);
@@ -1259,7 +1328,9 @@ class MarketplaceDemoSeeder extends Seeder
             OrderStatus::Confirmed->value => 'Kinumpirma na ng '.$storeName.' ang order mo. Ihahanda na ito.',
             OrderStatus::Preparing->value => 'Inihahanda na ang order mo mula '.$storeName.'.',
             OrderStatus::Ready->value => 'Ready na ang order mo sa '.$storeName.'. Hintayin ang delivery update.',
-            OrderStatus::Delivered->value => 'Naihatid na ang order mo mula '.$storeName.'. Salamat, suki!',
+            OrderStatus::PickedUp->value => 'Nakuha na ng rider ang order mo mula '.$storeName.'.',
+            OrderStatus::OutForDelivery->value => 'Papunta na sa iyo ang rider dala ang order mo mula '.$storeName.'.',
+            OrderStatus::Delivered->value => 'Naihatid na ang order mo mula '.$storeName.'. Salamat po!',
             default => 'Na-cancel ang order mo mula '.$storeName.'. Makipag-message sa vendor kung may tanong.',
         };
     }
@@ -1285,7 +1356,7 @@ class MarketplaceDemoSeeder extends Seeder
             ->lower()
             ->replaceMatches('/[^a-z0-9]+/', '.')
             ->trim('.')
-            ->append('.', $label, '.', Str::lower(Str::random(10)), '@tagum.sukimarket.test')
+            ->append('.', $label, '.', Str::lower(Str::random(10)), '@tagum.localpalengke.test')
             ->toString();
     }
 
@@ -1320,7 +1391,7 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function printSummary(array $summary): void
     {
-        $this->command?->info('✅ Tagum City SukiMarket seeded!');
+        $this->command?->info('✅ Tagum City LocalPalengke seeded!');
         $this->command?->info('📦 Products: '.$summary['products'].' | 👥 Users: '.$summary['users'].' | 🛒 Orders: '.$summary['orders']);
         $this->command?->info('💬 Messages: '.$summary['messages'].' direct / '.$summary['group_messages'].' group | 📢 Notifications: '.$summary['notifications'].' | 🚩 Reports: '.$summary['reports']);
         $this->command?->info('🌺 Vendors: '.$summary['approved_vendors'].' approved, '.$summary['pending_vendors'].' pending, '.$summary['rejected_vendors'].' rejected | 📹 Calls: '.$summary['video_calls']);
@@ -1468,7 +1539,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Magugpo Rice & Grains',
             'Magugpo Meat Center',
             'Pagsabangan Veggie Lane',
-            'Visayan Village Suki Store',
+            'Visayan Village Local Store',
             'Liboganon Tilapia Direct',
             'Madaum Fish Landing',
             'Bincungan Backyard Greens',
@@ -1489,7 +1560,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Robinsons Tagum Fresh Corner',
             'Pag-asa Wet Market Direct',
             'Night Market Merienda Tagum',
-            'Orchid City Suki Basket',
+            'Orchid City Local Basket',
         ];
     }
 
@@ -1501,14 +1572,14 @@ class MarketplaceDemoSeeder extends Seeder
         return [
             'A family-run stall bringing fresh produce from Tagum City Public Market to homes around The Orchid City.',
             'Fresh seafood, fish, and shellfish sourced daily from Davao Gulf suppliers and sold palengke-direct in Tagum.',
-            'Vegetables harvested from Apokon and Cuambogan farms every morning, packed for suki deliveries across Tagum City.',
+            'Vegetables harvested from Apokon and Cuambogan farms every morning, packed for local deliveries across Tagum City.',
             'Local meat cuts, eggs, rice, and pantry staples for carinderias and family kitchens near Magugpo and Mankilam.',
             'Native kakanin and merienda favorites inspired by Tagum City Night Market, cooked in small batches before sunrise.',
-            'Davao del Norte fruit, durian, banana, and seasonal harvest sold with honest suki pricing and friendly Taglish service.',
+            'Davao del Norte fruit, durian, banana, and seasonal harvest sold with honest regular-customer pricing and friendly Taglish service.',
             'Wet-market staples near Pag-asa Wet Market with pre-order support for bulk buyers and barangay group orders.',
             'A Tagum palengke stall serving shoppers from Gaisano Mall Tagum, KCC Mall of Tagum, and nearby barangays.',
             'Farm-to-palengke baskets with leafy greens, aromatics, rice, and frozen goods for weekly family meal planning.',
-            'Trusted by Tagum suki buyers for fresh stock, quick replies, and clear prices before delivery.',
+            'Trusted by Tagum local buyers for fresh stock, quick replies, and clear prices before delivery.',
         ];
     }
 
@@ -1521,7 +1592,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Nagtitinda ako ng sariwang gulay mula sa aming taniman sa Apokon, Tagum City. Araw-araw na hinaharvest para masiguro ang freshness. Sample products: pechay ₱35, talong ₱60, sitaw ₱55.',
             'Maliit na seafood stall kami malapit sa Pag-asa Wet Market. May bangus, tilapia, hipon, at pusit depende sa dating ng umaga. Sample prices: bangus ₱160/kilo, hipon ₱280/kilo.',
             'Gumagawa kami ng kakanin para sa Tagum City Night Market. May puto, kutsinta, biko, at suman. Fresh luto tuwing madaling araw.',
-            'Backyard poultry at fresh eggs mula sa Canocotan. Gusto naming magbenta ng dressed chicken, itlog, at ready-to-cook cuts sa SukiMarket.',
+            'Backyard poultry at fresh eggs mula sa Canocotan. Gusto naming magbenta ng dressed chicken, itlog, at ready-to-cook cuts sa LocalPalengke.',
             'Bigasan at pantry stall sa Magugpo. May regular rice, premium rice, mais, harina, suka, toyo, at mantika para sa araw-araw na lutuan.',
         ];
     }
@@ -1547,7 +1618,7 @@ class MarketplaceDemoSeeder extends Seeder
     {
         $freshDescriptions = [
             'Fresh {item} sourced around {barangay} and checked before listing at {market}.',
-            'Suki-quality {item} packed the same day for Tagum City deliveries.',
+            'Market-quality {item} packed the same day for Tagum City deliveries.',
             'Locally selected {item} with palengke freshness and clear Tagum pricing.',
         ];
 
@@ -1597,14 +1668,14 @@ class MarketplaceDemoSeeder extends Seeder
             'fresh-fish' => [
                 'items' => ['bangus', 'tilapia', 'galunggong', 'tambakol', 'tanigue', 'maya-maya', 'alumahan', 'tulingan', 'lapu-lapu', 'espada', 'dalagang bukid', 'hasa-hasa', 'tuna', 'matangbaka'],
                 'templates' => ['Sariwa {fish} - Dagat ng Davao', '{fish} (per kilo)', '{fish} - Tagum Fresh Catch', 'Luto-ready {fish}', '{fish} - Cleaned & Dressed'],
-                'descriptions' => ['Fresh {item} delivered from Davao Gulf suppliers to {market}.', 'Cleaned {item} ready for sinigang, paksiw, or ihaw in Tagum homes.', 'Palengke-fresh {item} selected early for suki buyers around {barangay}.'],
+                'descriptions' => ['Fresh {item} delivered from Davao Gulf suppliers to {market}.', 'Cleaned {item} ready for sinigang, paksiw, or ihaw in Tagum homes.', 'Palengke-fresh {item} selected early for local buyers around {barangay}.'],
                 'price' => [80, 450],
                 'image' => 'seafood',
             ],
             'shellfish' => [
                 'items' => ['tahong', 'halaan', 'talaba', 'kuhol', 'diwal'],
                 'templates' => ['Fresh {item} (per kilo)', '{item} - Davao Gulf Shellfish', 'Luto-ready {item}', '{item} Pack - Tagum Fresh'],
-                'descriptions' => ['Fresh {item} checked for market quality before delivery around Tagum City.', 'Best for sabaw, butter-garlic, or ihaw after pickup from {market}.', 'Packed {item} for suki orders around {barangay}.'],
+                'descriptions' => ['Fresh {item} checked for market quality before delivery around Tagum City.', 'Best for sabaw, butter-garlic, or ihaw after pickup from {market}.', 'Packed {item} for local orders around {barangay}.'],
                 'price' => [120, 600],
                 'image' => 'seafood',
             ],
@@ -1618,7 +1689,7 @@ class MarketplaceDemoSeeder extends Seeder
             'pork' => [
                 'items' => ['liempo', 'kasim', 'pigue', 'buto-buto', 'pork chop', 'pork belly', 'ground pork', 'lechon kawali cut', 'bagnet cut'],
                 'templates' => ['{cut} - Karne ni Mang {name}', '{cut} (per kilo)', '{cut} - Grade A Tagum', '{cut} - Halos-lahat kasama'],
-                'descriptions' => ['Fresh-cut {item} from local Tagum meat suppliers, packed for same-day cooking.', 'Market-grade {item} for adobo, sinigang, or ihaw.', 'Selected {item} from {market} with suki-friendly butcher cuts.'],
+                'descriptions' => ['Fresh-cut {item} from local Tagum meat suppliers, packed for same-day cooking.', 'Market-grade {item} for adobo, sinigang, or ihaw.', 'Selected {item} from {market} with regular-customer-friendly butcher cuts.'],
                 'price' => [90, 420],
                 'image' => 'meat',
             ],
@@ -1652,7 +1723,7 @@ class MarketplaceDemoSeeder extends Seeder
             ],
             'eggs' => [
                 'items' => ['medium eggs', 'large eggs', 'duck eggs', 'salted eggs', 'quail eggs'],
-                'templates' => ['Fresh {item} Tray', '{item} - Canocotan Farm', '{item} Half Tray', '{item} for Suki Breakfast'],
+                'templates' => ['Fresh {item} Tray', '{item} - Canocotan Farm', '{item} Half Tray', '{item} for Market Breakfast'],
                 'descriptions' => ['Fresh {item} delivered from poultry suppliers around Tagum City.', 'Checked {item} for sari-sari stores and family kitchens.', 'Good stock from {market} for breakfast and baking.'],
                 'price' => [12, 180],
                 'image' => 'dairy',
@@ -1688,14 +1759,14 @@ class MarketplaceDemoSeeder extends Seeder
             'dried-fish' => [
                 'items' => ['tuyo', 'daing', 'dilis', 'danggit', 'dried pusit', 'dried espada'],
                 'templates' => ['{item} Pack', '{item} - Dried Goods Tagum', 'Crispy {item}', '{item} for Almusal'],
-                'descriptions' => ['Salty and savory {item} for classic Filipino breakfast.', 'Dried goods stock from {market}, packed clean for suki buyers.', 'Best with garlic rice, tomato, and suka.'],
+                'descriptions' => ['Salty and savory {item} for classic Filipino breakfast.', 'Dried goods stock from {market}, packed clean for local buyers.', 'Best with garlic rice, tomato, and suka.'],
                 'price' => [35, 280],
                 'image' => 'dried',
             ],
             'smoked-fermented-goods' => [
                 'items' => ['tinapa', 'bagoong alamang', 'burong isda', 'salted fish', 'smoked bangus'],
                 'templates' => ['{item} Pack', '{item} - Palengke Preserved Goods', '{item} from Davao Norte', 'Tagum {item} Special'],
-                'descriptions' => ['Flavorful {item} for quick meals and side dishes.', 'Preserved goods selected at {market}.', 'Packed carefully for Tagum suki households.'],
+                'descriptions' => ['Flavorful {item} for quick meals and side dishes.', 'Preserved goods selected at {market}.', 'Packed carefully for Tagum local households.'],
                 'price' => [35, 280],
                 'image' => 'dried',
             ],
@@ -1709,7 +1780,7 @@ class MarketplaceDemoSeeder extends Seeder
             'native-delicacies' => [
                 'items' => ['biko', 'kalamay', 'bibingka', 'maja blanca', 'cassava cake', 'ube halaya', 'leche flan', 'tibok-tibok'],
                 'templates' => ['Homemade {item}', '{item} - Luto ni Aling {name}', '{item} - Tagum Night Market Favorite', '{item} Party Tray'],
-                'descriptions' => ['Rich {item} made for suki orders around The Orchid City.', 'Merienda-ready {item} cooked with fresh ingredients from {market}.', 'Sweet native delicacy from {barangay}, packed for sharing.'],
+                'descriptions' => ['Rich {item} made for local orders around The Orchid City.', 'Merienda-ready {item} cooked with fresh ingredients from {market}.', 'Sweet native delicacy from {barangay}, packed for sharing.'],
                 'price' => [20, 180],
                 'image' => 'kakanin',
             ],
@@ -1791,7 +1862,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Cash on delivery lang po ba talaga ngayon?',
             'Paki-send po ng picture ng bagong dating na hipon.',
             'May durian pa ba galing Davao del Norte?',
-            'Pwede pong pauna sa listahan? Suki na po ako.',
+            'Pwede pong pauna sa listahan? Regular customer na po ako.',
         ];
     }
 
@@ -1812,7 +1883,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Cash on delivery lang po kami ngayon.',
             '30-45 minuto po depende sa traffic sa Magugpo.',
             'Salamat ate! Ire-reserve ko na para hindi maubos.',
-            'Balik-suki po kayo! Lagi kaming nandito.',
+            'Balik po kayo! Lagi kaming nandito.',
             'May bagong dating po galing Pag-asa Wet Market.',
             'Pwede po pickup sa stall o delivery sa barangay ninyo.',
             'Naantala lang po sa palengke, pero on the way na.',
@@ -1826,25 +1897,25 @@ class MarketplaceDemoSeeder extends Seeder
     {
         return [
             'Tagum Market Vendors 🌺',
-            'Suki Circle - Apokon Area',
+            'Local Stall Circle - Apokon Area',
             'Palengke Buyers Group',
             'Magugpo Wet Market Chat',
             'Tagum City Agri Hub',
             'Orchid City Food Network',
-            'Davao Norte Suki Club',
+            'Davao Norte Local Stall Club',
             'Barangay Cuambogan Buyers',
             'Tagum Fresh Produce Updates',
             'Night Market Insiders 🌙',
-            'Visayan Village Suki',
+            'Visayan Village Local Stall',
             'Bulk Orders - Tagum Market',
             'Liboganon Community Market',
             'Kakanin Lovers Tagum',
             'Seafood Direct - Tagum',
             'Mankilam Pantry Circle',
             'Canocotan Meat Buyers',
-            'Magugpo South Suki Chat',
+            'Magugpo South Local Stall Chat',
             'Pag-asa Wet Market Updates',
-            'Orchid City Bulk Suki',
+            'Orchid City Bulk Local Buyers',
         ];
     }
 
@@ -1854,7 +1925,7 @@ class MarketplaceDemoSeeder extends Seeder
     private static function groupMessages(): array
     {
         return [
-            'Mga suki, may bagong dating na hipon! ₱220/kilo lang 🦐',
+            'Mga ka-palengke, may bagong dating na hipon! ₱220/kilo lang 🦐',
             'Nagmahal na naman ang gulay dahil bagyo sa Bukidnon 😅',
             'Sino may order ng kalamay ngayon? May extra pa ko ✅',
             'Order na kayo bago maubusan! Mabilis mapunta ito 🏃',
@@ -1867,7 +1938,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Kinsa naay extra talong? Need namo pang-carinderia.',
             'Durian from Davao Norte available after lunch 🌺',
             'Paki-lista na lang dito ang bulk orders para isang byahe.',
-            'KCC area delivery after 4PM, sabay na mga suki.',
+            'KCC area delivery after 4PM, sabay na mga ka-palengke.',
             'Fresh pechay and kangkong from Apokon farm, limited lang.',
         ];
     }
@@ -1879,7 +1950,7 @@ class MarketplaceDemoSeeder extends Seeder
     {
         return [
             'Bagong stock ng durian mula Davao! Tingnan na sa {store}.',
-            '{product} is now available from {store} for Tagum suki buyers.',
+            '{product} is now available from {store} for Tagum local buyers.',
             'Fresh listing alert: {product} just landed at {store}.',
             'May bagong paninda sa {store}: {product}.',
         ];
@@ -1891,12 +1962,12 @@ class MarketplaceDemoSeeder extends Seeder
     private static function systemNotifications(): array
     {
         return [
-            'Maligayang pagdating sa SukiMarket Tagum! 🌺',
+            'Maligayang pagdating sa LocalPalengke Tagum! 🌺',
             'Nag-update na ang presyo ng gulay ngayong linggo.',
             'Flash sale sa mga vendor ngayon!',
             'Tip: mag-message muna sa vendor para sa pinaka-fresh na stock.',
             'Tagum City Night Market picks are moving fast tonight.',
-            'COD-only checkout is active for all SukiMarket orders.',
+            'COD-only checkout is active for all LocalPalengke orders.',
         ];
     }
 
@@ -1974,7 +2045,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Kung may mas fresh na stock, iyon na lang po.',
             'Paki-extra plastic para hindi tumulo.',
             'For lunch prep po ito, sana before 11AM.',
-            'Suki na po ako, baka may konting discount.',
+            'Regular customer na po ako, baka may konting discount.',
         ];
     }
 
@@ -1984,13 +2055,13 @@ class MarketplaceDemoSeeder extends Seeder
     private static function customerNicknames(): array
     {
         return [
-            'Suki sa Apokon',
+            'Regular sa Apokon',
             'Bulk Buyer',
-            'Mabait na Suki',
+            'Mabait na Customer',
             'Laging COD',
             'Taga Magugpo',
             'Kakanin Regular',
-            'Seafood Suki',
+            'Seafood Regular',
             'Early Pickup',
             'Loyal Customer',
             'Palengke Friend',
@@ -2009,7 +2080,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Kakanin Queen',
             'Meat Supplier',
             'Durian Contact',
-            'Bigasan Suki',
+            'Bigasan Regular',
             'Seafood Direct',
             'Orchid Vendor',
             'Palengke Bestie',

@@ -12,7 +12,7 @@
             {{ __('Operational overview') }}
         </h1>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Monitor marketplace activity, review pending approvals, and keep a close eye on orders and seller health across SukiMarket.') }}
+            {{ __('Monitor marketplace activity, review pending approvals, and keep a close eye on orders and seller health across LocalPalengke.') }}
         </p>
     </section>
 
@@ -262,6 +262,8 @@
                                 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' => $order->order_status === \App\Enums\OrderStatus::Confirmed,
                                 'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300' => $order->order_status === \App\Enums\OrderStatus::Preparing,
                                 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' => $order->order_status === \App\Enums\OrderStatus::Ready,
+                                'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300' => $order->order_status === \App\Enums\OrderStatus::PickedUp,
+                                'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300' => $order->order_status === \App\Enums\OrderStatus::OutForDelivery,
                                 'bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' => $order->order_status === \App\Enums\OrderStatus::Delivered,
                                 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' => $order->order_status === \App\Enums\OrderStatus::Cancelled,
                             ])>

@@ -20,6 +20,9 @@ enum AuditEvent: string
     case VendorApproved = 'vendor.approved';
     case VendorRejected = 'vendor.rejected';
     case VendorStoreUpdated = 'vendor.store_updated';
+    case RiderApplicationSubmitted = 'rider.application_submitted';
+    case RiderApproved = 'rider.approved';
+    case RiderDeactivated = 'rider.deactivated';
     case ProductCreated = 'product.created';
     case ProductUpdated = 'product.updated';
     case ProductDeleted = 'product.deleted';
@@ -33,6 +36,8 @@ enum AuditEvent: string
     case OrderConfirmed = 'order.confirmed';
     case OrderPreparing = 'order.preparing';
     case OrderReady = 'order.ready';
+    case OrderPickedUp = 'order.picked_up';
+    case OrderOutForDelivery = 'order.out_for_delivery';
     case OrderDelivered = 'order.delivered';
     case OrderCancelled = 'order.cancelled';
     case MessageSent = 'message.sent';
@@ -67,6 +72,9 @@ enum AuditEvent: string
             self::VendorApproved => 'Vendor approved',
             self::VendorRejected => 'Vendor rejected',
             self::VendorStoreUpdated => 'Store profile updated',
+            self::RiderApplicationSubmitted => 'Rider application submitted',
+            self::RiderApproved => 'Rider approved',
+            self::RiderDeactivated => 'Rider deactivated',
             self::ProductCreated => 'Product created',
             self::ProductUpdated => 'Product updated',
             self::ProductDeleted => 'Product deleted',
@@ -80,6 +88,8 @@ enum AuditEvent: string
             self::OrderConfirmed => 'Order confirmed',
             self::OrderPreparing => 'Order preparing',
             self::OrderReady => 'Order ready',
+            self::OrderPickedUp => 'Order picked up',
+            self::OrderOutForDelivery => 'Order out for delivery',
             self::OrderDelivered => 'Order delivered',
             self::OrderCancelled => 'Order cancelled',
             self::MessageSent => 'Message sent',
@@ -108,12 +118,15 @@ enum AuditEvent: string
             self::VendorApplicationSubmitted, self::VendorApplicationReapplied,
             self::VendorApproved, self::VendorRejected,
             self::VendorStoreUpdated => 'fa-solid fa-store',
+            self::RiderApplicationSubmitted, self::RiderApproved,
+            self::RiderDeactivated => 'fa-solid fa-motorcycle',
             self::ProductCreated, self::ProductUpdated,
             self::ProductDeleted, self::ProductActivated,
             self::ProductSoldOut, self::ProductRestocked => 'fa-solid fa-tag',
             self::CartItemAdded, self::CartItemRemoved, self::CartCleared => 'fa-solid fa-cart-shopping',
             self::OrderPlaced, self::OrderConfirmed, self::OrderPreparing,
-            self::OrderReady, self::OrderDelivered, self::OrderCancelled => 'fa-solid fa-bag-shopping',
+            self::OrderReady, self::OrderPickedUp, self::OrderOutForDelivery,
+            self::OrderDelivered, self::OrderCancelled => 'fa-solid fa-bag-shopping',
             self::MessageSent, self::GroupCreated, self::GroupMessageSent,
             self::GroupMemberAdded => 'fa-solid fa-comments',
             self::VendorFollowed, self::VendorUnfollowed => 'fa-solid fa-heart',
@@ -131,6 +144,7 @@ enum AuditEvent: string
                 self::UserRegistered,
                 self::UserEmailVerified,
                 self::VendorApproved,
+                self::RiderApproved,
                 self::ProductCreated,
                 self::ProductActivated,
                 self::ProductRestocked,
@@ -151,6 +165,7 @@ enum AuditEvent: string
             in_array($this, [
                 self::VendorRejected,
                 self::UserDeactivated,
+                self::RiderDeactivated,
                 self::OrderCancelled,
                 self::ProductDeleted,
                 self::ReportSubmitted,
@@ -159,8 +174,11 @@ enum AuditEvent: string
             in_array($this, [
                 self::OrderPreparing,
                 self::OrderReady,
+                self::OrderPickedUp,
+                self::OrderOutForDelivery,
                 self::ProductSoldOut,
                 self::VendorApplicationSubmitted,
+                self::RiderApplicationSubmitted,
                 self::UserProfileUpdated,
             ], true) => 'amber',
             default => 'neutral',
@@ -172,7 +190,7 @@ enum AuditEvent: string
      */
     public static function orderEvents(): array
     {
-        return [self::OrderPlaced, self::OrderConfirmed, self::OrderPreparing, self::OrderReady, self::OrderDelivered, self::OrderCancelled];
+        return [self::OrderPlaced, self::OrderConfirmed, self::OrderPreparing, self::OrderReady, self::OrderPickedUp, self::OrderOutForDelivery, self::OrderDelivered, self::OrderCancelled];
     }
 
     /**

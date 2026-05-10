@@ -17,13 +17,13 @@ test('users can create and remove nicknames for conversation participants', func
     Livewire::actingAs($viewer)
         ->test('messaging.nickname-editor', ['targetUserId' => $target->getKey()])
         ->call('edit')
-        ->set('draftNickname', 'Suki Regular')
+        ->set('draftNickname', 'Market Regular')
         ->call('save')
         ->assertDispatched('nickname-updated')
-        ->assertSee('Suki Regular')
+        ->assertSee('Market Regular')
         ->assertSee('Real Customer Name');
 
-    expect($target->nicknameFor($viewer->getKey()))->toBe('Suki Regular');
+    expect($target->nicknameFor($viewer->getKey()))->toBe('Market Regular');
 
     Livewire::actingAs($viewer)
         ->test('messaging.nickname-editor', ['targetUserId' => $target->getKey()])

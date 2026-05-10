@@ -311,7 +311,7 @@ window.conversationSidebarPresence = (config) => ({
 });
 
 function ensureLeafletDefaultIcon(L) {
-    if (!L?.Icon?.Default || L.Icon.Default.prototype._sukiMarketDefaultIconPatched) {
+    if (!L?.Icon?.Default || L.Icon.Default.prototype._localPalengkeDefaultIconPatched) {
         return;
     }
 
@@ -321,7 +321,7 @@ function ensureLeafletDefaultIcon(L) {
         iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
         shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
     });
-    L.Icon.Default.prototype._sukiMarketDefaultIconPatched = true;
+    L.Icon.Default.prototype._localPalengkeDefaultIconPatched = true;
 }
 
 window.vendorLocationMap = (mapId, zoom, vendor) => ({
@@ -520,7 +520,7 @@ window.checkoutDeliveryMap = (config) => ({
             const response = await fetch(url, {
                 headers: {
                     'Accept-Language': 'en',
-                    'User-Agent': 'SukiMarket/1.0 (sukimarket.app)',
+                    'User-Agent': 'LocalPalengke/1.0 (localpalengke.app)',
                 },
             });
             const data = await response.json();
@@ -558,7 +558,7 @@ window.checkoutDeliveryMap = (config) => ({
             const response = await fetch(url, {
                 headers: {
                     'Accept-Language': 'en',
-                    'User-Agent': 'SukiMarket/1.0 (sukimarket.app)',
+                    'User-Agent': 'LocalPalengke/1.0 (localpalengke.app)',
                 },
             });
             const results = await response.json();
@@ -832,6 +832,144 @@ window.sukiOrderLocationMap = (options) => ({
 
 });
 
+window.riderTrackingMap = (config) => ({
+    map: null,
+    riderMarker: null,
+    vendorMarker: null,
+    customerMarker: null,
+    echoChannel: null,
+    distanceLabel: '',
+
+    init() {
+        this.$nextTick(() => {
+            const L = window.L;
+
+            if (!L || this.map) {
+                return;
+            }
+
+            ensureLeafletDefaultIcon(L);
+
+            const customerLat = this.numberOrNull(config.customerLat);
+            const customerLng = this.numberOrNull(config.customerLng);
+            const vendorLat = this.numberOrNull(config.vendorLat);
+            const vendorLng = this.numberOrNull(config.vendorLng);
+            const riderLat = this.numberOrNull(config.riderLat);
+            const riderLng = this.numberOrNull(config.riderLng);
+            const center = [
+                customerLat ?? vendorLat ?? riderLat ?? 7.4479,
+                customerLng ?? vendorLng ?? riderLng ?? 125.8090,
+            ];
+
+            this.map = L.map(config.mapId, {
+                center,
+                zoom: 14,
+                zoomControl: true,
+                scrollWheelZoom: false,
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19,
+            }).addTo(this.map);
+
+            if (vendorLat !== null && vendorLng !== null) {
+                this.vendorMarker = L.marker([vendorLat, vendorLng], {
+                    icon: this.createIcon('var(--brand-600, #059669)', 'V'),
+                }).addTo(this.map).bindPopup(`<strong>${escapeHtml(config.vendorName)}</strong><br>Pickup point`);
+            }
+
+            if (customerLat !== null && customerLng !== null) {
+                this.customerMarker = L.marker([customerLat, customerLng], {
+                    icon: this.createIcon('royalblue', 'C'),
+                }).addTo(this.map).bindPopup(`<strong>Your location</strong><br>${escapeHtml(config.customerAddress)}`);
+            }
+
+            if (riderLat !== null && riderLng !== null) {
+                this.riderMarker = L.marker([riderLat, riderLng], {
+                    icon: this.createIcon('#f97316', 'R'),
+                }).addTo(this.map).bindPopup('<strong>Your rider</strong>');
+                this.updateDistanceLabel(riderLat, riderLng);
+            }
+
+            const points = [
+                [vendorLat, vendorLng],
+                [customerLat, customerLng],
+                [riderLat, riderLng],
+            ].filter(([lat, lng]) => lat !== null && lng !== null);
+
+            if (points.length > 1) {
+                this.map.fitBounds(L.latLngBounds(points).pad(0.2));
+            }
+
+            if (window.Echo) {
+                this.echoChannel = window.Echo.private(`order.${config.orderId}`);
+                this.echoChannel.listen('.RiderLocationUpdated', (event) => {
+                    const nextLat = this.numberOrNull(event.lat);
+                    const nextLng = this.numberOrNull(event.lng);
+
+                    if (nextLat === null || nextLng === null) {
+                        return;
+                    }
+
+                    const latlng = [nextLat, nextLng];
+
+                    if (this.riderMarker) {
+                        this.riderMarker.setLatLng(latlng);
+                    } else {
+                        this.riderMarker = L.marker(latlng, {
+                            icon: this.createIcon('#f97316', 'R'),
+                        }).addTo(this.map).bindPopup('<strong>Your rider</strong>');
+                    }
+
+                    this.updateDistanceLabel(nextLat, nextLng);
+                    this.map.panTo(latlng, { animate: true, duration: 1 });
+                });
+            }
+
+            window.setTimeout(() => this.map?.invalidateSize(), 100);
+        });
+    },
+
+    destroy() {
+        if (window.Echo) {
+            window.Echo.leave(`order.${config.orderId}`);
+        }
+
+        this.map?.remove();
+        this.map = null;
+    },
+
+    updateDistanceLabel(riderLat, riderLng) {
+        const customerLat = this.numberOrNull(config.customerLat);
+        const customerLng = this.numberOrNull(config.customerLng);
+
+        if (customerLat === null || customerLng === null) {
+            this.distanceLabel = '';
+
+            return;
+        }
+
+        this.distanceLabel = `~${haversineKm(riderLat, riderLng, customerLat, customerLng).toFixed(1)} km from you`;
+    },
+
+    numberOrNull(value) {
+        const number = Number(value);
+
+        return Number.isFinite(number) ? number : null;
+    },
+
+    createIcon(color, letter) {
+        return window.L.divIcon({
+            className: '',
+            html: `<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;background:${color};border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;transform:rotate(-45deg)"><span style="transform:rotate(45deg);color:white;font-size:11px;font-weight:700">${escapeHtml(letter)}</span></div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 36],
+            popupAnchor: [0, -40],
+        });
+    },
+});
+
 window.sukiProfileMap = (config) => ({
     map: null,
     marker: null,
@@ -1014,7 +1152,7 @@ window.sukiDatePicker = (config) => ({
     },
 });
 
-/* -- SukiMarket scroll-reveal (IntersectionObserver) --------------- */
+/* -- LocalPalengke scroll-reveal (IntersectionObserver) --------------- */
 const scheduleSukiReveal = (delay = 0) => {
     const reveal = () => window.sukiRevealAll?.();
 
@@ -1092,7 +1230,7 @@ document.addEventListener('livewire:init', registerSukiRevealLivewireHooks);
 document.addEventListener('livewire:initialized', registerSukiRevealLivewireHooks);
 registerSukiRevealLivewireHooks();
 
-/* -- SukiMarket image progressive load ------------------------------ */
+/* -- LocalPalengke image progressive load ------------------------------ */
 window.sukiLazyImage = () => ({
     loaded: false,
     error: false,

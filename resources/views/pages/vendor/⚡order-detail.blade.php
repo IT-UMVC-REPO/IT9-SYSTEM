@@ -3,7 +3,6 @@
 use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
 use App\Enums\VendorStatus;
 use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
@@ -50,7 +49,6 @@ new #[Title('Vendor Order Detail')] class extends Component
             OrderStatus::Pending => OrderStatus::Confirmed,
             OrderStatus::Confirmed => OrderStatus::Preparing,
             OrderStatus::Preparing => OrderStatus::Ready,
-            OrderStatus::Ready => OrderStatus::Delivered,
             default => null,
         };
 
@@ -69,21 +67,11 @@ new #[Title('Vendor Order Detail')] class extends Component
 
             $order->forceFill(['order_status' => $nextStatus])->save();
 
-            if ($nextStatus === OrderStatus::Delivered) {
-                $order->forceFill(['payment_status' => PaymentStatus::Paid])->save();
-
-                $order->payment?->update([
-                    'status' => PaymentStatus::Paid,
-                    'paid_at' => now(),
-                ]);
-            }
-
             AuditLogger::log(
                 match ($order->order_status) {
                     OrderStatus::Confirmed => AuditEvent::OrderConfirmed,
                     OrderStatus::Preparing => AuditEvent::OrderPreparing,
                     OrderStatus::Ready => AuditEvent::OrderReady,
-                    OrderStatus::Delivered => AuditEvent::OrderDelivered,
                     default => AuditEvent::OrderCancelled,
                 },
                 "Order #{$order->id} status changed to '{$order->order_status->value}' by vendor.",
@@ -190,6 +178,8 @@ new #[Title('Vendor Order Detail')] class extends Component
             ->with([
                 'customer:id,name,address,lat,lng',
                 'vendor:id,user_id,store_name,vendor_address,lat,lng',
+                'rider:id,name,phone',
+                'rider.riderProfile:id,user_id,vehicle_type,plate_number,contact_number,status,is_available,current_lat,current_lng',
                 'payment',
                 'orderItems.product.category',
             ])
@@ -203,7 +193,6 @@ new #[Title('Vendor Order Detail')] class extends Component
             OrderStatus::Pending => OrderStatus::Confirmed,
             OrderStatus::Confirmed => OrderStatus::Preparing,
             OrderStatus::Preparing => OrderStatus::Ready,
-            OrderStatus::Ready => OrderStatus::Delivered,
             default => null,
         };
     }
@@ -338,7 +327,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                 <span class="brand-kicker">{{ __('Status timeline') }}</span>
                 <div class="mt-5 space-y-3">
                     @php
-                        $statusSteps = [OrderStatus::Pending, OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Delivered];
+                        $statusSteps = [OrderStatus::Pending, OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::PickedUp, OrderStatus::OutForDelivery, OrderStatus::Delivered];
                         $currentStatusIndex = array_search($this->order->order_status, $statusSteps, true);
                     @endphp
 
@@ -373,6 +362,28 @@ new #[Title('Vendor Order Detail')] class extends Component
                         <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ Str::headline($this->order->payment_status->value) }}</span>
                     </div>
                 </div>
+
+                @if ($this->order->rider_id !== null)
+                    <section class="mt-6 brand-panel-muted p-5">
+                        <p class="brand-kicker !mb-0">{{ __('Rider assigned') }}</p>
+                        <div class="mt-4 space-y-2 text-sm">
+                            <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->order->rider?->name ?? __('Rider') }}</p>
+                            <p class="text-neutral-500 dark:text-zinc-400">{{ $this->order->rider?->phone ?? $this->order->rider?->riderProfile?->contact_number ?? __('Contact via app') }}</p>
+                            <p class="text-neutral-500 dark:text-zinc-400">
+                                {{ Str::headline($this->order->rider?->riderProfile?->vehicle_type ?? __('Vehicle')) }}
+                                @if ($this->order->rider?->riderProfile?->plate_number)
+                                    - {{ $this->order->rider->riderProfile->plate_number }}
+                                @endif
+                            </p>
+                            <x-order-status-badge :status="$this->order->order_status" />
+                        </div>
+                    </section>
+                @elseif ($this->order->order_status === OrderStatus::Ready)
+                    <div class="mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-500/20 dark:bg-amber-500/10">
+                        <p class="font-semibold text-amber-800 dark:text-amber-200">{{ __('Waiting for rider') }}</p>
+                        <p class="mt-1 text-amber-700 dark:text-amber-300">{{ __('A rider will claim this delivery shortly.') }}</p>
+                    </div>
+                @endif
 
                 @if (in_array($this->order->order_status, [OrderStatus::Confirmed, OrderStatus::Preparing], true))
                     <div wire:transition class="mt-6 space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">

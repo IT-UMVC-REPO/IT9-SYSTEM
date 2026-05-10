@@ -24,10 +24,10 @@
 
                 <div class="relative z-10">
                     <h1 class="brand-serif mb-5 text-5xl font-bold leading-tight text-white">
-                        Your suki,<br>wherever you are.
+                        Your palengke,<br>at your doorstep.
                     </h1>
                     <p class="text-base leading-8 text-neutral-300 dark:text-zinc-300">
-                        Browse fresh produce, seafood, and everyday market staples from verified local vendors — all in
+                        Browse fresh produce, seafood, and everyday market staples from verified local vendors - all in
                         one familiar, easy-to-navigate storefront.
                     </p>
                 </div>
@@ -42,7 +42,7 @@
                             one place.
                         </p>
                         <p class="mt-4 text-sm leading-7 text-neutral-400">
-                            From daily essentials to fresh finds, SukiMarket is built to feel familiar from the very
+                            From daily essentials to fresh finds, LocalPalengke is built to feel familiar from the very
                             first order.
                         </p>
                     </div>

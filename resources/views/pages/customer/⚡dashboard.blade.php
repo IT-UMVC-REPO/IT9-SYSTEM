@@ -164,7 +164,7 @@ new #[Title('Customer Dashboard')] class extends Component
                 </a>
             @else
                 <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                    {{ __('Your cart is empty right now. Browse the market to start your next suki run.') }}
+                    {{ __('Your cart is empty right now. Browse the market to start your next market run.') }}
                 </p>
                 <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] mt-5 w-full">
                     {{ __('Browse the market') }}
@@ -235,7 +235,7 @@ new #[Title('Customer Dashboard')] class extends Component
         <div class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 240ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <span class="brand-kicker">{{ __('Suki system') }}</span>
+                    <span class="brand-kicker">{{ __('Your Local Stall') }}</span>
                     <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Favourite stalls') }}</h2>
                 </div>
 

@@ -112,6 +112,7 @@ new #[Title('Order Detail')] class extends Component {
                 'customer:id,name,address,lat,lng',
                 'vendor:id,user_id,store_name,vendor_address,lat,lng',
                 'vendor.user:id,name',
+                'rider:id,name,phone',
                 'messages' => fn ($query) => $query
                     ->with('sender:id,name')
                     ->latest('created_at')
@@ -132,6 +133,8 @@ new #[Title('Order Detail')] class extends Component {
             OrderStatus::Confirmed,
             OrderStatus::Preparing,
             OrderStatus::Ready,
+            OrderStatus::PickedUp,
+            OrderStatus::OutForDelivery,
             OrderStatus::Delivered,
         ];
 
@@ -336,6 +339,50 @@ new #[Title('Order Detail')] class extends Component {
                 vendor-label="Vendor Stall"
                 vendor-marker="vendorOrange"
             />
+
+            @php
+                $trackingCustomerLat = $this->order->delivery_lat ?? $this->order->customer->lat;
+                $trackingCustomerLng = $this->order->delivery_lng ?? $this->order->customer->lng;
+            @endphp
+
+            @if (in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true) && $this->order->rider_lat !== null && $this->order->rider_lng !== null)
+                <section
+                    x-data="riderTrackingMap({
+                        mapId: 'rider-tracking-map-{{ $this->order->id }}',
+                        orderId: @js($this->order->id),
+                        riderLat: @js((float) $this->order->rider_lat),
+                        riderLng: @js((float) $this->order->rider_lng),
+                        vendorLat: @js($this->order->vendor->lat === null ? null : (float) $this->order->vendor->lat),
+                        vendorLng: @js($this->order->vendor->lng === null ? null : (float) $this->order->vendor->lng),
+                        vendorName: @js($this->order->vendor->store_name),
+                        customerLat: @js($trackingCustomerLat === null ? null : (float) $trackingCustomerLat),
+                        customerLng: @js($trackingCustomerLng === null ? null : (float) $trackingCustomerLng),
+                        customerAddress: @js($this->order->delivery_address),
+                    })"
+                    x-init="init()"
+                    x-on:livewire:navigating.window="destroy()"
+                    class="brand-panel overflow-hidden p-5 sm:p-6"
+                >
+                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-3 w-3 animate-pulse rounded-full bg-orange-500"></span>
+                            <p class="brand-kicker !mb-0">{{ __('Live Rider Tracking') }}</p>
+                        </div>
+                        <p x-text="distanceLabel" class="min-h-5 text-sm font-semibold text-orange-600 dark:text-orange-300"></p>
+                    </div>
+                    <p class="mb-4 text-sm text-neutral-500 dark:text-zinc-400">
+                        {{ $this->order->order_status === OrderStatus::PickedUp
+                            ? __('Your rider has picked up the order and is preparing to head your way.')
+                            : __('Your rider is on the way! Track their location below.') }}
+                    </p>
+                    <div class="overflow-hidden rounded-[1.5rem] border border-stone-200 dark:border-white/10">
+                        <div id="rider-tracking-map-{{ $this->order->id }}" wire:ignore class="h-[300px] w-full"></div>
+                    </div>
+                    <p class="mt-3 text-xs text-neutral-400 dark:text-zinc-500">
+                        {{ __('Map updates every 10 seconds. Rider location is approximate.') }}
+                    </p>
+                </section>
+            @endif
 
             @if ($this->suggestedProducts->isNotEmpty())
                 <section class="space-y-5">

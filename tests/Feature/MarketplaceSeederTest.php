@@ -21,6 +21,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Report;
+use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\UserNickname;
 use App\Models\VendorCustomerStar;
@@ -43,6 +44,10 @@ test('database seeder provisions the Tagum marketplace dataset in the requested 
         ->firstOrFail();
     $stableCustomer = User::query()
         ->where('email', MarketplaceDemoSeeder::STABLE_CUSTOMER_EMAIL)
+        ->firstOrFail();
+    $stableRider = User::query()
+        ->with('riderProfile')
+        ->where('email', MarketplaceDemoSeeder::STABLE_RIDER_EMAIL)
         ->firstOrFail();
     $productCountsOutsideVendorRange = DB::table('products')
         ->select('vendor_id')
@@ -85,7 +90,10 @@ test('database seeder provisions the Tagum marketplace dataset in the requested 
         ->and($stableVendor->vendorProfile?->status)->toBe(VendorStatus::Approved)
         ->and($stableCustomer->role)->toBe(UserRole::Customer)
         ->and(Hash::check('password', $stableCustomer->password))->toBeTrue()
-        ->and(Role::query()->count())->toBe(3)
+        ->and($stableRider->role)->toBe(UserRole::Rider)
+        ->and(Hash::check('password', $stableRider->password))->toBeTrue()
+        ->and($stableRider->riderProfile?->status)->toBe('approved')
+        ->and(Role::query()->count())->toBe(4)
         ->and(User::query()->count())->toBeGreaterThanOrEqual(195)
         ->and(User::query()->count())->toBeLessThanOrEqual(220)
         ->and(User::query()->whereNull('lat')->orWhereNull('lng')->exists())->toBeFalse()
@@ -94,6 +102,7 @@ test('database seeder provisions the Tagum marketplace dataset in the requested 
         ->and(User::query()->where('role', UserRole::Customer)->count())->toBeLessThanOrEqual(166)
         ->and(VendorProfile::query()->where('status', VendorStatus::Approved)->count())->toBeGreaterThanOrEqual(30)
         ->and(VendorProfile::query()->where('status', VendorStatus::Approved)->count())->toBeLessThanOrEqual(35)
+        ->and(RiderProfile::query()->where('status', 'approved')->count())->toBeGreaterThanOrEqual(1)
         ->and(VendorProfile::query()->whereNull('lat')->orWhereNull('lng')->exists())->toBeFalse()
         ->and($vendorsOutsideNamedPlaces)->toBeFalse()
         ->and(VendorProfile::query()->where('status', VendorStatus::Pending)->count())->toBeGreaterThanOrEqual(8)
@@ -172,10 +181,12 @@ test('database seeder is rerun safe for stable records and unique baseline table
         ->havingRaw('COUNT(*) > 1')
         ->exists();
 
-    expect(Role::query()->count())->toBe(3)
+    expect(Role::query()->count())->toBe(4)
         ->and(User::query()->where('email', MarketplaceDemoSeeder::STABLE_ADMIN_EMAIL)->count())->toBe(1)
         ->and(User::query()->where('email', MarketplaceDemoSeeder::STABLE_VENDOR_EMAIL)->count())->toBe(1)
         ->and(User::query()->where('email', MarketplaceDemoSeeder::STABLE_CUSTOMER_EMAIL)->count())->toBe(1)
+        ->and(User::query()->where('email', MarketplaceDemoSeeder::STABLE_RIDER_EMAIL)->count())->toBe(1)
+        ->and(RiderProfile::query()->where('user_id', User::query()->where('email', MarketplaceDemoSeeder::STABLE_RIDER_EMAIL)->value('id'))->count())->toBe(1)
         ->and(VendorProfile::query()->where('store_name', MarketplaceDemoSeeder::STABLE_VENDOR_STORE_NAME)->count())->toBe(1)
         ->and(Category::query()->count())->toBe(count(MarketCategory::cases()))
         ->and(Category::query()->whereNull('slug')->exists())->toBeFalse()

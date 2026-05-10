@@ -8,6 +8,8 @@ enum OrderStatus: string
     case Confirmed = 'confirmed';
     case Preparing = 'preparing';
     case Ready = 'ready';
+    case PickedUp = 'picked_up';
+    case OutForDelivery = 'out_for_delivery';
     case Delivered = 'delivered';
     case Cancelled = 'cancelled';
 }

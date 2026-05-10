@@ -105,6 +105,7 @@ new #[Title('Notifications')] class extends Component
             if ($orderReference !== null && $orderReference > 0) {
                 return match ($user->effectiveMarketplaceRole()) {
                     UserRole::Vendor => route('vendor.orders.show', ['orderReference' => $orderReference]),
+                    UserRole::Rider => route('rider.deliveries.show', ['orderReference' => $orderReference]),
                     UserRole::Admin => route('admin.orders'),
                     default => route('shop.orders.show', ['orderReference' => $orderReference]),
                 };
@@ -112,6 +113,7 @@ new #[Title('Notifications')] class extends Component
 
             return match ($user->effectiveMarketplaceRole()) {
                 UserRole::Vendor => route('vendor.orders'),
+                UserRole::Rider => route('rider.deliveries'),
                 UserRole::Admin => route('admin.orders'),
                 default => route('shop.orders'),
             };
@@ -139,7 +141,7 @@ new #[Title('Notifications')] class extends Component
         :kicker="__('Notification center')"
         icon="fa-solid fa-bell"
         :title="__('Notifications')"
-        :description="__('Review order updates, messages, and SukiMarket system notices in one tidy feed.')"
+        :description="__('Review order updates, messages, and LocalPalengke system notices in one tidy feed.')"
     />
 
     <section class="brand-panel p-4 sm:p-6">

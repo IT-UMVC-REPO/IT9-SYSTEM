@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
 #[Signature('make:admin {name} {email} {password}')]
-#[Description('Create a verified SukiMarket administrator account')]
+#[Description('Create a verified LocalPalengke administrator account')]
 class MakeAdminCommand extends Command
 {
     use PasswordValidationRules, ProfileValidationRules;

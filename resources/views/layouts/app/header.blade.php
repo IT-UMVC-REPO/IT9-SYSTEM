@@ -34,6 +34,7 @@
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
                         $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
                         $navItem('Seller setup', 'vendor.registration', ['vendor.registration'], 'fa-solid fa-shop'),
+                        $navItem('Rider setup', 'rider.registration', ['rider.registration'], 'fa-solid fa-motorcycle'),
                     ],
                     [
                         $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
@@ -61,6 +62,7 @@
                     [
                         $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
                         $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
+                        $navItem('Riders', 'admin.riders', ['admin.riders', 'admin.riders.*'], 'fa-solid fa-motorcycle'),
                         $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                         $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
@@ -70,20 +72,32 @@
                     ],
                     __('Review approvals, users, and marketplace operations from the admin portal.'),
                 ],
+                \App\Enums\UserRole::Rider => [
+                    [
+                        $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
+                        $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
+                        $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
+                    ],
+                    [],
+                    __('Pick up orders, track deliveries, and manage your availability.'),
+                ],
             };
 
             $showNotificationBell = in_array($effectiveMarketplaceRole, [
                 \App\Enums\UserRole::Customer,
                 \App\Enums\UserRole::Vendor,
+                \App\Enums\UserRole::Rider,
             ], true);
 
             $mobileOrdersNavigationItem = collect($navigationItems)->firstWhere('label', __('Orders'));
             $mobileMessagesNavigationItem = collect($quickActionItems)->firstWhere('label', __('Messages'));
             $mobileSellerSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Seller setup'));
+            $mobileRiderSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Rider setup'));
             $mobileAccountNavigationItems = array_values(array_filter([
                 $mobileOrdersNavigationItem,
                 $settingsNavigationItem,
                 $mobileSellerSetupNavigationItem,
+                $mobileRiderSetupNavigationItem,
             ]));
 
             $mobileNavigationItems = array_values(array_filter(
@@ -96,7 +110,7 @@
                         $homeNavigationItem,
                         ...$navigationItems,
                     ],
-                fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Seller setup')], true),
+                fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Seller setup'), __('Rider setup')], true),
             ));
 
             $mobileBottomNavigationItems = match ($effectiveMarketplaceRole) {
@@ -120,6 +134,11 @@
                     $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                     $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                     $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
+                ],
+                \App\Enums\UserRole::Rider => [
+                    $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
+                    $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
+                    $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
                 ],
             };
         }
@@ -343,7 +362,7 @@
                     <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Welcome to SukiMarket') }}</p>
+                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Welcome to LocalPalengke') }}</p>
                                 <p class="mt-2 text-xs leading-6 text-neutral-500 dark:text-zinc-400">
                                     {{ __('Sign in to open your dashboard or create an account to start browsing the market.') }}
                                 </p>

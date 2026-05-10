@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('order.{orderId}', function ($user, int $orderId): bool {
     $order = Order::query()
-        ->select(['id', 'customer_id', 'vendor_id'])
+        ->select(['id', 'customer_id', 'vendor_id', 'rider_id'])
         ->with('vendor:id,user_id')
         ->find($orderId);
 
@@ -16,7 +16,8 @@ Broadcast::channel('order.{orderId}', function ($user, int $orderId): bool {
     }
 
     return $order->customer_id === $user->id
-        || $order->vendor?->user_id === $user->id;
+        || $order->vendor?->user_id === $user->id
+        || $order->rider_id === $user->id;
 });
 
 Broadcast::channel('messaging.{conversationKey}', function ($user, string $conversationKey): bool {

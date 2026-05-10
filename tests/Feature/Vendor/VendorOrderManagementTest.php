@@ -103,7 +103,7 @@ test('vendor order detail shows the back link and peso totals', function () {
         ->assertSee("\u{20B1}150.00 / kg");
 });
 
-test('status advances correctly from pending to delivered', function () {
+test('status advances correctly from pending to ready for rider pickup', function () {
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
     $tracked = createVendorManagedOrder($vendorProfile);
@@ -121,9 +121,9 @@ test('status advances correctly from pending to delivered', function () {
     expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Ready);
 
     $component->call('advanceStatus');
-    expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Delivered);
-    expect($tracked['order']->fresh()->payment_status)->toBe(PaymentStatus::Paid);
-    expect($tracked['payment']->fresh()->status)->toBe(PaymentStatus::Paid);
+    expect($tracked['order']->fresh()->order_status)->toBe(OrderStatus::Ready);
+    expect($tracked['order']->fresh()->payment_status)->toBe(PaymentStatus::Pending);
+    expect($tracked['payment']->fresh()->status)->toBe(PaymentStatus::Pending);
 });
 
 test('cannot advance past delivered', function () {

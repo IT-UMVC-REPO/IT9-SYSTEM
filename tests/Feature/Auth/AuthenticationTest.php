@@ -67,7 +67,7 @@ test('approved vendors can browse the storefront', function () {
     $this->actingAs($user)
         ->get(route('shop.home'))
         ->assertOk()
-        ->assertSee('A brighter market floor for your next suki run.');
+        ->assertSee('A brighter market floor for your next market run.');
 
     $this->actingAs($user)
         ->get(route('customer.dashboard'))

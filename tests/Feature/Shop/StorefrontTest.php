@@ -33,7 +33,7 @@ test('authenticated customers can view the storefront', function () {
 
     $response->assertOk()
         ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false)
-        ->assertSee('A brighter market floor for your next suki run.')
+        ->assertSee('A brighter market floor for your next market run.')
         ->assertSee('wire:model.live.debounce.250ms="search"', false)
         ->assertDontSee('class="brand-button-primary w-full">Search', false)
         ->assertSee(route('shop.vendors'), false)
@@ -46,7 +46,7 @@ test('authenticated customers can view the storefront', function () {
 test('storefront shows only active products from approved vendors', function () {
     $customer = User::factory()->create();
     $visibleVendor = VendorProfile::factory()->approved()->create([
-        'store_name' => 'Suki Greens',
+        'store_name' => 'Local Greens',
     ]);
     $visibleProduct = Product::factory()
         ->for($visibleVendor, 'vendor')

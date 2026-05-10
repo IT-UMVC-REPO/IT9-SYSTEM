@@ -36,7 +36,7 @@ new #[Title('Favourites')] class extends Component
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4">
-        <span class="brand-kicker">{{ __('Suki system') }}</span>
+        <span class="brand-kicker">{{ __('Your Local Stall') }}</span>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Your followed stalls') }}</h1>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
             {{ __('Keep trusted stalls close, drop the ones you no longer need, and jump straight back into the storefront when you are ready to shop.') }}
@@ -59,7 +59,7 @@ new #[Title('Favourites')] class extends Component
         <x-empty-state
             icon="fa-regular fa-heart"
             :heading="__('No followed stalls yet')"
-            :body="__('Browse approved vendors and start building your own suki shortlist.')"
+            :body="__('Browse approved vendors and start building your own favorite stall shortlist.')"
             :action-label="__('Browse vendors')"
             :action-route="route('shop.vendors')"
         />

@@ -111,6 +111,8 @@ new #[Title('Vendor Orders')] class extends Component
                     OrderStatus::Confirmed->value => __('Confirmed'),
                     OrderStatus::Preparing->value => __('Preparing'),
                     OrderStatus::Ready->value => __('Ready'),
+                    OrderStatus::PickedUp->value => __('Picked up'),
+                    OrderStatus::OutForDelivery->value => __('Out for delivery'),
                     OrderStatus::Delivered->value => __('Delivered'),
                     OrderStatus::Cancelled->value => __('Cancelled'),
                 ] as $value => $label)

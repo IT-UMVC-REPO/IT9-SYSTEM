@@ -4,6 +4,7 @@
     $roleLabel = match ($effectiveRole) {
         \App\Enums\UserRole::Admin => 'Admin',
         \App\Enums\UserRole::Vendor => 'Vendor',
+        \App\Enums\UserRole::Rider => 'Rider',
         \App\Enums\UserRole::Customer => 'Customer',
     };
     $navItems = [

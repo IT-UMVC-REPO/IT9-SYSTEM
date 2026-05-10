@@ -83,6 +83,12 @@ class Registration extends Component
             return;
         }
 
+        if ($user->effectiveMarketplaceRole() === UserRole::Rider) {
+            $this->redirectRoute('rider.dashboard', navigate: true);
+
+            return;
+        }
+
         $this->vendorProfileId = $user->vendorProfile?->getKey();
         $this->hydrateFormFromExistingProfile();
     }
@@ -111,7 +117,7 @@ class Registration extends Component
         $user = auth()->user();
         $vendorProfile = $this->currentVendorProfileRecord();
 
-        if ($user->effectiveMarketplaceRole() === UserRole::Admin) {
+        if (in_array($user->effectiveMarketplaceRole(), [UserRole::Admin, UserRole::Rider], true)) {
             abort(403);
         }
 

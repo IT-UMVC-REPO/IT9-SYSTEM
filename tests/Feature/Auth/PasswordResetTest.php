@@ -25,7 +25,7 @@ test('reset password link can be requested', function () {
     Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
         $mailMessage = $notification->toMail($user);
 
-        expect($mailMessage->subject)->toBe('Reset your SukiMarket password')
+        expect($mailMessage->subject)->toBe('Reset your LocalPalengke password')
             ->and($mailMessage->markdown)->toBe('emails.auth.reset-password');
 
         return true;

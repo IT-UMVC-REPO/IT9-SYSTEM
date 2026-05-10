@@ -538,7 +538,7 @@ new #[Title('Edit product')] class extends Component {
                             <flux:label>{{ __('Description') }}</flux:label>
                             <span class="text-xs font-medium text-neutral-400 dark:text-zinc-500">{{ mb_strlen($description) }}/1000</span>
                         </div>
-                        <flux:textarea wire:model.live.debounce.250ms="description" rows="4" maxlength="1000" :placeholder="__('Describe freshness, sourcing, how it is prepared, and anything suki buyers should know before ordering.')" required />
+                        <flux:textarea wire:model.live.debounce.250ms="description" rows="4" maxlength="1000" :placeholder="__('Describe freshness, sourcing, how it is prepared, and anything local buyers should know before ordering.')" required />
                         <flux:error name="description" />
                     </flux:field>
                 </section>

@@ -99,7 +99,7 @@ test('approved vendors can update stall information from profile settings', func
     Livewire::test('pages::settings.profile')
         ->set('name', $vendorUser->name)
         ->set('email', $vendorUser->email)
-        ->set('store_name', 'Updated Suki Stall')
+        ->set('store_name', 'Updated Local Stall')
         ->set('store_description', 'Fresh produce and pantry staples every morning.')
         ->set('vendor_address', 'Stall 12, Central Market')
         ->call('updateProfileInformation')
@@ -107,7 +107,7 @@ test('approved vendors can update stall information from profile settings', func
 
     $vendorProfile->refresh();
 
-    expect($vendorProfile->store_name)->toBe('Updated Suki Stall')
+    expect($vendorProfile->store_name)->toBe('Updated Local Stall')
         ->and($vendorProfile->store_description)->toBe('Fresh produce and pantry staples every morning.')
         ->and($vendorProfile->vendor_address)->toBe('Stall 12, Central Market');
 });

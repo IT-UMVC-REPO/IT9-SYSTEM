@@ -40,6 +40,8 @@ new #[Title('My Orders')] class extends Component {
                         OrderStatus::Confirmed,
                         OrderStatus::Preparing,
                         OrderStatus::Ready,
+                        OrderStatus::PickedUp,
+                        OrderStatus::OutForDelivery,
                     ]),
                     'completed' => $query->where('order_status', OrderStatus::Delivered),
                     'cancelled' => $query->where('order_status', OrderStatus::Cancelled),
@@ -65,6 +67,8 @@ new #[Title('My Orders')] class extends Component {
                 OrderStatus::Confirmed,
                 OrderStatus::Preparing,
                 OrderStatus::Ready,
+                OrderStatus::PickedUp,
+                OrderStatus::OutForDelivery,
             ])->count(),
             'completed' => (clone $baseQuery)->where('order_status', OrderStatus::Delivered)->count(),
             'cancelled' => (clone $baseQuery)->where('order_status', OrderStatus::Cancelled)->count(),
@@ -91,7 +95,7 @@ new #[Title('My Orders')] class extends Component {
     {
         return match ($this->status) {
             'pending' => 'Once you place an order, it will stay here until your vendor confirms it.',
-            'active' => 'Confirmed, preparing, and ready orders will appear here while they move through the market.',
+            'active' => 'Confirmed, preparing, ready, and rider delivery orders will appear here while they move through the market.',
             'completed' => 'Delivered orders will show up here after your vendor marks them complete.',
             'cancelled' => 'Cancelled orders will stay here for reference if you need to look back.',
             default => 'Browse the storefront and place your first market order to start tracking it here.',

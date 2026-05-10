@@ -36,7 +36,7 @@ test('email verification screen can be rendered and queues a branded verificatio
 
     Mail::assertQueued(EmailVerification::class, function (EmailVerification $mail) use ($user) {
         return $mail->hasTo($user->email)
-            && $mail->hasSubject("Welcome to SukiMarket \u{2014} Verify your email")
+            && $mail->hasSubject("Welcome to LocalPalengke \u{2014} Verify your email")
             && $mail->verificationCode === $user->email_verification_code;
     });
 });

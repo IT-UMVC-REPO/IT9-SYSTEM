@@ -18,8 +18,8 @@ test('resolves the smtp2go transport from the mail manager', function (): void {
 test('builds a transport instance with the configured api key', function (): void {
     $transport = new Smtp2goTransport(
         apiKey: 'test-api-key',
-        senderName: 'SukiMarket',
-        senderEmail: 'no-reply@sukimarket.app',
+        senderName: 'LocalPalengke',
+        senderEmail: 'no-reply@localpalengke.app',
     );
 
     expect((string) $transport)->toBe('smtp2go');
@@ -28,8 +28,8 @@ test('builds a transport instance with the configured api key', function (): voi
 test('formats smtp2go recipients as api address strings', function (): void {
     $transport = new Smtp2goTransport(
         apiKey: 'test-api-key',
-        senderName: 'SukiMarket',
-        senderEmail: 'no-reply@sukimarket.app',
+        senderName: 'LocalPalengke',
+        senderEmail: 'no-reply@localpalengke.app',
     );
 
     $method = new ReflectionMethod($transport, 'addressesFor');

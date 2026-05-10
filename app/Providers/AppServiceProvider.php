@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
             return new Smtp2goTransport(
                 apiKey: (string) config('services.smtp2go.key', ''),
                 senderName: (string) config('mail.from.name', config('app.name')),
-                senderEmail: (string) config('mail.from.address', 'noreply@sukimarket.app'),
+                senderEmail: (string) config('mail.from.address', 'noreply@localpalengke.app'),
             );
         });
 

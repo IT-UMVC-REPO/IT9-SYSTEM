@@ -30,7 +30,7 @@ class EmailVerification extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Welcome to SukiMarket \u{2014} Verify your email",
+            subject: "Welcome to LocalPalengke \u{2014} Verify your email",
         );
     }
 

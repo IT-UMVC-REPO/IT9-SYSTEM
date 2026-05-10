@@ -5,6 +5,7 @@ use App\Enums\AuditEvent;
 use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
+use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
 use App\Services\AuditLogger;
@@ -82,7 +83,7 @@ new #[Title('User management')] class extends Component {
     public function users(): LengthAwarePaginator
     {
         return User::query()
-            ->with(['vendorProfile:id,user_id,store_name,status,approved_at'])
+            ->with(['vendorProfile:id,user_id,store_name,status,approved_at', 'riderProfile:id,user_id,vehicle_type,status,approved_at'])
             ->withCount('orders')
             ->withCount([
                 'reports as open_reports_count' => fn($query) => $query->where('status', ReportStatus::Open),
@@ -107,6 +108,7 @@ new #[Title('User management')] class extends Component {
             'total_users' => User::query()->count(),
             'total_customers' => User::query()->where('role', UserRole::Customer)->count(),
             'total_vendors' => VendorProfile::query()->where('status', VendorStatus::Approved)->count(),
+            'total_riders' => RiderProfile::query()->where('status', 'approved')->count(),
             'total_admins' => User::query()->where('role', UserRole::Admin)->count(),
         ];
     }
@@ -114,7 +116,7 @@ new #[Title('User management')] class extends Component {
     private function resolveUser(int $userId): User
     {
         return User::query()
-            ->with('vendorProfile:id,user_id,store_name,status,approved_at')
+            ->with(['vendorProfile:id,user_id,store_name,status,approved_at', 'riderProfile:id,user_id,vehicle_type,status,approved_at'])
             ->withCount('orders')
             ->withCount([
                 'reports as open_reports_count' => fn($query) => $query->where('status', ReportStatus::Open),
@@ -146,8 +148,8 @@ new #[Title('User management')] class extends Component {
 
     <livewire:pages::admin.create-admin-modal />
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        @foreach ([['label' => __('Total users'), 'value' => $this->stats['total_users']], ['label' => __('Total customers'), 'value' => $this->stats['total_customers']], ['label' => __('Approved vendors'), 'value' => $this->stats['total_vendors']], ['label' => __('Total admins'), 'value' => $this->stats['total_admins']]] as $stat)
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        @foreach ([['label' => __('Total users'), 'value' => $this->stats['total_users']], ['label' => __('Total customers'), 'value' => $this->stats['total_customers']], ['label' => __('Approved vendors'), 'value' => $this->stats['total_vendors']], ['label' => __('Approved riders'), 'value' => $this->stats['total_riders']], ['label' => __('Total admins'), 'value' => $this->stats['total_admins']]] as $stat)
             <article class="brand-panel-muted p-5">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
                     {{ $stat['label'] }}
@@ -209,6 +211,10 @@ new #[Title('User management')] class extends Component {
                                                 <p class="mt-1 truncate text-xs text-neutral-500 dark:text-zinc-400">
                                                     {{ $user->vendorProfile->store_name }}
                                                 </p>
+                                            @elseif ($user->riderProfile !== null)
+                                                <p class="mt-1 truncate text-xs text-neutral-500 dark:text-zinc-400">
+                                                    {{ __('Rider - :vehicle', ['vehicle' => ucfirst($user->riderProfile->vehicle_type)]) }}
+                                                </p>
                                             @endif
 
                                         </div>
@@ -225,6 +231,14 @@ new #[Title('User management')] class extends Component {
                                         @elseif ($user->vendorProfile?->status === VendorStatus::Rejected)
                                             <span
                                                 class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">{{ __('Rejected') }}</span>
+                                        @endif
+
+                                        @if ($user->riderProfile?->status === 'pending')
+                                            <span
+                                                class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300">{{ __('Rider pending') }}</span>
+                                        @elseif ($user->riderProfile?->status === 'inactive')
+                                            <span
+                                                class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-zinc-300">{{ __('Rider inactive') }}</span>
                                         @endif
 
                                         @if ((int) $user->open_reports_count > 0)
@@ -289,6 +303,13 @@ new #[Title('User management')] class extends Component {
                                         <span
                                             class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-700 dark:border-rose-500/25 dark:bg-rose-500/10 dark:text-rose-300">{{ __('Rejected') }}</span>
                                     @endif
+                                    @if ($user->riderProfile?->status === 'pending')
+                                        <span
+                                            class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300">{{ __('Rider pending') }}</span>
+                                    @elseif ($user->riderProfile?->status === 'inactive')
+                                        <span
+                                            class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-zinc-300">{{ __('Rider inactive') }}</span>
+                                    @endif
                                     @if ((int) $user->open_reports_count > 0)
                                         <span
                                             class="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300">{{ __('Watchlist') }}</span>
@@ -299,6 +320,9 @@ new #[Title('User management')] class extends Component {
                                 @if ($user->vendorProfile !== null)
                                     <p class="mt-2 truncate text-sm text-neutral-600 dark:text-zinc-300">
                                         {{ $user->vendorProfile->store_name }}</p>
+                                @elseif ($user->riderProfile !== null)
+                                    <p class="mt-2 truncate text-sm text-neutral-600 dark:text-zinc-300">
+                                        {{ __('Rider - :vehicle', ['vehicle' => ucfirst($user->riderProfile->vehicle_type)]) }}</p>
                                 @endif
 
                             </div>

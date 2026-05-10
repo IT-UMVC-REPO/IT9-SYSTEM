@@ -53,7 +53,7 @@ class ConversationGroup extends Model
             : $this->memberUsers()->whereKeyNot($forUserId)->pluck('name');
 
         if ($members->isEmpty()) {
-            return __('SukiMarket group');
+            return __('LocalPalengke group');
         }
 
         $visibleNames = $members->take(3)->implode(', ');

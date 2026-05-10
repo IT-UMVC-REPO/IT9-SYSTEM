@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['customer_id', 'vendor_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'delivery_lat', 'delivery_lng', 'notes', 'estimated_delivery_at', 'delay_note'])]
+#[Fillable(['customer_id', 'vendor_id', 'rider_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'delivery_lat', 'delivery_lng', 'rider_lat', 'rider_lng', 'notes', 'estimated_delivery_at', 'delay_note', 'picked_up_at', 'out_for_delivery_at'])]
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
@@ -45,7 +45,11 @@ class Order extends Model
             'order_status' => OrderStatus::class,
             'delivery_lat' => 'decimal:6',
             'delivery_lng' => 'decimal:6',
+            'rider_lat' => 'decimal:7',
+            'rider_lng' => 'decimal:7',
             'estimated_delivery_at' => 'datetime',
+            'picked_up_at' => 'datetime',
+            'out_for_delivery_at' => 'datetime',
         ];
     }
 
@@ -57,6 +61,11 @@ class Order extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(VendorProfile::class, 'vendor_id');
+    }
+
+    public function rider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rider_id');
     }
 
     public function orderItems(): HasMany

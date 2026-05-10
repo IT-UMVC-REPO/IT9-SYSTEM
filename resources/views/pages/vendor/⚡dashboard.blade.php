@@ -211,7 +211,7 @@ new #[Title('Vendor Dashboard')] class extends Component
             <div>
                 <span class="brand-kicker">{{ __('Customer map') }}</span>
                 <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">
-                    {{ __('Where your suki buyers are') }}
+                    {{ __('Where your local buyers are') }}
                 </h2>
             </div>
         </div>

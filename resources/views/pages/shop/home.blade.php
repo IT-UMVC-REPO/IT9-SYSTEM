@@ -1,10 +1,10 @@
-﻿<x-layouts::app :title="__('SukiMarket Storefront')">
+<x-layouts::app :title="__('LocalPalengke Storefront')">
     <div class="suki-reveal">
     <section class="relative min-h-[420px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0 z-0">
           
             <img
-                src="{{ asset('imgs/sukimarket.webp') }}"
+                src="{{ asset('imgs/localpalengke.webp') }}"
                 alt=""
                 aria-hidden="true"
                 class="h-full w-full object-cover object-center"
@@ -40,7 +40,7 @@
                 </span>
 
                 <h1 class="brand-serif mt-6 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl" style="text-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-                    A brighter market floor for your next suki run.
+                    A brighter market floor for your next market run.
                 </h1>
 
                 <p class="brand-hero-copy mt-5 max-w-2xl text-base leading-8">

@@ -3,7 +3,7 @@
 <tr>
 <td style="padding:0 0 24px;">
 <span style="display:inline-block; padding:8px 14px; border-radius:999px; background-color:#ecfdf5; color:#047857; font-family:'DM Sans', -apple-system, Arial, sans-serif; font-size:12px; line-height:1; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;">
-Fresh from your digital palengke
+Fresh from your local palengke
 </span>
 </td>
 </tr>

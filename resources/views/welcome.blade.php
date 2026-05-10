@@ -15,7 +15,16 @@
             ? route(match (auth()->user()->effectiveMarketplaceRole()) {
                 \App\Enums\UserRole::Admin => 'admin.dashboard',
                 \App\Enums\UserRole::Vendor => 'vendor.dashboard',
+                \App\Enums\UserRole::Rider => 'rider.dashboard',
                 default => 'vendor.registration',
+            })
+            : route('register');
+        $riderPortalRoute = auth()->check()
+            ? route(match (auth()->user()->effectiveMarketplaceRole()) {
+                \App\Enums\UserRole::Admin => 'admin.riders',
+                \App\Enums\UserRole::Rider => 'rider.dashboard',
+                \App\Enums\UserRole::Vendor => 'vendor.dashboard',
+                default => 'rider.registration',
             })
             : route('register');
         $heroActions = auth()->check()
@@ -28,8 +37,8 @@
             ];
         $marketBadges = [
             ['icon' => 'fa-solid fa-circle-check', 'label' => 'Fresh daily listings'],
-            ['icon' => 'fa-solid fa-user-shield', 'label' => 'Verified vendor storefronts'],
-            ['icon' => 'fa-solid fa-leaf', 'label' => 'Market-first design'],
+            ['icon' => 'fa-solid fa-user-shield', 'label' => 'Verified local stalls'],
+            ['icon' => 'fa-solid fa-motorcycle', 'label' => 'Rider delivery tracking'],
         ];
         $ctaActions = auth()->check()
             ? [
@@ -54,11 +63,11 @@
                 <div class="max-w-2xl">
                     <h1 class="brand-serif suki-reveal mt-6 text-5xl font-bold leading-tight tracking-tight text-neutral-900 dark:text-zinc-100 sm:text-6xl">
                         Fresh from the palengke,
-                        <span class="brand-accent-text">with your suki still in view.</span>
+                        <span class="brand-accent-text">with your local stall still in view.</span>
                     </h1>
 
                     <p class="suki-reveal mt-6 max-w-xl text-lg leading-8 text-neutral-500 dark:text-zinc-400" style="transition-delay: 80ms">
-                        SukiMarket brings the warmth of the Filipino wet market online with recognizable stalls, fresh listings, and a browsing experience that keeps your favorite vendors front and center.
+                        LocalPalengke brings your neighborhood market online with recognizable stalls, fresh listings, rider delivery updates, and a storefront that keeps trusted vendors easy to find.
                     </p>
 
                     <div class="suki-reveal mt-8 flex flex-wrap gap-3" style="transition-delay: 160ms">
@@ -172,9 +181,9 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
                     <p class="brand-accent-text text-sm font-semibold uppercase tracking-[0.28em]">What makes it special</p>
-                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">A digital palengke with a familiar feel.</h2>
+                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">Your local market, delivered with care.</h2>
                     <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-neutral-500 dark:text-zinc-400">
-                        Every section is meant to feel closer to a real market stall: easy to scan, easy to trust, and easy to come back to.
+                        Every section is built around the real market routine: scan fresh goods, choose trusted stalls, and follow each delivery from pickup to doorstep.
                     </p>
                 </div>
 
@@ -189,7 +198,7 @@
                             </div>
                             <p class="brand-accent-text mt-5 text-xs font-semibold uppercase tracking-[0.22em]">Fresh finds</p>
                             <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">Browse the market with ease</h3>
-                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">Explore produce, seafood, meat, and pantry staples through a clean storefront built around how people already shop in the palengke.</p>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">Explore produce, seafood, meat, and pantry staples through a clean storefront built around how people already shop at the market.</p>
                         </div>
                     </article>
 
@@ -215,9 +224,9 @@
                             <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 transition group-hover:scale-105 dark:bg-rose-500/10 dark:text-rose-300">
                                 <i class="fa-solid fa-heart text-xl"></i>
                             </div>
-                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">Suki spirit</p>
+                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">Local stall spirit</p>
                             <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">Keep the market relationship alive</h3>
-                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">SukiMarket is built around familiarity and trust, turning neighborhood market habits into a more organized digital experience.</p>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">LocalPalengke keeps local trust intact while making ordering, pickup, delivery, and status updates easier to follow.</p>
                         </div>
                     </article>
                 </div>
@@ -274,14 +283,14 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6">
                 <div class="text-center">
                     <p class="brand-accent-text text-sm font-semibold uppercase tracking-[0.28em]">Built for the marketplace</p>
-                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">Two tailored portals, one shared market.</h2>
+                    <h2 class="brand-serif mt-3 text-4xl font-bold text-neutral-900 dark:text-zinc-100 sm:text-5xl">Four roles, one shared market.</h2>
                 </div>
 
-                <div class="mt-14 grid gap-6 xl:grid-cols-2">
+                <div class="mt-14 grid gap-6 lg:grid-cols-2">
                     <article class="brand-gradient-card suki-reveal relative overflow-hidden rounded-4xl p-10 text-white shadow-lg" style="transition-delay: 0ms">
                         <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-basket-shopping"></i></span>
                         <h3 class="brand-serif mt-6 text-3xl font-bold">Customer dashboard</h3>
-                        <p class="brand-hero-copy mt-4 text-sm leading-7">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and following upcoming orders.</p>
+                        <p class="brand-hero-copy mt-4 text-sm leading-7">A shopper portal for browsing fresh listings, keeping favorite stalls nearby, and tracking orders as they move toward delivery.</p>
                         <a href="{{ auth()->check() ? $portalHomeRoute : route('register') }}" class="brand-accent-text-strong mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:hover:bg-zinc-900">
                             {{ auth()->check() ? 'Open my dashboard' : 'Create a customer account' }}
                         </a>
@@ -296,6 +305,24 @@
                         </a>
                     </article>
 
+                    <article class="suki-reveal relative overflow-hidden rounded-4xl bg-linear-to-br from-sky-600 to-indigo-700 p-10 text-white shadow-lg" style="transition-delay: 180ms">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-motorcycle"></i></span>
+                        <h3 class="brand-serif mt-6 text-3xl font-bold">Rider dashboard</h3>
+                        <p class="mt-4 text-sm leading-7 text-sky-100">A delivery workspace for claiming ready orders, updating progress, and sharing live location with customers.</p>
+                        <a href="{{ $riderPortalRoute }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-sky-700 transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:text-sky-300 dark:hover:bg-zinc-900">
+                            {{ auth()->check() ? 'Open rider setup' : 'Create an account' }}
+                        </a>
+                    </article>
+
+                    <article class="suki-reveal relative overflow-hidden rounded-4xl bg-neutral-950 p-10 text-white shadow-lg dark:bg-zinc-800" style="transition-delay: 240ms">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl"><i class="fa-solid fa-user-shield"></i></span>
+                        <h3 class="brand-serif mt-6 text-3xl font-bold">Admin console</h3>
+                        <p class="mt-4 text-sm leading-7 text-neutral-300">A control center for approving vendors and riders, reviewing users, overseeing orders, and keeping the marketplace healthy.</p>
+                        <a href="{{ auth()->check() ? $portalHomeRoute : route('login') }}" class="mt-8 inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-stone-100 dark:bg-zinc-950/90 dark:text-zinc-100 dark:hover:bg-zinc-900">
+                            {{ auth()->check() ? 'Open my portal' : 'Sign in' }}
+                        </a>
+                    </article>
+
                 </div>
             </div>
         </section>
@@ -304,7 +331,7 @@
             <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
                 <h2 class="brand-serif mt-6 text-4xl font-bold text-white sm:text-5xl">Explore the customer storefront today.</h2>
                 <p class="mt-5 text-lg leading-8 text-neutral-300">
-                    Step into a cleaner digital palengke with real storefronts, strong vendor identity, and a warm market-first browsing experience.
+                    Step into LocalPalengke with real storefronts, rider delivery tracking, strong vendor identity, and a warm market-first browsing experience.
                 </p>
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
                     @foreach ($ctaActions as $action)
@@ -327,7 +354,7 @@
                     </div>
 
                     <p class="max-w-xl text-center text-xs leading-6 text-neutral-400 dark:text-zinc-400">
-                        A digital marketplace inspired by the Filipino wet market experience and shaped around local trust, freshness, and familiar buying habits.
+                        Your Local Market, Delivered - a marketplace shaped around local trust, freshness, rider delivery, and familiar buying habits.
                     </p>
 
                     <div class="flex items-center gap-5 text-xs text-neutral-400 dark:text-zinc-400">
@@ -338,7 +365,7 @@
                 </div>
 
                 <div class="mt-8 border-t border-stone-200 pt-6 text-center text-xs text-neutral-400 dark:border-white/10 dark:text-zinc-400">
-                    &copy; {{ date('Y') }} SukiMarket. All rights reserved.
+                    &copy; {{ date('Y') }} LocalPalengke. All rights reserved.
                 </div>
             </div>
         </footer>

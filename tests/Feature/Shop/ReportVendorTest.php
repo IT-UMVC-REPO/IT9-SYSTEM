@@ -12,7 +12,7 @@ function createReportableVendor(): array
     $customer = User::factory()->create();
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create([
-        'store_name' => 'Suki Greens',
+        'store_name' => 'Local Greens',
     ]);
 
     return compact('customer', 'vendorUser', 'vendorProfile');
