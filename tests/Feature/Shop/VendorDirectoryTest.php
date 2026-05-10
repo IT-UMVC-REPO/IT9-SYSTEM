@@ -24,9 +24,11 @@ test('page renders and shows approved vendors only', function () {
         ->assertSee('Show Map')
         ->assertSee('Hide Map')
         ->assertSee('vendor-selected', false)
-        ->assertSee('class="brand-panel relative overflow-hidden p-4 transition sm:p-5"', false)
-        ->assertSee('class="absolute inset-4 z-[30] flex items-center justify-center', false)
+        ->assertSee('class="brand-panel overflow-hidden p-4 transition sm:p-5"', false)
+        ->assertSee('class="relative"', false)
+        ->assertSee('class="absolute inset-0 z-[1100] flex items-center justify-center', false)
         ->assertDontSee('class="fixed inset-0 z-[90]', false)
+        ->assertDontSee('class="absolute inset-4 z-[30]', false)
         ->assertSee($approvedVendor->store_name)
         ->assertDontSee($pendingVendor->store_name)
         ->assertDontSee($rejectedVendor->store_name);
