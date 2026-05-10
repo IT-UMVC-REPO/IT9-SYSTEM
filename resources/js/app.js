@@ -832,11 +832,9 @@ window.sukiOrderLocationMap = (options) => ({
 
 });
 
-window.riderTrackingMap = (config) => ({
+window.sukiUnifiedOrderMap = (config) => ({
     map: null,
     riderMarker: null,
-    vendorMarker: null,
-    customerMarker: null,
     echoChannel: null,
     distanceLabel: '',
 
@@ -866,43 +864,80 @@ window.riderTrackingMap = (config) => ({
                 zoom: 14,
                 zoomControl: true,
                 scrollWheelZoom: false,
+                attributionControl: false,
             });
 
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+
+            L.control.attribution({ prefix: false }).addTo(this.map);
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19,
             }).addTo(this.map);
 
-            if (vendorLat !== null && vendorLng !== null) {
-                this.vendorMarker = L.marker([vendorLat, vendorLng], {
-                    icon: this.createIcon('var(--brand-600, #059669)', 'V'),
-                }).addTo(this.map).bindPopup(`<strong>${escapeHtml(config.vendorName)}</strong><br>Pickup point`);
-            }
-
+            // Customer marker
             if (customerLat !== null && customerLng !== null) {
-                this.customerMarker = L.marker([customerLat, customerLng], {
-                    icon: this.createIcon('royalblue', 'C'),
+                L.marker([customerLat, customerLng], {
+                    icon: this.createPinIcon('var(--map-customer-marker, royalblue)'),
                 }).addTo(this.map).bindPopup(`<strong>Your location</strong><br>${escapeHtml(config.customerAddress)}`);
             }
 
+            // Vendor marker
+            if (vendorLat !== null && vendorLng !== null) {
+                L.marker([vendorLat, vendorLng], {
+                    icon: this.createPinIcon('var(--map-vendor-warning-marker, orange)'),
+                }).addTo(this.map).bindPopup(`<strong>${escapeHtml(config.vendorName)}</strong><br>${escapeHtml(config.vendorAddress)}`);
+            }
+
+            // Rider marker (only when active)
             if (riderLat !== null && riderLng !== null) {
                 this.riderMarker = L.marker([riderLat, riderLng], {
-                    icon: this.createIcon('#f97316', 'R'),
+                    icon: this.createLetterIcon('#f97316', 'R'),
                 }).addTo(this.map).bindPopup('<strong>Your rider</strong>');
                 this.updateDistanceLabel(riderLat, riderLng);
             }
 
-            const points = [
-                [vendorLat, vendorLng],
-                [customerLat, customerLng],
-                [riderLat, riderLng],
-            ].filter(([lat, lng]) => lat !== null && lng !== null);
+            // Route line between customer and vendor
+            if (customerLat !== null && customerLng !== null && vendorLat !== null && vendorLng !== null) {
+                const from = { lat: customerLat, lng: customerLng };
+                const to = { lat: vendorLat, lng: vendorLng };
 
-            if (points.length > 1) {
-                this.map.fitBounds(L.latLngBounds(points).pad(0.2));
+                fetchRoute(from, to)
+                    .then(({ latLngs, distance }) => {
+                        const routeLine = L.polyline(latLngs, {
+                            color: 'var(--brand-600, #059669)',
+                            weight: 4,
+                            opacity: 0.8,
+                        }).addTo(this.map);
+
+                        // Fit bounds to include route + rider if present
+                        const bounds = routeLine.getBounds();
+
+                        if (riderLat !== null && riderLng !== null) {
+                            bounds.extend([riderLat, riderLng]);
+                        }
+
+                        this.map.fitBounds(bounds, {
+                            padding: [32, 32],
+                            maxZoom: 16,
+                        });
+
+                        if (!config.riderActive) {
+                            this.distanceLabel = `~${distance.toFixed(1)} km by road`;
+                        }
+                    })
+                    .catch(() => {
+                        // Fallback: fit to all markers
+                        this.fitToAllMarkers(L, customerLat, customerLng, vendorLat, vendorLng, riderLat, riderLng);
+                    });
+            } else {
+                this.fitToAllMarkers(L, customerLat, customerLng, vendorLat, vendorLng, riderLat, riderLng);
             }
 
-            if (window.Echo) {
+            // Live rider tracking via Echo
+            if (config.riderActive && window.Echo) {
                 this.echoChannel = window.Echo.private(`order.${config.orderId}`);
                 this.echoChannel.listen('.RiderLocationUpdated', (event) => {
                     const nextLat = this.numberOrNull(event.lat);
@@ -918,7 +953,7 @@ window.riderTrackingMap = (config) => ({
                         this.riderMarker.setLatLng(latlng);
                     } else {
                         this.riderMarker = L.marker(latlng, {
-                            icon: this.createIcon('#f97316', 'R'),
+                            icon: this.createLetterIcon('#f97316', 'R'),
                         }).addTo(this.map).bindPopup('<strong>Your rider</strong>');
                     }
 
@@ -932,12 +967,25 @@ window.riderTrackingMap = (config) => ({
     },
 
     destroy() {
-        if (window.Echo) {
+        if (window.Echo && config.orderId) {
             window.Echo.leave(`order.${config.orderId}`);
         }
 
         this.map?.remove();
         this.map = null;
+        this.riderMarker = null;
+    },
+
+    fitToAllMarkers(L, customerLat, customerLng, vendorLat, vendorLng, riderLat, riderLng) {
+        const points = [
+            [customerLat, customerLng],
+            [vendorLat, vendorLng],
+            [riderLat, riderLng],
+        ].filter(([lat, lng]) => lat !== null && lng !== null);
+
+        if (points.length > 1) {
+            this.map.fitBounds(L.latLngBounds(points).pad(0.2));
+        }
     },
 
     updateDistanceLabel(riderLat, riderLng) {
@@ -959,7 +1007,28 @@ window.riderTrackingMap = (config) => ({
         return Number.isFinite(number) ? number : null;
     },
 
-    createIcon(color, letter) {
+    createPinIcon(background) {
+        return window.L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 34px; height: 34px;
+                    border-radius: 50% 50% 50% 0;
+                    background: ${background};
+                    border: 3px solid white;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+                    display: flex; align-items: center; justify-content: center;
+                    transform: rotate(-45deg);
+                ">
+                    <span style="transform: rotate(45deg); width: 9px; height: 9px; border-radius: 9999px; background: white;"></span>
+                </div>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 34],
+            popupAnchor: [0, -38],
+        });
+    },
+
+    createLetterIcon(color, letter) {
         return window.L.divIcon({
             className: '',
             html: `<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;background:${color};border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;transform:rotate(-45deg)"><span style="transform:rotate(45deg);color:white;font-size:11px;font-weight:700">${escapeHtml(letter)}</span></div>`,

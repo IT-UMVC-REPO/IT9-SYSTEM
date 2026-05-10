@@ -331,56 +331,88 @@ new #[Title('Order Detail')] class extends Component {
                 </div>
             </section>
 
-            <x-order-location-map
-                :customer="$this->order->customer"
-                :vendor-profile="$this->order->vendor"
-                height="250px"
-                customer-label="Delivery Point"
-                vendor-label="Vendor Stall"
-                vendor-marker="vendorOrange"
-            />
-
             @php
-                $trackingCustomerLat = $this->order->delivery_lat ?? $this->order->customer->lat;
-                $trackingCustomerLng = $this->order->delivery_lng ?? $this->order->customer->lng;
+                $mapCustomer = $this->order->customer;
+                $mapVendor = $this->order->vendor;
+                $hasCustomerLocation = $mapCustomer instanceof \App\Models\User && $mapCustomer->hasLocation();
+                $hasVendorLocation = $mapVendor instanceof \App\Models\VendorProfile && $mapVendor->hasLocation();
+                $isRiderActive = in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true)
+                    && $this->order->rider_lat !== null
+                    && $this->order->rider_lng !== null;
+                $trackingCustomerLat = $this->order->delivery_lat ?? $mapCustomer->lat;
+                $trackingCustomerLng = $this->order->delivery_lng ?? $mapCustomer->lng;
             @endphp
 
-            @if (in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true) && $this->order->rider_lat !== null && $this->order->rider_lng !== null)
+            @if ($hasCustomerLocation || $hasVendorLocation)
                 <section
-                    x-data="riderTrackingMap({
-                        mapId: 'rider-tracking-map-{{ $this->order->id }}',
+                    x-data="sukiUnifiedOrderMap({
+                        mapId: 'unified-order-map-{{ $this->order->id }}',
+                        customerLat: @js($hasCustomerLocation ? (float) $mapCustomer->lat : null),
+                        customerLng: @js($hasCustomerLocation ? (float) $mapCustomer->lng : null),
+                        customerAddress: @js($mapCustomer->address ?: __('Delivery address')),
+                        vendorLat: @js($hasVendorLocation ? (float) $mapVendor->lat : null),
+                        vendorLng: @js($hasVendorLocation ? (float) $mapVendor->lng : null),
+                        vendorName: @js($mapVendor->store_name),
+                        vendorAddress: @js($mapVendor->vendor_address ?: __('Tagum City')),
+                        riderActive: @js($isRiderActive),
+                        riderLat: @js($isRiderActive ? (float) $this->order->rider_lat : null),
+                        riderLng: @js($isRiderActive ? (float) $this->order->rider_lng : null),
                         orderId: @js($this->order->id),
-                        riderLat: @js((float) $this->order->rider_lat),
-                        riderLng: @js((float) $this->order->rider_lng),
-                        vendorLat: @js($this->order->vendor->lat === null ? null : (float) $this->order->vendor->lat),
-                        vendorLng: @js($this->order->vendor->lng === null ? null : (float) $this->order->vendor->lng),
-                        vendorName: @js($this->order->vendor->store_name),
-                        customerLat: @js($trackingCustomerLat === null ? null : (float) $trackingCustomerLat),
-                        customerLng: @js($trackingCustomerLng === null ? null : (float) $trackingCustomerLng),
-                        customerAddress: @js($this->order->delivery_address),
                     })"
                     x-init="init()"
                     x-on:livewire:navigating.window="destroy()"
                     class="brand-panel overflow-hidden p-5 sm:p-6"
                 >
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="flex h-3 w-3 animate-pulse rounded-full bg-orange-500"></span>
-                            <p class="brand-kicker !mb-0">{{ __('Live Rider Tracking') }}</p>
+                        <div>
+                            <div class="flex items-center gap-3">
+                                @if ($isRiderActive)
+                                    <span class="flex h-3 w-3 animate-pulse rounded-full bg-orange-500"></span>
+                                @endif
+                                <p class="brand-kicker !mb-0">{{ $isRiderActive ? __('Delivery map · Live tracking') : __('Delivery map') }}</p>
+                            </div>
+                            <div class="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-neutral-500 dark:text-zinc-400">
+                                @if ($hasCustomerLocation)
+                                    <span class="inline-flex items-center gap-2">
+                                        <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                        {{ __('Delivery Point') }}
+                                    </span>
+                                @endif
+                                @if ($hasVendorLocation)
+                                    <span class="inline-flex items-center gap-2">
+                                        <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                                        {{ __('Vendor Stall') }}
+                                    </span>
+                                @endif
+                                @if ($isRiderActive)
+                                    <span class="inline-flex items-center gap-2">
+                                        <span class="h-2.5 w-2.5 rounded-full bg-[#f97316]"></span>
+                                        {{ __('Rider') }}
+                                    </span>
+                                @endif
+                            </div>
                         </div>
-                        <p x-text="distanceLabel" class="min-h-5 text-sm font-semibold text-orange-600 dark:text-orange-300"></p>
+
+                        <p x-text="distanceLabel" class="min-h-5 text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]"></p>
                     </div>
-                    <p class="mb-4 text-sm text-neutral-500 dark:text-zinc-400">
-                        {{ $this->order->order_status === OrderStatus::PickedUp
-                            ? __('Your rider has picked up the order and is preparing to head your way.')
-                            : __('Your rider is on the way! Track their location below.') }}
-                    </p>
-                    <div class="overflow-hidden rounded-[1.5rem] border border-stone-200 dark:border-white/10">
-                        <div id="rider-tracking-map-{{ $this->order->id }}" wire:ignore class="h-[300px] w-full"></div>
+
+                    @if ($isRiderActive)
+                        <p class="mb-4 text-sm text-neutral-500 dark:text-zinc-400">
+                            {{ $this->order->order_status === OrderStatus::PickedUp
+                                ? __('Your rider has picked up the order and is preparing to head your way.')
+                                : __('Your rider is on the way! Track their location below.') }}
+                        </p>
+                    @endif
+
+                    <div class="overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900">
+                        <div id="unified-order-map-{{ $this->order->id }}" wire:ignore class="h-[300px] w-full"></div>
                     </div>
-                    <p class="mt-3 text-xs text-neutral-400 dark:text-zinc-500">
-                        {{ __('Map updates every 10 seconds. Rider location is approximate.') }}
-                    </p>
+
+                    @if ($isRiderActive)
+                        <p class="mt-3 text-xs text-neutral-400 dark:text-zinc-500">
+                            {{ __('Map updates every 10 seconds. Rider location is approximate.') }}
+                        </p>
+                    @endif
                 </section>
             @endif
 
