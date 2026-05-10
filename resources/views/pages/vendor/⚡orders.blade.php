@@ -160,7 +160,7 @@ new #[Title('Vendor Orders')] class extends Component
 
                     <flux:table.rows>
                         @foreach ($this->orders as $order)
-                            <flux:table.row :key="$order->id">
+                            <flux:table.row :key="$order->id" wire:transition>
                                 <flux:table.cell>{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->customer->name }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->order_items_count }}</flux:table.cell>
@@ -169,7 +169,7 @@ new #[Title('Vendor Orders')] class extends Component
                                 <flux:table.cell><x-order-status-badge :status="$order->order_status" /></flux:table.cell>
                                 <flux:table.cell>{{ $order->created_at->format('M j, Y') }}</flux:table.cell>
                                 <flux:table.cell align="end">
-                                    <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary">
+                                    <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                         {{ __('View') }}
                                     </a>
                                 </flux:table.cell>
@@ -181,7 +181,7 @@ new #[Title('Vendor Orders')] class extends Component
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->orders as $order)
-                    <article class="brand-panel suki-reveal p-5" wire:key="mobile-vendor-order-{{ $order->id }}" style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
+                    <article class="brand-panel suki-reveal p-5" wire:key="mobile-vendor-order-{{ $order->id }}" wire:transition style="transition-delay: {{ min($loop->index * 60, 360) }}ms">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -198,7 +198,7 @@ new #[Title('Vendor Orders')] class extends Component
                             <p>{{ $order->created_at->format('M j, Y g:i A') }}</p>
                         </div>
 
-                        <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary mt-5 w-full">
+                        <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary active:scale-[0.96] mt-5 w-full">
                             {{ __('View order') }}
                         </a>
                     </article>
@@ -211,7 +211,7 @@ new #[Title('Vendor Orders')] class extends Component
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-16 text-center">
+            <div wire:transition class="brand-panel px-6 py-16 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-neutral-600 dark:text-zinc-300" style="background-color: color-mix(in oklab, var(--brand-50) 72%, white 28%);">
                     <i class="fa-solid fa-basket-shopping text-xl"></i>
                 </span>

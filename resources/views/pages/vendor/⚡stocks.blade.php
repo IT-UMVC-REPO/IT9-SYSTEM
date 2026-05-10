@@ -517,11 +517,7 @@ new #[Title('Stock Management')] class extends Component {
 
     @if (count($selectedIds) > 0)
         <div
-            x-data
-            x-show="true"
-            x-transition:enter="transition ease-out duration-250"
-            x-transition:enter-start="opacity-0 -translate-y-2"
-            x-transition:enter-end="opacity-100 translate-y-0"
+            wire:transition
             class="brand-panel flex flex-wrap items-center gap-3 border-2 border-[var(--brand-500)] px-4 py-3"
         >
             <span class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
@@ -566,7 +562,7 @@ new #[Title('Stock Management')] class extends Component {
                                     : $product->category?->name;
                             @endphp
 
-                            <tr wire:key="stock-row-{{ $product->id }}" class="group transition-colors duration-150 hover:bg-stone-50/80 dark:hover:bg-white/5">
+                            <tr wire:key="stock-row-{{ $product->id }}" wire:transition class="group transition-colors duration-150 hover:bg-stone-50/80 dark:hover:bg-white/5">
                                 <td class="px-4 py-5 align-top">
                                     <flux:checkbox wire:model.live="selectedIds" :value="$product->id" />
                                 </td>
@@ -602,11 +598,7 @@ new #[Title('Stock Management')] class extends Component {
                                 <td class="px-4 py-5 align-top">
                                     @if (isset($inlineEdits[$product->id]))
                                         <div
-                                            x-data
-                                            x-show="true"
-                                            x-transition:enter="transition ease-out duration-200"
-                                            x-transition:enter-start="opacity-0 scale-95"
-                                            x-transition:enter-end="opacity-100 scale-100"
+                                            wire:transition
                                             class="flex min-w-[260px] flex-col gap-2"
                                         >
                                             <div class="flex overflow-hidden rounded-lg border border-stone-200 text-xs font-semibold dark:border-zinc-700">

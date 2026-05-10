@@ -15,7 +15,7 @@
         : 'brand-soft-surface';
     $buttonClasses = $isDanger
         ? 'inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700'
-        : 'brand-button-primary';
+        : 'brand-button-primary active:scale-[0.96]';
 @endphp
 
 <flux:modal name="{{ $name }}" class="{{ $maxWidth }} p-6 sm:p-7" {{ $attributes }}>

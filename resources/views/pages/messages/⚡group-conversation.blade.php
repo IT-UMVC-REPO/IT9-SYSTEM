@@ -101,11 +101,11 @@
                         <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ $groupDisplayName }}</p>
 
                         <div class="mt-4 flex flex-wrap items-center gap-2">
-                            <button type="button" x-on:click="acceptCall()" class="brand-button-primary px-4 py-2">
+                            <button type="button" x-on:click="acceptCall()" class="brand-button-primary active:scale-[0.96] px-4 py-2">
                                 <flux:icon.phone variant="micro" />
                                 {{ __('Accept') }}
                             </button>
-                            <button type="button" x-on:click="declineGroupCall()" class="brand-button-secondary px-4 py-2">
+                            <button type="button" x-on:click="declineGroupCall()" class="brand-button-secondary active:scale-[0.96] px-4 py-2">
                                 <flux:icon.phone-x-mark variant="micro" />
                                 {{ __('Decline') }}
                             </button>
@@ -828,7 +828,7 @@
                                 <h2 class="mt-3 text-lg font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Members') }}</h2>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button type="button" x-on:click="showInfo = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0 lg:hidden" aria-label="{{ __('Close group info') }}">
+                                <button type="button" x-on:click="showInfo = false" class="brand-button-secondary active:scale-[0.96] inline-flex h-9 w-9 items-center justify-center p-0 lg:hidden" aria-label="{{ __('Close group info') }}">
                                     <i class="fa-solid fa-xmark text-xs"></i>
                                 </button>
                                 <button type="button" wire:click="leaveGroup" wire:confirm="{{ __('Leave this group?') }}" class="text-xs font-semibold text-rose-600 transition hover:text-rose-700 dark:text-rose-400">

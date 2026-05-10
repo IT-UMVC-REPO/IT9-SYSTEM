@@ -78,8 +78,8 @@
         <section class="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]">
             <div class="self-start">
                 <div class="overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
-                    <div x-data="sukiLazyImage()" x-init="load($refs.img)" class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
-                        <div x-show="!loaded && !error" class="suki-skeleton absolute inset-0 rounded-[2rem]"></div>
+                    <div x-data="sukiImg()" x-init="bind($refs.img)" class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                        <div x-show="!loaded" class="suki-skeleton absolute inset-0 rounded-[2rem]"></div>
                         <img
                             x-ref="img"
                             x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
@@ -111,7 +111,7 @@
                         <a
                             href="{{ route('messages.conversation', ['conversationReference' => $product->vendor->user->id]) }}"
                             wire:navigate
-                            class="brand-card-hover block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
+                            class="brand-card-hover suki-reveal block rounded-2xl border border-stone-200 bg-stone-50 p-5 transition dark:border-white/10 dark:bg-zinc-800"
                         >
                             <span class="brand-accent-text-strong flex items-center gap-3">
                                 <i class="fa-solid fa-comments"></i>
@@ -127,7 +127,7 @@
             </div>
 
             <div class="self-start space-y-5 xl:sticky xl:top-24">
-                <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
+                <div class="brand-panel suki-reveal p-6 dark:border-white/10 dark:bg-zinc-900">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Listing snapshot') }}</p>
 
                     <div class="suki-reveal mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1" style="transition-delay: 100ms">
@@ -151,13 +151,13 @@
 
                     <a
                         href="{{ route('shop.home', ['category' => $product->category->id]) }}"
-                        class="brand-button-secondary mt-5 w-full"
+                        class="brand-button-secondary active:scale-[0.96] mt-5 w-full"
                     >
                         {{ __('Explore more :category', ['category' => strtolower($product->category->name)]) }}
                     </a>
                 </div>
 
-                <div class="brand-panel p-6 dark:border-white/10 dark:bg-zinc-900">
+                <div class="brand-panel suki-reveal p-6 dark:border-white/10 dark:bg-zinc-900">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">Sold by</p>
                     <a href="{{ route('shop.vendors.show', $product->vendor) }}" class="group mt-3 block">
                         <h2 class="brand-group-hover-text brand-serif text-2xl font-bold text-neutral-900 transition dark:text-zinc-100">{{ $product->vendor->store_name }}</h2>

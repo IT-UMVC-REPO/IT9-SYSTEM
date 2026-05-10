@@ -220,7 +220,7 @@
                         <a href="{{ route('login') }}" class="brand-link" wire:navigate>
                             {{ __('Log in') }}
                         </a>
-                        <a href="{{ route('register') }}" class="brand-button-primary" wire:navigate>
+                        <a href="{{ route('register') }}" class="brand-button-primary active:scale-[0.96]" wire:navigate>
                             {{ __('Create account') }}
                         </a>
                     </div>
@@ -248,12 +248,12 @@
             <div
                 x-cloak
                 x-show="mobileMenuOpen"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="-translate-y-3 opacity-0"
-                x-transition:enter-end="translate-y-0 opacity-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="translate-y-0 opacity-100"
-                x-transition:leave-end="-translate-y-3 opacity-0"
+                x-transition:enter="transition ease-out duration-220"
+                x-transition:enter-start="-translate-y-4 opacity-0 scale-[0.98]"
+                x-transition:enter-end="translate-y-0 opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-160"
+                x-transition:leave-start="translate-y-0 opacity-100 scale-100"
+                x-transition:leave-end="-translate-y-3 opacity-0 scale-[0.98]"
                 class="fixed inset-x-3 top-[60px] z-[60] max-h-[calc(100vh-76px)] overflow-y-auto rounded-[1.75rem] border border-stone-200 bg-white shadow-2xl dark:border-white/10 dark:bg-zinc-900 dark:shadow-black/40 lg:hidden"
             >
                 @auth
@@ -345,17 +345,17 @@
                                 </p>
                             </div>
 
-                            <button type="button" x-on:click="mobileMenuOpen = false" class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0" aria-label="{{ __('Close menu') }}">
+                            <button type="button" x-on:click="mobileMenuOpen = false" class="brand-button-secondary active:scale-[0.96] inline-flex h-9 w-9 items-center justify-center p-0" aria-label="{{ __('Close menu') }}">
                                 <i class="fa-solid fa-xmark text-xs"></i>
                             </button>
                         </div>
                     </div>
 
                     <div class="grid gap-3 p-4">
-                        <a href="{{ route('login') }}" class="brand-button-secondary w-full" wire:navigate x-on:click="mobileMenuOpen = false">
+                        <a href="{{ route('login') }}" class="brand-button-secondary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
                             {{ __('Log in') }}
                         </a>
-                        <a href="{{ route('register') }}" class="brand-button-primary w-full" wire:navigate x-on:click="mobileMenuOpen = false">
+                        <a href="{{ route('register') }}" class="brand-button-primary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
                             {{ __('Create account') }}
                         </a>
                     </div>

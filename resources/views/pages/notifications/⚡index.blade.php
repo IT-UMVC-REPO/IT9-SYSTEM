@@ -166,7 +166,7 @@ new #[Title('Notifications')] class extends Component
                 @endforeach
             </div>
 
-            <button type="button" wire:click="markAllAsRead" wire:loading.attr="disabled" class="brand-button-secondary">
+            <button type="button" wire:click="markAllAsRead" wire:loading.attr="disabled" class="brand-button-secondary active:scale-[0.96]">
                 <i class="fa-solid fa-check-double text-xs"></i>
                 {{ __('Mark all as read') }}
             </button>
@@ -183,6 +183,7 @@ new #[Title('Notifications')] class extends Component
 
                     <article
                         wire:key="notification-row-{{ $notification->getKey() }}"
+                        wire:transition
                         style="transition-delay: {{ min($loop->index * 60, 400) }}ms"
                         @class([
                             'brand-panel suki-reveal flex flex-col gap-4 p-5 transition-all duration-300 sm:flex-row sm:items-start',

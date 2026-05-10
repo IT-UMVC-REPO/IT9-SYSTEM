@@ -151,7 +151,7 @@ new #[Title('Marketplace Order Oversight')] class extends Component
 
                     <flux:table.rows>
                         @foreach ($this->orders as $order)
-                            <flux:table.row :key="$order->id">
+                            <flux:table.row :key="$order->id" wire:transition>
                                 <flux:table.cell>{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->customer->name }}</flux:table.cell>
                                 <flux:table.cell>{{ $order->vendor->store_name }}</flux:table.cell>
@@ -169,7 +169,7 @@ new #[Title('Marketplace Order Oversight')] class extends Component
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->orders as $order)
-                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="admin-mobile-order-{{ $order->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="admin-mobile-order-{{ $order->id }}" wire:transition>
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -195,7 +195,7 @@ new #[Title('Marketplace Order Oversight')] class extends Component
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-16 text-center">
+            <div wire:transition class="brand-panel px-6 py-16 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-neutral-600 dark:text-zinc-300" style="background-color: color-mix(in oklab, var(--brand-50) 72%, white 28%);">
                     <i class="fa-solid fa-receipt text-xl"></i>
                 </span>

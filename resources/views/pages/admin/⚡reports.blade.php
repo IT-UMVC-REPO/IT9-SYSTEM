@@ -178,7 +178,7 @@ new #[Title('User Reports')] class extends Component
                     <flux:table.rows>
                         @foreach ($this->reports as $report)
                             @php($detailUrl = route('admin.reports.show', $report))
-                            <flux:table.row :key="$report->id">
+                            <flux:table.row :key="$report->id" wire:transition>
                                 <flux:table.cell>
                                     <a href="{{ $detailUrl }}" wire:navigate class="flex items-center gap-3 rounded-2xl px-1 py-1 transition hover:bg-stone-50/70 dark:hover:bg-white/5">
                                         <x-user-avatar :user="$report->reporter" size="sm" />
@@ -232,7 +232,7 @@ new #[Title('User Reports')] class extends Component
                                 </flux:table.cell>
 
                                 <flux:table.cell align="end">
-                                    <a href="{{ $detailUrl }}" wire:navigate class="brand-button-secondary">
+                                    <a href="{{ $detailUrl }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                         {{ $report->status === ReportStatus::Open ? __('Review case') : __('View case') }}
                                     </a>
                                 </flux:table.cell>
@@ -247,6 +247,7 @@ new #[Title('User Reports')] class extends Component
                     <a
                         href="{{ route('admin.reports.show', $report) }}"
                         wire:key="mobile-report-{{ $report->id }}"
+                        wire:transition
                         wire:navigate
                         class="brand-panel suki-reveal block p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style="transition-delay: {{ min($loop->index * 60, 360) }}ms"
                     >
@@ -295,7 +296,7 @@ new #[Title('User Reports')] class extends Component
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-14 text-center">
+            <div wire:transition class="brand-panel px-6 py-14 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                     <i class="fa-solid fa-flag text-xl"></i>
                 </span>

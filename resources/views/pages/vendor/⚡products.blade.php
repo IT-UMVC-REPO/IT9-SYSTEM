@@ -236,7 +236,7 @@ new #[Title('My products')] class extends Component {
             </p>
         </div>
 
-        <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary">
+        <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary active:scale-[0.96]">
             <i class="fa-solid fa-plus text-xs"></i>
             {{ __('New product') }}
         </a>
@@ -309,7 +309,7 @@ new #[Title('My products')] class extends Component {
         @if ($this->products->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->products as $product)
-                    <article wire:key="vendor-product-{{ $product->id }}" class="brand-panel flex h-full flex-col p-5 sm:p-6">
+                    <article wire:key="vendor-product-{{ $product->id }}" wire:transition class="brand-panel flex h-full flex-col p-5 sm:p-6">
                         <div class="overflow-hidden rounded-[1.5rem] bg-stone-100 dark:bg-zinc-800">
                             <img
                                 src="{{ $product->image_url }}"
@@ -356,13 +356,13 @@ new #[Title('My products')] class extends Component {
                                     wire:click="toggleStatus({{ $product->id }})"
                                     wire:loading.attr="disabled"
                                     wire:target="toggleStatus({{ $product->id }})"
-                                    class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
+                                    class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]"
                                 >
                                     {{ $product->status === ProductStatus::Active ? __('Set inactive') : __('Publish listing') }}
                                 </button>
 
                                 <div class="grid grid-cols-3 gap-2">
-                                    <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]">
+                                    <a href="{{ route('vendor.products.edit', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]">
                                         {{ __('Edit') }}
                                     </a>
 
@@ -412,7 +412,7 @@ new #[Title('My products')] class extends Component {
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-14 text-center">
+            <div wire:transition class="brand-panel px-6 py-14 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                     <i class="fa-solid fa-box-open text-xl"></i>
                 </span>
@@ -422,7 +422,7 @@ new #[Title('My products')] class extends Component {
                 <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                     {{ __('Create your first product to start building out your storefront and give shoppers something to browse.') }}
                 </p>
-                <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary mt-6">
+                <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary active:scale-[0.96] mt-6">
                     {{ __('Create a product') }}
                 </a>
             </div>

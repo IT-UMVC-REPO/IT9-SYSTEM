@@ -13,7 +13,7 @@
                 {{ __('We have received your store profile for :store. The admin team is reviewing your application before opening your dashboard.', ['store' => $this->currentVendorProfile->store_name]) }}
             </p>
 
-            <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary mt-8">
+            <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] mt-8">
                 {{ __('Return to storefront') }}
             </a>
         </section>
@@ -37,11 +37,11 @@
                 </p>
 
                 <div class="mt-8 flex flex-wrap gap-3">
-                    <button type="button" wire:click="beginReapplication" class="brand-button-primary">
+                    <button type="button" wire:click="beginReapplication" class="brand-button-primary active:scale-[0.96]">
                         {{ __('Reapply') }}
                     </button>
 
-                    <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary">
+                    <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                         {{ __('Return to storefront') }}
                     </a>
                 </div>
@@ -107,7 +107,7 @@
                                     class="aspect-[5/3] w-full rounded-[1.5rem] object-cover"
                                 >
 
-                                <label for="store-image-upload" class="brand-button-secondary w-full cursor-pointer">
+                                <label for="store-image-upload" class="brand-button-secondary active:scale-[0.96] w-full cursor-pointer">
                                     {{ __('Choose a different image') }}
                                 </label>
                             </div>
@@ -166,7 +166,7 @@
                                 </p>
                             </div>
 
-                            <button type="button" wire:click="addSampleProduct" class="brand-button-secondary transition-all duration-150 active:scale-[0.97]">
+                            <button type="button" wire:click="addSampleProduct" class="brand-button-secondary transition-all duration-150 active:scale-[0.96]">
                                 <i class="fa-solid fa-plus text-xs"></i>
                                 {{ __('Add another sample product') }}
                             </button>
@@ -180,6 +180,7 @@
                             @foreach ($sampleProducts as $index => $sampleProduct)
                                 <article
                                     wire:key="vendor-registration-sample-product-{{ $sampleProduct['productId'] ?? 'new-'.$index }}"
+                                    wire:transition
                                     class="brand-panel p-6 sm:p-8"
                                 >
                                     <div class="flex items-start justify-between gap-4">
@@ -225,7 +226,7 @@
                                                         class="aspect-video w-full rounded-2xl object-cover"
                                                     >
 
-                                                    <label for="sample-product-image-{{ $index }}" class="brand-button-secondary w-full cursor-pointer">
+                                                    <label for="sample-product-image-{{ $index }}" class="brand-button-secondary active:scale-[0.96] w-full cursor-pointer">
                                                         {{ __('Choose a different image') }}
                                                     </label>
                                                 </div>
@@ -335,7 +336,7 @@
                         type="submit"
                         wire:loading.attr="disabled"
                         wire:target="submit,storeImageUpload,sampleProductUploads"
-                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
+                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.96]"
                     >
                         <span wire:loading.remove wire:target="submit">
                             {{ $showReapplicationForm ? __('Submit reapplication') : __('Submit application') }}

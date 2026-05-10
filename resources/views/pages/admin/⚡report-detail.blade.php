@@ -279,7 +279,7 @@ new #[Title('Report detail')] class extends Component
                     </div>
 
                     @if ($report->order !== null)
-                        <a href="{{ route('admin.orders', ['search' => $report->order->id]) }}" wire:navigate class="brand-button-secondary">
+                        <a href="{{ route('admin.orders', ['search' => $report->order->id]) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                             {{ __('Open linked order') }}
                         </a>
                     @endif
@@ -337,7 +337,7 @@ new #[Title('Report detail')] class extends Component
                         </div>
 
                         @if ($attachmentUrl !== null)
-                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" download="{{ $attachmentName }}" class="brand-button-secondary">
+                            <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer" download="{{ $attachmentName }}" class="brand-button-secondary active:scale-[0.96]">
                                 {{ __('Download attachment') }}
                             </a>
                         @endif
@@ -414,7 +414,7 @@ new #[Title('Report detail')] class extends Component
             </div>
 
             <div class="mt-6 space-y-4">
-                <a href="{{ route('messages.conversation', ['conversationReference' => $report->reportedUser->id]) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.97]">
+                <a href="{{ route('messages.conversation', ['conversationReference' => $report->reportedUser->id]) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.96]">
                     {{ __('Send message to reported user') }}
                 </a>
 
@@ -433,7 +433,7 @@ new #[Title('Report detail')] class extends Component
                         type="button"
                         x-data
                         x-on:click="$flux.modal('reactivate-reported-user').show()"
-                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
+                        class="brand-button-primary w-full transition-all duration-150 active:scale-[0.96]"
                     >
                         {{ __('Reactivate account') }}
                     </button>
@@ -460,7 +460,7 @@ new #[Title('Report detail')] class extends Component
                     </div>
 
                     <div class="mt-5 space-y-3">
-                        <button type="submit" class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]">
+                        <button type="submit" class="brand-button-primary w-full transition-all duration-150 active:scale-[0.96]">
                             {{ __('Mark as reviewed') }}
                         </button>
 
@@ -486,7 +486,7 @@ new #[Title('Report detail')] class extends Component
                         type="button"
                         x-data
                         x-on:click="$flux.modal('reopen-report').show()"
-                        class="brand-button-primary mt-5 w-full"
+                        class="brand-button-primary active:scale-[0.96] mt-5 w-full"
                     >
                         {{ __('Re-open report') }}
                     </button>

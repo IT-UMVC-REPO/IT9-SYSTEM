@@ -20,11 +20,11 @@
             : route('register');
         $heroActions = auth()->check()
             ? [
-                ['label' => 'Go to my dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Go to my dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary active:scale-[0.96]', 'icon' => 'fa-solid fa-arrow-right text-xs'],
             ]
             : [
-                ['label' => 'Create a customer account', 'href' => route('register'), 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
-                ['label' => 'Sign in to continue', 'href' => route('login'), 'class' => 'brand-button-secondary', 'icon' => null],
+                ['label' => 'Create a customer account', 'href' => route('register'), 'class' => 'brand-button-primary active:scale-[0.96]', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Sign in to continue', 'href' => route('login'), 'class' => 'brand-button-secondary active:scale-[0.96]', 'icon' => null],
             ];
         $marketBadges = [
             ['icon' => 'fa-solid fa-circle-check', 'label' => 'Fresh daily listings'],
@@ -33,10 +33,10 @@
         ];
         $ctaActions = auth()->check()
             ? [
-                ['label' => 'Go to your dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Go to your dashboard', 'href' => $portalHomeRoute, 'class' => 'brand-button-primary active:scale-[0.96]', 'icon' => 'fa-solid fa-arrow-right text-xs'],
             ]
             : [
-                ['label' => 'Create a free account', 'href' => route('register'), 'class' => 'brand-button-primary', 'icon' => 'fa-solid fa-arrow-right text-xs'],
+                ['label' => 'Create a free account', 'href' => route('register'), 'class' => 'brand-button-primary active:scale-[0.96]', 'icon' => 'fa-solid fa-arrow-right text-xs'],
                 ['label' => 'Sign in', 'href' => route('login'), 'class' => 'inline-flex items-center justify-center rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-300 transition hover:border-neutral-500 hover:text-white', 'icon' => null],
             ];
         $footerLinks = [
@@ -300,7 +300,7 @@
             </div>
         </section>
 
-        <section class="bg-neutral-950 py-24 dark:bg-zinc-900">
+        <section class="suki-reveal bg-neutral-950 py-24 dark:bg-zinc-900">
             <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
                 <h2 class="brand-serif mt-6 text-4xl font-bold text-white sm:text-5xl">Explore the customer storefront today.</h2>
                 <p class="mt-5 text-lg leading-8 text-neutral-300">

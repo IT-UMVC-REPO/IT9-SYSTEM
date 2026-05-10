@@ -154,7 +154,7 @@ new #[Title('Cart')] class extends Component {
                 @foreach ($this->groupedCartItems as $vendorId => $items)
                     @php($vendor = $items->first()->product->vendor)
 
-                    <section wire:key="cart-vendor-{{ $vendorId }}" class="suki-reveal space-y-4" style="transition-delay: {{ $loop->index * 80 }}ms">
+                    <section wire:key="cart-vendor-{{ $vendorId }}" wire:transition class="suki-reveal space-y-4" style="transition-delay: {{ $loop->index * 80 }}ms">
                         <div class="brand-panel-muted flex flex-col gap-4 rounded-[2rem] p-5 sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-center gap-4">
                                 <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
@@ -187,6 +187,7 @@ new #[Title('Cart')] class extends Component {
                         @foreach ($items as $item)
                             <article
                                 wire:key="cart-item-{{ $item->id }}"
+                                wire:transition
                                 class="brand-panel flex flex-col gap-5 p-5 transition-all duration-300 dark:border-white/10 dark:bg-zinc-900"
                                 wire:loading.class="opacity-60 scale-[0.99] blur-[0.5px]"
                                 wire:target="updateQuantity,incrementQuantity,decrementQuantity,removeItem"
@@ -382,18 +383,18 @@ new #[Title('Cart')] class extends Component {
                         </p>
                     </div>
 
-                    <a href="{{ route('shop.checkout') }}" wire:navigate class="brand-button-primary w-full">
+                    <a href="{{ route('shop.checkout') }}" wire:navigate class="brand-button-primary active:scale-[0.96] w-full">
                         {{ __('Proceed to checkout') }}
                     </a>
 
-                    <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary w-full">
+                    <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] w-full">
                         {{ __('Continue shopping') }}
                     </a>
                 </div>
             </aside>
         </section>
     @else
-        <div class="brand-panel px-6 py-14 text-center">
+        <div wire:transition class="brand-panel px-6 py-14 text-center">
             <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                 <i class="fa-solid fa-basket-shopping text-xl"></i>
             </span>
@@ -401,7 +402,7 @@ new #[Title('Cart')] class extends Component {
             <p class="mx-auto mt-2 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                 {{ __('Head to the storefront and find your suki.') }}
             </p>
-            <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary mt-5">
+            <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary active:scale-[0.96] mt-5">
                 {{ __('Browse the market') }}
             </a>
         </div>

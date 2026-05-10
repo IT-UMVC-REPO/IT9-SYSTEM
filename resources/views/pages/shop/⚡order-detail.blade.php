@@ -285,7 +285,7 @@ new #[Title('Order Detail')] class extends Component {
 
                 <div class="divide-y divide-stone-200 dark:divide-white/10">
                     @foreach ($this->order->orderItems as $item)
-                        <div wire:key="order-detail-item-{{ $item->id }}" class="suki-reveal flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8" style="transition-delay: {{ $loop->index * 80 }}ms">
+                        <div wire:key="order-detail-item-{{ $item->id }}" wire:transition class="suki-reveal flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8" style="transition-delay: {{ $loop->index * 80 }}ms">
                             <div class="flex min-w-0 items-center gap-4">
                                 <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
                                     <img src="{{ $item->product->image }}" alt="{{ $item->product->name }}" class="h-full w-full object-cover" loading="lazy">
@@ -372,7 +372,7 @@ new #[Title('Order Detail')] class extends Component {
 
                 <ol class="space-y-4">
                     @foreach ($this->timelineSteps as $step)
-                        <li wire:key="order-step-{{ $step['value'] }}" class="suki-reveal flex items-start gap-4" style="transition-delay: {{ $loop->index * 80 }}ms">
+                        <li wire:key="order-step-{{ $step['value'] }}" wire:transition class="suki-reveal flex items-start gap-4" style="transition-delay: {{ $loop->index * 80 }}ms">
                             <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-transform duration-300 {{ $this->stepMarkerClasses($step['state']) }}">
                                 @if ($step['state'] === 'current-cancelled')
                                     <i class="fa-solid fa-xmark"></i>
@@ -399,7 +399,7 @@ new #[Title('Order Detail')] class extends Component {
                 </ol>
 
                 @if ($this->order->estimated_delivery_at)
-                    <div class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 text-sm dark:border-white/10 dark:bg-zinc-800">
+                    <div wire:transition class="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 text-sm dark:border-white/10 dark:bg-zinc-800">
                         <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Estimated delivery') }}</p>
                         <p class="mt-1 text-neutral-500 dark:text-zinc-400">{{ $this->order->estimated_delivery_at->format('M j, Y g:i A') }}</p>
                         @if ($this->order->delay_note)
@@ -440,7 +440,7 @@ new #[Title('Order Detail')] class extends Component {
 
                 <a
                     href="{{ route('messages.conversation', ['conversationReference' => $this->order->vendor->user->id, 'order' => $this->order->id]) }}"
-                    class="brand-button-secondary w-full"
+                    class="brand-button-secondary active:scale-[0.96] w-full"
                 >
                     {{ __('Message vendor') }}
                 </a>

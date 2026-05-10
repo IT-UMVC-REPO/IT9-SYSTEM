@@ -1,3 +1,10 @@
+// Enable View Transitions API for Livewire navigate.
+import { Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm.js';
+
+document.addEventListener('livewire:navigate', () => {
+    if (!document.startViewTransition) return;
+});
+
 window.global = window.global ?? window;
 
 import './echo';
@@ -1079,5 +1086,84 @@ window.sukiCounter = (target, duration = 1200) => ({
         };
 
         requestAnimationFrame(step);
+    },
+});
+
+/* -- Scroll-reveal (IntersectionObserver) -------------------------- */
+window.sukiReveal = function () {
+    const els = document.querySelectorAll('.suki-reveal:not(.is-visible)');
+
+    if (!els.length) return;
+
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry, index) => {
+            if (!entry.isIntersecting) return;
+
+            entry.target.style.transitionDelay = `${Math.min(index * 55, 320)}ms`;
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
+
+    els.forEach(el => io.observe(el));
+};
+
+document.addEventListener('DOMContentLoaded', window.sukiReveal);
+document.addEventListener('livewire:navigated', () => {
+    window.sukiReveal();
+    document.querySelectorAll('.suki-reveal.is-visible').forEach(el => {
+        el.style.transitionDelay = '';
+    });
+    window.sukiReveal();
+});
+
+/* -- Progressive image load ---------------------------------------- */
+window.sukiImg = () => ({
+    loaded: false,
+    bind(el) {
+        if (!(el instanceof HTMLImageElement)) {
+            return;
+        }
+
+        if (el.complete && el.naturalWidth > 0) {
+            this.loaded = true;
+
+            return;
+        }
+
+        el.addEventListener('load', () => {
+            this.loaded = true;
+        }, { once: true });
+        el.addEventListener('error', () => {
+            this.loaded = true;
+        }, { once: true });
+    },
+});
+
+/* -- Animated counter ---------------------------------------------- */
+window.sukiCount = (raw, ms = 1100) => ({
+    display: '0',
+    start() {
+        const end = parseInt(String(raw).replace(/\D/g, ''), 10);
+
+        if (isNaN(end)) {
+            this.display = raw;
+
+            return;
+        }
+
+        const startTime = performance.now();
+        const tick = (now) => {
+            const progress = Math.min((now - startTime) / ms, 1);
+            const ease = 1 - ((1 - progress) ** 3);
+
+            this.display = Math.round(ease * end).toLocaleString('en-PH');
+
+            if (progress < 1) {
+                requestAnimationFrame(tick);
+            }
+        };
+
+        requestAnimationFrame(tick);
     },
 });

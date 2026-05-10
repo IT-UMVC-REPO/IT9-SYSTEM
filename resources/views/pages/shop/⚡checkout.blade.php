@@ -125,7 +125,7 @@
                 type="submit"
                 wire:loading.attr="disabled"
                 wire:target="placeOrder"
-                class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg hover:shadow-[var(--brand-600)]/20 active:scale-[0.97]"
+                class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg hover:shadow-[var(--brand-600)]/20 active:scale-[0.96]"
             >
                 <span wire:loading.remove wire:target="placeOrder">{{ __('Place order') }}</span>
                 <span wire:loading wire:target="placeOrder">{{ __('Placing order...') }}</span>

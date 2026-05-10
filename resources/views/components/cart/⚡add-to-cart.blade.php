@@ -188,7 +188,7 @@ new class extends Component {
     </div>
 
     @if ($product->stock_quantity > 0)
-        <div class="mt-6 space-y-5">
+        <div wire:transition class="mt-6 space-y-5">
             <div class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
                     <label for="purchase-quantity" class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Quantity') }}</label>
@@ -245,7 +245,7 @@ new class extends Component {
                     wire:click="addToCart"
                     wire:loading.attr="disabled"
                     wire:target="addToCart"
-                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97]"
+                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.96]"
                 >
                     <span wire:loading.remove wire:target="addToCart" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-cart-plus text-xs"></i>
@@ -259,7 +259,7 @@ new class extends Component {
                     wire:click="buyNow"
                     wire:loading.attr="disabled"
                     wire:target="buyNow"
-                    class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]"
+                    class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]"
                 >
                     <span wire:loading.remove wire:target="buyNow" class="inline-flex items-center justify-center gap-2">
                         <i class="fa-solid fa-bolt text-xs"></i>
@@ -271,11 +271,7 @@ new class extends Component {
         </div>
     @else
         <div
-            x-data
-            x-show="true"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-2"
-            x-transition:enter-end="opacity-100 translate-y-0"
+            wire:transition
             class="mt-6 flex flex-col gap-4"
         >
             <span class="inline-flex w-full items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
@@ -284,7 +280,7 @@ new class extends Component {
 
             <a
                 href="{{ route('shop.home', ['category' => $product->category->id]) }}"
-                class="brand-button-secondary w-full"
+                class="brand-button-secondary active:scale-[0.96] w-full"
             >
                 {{ __('Browse similar :category', ['category' => $product->category->name]) }}
             </a>

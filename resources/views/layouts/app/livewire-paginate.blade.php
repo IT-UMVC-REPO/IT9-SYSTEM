@@ -36,7 +36,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                         wire:click="previousPage('{{ $paginator->getPageName() }}')"
                         x-on:click="{{ $scrollIntoViewJsSnippet }}"
                         wire:loading.attr="disabled"
-                        class="brand-button-secondary min-h-11 flex-1"
+                        class="brand-button-secondary active:scale-[0.96] min-h-11 flex-1"
                     >
                         Previous
                     </button>
@@ -48,7 +48,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                         wire:click="nextPage('{{ $paginator->getPageName() }}')"
                         x-on:click="{{ $scrollIntoViewJsSnippet }}"
                         wire:loading.attr="disabled"
-                        class="brand-button-primary min-h-11 flex-1"
+                        class="brand-button-primary active:scale-[0.96] min-h-11 flex-1"
                     >
                         Next
                     </button>

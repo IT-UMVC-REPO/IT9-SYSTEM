@@ -113,7 +113,7 @@ new #[Title('Audit Log')] class extends Component
     </section>
 
     @if (count($liveEntries) > 0)
-        <div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
+        <div wire:transition class="rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] p-4 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
             <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
                     <span class="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--brand-600)]"></span>
@@ -219,7 +219,7 @@ new #[Title('Audit Log')] class extends Component
                             ];
                             $badgeClass = $colorMap[$entry->event->color()] ?? $colorMap['neutral'];
                         @endphp
-                        <tr wire:key="audit-log-{{ $entry->id }}" class="transition-colors duration-150 hover:bg-stone-50/70 dark:hover:bg-white/[3%]">
+                        <tr wire:key="audit-log-{{ $entry->id }}" wire:transition class="transition-colors duration-150 hover:bg-stone-50/70 dark:hover:bg-white/[3%]">
                             <td class="whitespace-nowrap px-5 py-4 text-xs text-neutral-400 dark:text-zinc-500" title="{{ $entry->created_at?->toDateTimeString() }}">
                                 {{ $entry->created_at?->diffForHumans() }}
                             </td>

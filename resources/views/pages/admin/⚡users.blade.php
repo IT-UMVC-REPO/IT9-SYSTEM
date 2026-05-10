@@ -138,7 +138,7 @@ new #[Title('User management')] class extends Component {
             </p>
         </div>
 
-        <button type="button" x-data x-on:click="$flux.modal('create-admin').show()" class="brand-button-primary">
+        <button type="button" x-data x-on:click="$flux.modal('create-admin').show()" class="brand-button-primary active:scale-[0.96]">
             <i class="fa-solid fa-user-shield text-xs"></i>
             {{ __('Create admin') }}
         </button>
@@ -194,7 +194,7 @@ new #[Title('User management')] class extends Component {
 
                     <flux:table.rows>
                         @foreach ($this->users as $user)
-                            <flux:table.row :key="$user->id">
+                            <flux:table.row :key="$user->id" wire:transition>
                                 <flux:table.cell>
                                     <div class="flex items-center gap-3">
                                         <x-user-avatar :user="$user" size="sm" />
@@ -259,7 +259,7 @@ new #[Title('User management')] class extends Component {
                                             </flux:button>
                                         @else
                                             <button type="button" wire:click="toggleActiveStatus({{ $user->id }})"
-                                                class="brand-button-primary">
+                                                class="brand-button-primary active:scale-[0.96]">
                                                 {{ __('Activate') }}
                                             </button>
                                         @endif
@@ -273,7 +273,7 @@ new #[Title('User management')] class extends Component {
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->users as $user)
-                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-user-{{ $user->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-user-{{ $user->id }}" wire:transition>
                         <div class="flex items-start gap-3">
                             <x-user-avatar :user="$user" size="sm" />
 
@@ -328,7 +328,7 @@ new #[Title('User management')] class extends Component {
                                 </flux:button>
                             @else
                                 <button type="button" wire:click="toggleActiveStatus({{ $user->id }})"
-                                    class="brand-button-primary">
+                                    class="brand-button-primary active:scale-[0.96]">
                                     {{ __('Activate') }}
                                 </button>
                             @endif
@@ -349,7 +349,7 @@ new #[Title('User management')] class extends Component {
                 </div>
             @endif
         @else
-            <x-empty-state icon="fa-solid fa-users" :heading="__('No users match this view')" :body="__('Adjust the filters to surface the accounts you need to review.')" />
+            <x-empty-state wire:transition icon="fa-solid fa-users" :heading="__('No users match this view')" :body="__('Adjust the filters to surface the accounts you need to review.')" />
         @endif
     </section>
 </div>

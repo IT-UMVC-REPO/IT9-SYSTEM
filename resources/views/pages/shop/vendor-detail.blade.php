@@ -9,12 +9,15 @@
     @endif
 
     <section class="relative min-h-[380px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
-        <div class="absolute inset-0">
+        <div x-data="sukiImg()" x-init="bind($refs.img)" class="absolute inset-0">
+            <div x-show="!loaded" class="suki-skeleton absolute inset-0"></div>
             <img
+                x-ref="img"
+                x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
                 loading="lazy"
                 src="{{ $vendorProfile->store_image_url }}"
                 alt="{{ $vendorProfile->store_name }}"
-                class="h-full w-full object-cover"
+                class="h-full w-full object-cover opacity-0 transition-opacity duration-500"
             >
             <div class="absolute inset-0" style="background: linear-gradient(to right, color-mix(in oklab, var(--brand-950) 75%, black 25%) 0%, color-mix(in oklab, var(--brand-700) 78%, black 22%) 45%, rgba(0,0,0,0.18) 100%);"></div>
             <div class="absolute inset-0" style="background: linear-gradient(to bottom, rgba(0,0,0,0.16) 0%, rgba(0,0,0,0.08) 45%, rgba(0,0,0,0.3) 100%);"></div>
@@ -63,7 +66,7 @@
                         <a
                             href="{{ route('messages.conversation', ['conversationReference' => $vendorProfile->user_id]) }}"
                             wire:navigate
-                            class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.97]"
+                            class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.96]"
                         >
                             {{ __('Message vendor') }}
                         </a>
@@ -107,7 +110,7 @@
 
     <div class="mx-auto grid max-w-[1500px] gap-8 px-4 py-8 sm:px-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section class="space-y-6">
-            <div class="flex items-center justify-between gap-4">
+            <div class="suki-reveal flex items-center justify-between gap-4">
                 <div>
                     <span class="brand-kicker">{{ __('Storefront') }}</span>
                     <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Available products') }}</h2>
@@ -143,7 +146,7 @@
                                             {{ __('Your listing') }}
                                         </span>
                                     @else
-                                        <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97]">
+                                        <a href="{{ route('shop.products.show', $product) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]">
                                             {{ __('View product') }}
                                         </a>
                                     @endif

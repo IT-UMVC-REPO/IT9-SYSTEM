@@ -91,7 +91,7 @@ new #[Title('User profile')] class extends Component {
                     {{ __('Deactivate account') }}
                 </flux:button>
             @else
-                <button type="button" wire:click="toggleActiveStatus" class="brand-button-primary">
+                <button type="button" wire:click="toggleActiveStatus" class="brand-button-primary active:scale-[0.96]">
                     {{ __('Activate account') }}
                 </button>
             @endif

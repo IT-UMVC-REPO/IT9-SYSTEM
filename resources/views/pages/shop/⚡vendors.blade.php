@@ -92,7 +92,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
                 <button
                     type="button"
                     x-on:click="toggleMap()"
-                    class="brand-button-secondary w-full justify-center transition-all duration-150 active:scale-[0.97]"
+                    class="brand-button-secondary w-full justify-center transition-all duration-150 active:scale-[0.96]"
                 >
                     <i class="fa-solid fa-map-location-dot text-xs"></i>
                     <span x-show="! showMap">{{ __('Show Map') }}</span>
@@ -112,10 +112,10 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     <section
         x-cloak
         x-show="showMap"
-        x-transition:enter="transition ease-out duration-350"
+        x-transition:enter="transition ease-out duration-320"
         x-transition:enter-start="opacity-0 scale-[0.98] translate-y-2"
         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-250"
+        x-transition:leave="transition ease-in duration-220"
         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
         x-transition:leave-end="opacity-0 scale-[0.98] translate-y-2"
         class="brand-panel overflow-hidden p-4 transition sm:p-5"
@@ -138,7 +138,9 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
         @if ($this->vendors->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->vendors as $vendor)
-                    <x-vendor-card :vendor="$vendor" class="suki-reveal" style="transition-delay: {{ min($loop->index * 60, 400) }}ms" wire:key="market-stall-{{ $vendor->id }}" />
+                    <div wire:key="market-stall-{{ $vendor->id }}" wire:transition class="suki-reveal" style="transition-delay: {{ min($loop->index * 60, 400) }}ms">
+                        <x-vendor-card :vendor="$vendor" />
+                    </div>
                 @endforeach
             </div>
 
@@ -190,7 +192,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
                 <button
                     type="button"
                     x-on:click="selectedVendor = null"
-                    class="brand-button-secondary inline-flex h-9 w-9 items-center justify-center p-0"
+                    class="brand-button-secondary active:scale-[0.96] inline-flex h-9 w-9 items-center justify-center p-0"
                     aria-label="{{ __('Close stall details') }}"
                 >
                     <i class="fa-solid fa-xmark text-xs"></i>
@@ -204,7 +206,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
                 <a
                     x-bind:href="selectedVendor?.profileUrl || '#'"
                     wire:navigate
-                    class="brand-button-primary w-full"
+                    class="brand-button-primary active:scale-[0.96] w-full"
                 >
                     {{ __('Visit stall') }}
                     <span aria-hidden="true">&rarr;</span>

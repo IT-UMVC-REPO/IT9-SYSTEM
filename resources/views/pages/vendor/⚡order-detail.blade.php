@@ -344,7 +344,7 @@ new #[Title('Vendor Order Detail')] class extends Component
 
                     @foreach ($statusSteps as $status)
                         @php($isCompleted = $currentStatusIndex !== false && $loop->index < $currentStatusIndex)
-                        <div class="suki-reveal flex items-center gap-3" wire:key="vendor-order-status-step-{{ $status->value }}" style="transition-delay: {{ $loop->index * 80 }}ms">
+                        <div class="suki-reveal flex items-center gap-3" wire:key="vendor-order-status-step-{{ $status->value }}" wire:transition style="transition-delay: {{ $loop->index * 80 }}ms">
                             <span
                                 @class([
                                     'inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold',
@@ -375,13 +375,13 @@ new #[Title('Vendor Order Detail')] class extends Component
                 </div>
 
                 @if (in_array($this->order->order_status, [OrderStatus::Confirmed, OrderStatus::Preparing], true))
-                    <div class="mt-6 space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
+                    <div wire:transition class="mt-6 space-y-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
                         <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Set estimated delivery') }}</p>
 
                         <flux:input type="datetime-local" wire:model="estimated_delivery_at" :label="__('Estimated delivery')" />
                         <flux:input wire:model="delay_note" :label="__('Delay note (optional)')" :placeholder="__('e.g. Delayed due to weather')" />
 
-                        <button type="button" wire:click="saveDeliveryEstimate" wire:loading.attr="disabled" wire:target="saveDeliveryEstimate" class="brand-button-secondary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.97]">
+                        <button type="button" wire:click="saveDeliveryEstimate" wire:loading.attr="disabled" wire:target="saveDeliveryEstimate" class="brand-button-secondary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.96]">
                             {{ __('Save estimate') }}
                         </button>
                     </div>
@@ -392,9 +392,10 @@ new #[Title('Vendor Order Detail')] class extends Component
                         <button
                             type="button"
                             wire:click="advanceStatus"
+                            wire:transition
                             wire:loading.attr="disabled"
                             wire:target="advanceStatus"
-                            class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.97]"
+                            class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.96]"
                         >
                             {{ __('Advance to :status', ['status' => Str::headline($this->nextStatus->value)]) }}
                         </button>
@@ -415,7 +416,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                     <a
                         href="{{ route('shop.customers.show', $this->order->customer_id) }}"
                         wire:navigate
-                        class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
+                        class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]"
                     >
                         {{ __('View customer profile') }}
                     </a>
@@ -423,7 +424,7 @@ new #[Title('Vendor Order Detail')] class extends Component
                     <a
                         href="{{ route('messages.conversation', ['conversationReference' => $this->order->customer_id, 'order' => $this->order->id]) }}"
                         wire:navigate
-                        class="brand-button-secondary w-full transition-all duration-150 active:scale-95"
+                        class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]"
                     >
                         {{ __('Message customer') }}
                     </a>

@@ -213,7 +213,7 @@ new class extends Component {
                         </div>
 
                         <label for="report-attachment"
-                            class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-sm">
+                            class="brand-button-secondary active:scale-[0.96] inline-flex cursor-pointer items-center gap-2 text-sm">
                             <i class="fa-solid fa-paperclip text-xs"></i>
                             {{ __('Choose file') }}
                         </label>
@@ -249,13 +249,13 @@ new class extends Component {
         <div class="border-t border-stone-200/80 px-6 py-5 dark:border-white/10 sm:px-7">
             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <flux:modal.close>
-                    <button type="button" class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.97] sm:w-auto">
+                    <button type="button" class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96] sm:w-auto">
                         {{ __('Cancel') }}
                     </button>
                 </flux:modal.close>
 
                 <button type="submit" wire:loading.attr="disabled" wire:target="submit,attachmentUpload"
-                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.97] sm:w-auto">
+                    class="brand-button-primary w-full transition-all duration-150 active:scale-[0.96] sm:w-auto">
                     <span wire:loading.remove wire:target="submit">{{ __('Submit report') }}</span>
                     <span wire:loading wire:target="submit">{{ __('Submitting...') }}</span>
                 </button>

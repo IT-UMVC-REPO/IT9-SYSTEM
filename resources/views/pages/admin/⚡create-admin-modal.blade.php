@@ -67,7 +67,7 @@ new class extends Component
                 {{ __('Cancel') }}
             </flux:button>
 
-            <button type="submit" wire:loading.attr="disabled" class="brand-button-primary">
+            <button type="submit" wire:loading.attr="disabled" class="brand-button-primary active:scale-[0.96]">
                 <span wire:loading.remove wire:target="createAdmin">{{ __('Create admin') }}</span>
                 <span wire:loading wire:target="createAdmin">{{ __('Creating...') }}</span>
             </button>

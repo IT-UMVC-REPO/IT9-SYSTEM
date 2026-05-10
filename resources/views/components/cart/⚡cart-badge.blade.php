@@ -37,18 +37,14 @@ new class extends Component {
     href="{{ route('shop.cart') }}"
     title="{{ __('Cart') }}"
     wire:navigate
-    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-150 active:scale-90 {{ $isActive ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
+    class="relative flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-150 active:scale-90 {{ $isActive ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
 >
     <i class="fa-solid fa-cart-shopping text-sm"></i>
 
     @if ($this->cartItemCount > 0)
         <span
-            x-data
-            x-show="$wire.cartItemCount > 0"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 scale-50"
-            x-transition:enter-end="opacity-100 scale-100"
-            class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-300"
+            wire:transition
+            class="suki-badge-enter absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-300"
         >
             {{ $this->cartItemCount > 99 ? '99+' : $this->cartItemCount }}
         </span>

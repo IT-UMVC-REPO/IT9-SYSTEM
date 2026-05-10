@@ -136,12 +136,12 @@ new #[Title('Customer Dashboard')] class extends Component
             </p>
 
             <div class="mt-6 flex flex-wrap gap-3">
-                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary inline-flex items-center gap-2">
+                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-primary active:scale-[0.96] inline-flex items-center gap-2">
                     <i class="fa-solid fa-store text-xs"></i>
                     {{ __('Browse storefront') }}
                 </a>
 
-                <a href="{{ route('shop.orders') }}" wire:navigate class="brand-button-secondary inline-flex items-center gap-2">
+                <a href="{{ route('shop.orders') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] inline-flex items-center gap-2">
                     <i class="fa-solid fa-bag-shopping text-xs"></i>
                     {{ __('View all orders') }}
                 </a>
@@ -159,14 +159,14 @@ new #[Title('Customer Dashboard')] class extends Component
                 <p class="mt-4 text-2xl font-semibold text-neutral-900 dark:text-zinc-100">
                     {{ __('₱:amount', ['amount' => number_format($this->cartSummary['subtotal'], 2)]) }}
                 </p>
-                <a href="{{ route('shop.checkout') }}" wire:navigate class="brand-button-primary mt-5 w-full">
+                <a href="{{ route('shop.checkout') }}" wire:navigate class="brand-button-primary active:scale-[0.96] mt-5 w-full">
                     {{ __('Continue to checkout') }}
                 </a>
             @else
                 <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                     {{ __('Your cart is empty right now. Browse the market to start your next suki run.') }}
                 </p>
-                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary mt-5 w-full">
+                <a href="{{ route('shop.home') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] mt-5 w-full">
                     {{ __('Browse the market') }}
                 </a>
             @endif
@@ -175,7 +175,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($this->stats as $stat)
-            <article class="brand-panel-muted p-5" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}">
+            <article class="brand-panel-muted suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="customer-dashboard-stat-{{ Str::slug($stat['label']) }}">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">
                     {{ $stat['label'] }}
                 </p>
@@ -186,7 +186,7 @@ new #[Title('Customer Dashboard')] class extends Component
     </section>
 
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div class="brand-panel p-6 sm:p-8">
+        <div class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 160ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <span class="brand-kicker">{{ __('Latest orders') }}</span>
@@ -200,7 +200,7 @@ new #[Title('Customer Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}">
+                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="customer-dashboard-order-{{ $order->id }}" wire:transition>
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0">
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -215,7 +215,7 @@ new #[Title('Customer Dashboard')] class extends Component
                             <div class="flex flex-col items-start gap-3 sm:items-end">
                                 <x-order-status-badge :status="$order->order_status" />
                                 <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $order->formattedTotal() }}</p>
-                                <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary">
+                                <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                     {{ __('View order') }}
                                 </a>
                             </div>
@@ -232,7 +232,7 @@ new #[Title('Customer Dashboard')] class extends Component
             </div>
         </div>
 
-        <div class="brand-panel p-6 sm:p-8">
+        <div class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 240ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <span class="brand-kicker">{{ __('Suki system') }}</span>

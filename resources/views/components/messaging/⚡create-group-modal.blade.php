@@ -109,7 +109,7 @@ new class extends Component
 ?>
 
 <div>
-    <button type="button" class="brand-button-primary" x-on:click="$wire.showModal = true">
+    <button type="button" class="brand-button-primary active:scale-[0.96]" x-on:click="$wire.showModal = true">
         <i class="fa-solid fa-user-group text-xs"></i>
         {{ __('New group') }}
     </button>

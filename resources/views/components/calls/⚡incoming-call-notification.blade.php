@@ -217,11 +217,11 @@ new class extends Component
                     </p>
 
                     <div class="mt-4 flex flex-wrap items-center gap-2">
-                        <button type="button" wire:click="accept" x-on:click="window.sukiRingtone?.stop()" class="brand-button-primary px-4 py-2">
+                        <button type="button" wire:click="accept" x-on:click="window.sukiRingtone?.stop()" class="brand-button-primary active:scale-[0.96] px-4 py-2">
                             <i class="fa-solid fa-phone text-xs"></i>
                             {{ __('Accept') }}
                         </button>
-                        <button type="button" x-on:click="decline()" class="brand-button-secondary px-4 py-2">
+                        <button type="button" x-on:click="decline()" class="brand-button-secondary active:scale-[0.96] px-4 py-2">
                             <i class="fa-solid fa-phone-slash text-xs"></i>
                             {{ __('Decline') }}
                         </button>

@@ -54,7 +54,7 @@
     @if ($popularVendors->isNotEmpty())
         <div class="border-b border-stone-200 bg-white dark:border-white/10 dark:bg-zinc-900/80">
             <div class="mx-auto max-w-[1500px] px-4 py-10 sm:px-6 lg:px-8">
-                <div class="mb-6 flex items-end justify-between">
+                <div class="suki-reveal mb-6 flex items-end justify-between">
                     <div>
                         <p class="brand-accent-text text-xs font-semibold uppercase tracking-[0.22em]">
                             Marketplace

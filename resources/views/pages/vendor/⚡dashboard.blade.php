@@ -87,7 +87,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 ?>
 
 <div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-    <section class="brand-panel p-6 sm:p-8">
+    <section class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 0ms">
         <h1 class="brand-serif suki-reveal text-4xl font-bold text-neutral-900 dark:text-zinc-100" style="transition-delay: 0ms">
             {{ __('Welcome back to :store', ['store' => $this->vendorProfile->store_name]) }}
         </h1>
@@ -96,20 +96,20 @@ new #[Title('Vendor Dashboard')] class extends Component
         </p>
 
         <div class="suki-reveal mt-6 flex flex-wrap gap-3" style="transition-delay: 160ms">
-            <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary">
+            <a href="{{ route('vendor.products.create') }}" wire:navigate class="brand-button-primary active:scale-[0.96]">
                 <i class="fa-solid fa-plus text-xs"></i>
                 {{ __('Add product') }}
             </a>
-            <a href="{{ route('vendor.orders') }}" wire:navigate class="brand-button-secondary inline-flex items-center gap-2">
+            <a href="{{ route('vendor.orders') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] inline-flex items-center gap-2">
                 <i class="fa-solid fa-bag-shopping text-xs"></i>
                 {{ __('View all orders') }}
             </a>
-            <a href="{{ route('vendor.valued-customers') }}" wire:navigate class="brand-button-secondary">{{ __('Valued customers') }}</a>
-            <a href="{{ route('vendor.sales') }}" wire:navigate class="brand-button-secondary">{{ __('Sales overview') }}</a>
+            <a href="{{ route('vendor.valued-customers') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">{{ __('Valued customers') }}</a>
+            <a href="{{ route('vendor.sales') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">{{ __('Sales overview') }}</a>
         </div>
     </section>
 
-    <section class="brand-panel p-6">
+    <section class="brand-panel suki-reveal p-6" style="transition-delay: 100ms">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
             @foreach ($this->stats as $stat)
                 <div class="suki-reveal flex items-baseline gap-2" wire:key="vendor-dashboard-stat-{{ \Illuminate\Support\Str::slug($stat['label']) }}" style="transition-delay: {{ $loop->index * 60 }}ms">
@@ -124,7 +124,7 @@ new #[Title('Vendor Dashboard')] class extends Component
     </section>
 
     <section class="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div class="brand-panel p-6 sm:p-8">
+        <div class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 180ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <span class="brand-kicker">{{ __('Recent orders') }}</span>
@@ -138,7 +138,7 @@ new #[Title('Vendor Dashboard')] class extends Component
 
             <div class="mt-6 space-y-4">
                 @forelse ($this->recentOrders as $order)
-                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}">
+                    <article class="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-dashboard-order-{{ $order->id }}" wire:transition>
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <p class="brand-kicker !mb-0">{{ __('Order #:number', ['number' => str_pad((string) $order->id, 6, '0', STR_PAD_LEFT)]) }}</p>
@@ -153,7 +153,7 @@ new #[Title('Vendor Dashboard')] class extends Component
                             <div class="flex flex-col items-start gap-3 sm:items-end">
                                 <span class="brand-badge">{{ \Illuminate\Support\Str::headline($order->order_status->value) }}</span>
                                 <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $order->formattedTotal() }}</p>
-                                <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary">
+                                <a href="{{ route('vendor.orders.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                     {{ __('View order') }}
                                 </a>
                             </div>
@@ -170,13 +170,13 @@ new #[Title('Vendor Dashboard')] class extends Component
             </div>
         </div>
 
-        <aside class="brand-panel p-6 sm:p-8">
+        <aside class="brand-panel suki-reveal p-6 sm:p-8" style="transition-delay: 240ms">
             <span class="brand-kicker">{{ __('Low stock alerts') }}</span>
             <h2 class="brand-serif mt-3 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Restock watch') }}</h2>
 
             <div class="mt-6 space-y-3">
                 @forelse ($this->lowStockProducts as $product)
-                    <article class="rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}">
+                    <article class="rounded-[1.5rem] border border-stone-200 bg-white/80 px-4 py-4 dark:border-white/10 dark:bg-zinc-900/80" wire:key="vendor-low-stock-{{ $product->id }}" wire:transition>
                         <div class="flex items-center justify-between gap-4">
                             <div>
                                 <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $product->name }}</p>
@@ -186,10 +186,10 @@ new #[Title('Vendor Dashboard')] class extends Component
                             </div>
 
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary text-sm px-3 py-2">
+                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] text-sm px-3 py-2">
                                     {{ __('Edit') }}
                                 </a>
-                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary text-sm px-3 py-2">
+                                <a href="{{ route('vendor.products') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] text-sm px-3 py-2">
                                     {{ __('Restock') }}
                                 </a>
                             </div>
@@ -227,7 +227,7 @@ new #[Title('Vendor Dashboard')] class extends Component
                 <button
                     type="button"
                     x-on:click="toggleCustomers()"
-                    x-bind:class="showCustomers ? 'brand-button-primary' : 'brand-button-secondary'"
+                    x-bind:class="showCustomers ? 'brand-button-primary active:scale-[0.96]' : 'brand-button-secondary active:scale-[0.96]'"
                     class="text-sm rounded-xl"
                 >
                     <span x-text="showCustomers ? @js(__('Hide customers')) : @js(__('Show my customers'))"></span>

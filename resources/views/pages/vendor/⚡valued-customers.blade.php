@@ -114,7 +114,7 @@ new #[Title('Valued Customers')] class extends Component
             <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->stars as $star)
                     @php($customer = $star->customer)
-                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="valued-customer-{{ $star->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="valued-customer-{{ $star->id }}" wire:transition>
                         <div class="flex items-start gap-4">
                             <x-user-avatar :user="$customer" size="md" />
 
@@ -141,7 +141,7 @@ new #[Title('Valued Customers')] class extends Component
                                 </div>
 
                                 <div class="mt-5 flex gap-2">
-                                    <a href="{{ route('shop.customers.show', $customer) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.97]">
+                                    <a href="{{ route('shop.customers.show', $customer) }}" wire:navigate class="brand-button-secondary w-full text-center transition-all duration-150 active:scale-[0.96]">
                                         {{ __('Open profile') }}
                                     </a>
                                 </div>

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Concerns\ProfileValidationRules;
 use App\Enums\AuditEvent;
@@ -255,7 +255,7 @@ new #[Title('Profile settings')] class extends Component {
                             <div class="flex flex-wrap items-center gap-2">
                                 <label
                                     for="profile-image-upload"
-                                    class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-xs transition-all duration-150 active:scale-[0.97]"
+                                    class="brand-button-secondary inline-flex cursor-pointer items-center gap-2 text-xs transition-all duration-150 active:scale-[0.96]"
                                 >
                                     <i class="fa-solid fa-arrow-up-from-bracket"></i>
                                     <span x-text="previewUrl ? @js(__('Change selection')) : @js(__('Upload photo'))"></span>

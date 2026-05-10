@@ -155,7 +155,7 @@ new #[Title('My Orders')] class extends Component {
     >
         @if ($this->orders->isNotEmpty())
             @foreach ($this->orders as $order)
-                <article wire:key="customer-order-{{ $order->id }}" class="brand-panel overflow-hidden p-6 sm:p-7">
+                <article wire:key="customer-order-{{ $order->id }}" wire:transition class="brand-panel overflow-hidden p-6 sm:p-7">
                     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div class="flex min-w-0 gap-4">
                             <div class="h-16 w-16 shrink-0 overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
@@ -193,7 +193,7 @@ new #[Title('My Orders')] class extends Component {
                                 <x-payment-status-badge :status="$order->payment_status" :label="Str::headline($order->payment->method->value).' - '.Str::headline($order->payment_status->value)" />
                             </div>
 
-                            <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" class="brand-button-secondary">
+                            <a href="{{ route('shop.orders.show', ['orderReference' => $order->id]) }}" class="brand-button-secondary active:scale-[0.96]">
                                 {{ __('View details') }}
                             </a>
                         </div>
@@ -207,7 +207,7 @@ new #[Title('My Orders')] class extends Component {
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-14 text-center">
+            <div wire:transition class="brand-panel px-6 py-14 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                     <i class="fa-solid fa-basket-shopping text-xl"></i>
                 </span>
@@ -215,7 +215,7 @@ new #[Title('My Orders')] class extends Component {
                 <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
                     {{ __($this->emptyStateBody()) }}
                 </p>
-                <a href="{{ route('shop.home') }}" class="brand-button-primary mt-6 inline-flex">
+                <a href="{{ route('shop.home') }}" class="brand-button-primary active:scale-[0.96] mt-6 inline-flex">
                     <span class="text-accent-foreground">{{ __('Browse the market') }}</span>
                 </a>
             </div>

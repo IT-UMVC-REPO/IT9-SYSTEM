@@ -143,7 +143,7 @@ new #[Title('Vendor approvals')] class extends Component {
 
                     <flux:table.rows>
                         @foreach ($this->vendors as $vendor)
-                            <flux:table.row :key="$vendor->id">
+                            <flux:table.row :key="$vendor->id" wire:transition>
                                 <flux:table.cell class="max-w-[18rem] overflow-hidden">
                                     <div class="flex min-w-0 items-center gap-3">
                                         <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
@@ -180,7 +180,7 @@ new #[Title('Vendor approvals')] class extends Component {
                                 </flux:table.cell>
                                 <flux:table.cell>{{ $vendor->created_at->format('M j, Y') }}</flux:table.cell>
                                 <flux:table.cell align="end">
-                                    <a href="{{ route('admin.vendors.show', $vendor) }}" wire:navigate class="brand-button-secondary">
+                                    <a href="{{ route('admin.vendors.show', $vendor) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                         {{ __('Review') }}
                                     </a>
                                 </flux:table.cell>
@@ -192,7 +192,7 @@ new #[Title('Vendor approvals')] class extends Component {
 
             <div class="grid gap-4 lg:hidden">
                 @foreach ($this->vendors as $vendor)
-                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-vendor-{{ $vendor->id }}">
+                    <article class="brand-panel suki-reveal p-5" style="transition-delay: {{ min($loop->index * 60, 360) }}ms" wire:key="mobile-vendor-{{ $vendor->id }}" wire:transition>
                         <div class="flex items-start gap-4">
                             <div class="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-stone-200 dark:border-white/10">
                                 <img
@@ -222,7 +222,7 @@ new #[Title('Vendor approvals')] class extends Component {
                                 {{ $vendor->status->value }}
                             </span>
 
-                            <a href="{{ route('admin.vendors.show', $vendor) }}" wire:navigate class="brand-button-secondary">
+                            <a href="{{ route('admin.vendors.show', $vendor) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                                 {{ __('Review') }}
                             </a>
                         </div>
@@ -236,7 +236,7 @@ new #[Title('Vendor approvals')] class extends Component {
                 </div>
             @endif
         @else
-            <div class="brand-panel px-6 py-14 text-center">
+            <div wire:transition class="brand-panel px-6 py-14 text-center">
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                     <i class="fa-solid fa-store-slash text-xl"></i>
                 </span>

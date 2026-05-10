@@ -163,6 +163,7 @@ new class extends Component
                     <a
                         href="{{ $isGroup ? route('messages.group', ['groupId' => $thread['id']]) : route('messages.conversation', ['conversationReference' => $thread['id']]) }}"
                         wire:key="message-thread-{{ $thread['type'] }}-{{ $thread['id'] }}"
+                        wire:transition
                         wire:navigate
                         @if ($isActiveConversation || $isActiveGroup) aria-current="page" @endif
                         @class([

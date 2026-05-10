@@ -43,7 +43,7 @@
                     <a
                         href="{{ route('messages.conversation', ['conversationReference' => $customer->id]) }}"
                         wire:navigate
-                        class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.97]"
+                        class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.96]"
                     >
                         {{ __('Message customer') }}
                     </a>

@@ -118,14 +118,15 @@ new class extends Component
 <div x-data="{ open: false }" x-on:keydown.escape.window="open = false" class="relative">
     <button
         type="button"
-        x-data="{ prevCount: 0 }"
+        x-data="{ _prev: 0 }"
         x-effect="
-            const newCount = $wire.unreadCount;
-            if (newCount > prevCount && prevCount !== undefined) {
+            const c = $wire.unreadCount ?? 0;
+            if (c > _prev && _prev !== 0) {
+                $el.classList.remove('suki-bell-ring');
+                void $el.offsetWidth;
                 $el.classList.add('suki-bell-ring');
-                setTimeout(() => $el.classList.remove('suki-bell-ring'), 750);
             }
-            prevCount = newCount;
+            _prev = c;
         "
         x-on:click="open = !open"
         x-bind:aria-expanded="open.toString()"
@@ -136,7 +137,7 @@ new class extends Component
         <i class="fa-regular fa-bell text-sm"></i>
 
         @if ($this->unreadCount > 0)
-            <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-transform duration-300" style="background-color: var(--brand-600);">
+            <span wire:transition class="suki-badge-enter absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow-sm transition-transform duration-300" style="background-color: var(--brand-600);">
                 {{ $this->unreadCount > 99 ? '99+' : $this->unreadCount }}
             </span>
         @endif
@@ -145,10 +146,10 @@ new class extends Component
     <div
         x-cloak
         x-show="open"
-        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter="transition ease-out duration-180"
         x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave="transition ease-in duration-130"
         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
         x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
         x-on:click.outside="open = false"
@@ -178,6 +179,7 @@ new class extends Component
                     type="button"
                     wire:click="markAsRead({{ $notification->id }})"
                     wire:key="header-notification-{{ $notification->id }}"
+                    wire:transition
                     @class([
                         'w-full rounded-2xl border px-4 py-3 text-left transition-all duration-150',
                         'border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_35%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => ! $notification->is_read,

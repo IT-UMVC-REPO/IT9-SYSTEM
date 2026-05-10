@@ -176,7 +176,7 @@ new class extends Component {
             <button
                 type="button"
                 x-on:click="filtersOpen = !filtersOpen"
-                class="brand-button-secondary mb-3 w-full xl:hidden"
+                class="brand-button-secondary active:scale-[0.96] mb-3 w-full xl:hidden"
             >
                 <i class="fa-solid fa-sliders text-xs"></i>
                 <span x-text="filtersOpen ? @js(__('Hide filters')) : @js(__('Show filters'))">{{ __('Show filters') }}</span>
@@ -246,13 +246,13 @@ new class extends Component {
                     </flux:field>
 
                     @if ($this->hasActiveFilters)
-                        <div class="pt-1">
+                        <div wire:transition class="pt-1">
                             <button
                                 type="button"
                                 wire:click="clearFilters"
                                 wire:loading.attr="disabled"
                                 wire:target="clearFilters"
-                                class="brand-button-secondary w-full transition-all duration-200 active:scale-95"
+                                class="brand-button-secondary w-full transition-all duration-200 active:scale-[0.96]"
                             >
                                 {{ __('Clear filters') }}
                             </button>
@@ -289,14 +289,17 @@ new class extends Component {
                 @if ($this->products->isNotEmpty())
                     <div class="grid gap-6 transition-all duration-300 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($this->products as $product)
-                            <article wire:key="catalog-product-{{ $product->id }}" class="suki-reveal group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900" style="transition-delay: {{ min($loop->index * 50, 400) }}ms">
+                            <article wire:key="catalog-product-{{ $product->id }}" wire:transition class="suki-reveal group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900" style="transition-delay: {{ min($loop->index * 50, 400) }}ms">
                                 <a href="{{ route('shop.products.show', $product) }}" class="block">
-                                    <div class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                                    <div x-data="sukiImg()" x-init="bind($refs.img)" class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
+                                        <div x-show="!loaded" class="suki-skeleton absolute inset-0"></div>
                                         <img
+                                            x-ref="img"
+                                            x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
                                             src="{{ $product->image }}"
                                             alt="{{ $product->name }}"
                                             onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
-                                            class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105 will-change-transform"
+                                            class="h-full w-full object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-105 will-change-transform"
                                             loading="lazy"
                                         >
 
@@ -342,7 +345,7 @@ new class extends Component {
                                     </p>
 
                                     <div class="mt-auto pt-6">
-                                        <a href="{{ route('shop.products.show', $product) }}" class="brand-button-secondary w-full">
+                                        <a href="{{ route('shop.products.show', $product) }}" class="brand-button-secondary active:scale-[0.96] w-full">
                                             View product
                                         </a>
                                     </div>
@@ -357,7 +360,7 @@ new class extends Component {
                         </div>
                     @endif
                 @else
-                    <div class="brand-panel px-6 py-14 text-center">
+                    <div wire:transition class="brand-panel px-6 py-14 text-center">
                         <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100 text-neutral-400 dark:bg-zinc-800 dark:text-zinc-400">
                             <i class="fa-solid fa-magnifying-glass text-xl"></i>
                         </span>
@@ -366,7 +369,7 @@ new class extends Component {
                             Try a different keyword or category to discover more approved listings.
                         </p>
                         @if ($this->hasActiveFilters)
-                            <button type="button" wire:click="clearFilters" class="brand-button-primary mt-5 transition-all duration-200 active:scale-95">
+                            <button type="button" wire:click="clearFilters" class="brand-button-primary mt-5 transition-all duration-200 active:scale-[0.96]">
                                 <span class="text-accent-foreground">Clear filters</span>
                             </button>
                         @endif

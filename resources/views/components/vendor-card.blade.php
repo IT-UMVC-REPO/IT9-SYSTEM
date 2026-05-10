@@ -8,7 +8,8 @@
 <article {{ $attributes->merge(['class' => 'group relative flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl will-change-transform dark:bg-zinc-900 dark:ring-white/10']) }}>
 
     {{-- Image block --}}
-    <div class="relative overflow-hidden">
+    <div x-data="sukiImg()" x-init="bind($refs.img)" class="relative overflow-hidden">
+        <div x-show="!loaded" class="suki-skeleton absolute inset-0"></div>
         @if ($vendorUrl)
             <a href="{{ $vendorUrl }}" wire:navigate class="block">
         @else
@@ -16,9 +17,11 @@
         @endif
 
         <img
+            x-ref="img"
+            x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
             src="{{ $vendor->store_image_url }}"
             alt="{{ $vendor->store_name }}"
-            class="aspect-[3/2] w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04] will-change-transform"
+            class="aspect-[3/2] w-full object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-[1.04] [will-change:transform]"
             loading="lazy"
         >
 
@@ -79,7 +82,7 @@
                 <a
                     href="{{ $vendorUrl }}"
                     wire:navigate
-                    class="brand-button-primary group/btn relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.97] dark:bg-[var(--brand-500)] dark:hover:bg-[var(--brand-400)]"
+                    class="brand-button-primary group/btn relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.96] dark:bg-[var(--brand-500)] dark:hover:bg-[var(--brand-400)]"
                 >
                     {{ __('Visit stall') }}
                     <i class="fa-solid fa-arrow-right text-xs transition-transform duration-200 group-hover/btn:translate-x-0.5"></i>

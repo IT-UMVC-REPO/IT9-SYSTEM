@@ -56,9 +56,68 @@
         --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
         --transition-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
         --transition-spring: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        --t-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+        --t-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        --t-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        --t-spring: 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes suki-slide-in-from-right {
+        from {
+            opacity: 0;
+            transform: translateX(18px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes suki-slide-out-to-left {
+        from {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        to {
+            opacity: 0;
+            transform: translateX(-12px);
+        }
+    }
+
+    ::view-transition-old(root) {
+        animation: 180ms cubic-bezier(0.4, 0, 1, 1) both suki-slide-out-to-left;
+    }
+
+    ::view-transition-new(root) {
+        animation: 280ms cubic-bezier(0, 0, 0.2, 1) both suki-slide-in-from-right;
+    }
+
+    header {
+        view-transition-name: suki-header;
+    }
+
+    ::view-transition-old(suki-header),
+    ::view-transition-new(suki-header) {
+        animation: none;
+    }
+
+    nav[aria-label="Mobile primary navigation"] {
+        view-transition-name: suki-mobile-nav;
+    }
+
+    ::view-transition-old(suki-mobile-nav),
+    ::view-transition-new(suki-mobile-nav) {
+        animation: none;
     }
 
     @media (prefers-reduced-motion: reduce) {
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation: none;
+        }
+
         *,
         *::before,
         *::after {
@@ -507,7 +566,7 @@
 
     /* Universal panel hover lift */
     .brand-panel {
-        transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-base);
+        transition: box-shadow var(--t-base), transform var(--t-base), border-color var(--t-base);
     }
 
     .brand-panel:where([href], [wire\:click], [x-on\:click]):hover,
@@ -517,27 +576,27 @@
     }
 
     .brand-panel-muted {
-        transition: box-shadow var(--transition-base), border-color var(--transition-base);
+        transition: box-shadow var(--t-base), border-color var(--t-base);
     }
 
     /* All brand buttons get press depth */
     .brand-button-primary,
     .brand-button-secondary {
         transition:
-            background-color var(--transition-fast),
-            border-color var(--transition-fast),
-            color var(--transition-fast),
-            box-shadow var(--transition-fast),
-            transform var(--transition-fast);
+            background-color var(--t-fast),
+            border-color var(--t-fast),
+            color var(--t-fast),
+            box-shadow var(--t-fast),
+            transform var(--t-fast);
     }
 
     .brand-button-primary:active,
     .brand-button-secondary:active {
-        transform: scale(0.97) translateY(1px);
+        transform: scale(0.965) translateY(1px);
     }
 
     .brand-button-primary:hover {
-        box-shadow: 0 4px 14px -2px oklch(from var(--brand-600) l c h / 0.35);
+        box-shadow: 0 4px 16px -2px oklch(from var(--brand-600) l c h / 0.38);
     }
 
     /* Nav link bottom border slide-in */
@@ -571,23 +630,23 @@
 
     @keyframes suki-shimmer {
         0% {
-            background-position: -400px 0;
+            background-position: -600px 0;
         }
 
         100% {
-            background-position: 400px 0;
+            background-position: 600px 0;
         }
     }
 
     .suki-skeleton {
         background: linear-gradient(90deg, var(--color-stone-100) 25%, var(--color-stone-50) 50%, var(--color-stone-100) 75%);
-        background-size: 800px 100%;
-        animation: suki-shimmer 1.4s ease-in-out infinite;
+        background-size: 1200px 100%;
+        animation: suki-shimmer 1.5s ease-in-out infinite;
     }
 
     .dark .suki-skeleton {
-        background: linear-gradient(90deg, rgb(39 39 42) 25%, rgb(50 50 55) 50%, rgb(39 39 42) 75%);
-        background-size: 800px 100%;
+        background: linear-gradient(90deg, rgb(39 39 42) 25%, rgb(52 52 56) 50%, rgb(39 39 42) 75%);
+        background-size: 1200px 100%;
     }
 
     /* Used on the welcome hero floating cards */
@@ -602,7 +661,7 @@
         border-radius: 8px;
         outline: 2px solid var(--brand-500);
         outline-offset: 3px;
-        transition: outline-offset var(--transition-fast);
+        transition: outline-offset var(--t-fast);
     }
 
     @keyframes suki-kicker-in {
@@ -639,43 +698,43 @@
         animation: suki-live-pulse 1.8s ease-in-out infinite;
     }
 
-    @keyframes suki-bell-shake {
+    @keyframes suki-bell {
         0%,
         100% {
             transform: rotate(0deg);
         }
 
         15% {
-            transform: rotate(18deg);
+            transform: rotate(16deg);
         }
 
         30% {
-            transform: rotate(-14deg);
+            transform: rotate(-12deg);
         }
 
         45% {
-            transform: rotate(10deg);
+            transform: rotate(8deg);
         }
 
         60% {
-            transform: rotate(-6deg);
+            transform: rotate(-5deg);
         }
 
         75% {
-            transform: rotate(3deg);
+            transform: rotate(2deg);
         }
     }
 
     .suki-bell-ring {
-        animation: suki-bell-shake 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        animation: suki-bell 650ms ease both;
     }
 
     .suki-reveal {
         opacity: 0;
-        transform: translateY(18px);
+        transform: translateY(20px);
         transition:
-            opacity 450ms cubic-bezier(0.4, 0, 0.2, 1),
-            transform 450ms cubic-bezier(0.4, 0, 0.2, 1);
+            opacity 420ms cubic-bezier(0.4, 0, 0.2, 1),
+            transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .suki-reveal.is-visible {
@@ -697,7 +756,7 @@
     @keyframes suki-toast-enter {
         from {
             opacity: 0;
-            transform: translateY(20px) scale(0.94);
+            transform: translateY(16px) scale(0.93);
         }
 
         to {
@@ -721,13 +780,13 @@
     }
 
     [data-flux-modal] > * {
-        animation: suki-modal-enter 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        animation: suki-modal-spring 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
     }
 
-    @keyframes suki-modal-enter {
+    @keyframes suki-modal-spring {
         from {
             opacity: 0;
-            transform: scale(0.92) translateY(12px);
+            transform: scale(0.91) translateY(14px);
         }
 
         to {
@@ -763,6 +822,38 @@
         box-shadow: 0 0 8px oklch(from var(--brand-500) l c h / 0.6);
         transform-origin: left;
         animation: suki-progress 2s ease-in-out infinite;
+    }
+
+    @keyframes suki-badge-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.4);
+        }
+
+        70% {
+            transform: scale(1.2);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .suki-badge-enter {
+        animation: suki-badge-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .settings-nav-item {
+        transition:
+            background-color var(--t-base),
+            border-color var(--t-base),
+            color var(--t-base),
+            box-shadow var(--t-base);
+    }
+
+    .settings-nav-icon {
+        transition: background-color var(--t-base), color var(--t-base);
     }
 }
 

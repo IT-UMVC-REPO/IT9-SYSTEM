@@ -20,14 +20,14 @@
                     </span>
                 @else
                     <a href="{{ $paginator->previousPageUrl() }}"
-                        class="brand-button-secondary min-h-11 flex-1">
+                        class="brand-button-secondary active:scale-[0.96] min-h-11 flex-1">
                         Previous
                     </a>
                 @endif
 
                 @if ($paginator->hasMorePages())
                     <a href="{{ $paginator->nextPageUrl() }}"
-                        class="brand-button-primary min-h-11 flex-1">
+                        class="brand-button-primary active:scale-[0.96] min-h-11 flex-1">
                         Next
                     </a>
                 @else

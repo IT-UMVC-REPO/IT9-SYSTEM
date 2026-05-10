@@ -18,7 +18,7 @@
     <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ $body }}</p>
 
     @if (filled($actionLabel) && filled($actionRoute))
-        <a href="{{ $actionRoute }}" wire:navigate class="brand-button-primary mt-6 transition-all duration-150 active:scale-[0.97]">
+        <a href="{{ $actionRoute }}" wire:navigate class="brand-button-primary mt-6 transition-all duration-150 active:scale-[0.96]">
             {{ $actionLabel }}
         </a>
     @endif

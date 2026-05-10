@@ -124,7 +124,7 @@ new #[Title('Appearance settings')] class extends Component {
                                 aria-label="{{ __('Choose :color', ['color' => $preset['label']]) }}"
                                 aria-pressed="{{ $brand_color === $preset['hex'] ? 'true' : 'false' }}"
                                 @class([
-                                    'h-9 w-9 rounded-full border border-white/70 shadow-sm transition-all duration-150 hover:scale-110 active:scale-90 focus-visible:outline-hidden',
+                                    'h-9 w-9 rounded-full border border-white/70 shadow-sm transition-transform duration-150 hover:scale-110 active:scale-90 focus-visible:outline-hidden',
                                     'ring-2 ring-offset-2 ring-offset-stone-50 dark:ring-offset-zinc-900' => $brand_color === $preset['hex'],
                                 ])
                                 style="background-color: {{ $preset['hex'] }}; {{ $brand_color === $preset['hex'] ? 'box-shadow: 0 0 0 2px rgba(255,255,255,0.75);' : '' }}"

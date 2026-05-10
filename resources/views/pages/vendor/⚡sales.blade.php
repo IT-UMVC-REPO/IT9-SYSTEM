@@ -86,7 +86,7 @@
 
             <div class="mt-6 space-y-3">
                 @forelse ($this->topProducts as $productPerformance)
-                    <article class="brand-panel-muted flex items-center gap-4 p-4 transition-all duration-200 hover:shadow-md" wire:key="vendor-top-product-{{ $productPerformance->product_id }}">
+                    <article class="brand-panel-muted flex items-center gap-4 p-4 transition-all duration-200 hover:shadow-md" wire:key="vendor-top-product-{{ $productPerformance->product_id }}" wire:transition>
                         <div class="h-14 w-14 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
                             <img
                                 src="{{ $productPerformance->product?->image_url ?? 'https://placehold.co/112x112/e7e5e4/9ca3af?text=Item' }}"

@@ -16,7 +16,7 @@
         </p>
     </section>
 
-    <section class="brand-panel p-6">
+    <section class="brand-panel suki-reveal p-6" style="transition-delay: 80ms">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
             @foreach ($this->kpis as $card)
                 <div class="flex items-baseline gap-2">
@@ -43,7 +43,8 @@
                 });
             },
         }"
-        class="brand-panel flex flex-col gap-5 p-6 sm:p-8"
+        class="brand-panel suki-reveal flex flex-col gap-5 p-6 sm:p-8"
+        style="transition-delay: 140ms"
     >
         <div>
             <span class="brand-kicker">{{ __('Live activity') }}</span>
@@ -76,13 +77,13 @@
             @endif
         </div>
 
-        <a href="{{ route('admin.audit') }}" wire:navigate class="brand-button-secondary self-start text-sm">
+        <a href="{{ route('admin.audit') }}" wire:navigate class="brand-button-secondary active:scale-[0.96] self-start text-sm">
             {{ __('View full audit log') }}
         </a>
     </section>
 
     <section class="grid gap-6 xl:grid-cols-2">
-        <article class="brand-panel overflow-hidden p-5">
+        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 0ms">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Platform revenue') }}</p>
@@ -109,7 +110,7 @@
             @endif
         </article>
 
-        <article class="brand-panel overflow-hidden p-5">
+        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 80ms">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Orders') }}</p>
@@ -137,7 +138,7 @@
             @endif
         </article>
 
-        <article class="brand-panel overflow-hidden p-5">
+        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 160ms">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Vendors') }}</p>
@@ -164,7 +165,7 @@
             @endif
         </article>
 
-        <article class="brand-panel overflow-hidden p-5">
+        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 240ms">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Users') }}</p>
@@ -200,7 +201,7 @@
                     <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Newest vendor applications') }}</h2>
                 </div>
 
-                <a href="{{ route('admin.vendors') }}" wire:navigate class="brand-button-secondary">
+                <a href="{{ route('admin.vendors') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                     {{ __('View all') }}
                 </a>
             </div>
@@ -214,7 +215,7 @@
                             <p class="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ $vendorProfile->created_at->diffForHumans() }}</p>
                         </div>
 
-                        <a href="{{ route('admin.vendors.show', $vendorProfile) }}" wire:navigate class="brand-button-secondary">
+                        <a href="{{ route('admin.vendors.show', $vendorProfile) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                             {{ __('Review') }}
                         </a>
                     </article>
@@ -233,7 +234,7 @@
                     <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Latest activity across vendors') }}</h2>
                 </div>
 
-                <a href="{{ route('admin.orders') }}" wire:navigate class="brand-button-secondary">
+                <a href="{{ route('admin.orders') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                     {{ __('View all') }}
                 </a>
             </div>
@@ -271,7 +272,7 @@
         </article>
     </section>
 
-    <section class="brand-panel p-6">
+    <section class="brand-panel suki-reveal p-6" style="transition-delay: 360ms">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Platform health') }}</p>

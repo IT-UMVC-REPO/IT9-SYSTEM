@@ -38,7 +38,7 @@ new class extends Component
 ?>
 
 <div>
-    <button type="button" class="brand-button-secondary" x-on:click="$wire.showDirectModal = true">
+    <button type="button" class="brand-button-secondary active:scale-[0.96]" x-on:click="$wire.showDirectModal = true">
         <i class="fa-solid fa-user-plus text-xs"></i>
         {{ __('Add contact') }}
     </button>
