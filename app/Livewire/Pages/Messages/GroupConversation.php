@@ -363,7 +363,7 @@ class GroupConversation extends Component
     {
         return $message->attachments
             ->map(function (GroupMessageAttachment $attachment): GroupMessageAttachment {
-                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment->path));
+                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment));
 
                 return $attachment;
             });
@@ -489,7 +489,7 @@ class GroupConversation extends Component
                     'name' => $attachment->name,
                     'mime' => $attachment->mime,
                     'size' => $attachment->size,
-                    'public_url' => $this->attachmentPublicUrl($attachment->path),
+                    'public_url' => $this->attachmentPublicUrl($attachment),
                 ])
                 ->values()
                 ->all(),
@@ -505,13 +505,9 @@ class GroupConversation extends Component
         ];
     }
 
-    private function attachmentPublicUrl(string $path): string
+    private function attachmentPublicUrl(GroupMessageAttachment $attachment): string
     {
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
-        }
-
-        return Storage::disk('public')->url($path);
+        return route('messages.group-attachments.show', ['attachment' => $attachment], false);
     }
 
     public function render(): View

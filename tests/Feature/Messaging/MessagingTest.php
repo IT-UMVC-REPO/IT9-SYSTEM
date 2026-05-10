@@ -188,21 +188,21 @@ test('legacy attachment metadata still renders through display attachments', fun
         ->and($message->attachmentsForDisplay()->first()->path)->toBe('message-attachments/legacy.pdf');
 });
 
-test('conversation attachment links use the configured public disk url', function () {
+test('conversation attachment links use same-origin attachment routes', function () {
     config(['filesystems.disks.public.url' => 'https://pub.example.test']);
 
     $sender = User::factory()->create();
     $receiver = User::factory()->create();
     $message = createMarketplaceMessage($sender, $receiver, 'Here is the file');
 
-    $message->attachments()->create([
+    $storedAttachment = $message->attachments()->create([
         'path' => 'message-attachments/r2-proof.jpg',
         'name' => 'r2-proof.jpg',
         'mime' => 'image/jpeg',
         'size' => 1024,
         'created_at' => now(),
     ]);
-    $message->attachments()->create([
+    $externalAttachment = $message->attachments()->create([
         'path' => 'https://cdn.example.test/message-attachments/external-proof.jpg',
         'name' => 'external-proof.jpg',
         'mime' => 'image/jpeg',
@@ -213,8 +213,8 @@ test('conversation attachment links use the configured public disk url', functio
     $this->actingAs($receiver)
         ->get(route('messages.conversation', ['conversationReference' => $sender->getKey()]))
         ->assertOk()
-        ->assertSee('https://pub.example.test/message-attachments/r2-proof.jpg', false)
-        ->assertSee('https://cdn.example.test/message-attachments/external-proof.jpg', false)
+        ->assertSee(route('messages.attachments.show', ['attachment' => $storedAttachment], false), false)
+        ->assertSee(route('messages.attachments.show', ['attachment' => $externalAttachment], false), false)
         ->assertSee('referrerpolicy="no-referrer"', false)
         ->assertSee("onerror=\"this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');\"", false)
         ->assertSee('Image unavailable')
@@ -223,8 +223,40 @@ test('conversation attachment links use the configured public disk url', functio
         ->assertSee('x-data="{ showTime: false }"', false)
         ->assertSee('x-on:click.stop="showTime = ! showTime"', false)
         ->assertSee('x-show="showTime"', false)
+        ->assertDontSee('src="https://pub.example.test/message-attachments/r2-proof.jpg"', false)
+        ->assertDontSee('href="https://pub.example.test/message-attachments/r2-proof.jpg"', false)
+        ->assertDontSee('src="https://cdn.example.test/message-attachments/external-proof.jpg"', false)
+        ->assertDontSee('href="https://cdn.example.test/message-attachments/external-proof.jpg"', false)
         ->assertDontSee('/storage/message-attachments/r2-proof.jpg', false)
         ->assertDontSee('https://pub.example.test/https://cdn.example.test/message-attachments/external-proof.jpg', false);
+});
+
+test('conversation attachment route serves stored files only to participants', function () {
+    Storage::fake('public');
+
+    $sender = User::factory()->create();
+    $receiver = User::factory()->create();
+    $outsider = User::factory()->create();
+    $message = createMarketplaceMessage($sender, $receiver, 'Here is the image');
+
+    Storage::disk('public')->put('message-attachments/photo.jpg', 'image-bytes');
+
+    $attachment = $message->attachments()->create([
+        'path' => 'message-attachments/photo.jpg',
+        'name' => 'photo.jpg',
+        'mime' => 'image/jpeg',
+        'size' => 11,
+        'created_at' => now(),
+    ]);
+
+    $this->actingAs($receiver)
+        ->get(route('messages.attachments.show', ['attachment' => $attachment]))
+        ->assertOk()
+        ->assertHeader('content-type', 'image/jpeg');
+
+    $this->actingAs($outsider)
+        ->get(route('messages.attachments.show', ['attachment' => $attachment]))
+        ->assertForbidden();
 });
 
 test('sending a message rejects unsupported attachment types', function () {

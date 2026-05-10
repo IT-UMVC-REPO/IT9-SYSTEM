@@ -260,7 +260,7 @@ test('group conversation sends messages with multiple attachments', function () 
     Event::assertDispatched(GroupMessageSent::class, fn (GroupMessageSent $event) => $event->message->is($message));
 });
 
-test('group attachment links use the configured public disk url', function () {
+test('group attachment links use same-origin attachment routes', function () {
     config(['filesystems.disks.public.url' => 'https://pub.example.test']);
 
     $creator = User::factory()->create();
@@ -272,13 +272,13 @@ test('group attachment links use the configured public disk url', function () {
         'content' => 'Receipt attached',
     ]);
 
-    GroupMessageAttachment::factory()->create([
+    $storedAttachment = GroupMessageAttachment::factory()->create([
         'group_message_id' => $message->getKey(),
         'path' => 'group-message-attachments/r2-receipt.jpg',
         'name' => 'r2-receipt.jpg',
         'mime' => 'image/jpeg',
     ]);
-    GroupMessageAttachment::factory()->create([
+    $externalAttachment = GroupMessageAttachment::factory()->create([
         'group_message_id' => $message->getKey(),
         'path' => 'https://cdn.example.test/group-message-attachments/external-receipt.jpg',
         'name' => 'external-receipt.jpg',
@@ -288,8 +288,8 @@ test('group attachment links use the configured public disk url', function () {
     $this->actingAs($creator)
         ->get(route('messages.group', ['groupId' => $group->getKey()]))
         ->assertOk()
-        ->assertSee('https://pub.example.test/group-message-attachments/r2-receipt.jpg', false)
-        ->assertSee('https://cdn.example.test/group-message-attachments/external-receipt.jpg', false)
+        ->assertSee(route('messages.group-attachments.show', ['attachment' => $storedAttachment], false), false)
+        ->assertSee(route('messages.group-attachments.show', ['attachment' => $externalAttachment], false), false)
         ->assertSee('referrerpolicy="no-referrer"', false)
         ->assertSee("onerror=\"this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');\"", false)
         ->assertSee('Image unavailable')
@@ -300,8 +300,44 @@ test('group attachment links use the configured public disk url', function () {
         ->assertSee('x-show="showTime"', false)
         ->assertSee('rounded-lg text-neutral-500', false)
         ->assertSee('lg:rounded-none', false)
+        ->assertDontSee('src="https://pub.example.test/group-message-attachments/r2-receipt.jpg"', false)
+        ->assertDontSee('href="https://pub.example.test/group-message-attachments/r2-receipt.jpg"', false)
+        ->assertDontSee('src="https://cdn.example.test/group-message-attachments/external-receipt.jpg"', false)
+        ->assertDontSee('href="https://cdn.example.test/group-message-attachments/external-receipt.jpg"', false)
         ->assertDontSee('/storage/group-message-attachments/r2-receipt.jpg', false)
         ->assertDontSee('https://pub.example.test/https://cdn.example.test/group-message-attachments/external-receipt.jpg', false);
+});
+
+test('group attachment route serves stored files only to group members', function () {
+    Storage::fake('public');
+
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $outsider = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member]);
+    $message = GroupMessage::factory()->create([
+        'group_id' => $group->getKey(),
+        'sender_id' => $member->getKey(),
+        'content' => 'Receipt attached',
+    ]);
+
+    Storage::disk('public')->put('group-message-attachments/receipt.jpg', 'image-bytes');
+
+    $attachment = GroupMessageAttachment::factory()->create([
+        'group_message_id' => $message->getKey(),
+        'path' => 'group-message-attachments/receipt.jpg',
+        'name' => 'receipt.jpg',
+        'mime' => 'image/jpeg',
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group-attachments.show', ['attachment' => $attachment]))
+        ->assertOk()
+        ->assertHeader('content-type', 'image/jpeg');
+
+    $this->actingAs($outsider)
+        ->get(route('messages.group-attachments.show', ['attachment' => $attachment]))
+        ->assertForbidden();
 });
 
 test('group conversation sends replies and toggles emoji reactions', function () {

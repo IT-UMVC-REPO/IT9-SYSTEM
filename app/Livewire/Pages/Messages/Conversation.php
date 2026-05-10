@@ -17,7 +17,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -244,7 +243,7 @@ class Conversation extends Component
     {
         return $message->attachmentsForDisplay()
             ->map(function (MessageAttachment $attachment): MessageAttachment {
-                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment->path));
+                $attachment->setAttribute('public_url', $this->attachmentPublicUrl($attachment));
 
                 return $attachment;
             });
@@ -367,7 +366,7 @@ class Conversation extends Component
                     'name' => $attachment->name,
                     'mime' => $attachment->mime,
                     'size' => $attachment->size,
-                    'public_url' => $this->attachmentPublicUrl($attachment->path),
+                    'public_url' => $this->attachmentPublicUrl($attachment),
                 ])
                 ->values()
                 ->all(),
@@ -385,13 +384,9 @@ class Conversation extends Component
         }
     }
 
-    private function attachmentPublicUrl(string $path): string
+    private function attachmentPublicUrl(MessageAttachment $attachment): string
     {
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
-        }
-
-        return Storage::disk('public')->url($path);
+        return route('messages.attachments.show', ['attachment' => $attachment], false);
     }
 
     public function render(): View
