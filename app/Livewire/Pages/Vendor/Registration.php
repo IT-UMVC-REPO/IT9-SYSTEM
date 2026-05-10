@@ -125,7 +125,10 @@ class Registration extends Component
             abort(403);
         }
 
-        $validated = $this->validate($this->vendorRegistrationRules());
+        $validated = $this->validate(
+            $this->vendorRegistrationRules(),
+            $this->vendorRegistrationValidationMessages(),
+        );
         $storedStoreImagePath = $this->storeImageUpload->store('store-images', 'public');
         $isReapplication = $vendorProfile !== null;
 
@@ -273,6 +276,39 @@ class Registration extends Component
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function vendorRegistrationValidationMessages(): array
+    {
+        $messages = [
+            'storeImageUpload.required' => __('Upload a clear store cover image before submitting.'),
+            'storeImageUpload.image' => __('Use a valid image file for the store cover.'),
+            'storeImageUpload.max' => __('Store cover images must be 3 MB or smaller.'),
+        ];
+
+        foreach (array_keys($this->sampleProducts) as $index) {
+            $imageField = "sampleProductUploads.{$index}";
+
+            $messages += $this->vendorProductValidationMessages(
+                prefix: "sampleProducts.{$index}",
+                imageField: $imageField,
+            );
+
+            $messages["{$imageField}.required"] = __('Upload a photo for sample product #:number before submitting.', [
+                'number' => $index + 1,
+            ]);
+            $messages["{$imageField}.image"] = __('Sample product #:number needs a valid image file.', [
+                'number' => $index + 1,
+            ]);
+            $messages["{$imageField}.max"] = __('Sample product #:number image must be 3 MB or smaller.', [
+                'number' => $index + 1,
+            ]);
+        }
+
+        return $messages;
     }
 
     private function hydrateFormFromExistingProfile(?VendorProfile $vendorProfile = null): void

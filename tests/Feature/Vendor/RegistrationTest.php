@@ -159,6 +159,29 @@ test('vendor address is optional during registration', function () {
         ->and($vendorProfile->vendor_address)->toBeNull();
 });
 
+test('missing sample product image validation uses customer-facing copy', function () {
+    $customer = User::factory()->create();
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Vegetables',
+        'slug' => 'vegetables-image-warning',
+    ]);
+
+    Livewire::actingAs($customer)
+        ->test('pages::vendor.registration')
+        ->set('store_name', 'Photo Check Stall')
+        ->set('store_description', 'Fresh goods with clear photos for review.')
+        ->set('storeImageUpload', UploadedFile::fake()->createWithContent('stall.png', vendorRegistrationPngFixture()))
+        ->set('sampleProducts.0.name', 'Fresh Okra Bundle')
+        ->set('sampleProducts.0.description', 'Fresh okra packed for the morning market crowd.')
+        ->set('sampleProducts.0.price', '95.50')
+        ->set('sampleProducts.0.stock_quantity', '12')
+        ->set('sampleProducts.0.categoryId', (string) $category->getKey())
+        ->call('submit')
+        ->assertHasErrors(['sampleProductUploads.0' => 'required'])
+        ->assertSee('Upload a photo for sample product #1 before submitting.')
+        ->assertDontSee('sample product uploads.0');
+});
+
 test('customers with a pending vendor profile see the holding state instead of the form', function () {
     $customer = User::factory()->create();
 

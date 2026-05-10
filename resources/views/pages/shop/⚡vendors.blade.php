@@ -78,7 +78,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
     x-on:keydown.escape.window="selectedVendor = null"
     class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8"
 >
-    <section class="brand-panel suki-reveal overflow-hidden p-6 sm:p-8">
+    <section class="brand-panel overflow-hidden p-6 sm:p-8">
         <span class="brand-kicker">{{ __('Discover Stalls') }}</span>
         <div class="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)] lg:items-end">
             <div>
@@ -138,7 +138,7 @@ new #[Title('Browse Vendors & Find Stalls')] class extends Component
         @if ($this->vendors->isNotEmpty())
             <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 @foreach ($this->vendors as $vendor)
-                    <div wire:key="market-stall-{{ $vendor->id }}" wire:transition class="suki-reveal" style="transition-delay: {{ min($loop->index * 60, 400) }}ms">
+                    <div wire:key="market-stall-{{ $vendor->id }}" wire:transition>
                         <x-vendor-card :vendor="$vendor" />
                     </div>
                 @endforeach

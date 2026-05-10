@@ -501,9 +501,6 @@ new #[Title('Edit product')] class extends Component {
                     <flux:badge size="sm">{{ __('WEBP') }}</flux:badge>
                     <flux:badge size="sm">{{ __('max 3 MB') }}</flux:badge>
                 </div>
-                <p class="text-xs text-neutral-500 dark:text-zinc-400">
-                    {{ __('If saved images do not load locally, run php artisan storage:link once for this checkout.') }}
-                </p>
 
                 <details class="rounded-2xl border border-stone-200 bg-white/70 p-4 dark:border-white/10 dark:bg-zinc-900/60">
                     <summary class="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-zinc-100">

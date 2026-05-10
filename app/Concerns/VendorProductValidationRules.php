@@ -48,12 +48,15 @@ trait VendorProductValidationRules
     /**
      * @return array<string, string>
      */
-    protected function vendorProductValidationMessages(string $prefix = ''): array
+    protected function vendorProductValidationMessages(string $prefix = '', string $imageField = 'productImageUpload'): array
     {
         $qualifiedKey = static fn (string $key): string => $prefix !== '' ? $prefix.'.'.$key : $key;
 
         return [
             $qualifiedKey('base_unit_quantity').'.max' => __('Base unit quantity cannot exceed 99,999.'),
+            $imageField.'.required' => __('Upload a product photo before saving.'),
+            $imageField.'.image' => __('Use a valid image file for the product photo.'),
+            $imageField.'.max' => __('Product photos must be 3 MB or smaller.'),
         ];
     }
 }

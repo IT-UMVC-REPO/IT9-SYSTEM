@@ -289,7 +289,7 @@ new class extends Component {
                 @if ($this->products->isNotEmpty())
                     <div class="grid gap-6 transition-all duration-300 md:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($this->products as $product)
-                            <article wire:key="catalog-product-{{ $product->id }}" wire:transition class="suki-reveal group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900" style="transition-delay: {{ min($loop->index * 50, 400) }}ms">
+                            <article wire:key="catalog-product-{{ $product->id }}" wire:transition class="group flex h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900">
                                 <a href="{{ route('shop.products.show', $product) }}" class="block">
                                     <div x-data="sukiImg()" x-init="bind($refs.img)" class="relative aspect-[5/4] overflow-hidden bg-stone-100 dark:bg-zinc-800">
                                         <div x-show="!loaded" class="suki-skeleton absolute inset-0"></div>

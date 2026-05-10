@@ -159,15 +159,18 @@ test('vendor product forms use compact conversion controls and temporary upload 
         ->toContain("__('How many :base per 1 :unit?'")
         ->toContain('border-2 border-[var(--brand-500)]')
         ->toContain('$productImageUpload->temporaryUrl()')
+        ->not->toContain('php artisan storage:link')
         ->not->toContain('border-l-4 border-l-[var(--brand-600)]')
         ->and($productEdit)
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
         ->toContain('<flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>')
         ->toContain('$productImageUpload->temporaryUrl()')
+        ->not->toContain('php artisan storage:link')
         ->not->toContain('border-left-color: var(--brand-600)')
         ->and($registration)
         ->toContain('$storeImageUpload->temporaryUrl()')
         ->toContain('$sampleProductUpload->temporaryUrl()')
+        ->not->toContain('php artisan storage:link')
         ->and($products)
         ->toContain('Stock Manager')
         ->toContain('flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5')
@@ -220,7 +223,9 @@ test('scroll reveal and navigation progress have safety fallbacks', function () 
     expect($appJs)
         ->toContain("Array.from(document.querySelectorAll('.suki-reveal:not(.is-visible)'))")
         ->toContain('getBoundingClientRect()')
-        ->toContain("document.addEventListener('livewire:updated', () => setTimeout(() => window.sukiRevealAll(), 50));")
+        ->toContain("document.addEventListener('livewire:updated', () => scheduleSukiReveal(50));")
+        ->toContain("livewire.hook('morphed', () => scheduleSukiReveal());")
+        ->toContain("livewire.hook('morph.added'")
         ->toContain("threshold: 0, rootMargin: '0px 0px 0px 0px'")
         ->toContain('window._sukiRevealFallback')
         ->toContain("document.body.style.overflow = '';")
@@ -241,6 +246,7 @@ test('scroll reveal and navigation progress have safety fallbacks', function () 
 });
 
 test('bug fix pass removes reveal dependencies from always visible panels', function () {
+    $catalog = uiPolishBlade('views/pages/shop/*catalog-browser.blade.php');
     $vendors = uiPolishBlade('views/pages/shop/*vendors.blade.php');
     $orders = uiPolishBlade('views/pages/shop/*orders.blade.php');
     $settings = uiPolishBlade('views/pages/settings/layout.blade.php');
@@ -251,8 +257,14 @@ test('bug fix pass removes reveal dependencies from always visible panels', func
     $adminDashboard = uiPolishBlade('views/pages/admin/*dashboard.blade.php');
     $reportDetail = uiPolishBlade('views/pages/admin/*report-detail.blade.php');
 
-    expect($vendors)
+    expect($catalog)
+        ->not->toContain('class="suki-reveal group')
+        ->not->toContain('transition-delay: {{ min($loop->index * 50, 400) }}ms')
+        ->and($vendors)
         ->toContain('bg-neutral-950/40 px-4 py-6 sm:py-6')
+        ->not->toContain('brand-panel suki-reveal')
+        ->not->toContain('class="suki-reveal"')
+        ->not->toContain('transition-delay: {{ min($loop->index * 60, 400) }}ms')
         ->not->toContain('bg-neutral-950/55 px-4 py-6 backdrop-blur-sm')
         ->and($orders)
         ->toContain('brand-panel-muted flex flex-wrap gap-2 rounded-[2rem] p-3')

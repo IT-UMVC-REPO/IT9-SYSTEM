@@ -249,9 +249,6 @@
                                             @error("sampleProductUploads.$index")
                                                 <p class="mt-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
                                             @enderror
-                                            <p class="mt-2 text-xs text-neutral-500 dark:text-zinc-400">
-                                                {{ __('If saved images do not load locally, run php artisan storage:link once for this checkout.') }}
-                                            </p>
                                         </div>
 
                                         <div class="space-y-4">

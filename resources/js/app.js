@@ -993,6 +993,18 @@ window.sukiDatePicker = (config) => ({
 });
 
 /* -- SukiMarket scroll-reveal (IntersectionObserver) --------------- */
+const scheduleSukiReveal = (delay = 0) => {
+    const reveal = () => window.sukiRevealAll?.();
+
+    if (delay > 0) {
+        setTimeout(reveal, delay);
+
+        return;
+    }
+
+    requestAnimationFrame(reveal);
+};
+
 window.sukiRevealAll = function () {
     const targets = Array.from(document.querySelectorAll('.suki-reveal:not(.is-visible)'));
 
@@ -1023,7 +1035,7 @@ window.sukiRevealAll = function () {
 
     remaining.forEach(el => observer.observe(el));
 
-    // Nuclear fallback: force-reveal anything still hidden after 1 second
+    // Last-resort fallback: force-reveal anything still hidden after 1 second
     clearTimeout(window._sukiRevealFallback);
     window._sukiRevealFallback = setTimeout(() => {
         document.querySelectorAll('.suki-reveal:not(.is-visible)').forEach(el => {
@@ -1032,9 +1044,31 @@ window.sukiRevealAll = function () {
     }, 1000);
 };
 
+window.sukiReveal = window.sukiRevealAll;
+
+const registerSukiRevealLivewireHooks = () => {
+    const livewire = window.Livewire ?? Livewire;
+
+    if (window._sukiRevealLivewireHooksRegistered || typeof livewire?.hook !== 'function') {
+        return;
+    }
+
+    window._sukiRevealLivewireHooksRegistered = true;
+
+    livewire.hook('morphed', () => scheduleSukiReveal());
+    livewire.hook('morph.added', ({ el }) => {
+        if (el?.classList?.contains('suki-reveal') || el?.querySelector?.('.suki-reveal')) {
+            scheduleSukiReveal();
+        }
+    });
+};
+
 document.addEventListener('DOMContentLoaded', () => window.sukiRevealAll());
 document.addEventListener('livewire:navigated', () => window.sukiRevealAll());
-document.addEventListener('livewire:updated', () => setTimeout(() => window.sukiRevealAll(), 50));
+document.addEventListener('livewire:updated', () => scheduleSukiReveal(50));
+document.addEventListener('livewire:init', registerSukiRevealLivewireHooks);
+document.addEventListener('livewire:initialized', registerSukiRevealLivewireHooks);
+registerSukiRevealLivewireHooks();
 
 /* -- SukiMarket image progressive load ------------------------------ */
 window.sukiLazyImage = () => ({
@@ -1087,34 +1121,6 @@ window.sukiCounter = (target, duration = 1200) => ({
 
         requestAnimationFrame(step);
     },
-});
-
-/* -- Scroll-reveal (IntersectionObserver) -------------------------- */
-window.sukiReveal = function () {
-    const els = document.querySelectorAll('.suki-reveal:not(.is-visible)');
-
-    if (!els.length) return;
-
-    const io = new IntersectionObserver((entries) => {
-        entries.forEach((entry, index) => {
-            if (!entry.isIntersecting) return;
-
-            entry.target.style.transitionDelay = `${Math.min(index * 55, 320)}ms`;
-            entry.target.classList.add('is-visible');
-            io.unobserve(entry.target);
-        });
-    }, { threshold: 0.08, rootMargin: '0px 0px -32px 0px' });
-
-    els.forEach(el => io.observe(el));
-};
-
-document.addEventListener('DOMContentLoaded', window.sukiReveal);
-document.addEventListener('livewire:navigated', () => {
-    window.sukiReveal();
-    document.querySelectorAll('.suki-reveal.is-visible').forEach(el => {
-        el.style.transitionDelay = '';
-    });
-    window.sukiReveal();
 });
 
 /* -- Progressive image load ---------------------------------------- */
