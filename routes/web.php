@@ -55,12 +55,16 @@ Route::middleware(['auth', 'verified', 'role:customer,vendor'])->prefix('shop')-
     Route::livewire('/favorites', 'pages::shop.favorites')->name('favorites');
 });
 
-Route::middleware(['auth', 'verified'])->prefix('vendor')->name('vendor.')->group(function () {
-    Route::livewire('/register', 'pages::vendor.registration')->name('registration');
-});
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::livewire('/setup', 'pages::setup')->name('setup');
 
-Route::middleware(['auth', 'verified'])->prefix('rider')->name('rider.')->group(function () {
-    Route::livewire('/register', 'pages::rider.registration')->name('registration');
+    Route::prefix('vendor')->name('vendor.')->group(function () {
+        Route::livewire('/register', 'pages::vendor.registration')->name('registration');
+    });
+
+    Route::prefix('rider')->name('rider.')->group(function () {
+        Route::livewire('/register', 'pages::rider.registration')->name('registration');
+    });
 });
 
 Route::view('/support/video-calls', 'pages.support.video-calls')->name('support.video-calls');

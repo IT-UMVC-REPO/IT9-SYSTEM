@@ -33,8 +33,7 @@
                         $navItem('Dashboard', 'customer.dashboard', ['customer.*'], 'fa-solid fa-table-cells-large'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
                         $navItem('Orders', 'shop.orders', ['shop.orders', 'shop.orders.*'], 'fa-solid fa-bag-shopping'),
-                        $navItem('Seller setup', 'vendor.registration', ['vendor.registration'], 'fa-solid fa-shop'),
-                        $navItem('Rider setup', 'rider.registration', ['rider.registration'], 'fa-solid fa-motorcycle'),
+                        $navItem('Setup', 'setup', ['setup', 'vendor.registration', 'rider.registration'], 'fa-solid fa-sliders'),
                     ],
                     [
                         $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
@@ -91,13 +90,11 @@
 
             $mobileOrdersNavigationItem = collect($navigationItems)->firstWhere('label', __('Orders'));
             $mobileMessagesNavigationItem = collect($quickActionItems)->firstWhere('label', __('Messages'));
-            $mobileSellerSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Seller setup'));
-            $mobileRiderSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Rider setup'));
+            $mobileSetupNavigationItem = collect($navigationItems)->firstWhere('label', __('Setup'));
             $mobileAccountNavigationItems = array_values(array_filter([
                 $mobileOrdersNavigationItem,
                 $settingsNavigationItem,
-                $mobileSellerSetupNavigationItem,
-                $mobileRiderSetupNavigationItem,
+                $mobileSetupNavigationItem,
             ]));
 
             $mobileNavigationItems = array_values(array_filter(
@@ -110,7 +107,7 @@
                         $homeNavigationItem,
                         ...$navigationItems,
                     ],
-                fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Seller setup'), __('Rider setup')], true),
+                fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Setup')], true),
             ));
 
             $mobileBottomNavigationItems = match ($effectiveMarketplaceRole) {
