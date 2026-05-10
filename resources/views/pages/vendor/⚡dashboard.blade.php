@@ -219,16 +219,18 @@ new #[Title('Vendor Dashboard')] class extends Component
         <div
             x-data="sukiVendorMap()"
             x-init="initMap('suki-vendor-map-dashboard')"
-            class="mt-6 overflow-hidden rounded-2xl"
+            class="mt-6"
         >
-            <div id="suki-vendor-map-dashboard" class="h-[400px] w-full"></div>
+            <div class="overflow-hidden rounded-2xl">
+                <div id="suki-vendor-map-dashboard" class="h-[400px] w-full"></div>
+            </div>
 
             <div class="mt-4 flex gap-3" x-cloak>
                 <button
                     type="button"
                     x-on:click="toggleCustomers()"
                     x-bind:class="showCustomers ? 'brand-button-primary active:scale-[0.96]' : 'brand-button-secondary active:scale-[0.96]'"
-                    class="text-sm rounded-xl"
+                    class="rounded-xl text-sm"
                 >
                     <span x-text="showCustomers ? @js(__('Hide customers')) : @js(__('Show my customers'))"></span>
                 </button>

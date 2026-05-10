@@ -31,9 +31,13 @@
         <img
             src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($profileImage) }}"
             alt="{{ $userName ?? __('User') }}"
+            onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
             class="{{ $sizeClasses }} rounded-full object-cover shadow-sm ring-2 ring-stone-200 transition-opacity duration-300 dark:ring-white/10"
             loading="lazy"
         >
+        <span class="{{ $sizeClasses }} brand-logo-badge hidden items-center justify-center rounded-full font-semibold shadow-sm">
+            {{ filled($initials) ? $initials : '?' }}
+        </span>
     @else
         <span class="{{ $sizeClasses }} brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm">
             {{ filled($initials) ? $initials : '?' }}

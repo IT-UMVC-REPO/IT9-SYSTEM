@@ -61,6 +61,8 @@ test('sales page renders for approved vendors', function () {
         ->assertSee('Sales overview')
         ->assertSee('Top products')
         ->assertSee('chart.umd.min.js', false)
+        ->assertSee('wire:key="vendor-sales-empty-chart-month"', false)
+        ->assertDontSee('brand-panel-muted suki-reveal', false)
         ->assertDontSee('createSukiApexChart', false)
         ->assertDontSee('ApexCharts', false);
 });
@@ -109,11 +111,13 @@ test('period filter narrows results', function () {
     $this->actingAs($vendorUser)
         ->get(route('vendor.sales', ['period' => 'week']))
         ->assertOk()
+        ->assertSee('wire:key="vendor-sales-chart-week"', false)
         ->assertSee('₱100.00');
 
     $this->actingAs($vendorUser)
         ->get(route('vendor.sales', ['period' => 'month']))
         ->assertOk()
+        ->assertSee('wire:key="vendor-sales-chart-month"', false)
         ->assertSee('₱400.00');
 });
 

@@ -299,7 +299,7 @@ new #[Title('Vendor review')] class extends Component {
                     wire:model="rejection_reason"
                     rows="4"
                     placeholder="{{ __('e.g. Incomplete business documents submitted.') }}"
-                    class="focus:ring-emerald-500"
+                    class="focus:border-rose-500 focus:ring-rose-500"
                     required
                 />
                 <flux:error name="rejection_reason" />

@@ -18,12 +18,21 @@
 
         <img
             x-ref="img"
-            x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
+            x-bind:class="error ? 'hidden' : (loaded ? 'opacity-100' : 'opacity-0')"
             src="{{ $vendor->store_image_url }}"
             alt="{{ $vendor->store_name }}"
             class="aspect-[3/2] w-full object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-[1.04] [will-change:transform]"
             loading="lazy"
         >
+        <div
+            x-cloak
+            x-show="error"
+            class="aspect-[3/2] w-full bg-stone-200 text-neutral-500 dark:bg-zinc-800 dark:text-zinc-300"
+        >
+            <div class="flex h-full w-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.18em]">
+                {{ __('Image unavailable') }}
+            </div>
+        </div>
 
         {{-- Gradient overlay --}}
         <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:opacity-75"></div>

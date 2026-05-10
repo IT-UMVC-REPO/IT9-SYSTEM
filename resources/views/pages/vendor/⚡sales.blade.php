@@ -41,7 +41,7 @@
             ['label' => __('Orders fulfilled'), 'value' => number_format($this->summary['total_orders'])],
             ['label' => __('Average order value'), 'value' => $this->peso($this->summary['average_order_value'])],
         ] as $stat)
-            <article class="brand-panel-muted suki-reveal p-5" style="transition-delay: {{ $loop->index * 80 }}ms">
+            <article class="brand-panel-muted p-5">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ $stat['label'] }}</p>
                 <p class="mt-3 text-3xl font-semibold text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</p>
             </article>
@@ -49,7 +49,7 @@
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <article class="brand-panel suki-reveal overflow-hidden p-5" style="transition-delay: 100ms">
+        <article class="brand-panel overflow-hidden p-5">
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Revenue trend') }}</p>
@@ -60,11 +60,12 @@
             </div>
 
             @if (array_sum($dailyRevenue['series']) === 0.0)
-                <div class="mt-6 flex h-[280px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                <div wire:key="vendor-sales-empty-chart-{{ $period }}" class="mt-6 flex h-[280px] items-center justify-center rounded-[1.5rem] border border-dashed border-stone-200 text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
                     {{ __('No fulfilled orders yet for this period') }}
                 </div>
             @else
                 <x-chart-canvas
+                    wire:key="vendor-sales-chart-{{ $period }}"
                     type="line"
                     :labels="$dailyRevenue['labels']"
                     :series="$dailyRevenue['series']"
@@ -76,7 +77,7 @@
             @endif
         </article>
 
-        <article class="brand-panel suki-reveal p-6" style="transition-delay: 200ms">
+        <article class="brand-panel p-6">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Top products') }}</p>

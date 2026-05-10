@@ -1,6 +1,6 @@
 @props(['icon' => 'fa-regular fa-folder-open', 'heading', 'body', 'actionLabel' => null, 'actionRoute' => null])
 
-<div {{ $attributes->merge(['class' => 'brand-panel suki-reveal px-6 py-14 text-center']) }}>
+<div {{ $attributes->merge(['class' => 'brand-panel px-6 py-14 text-center']) }}>
     <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-[2rem] brand-soft-surface">
         <svg viewBox="0 0 120 120" aria-hidden="true" class="h-16 w-16">
             <circle cx="60" cy="60" r="48" fill="currentColor" opacity="0.12" />

@@ -57,7 +57,10 @@ test('page renders for approved vendors', function () {
         ->get(route('vendor.dashboard'))
         ->assertOk()
         ->assertSee('Welcome back to Davao Greens Hub')
-        ->assertSee('Sales overview');
+        ->assertSee('Sales overview')
+        ->assertSee('class="mt-6"', false)
+        ->assertSee('class="overflow-hidden rounded-2xl"', false)
+        ->assertSee('Hide customers');
 });
 
 test('non approved vendor is redirected to customer dashboard', function () {

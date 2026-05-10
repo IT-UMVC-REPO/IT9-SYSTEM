@@ -16,17 +16,23 @@
         </p>
     </section>
 
-    <section class="brand-panel suki-reveal p-6" style="transition-delay: 80ms">
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">
+    <section class="brand-panel suki-reveal p-5 sm:p-6" style="transition-delay: 80ms">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             @foreach ($this->kpis as $card)
-                <div class="flex items-baseline gap-2">
-                    <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
-                    <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
-                    <span class="text-xs font-semibold {{ $card['delta_class'] }}">{{ $card['delta'] }}</span>
-                </div>
-                @if (! $loop->last)
-                    <div class="h-6 w-px bg-stone-200 dark:bg-white/10"></div>
-                @endif
+                <article class="brand-panel-muted flex min-w-0 flex-col gap-3 p-4">
+                    <div class="flex items-center gap-3">
+                        <span class="brand-soft-surface flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                            <i class="{{ $card['icon'] }} text-sm"></i>
+                        </span>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                <span class="text-2xl font-bold tabular-nums text-neutral-900 dark:text-zinc-100">{{ $card['value'] }}</span>
+                                <span class="text-sm font-medium text-neutral-500 dark:text-zinc-400">{{ $card['label'] }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="w-fit rounded-full bg-white px-2.5 py-1 text-xs font-semibold shadow-sm dark:bg-zinc-800 {{ $card['delta_class'] }}">{{ $card['delta'] }}</span>
+                </article>
             @endforeach
         </div>
     </section>

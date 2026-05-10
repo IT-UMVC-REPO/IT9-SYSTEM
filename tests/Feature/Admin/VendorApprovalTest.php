@@ -87,6 +87,8 @@ test('pending vendor review shows submitted sample products', function () {
         ->assertSee('Reject vendor')
         ->assertSee('Reject application')
         ->assertSee('Reason for rejection')
+        ->assertSee('focus:border-rose-500 focus:ring-rose-500', false)
+        ->assertDontSee('focus:ring-emerald-500', false)
         ->assertSee('Sample Ampalaya Bundle')
         ->assertSee("\u{20B1}95.50");
 });

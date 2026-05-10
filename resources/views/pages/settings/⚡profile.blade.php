@@ -229,9 +229,13 @@ new #[Title('Profile settings')] class extends Component {
                                     <img
                                         src="{{ Storage::disk('public')->url($currentProfileImage) }}"
                                         alt="{{ $user->name }}"
+                                        onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
                                         loading="lazy"
                                         class="h-16 w-16 rounded-full object-cover shadow-sm ring-2 ring-stone-200 dark:ring-white/10"
                                     >
+                                    <span class="brand-logo-badge hidden h-16 w-16 items-center justify-center rounded-full text-xl font-semibold shadow-sm">
+                                        {{ $user->initials() }}
+                                    </span>
                                 @else
                                     <span class="brand-logo-badge flex h-16 w-16 items-center justify-center rounded-full text-xl font-semibold shadow-sm">
                                         {{ $user->initials() }}
@@ -331,8 +335,7 @@ new #[Title('Profile settings')] class extends Component {
                     />
 
                     <section
-                        class="brand-panel suki-reveal p-5 sm:p-6"
-                        style="transition-delay: 200ms"
+                        class="brand-panel p-5 sm:p-6"
                         x-data="sukiProfileMap({
                             wire: $wire,
                             mapId: 'profile-location-map',

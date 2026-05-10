@@ -839,6 +839,7 @@ window.sukiProfileMap = (config) => ({
     mapId: config.mapId,
     geocodeTimer: null,
     initialized: false,
+    addressUpdatedHandler: null,
     lat: Number(config.lat ?? config.center?.lat ?? 7.4479),
     lng: Number(config.lng ?? config.center?.lng ?? 125.8090),
 
@@ -857,20 +858,27 @@ window.sukiProfileMap = (config) => ({
 
         this.initialized = true;
 
-        window.addEventListener('profile-address-updated', (event) => {
+        this.addressUpdatedHandler = (event) => {
             this.scheduleGeocode(event.detail);
-        });
+        };
+
+        window.addEventListener('profile-address-updated', this.addressUpdatedHandler);
 
         this.$nextTick(() => {
             const L = window.L;
+            const element = document.getElementById(this.mapId);
 
-            if (!L || this.map) {
+            if (!L || this.map || !element) {
                 return;
             }
 
             const center = [this.lat, this.lng];
 
-            this.map = L.map(this.mapId, {
+            if (element._leaflet_id) {
+                element._leaflet_id = null;
+            }
+
+            this.map = L.map(element, {
                 center,
                 zoom: 15,
                 zoomControl: true,
@@ -897,7 +905,21 @@ window.sukiProfileMap = (config) => ({
             if (config.address) {
                 this.scheduleGeocode(config.address);
             }
+
+            window.setTimeout(() => this.map?.invalidateSize(), 100);
         });
+    },
+
+    destroy() {
+        clearTimeout(this.geocodeTimer);
+
+        if (this.addressUpdatedHandler) {
+            window.removeEventListener('profile-address-updated', this.addressUpdatedHandler);
+        }
+
+        this.map?.remove();
+        this.map = null;
+        this.marker = null;
     },
 
     scheduleGeocode(address) {
@@ -1126,6 +1148,7 @@ window.sukiCounter = (target, duration = 1200) => ({
 /* -- Progressive image load ---------------------------------------- */
 window.sukiImg = () => ({
     loaded: false,
+    error: false,
     bind(el) {
         if (!(el instanceof HTMLImageElement)) {
             return;
@@ -1137,10 +1160,18 @@ window.sukiImg = () => ({
             return;
         }
 
+        if (el.complete && el.naturalWidth === 0) {
+            this.loaded = true;
+            this.error = true;
+
+            return;
+        }
+
         el.addEventListener('load', () => {
             this.loaded = true;
         }, { once: true });
         el.addEventListener('error', () => {
+            this.error = true;
             this.loaded = true;
         }, { once: true });
     },

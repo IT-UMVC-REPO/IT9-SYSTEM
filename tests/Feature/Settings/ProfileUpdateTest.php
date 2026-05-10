@@ -219,8 +219,26 @@ test('user avatar component shows profile image when available and initials othe
 
     expect($withImage)->toContain('<img')
         ->and($withImage)->toContain(Storage::disk('public')->url('profile-images/avatar.jpg'))
+        ->and($withImage)->toContain('onerror="this.onerror=null; this.classList.add(\'hidden\');')
+        ->and($withImage)->toContain('brand-logo-badge hidden')
+        ->and($withImage)->toContain($userWithImage->initials())
         ->and($withoutImage)->toContain($userWithoutImage->initials())
         ->and($withoutImage)->toContain('<span');
+});
+
+test('profile location map remains immediately visible after profile renders', function () {
+    $user = User::factory()->create([
+        'address' => 'Rizal Street, Tagum City',
+        'lat' => 7.4479,
+        'lng' => 125.8090,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('profile.edit'))
+        ->assertOk()
+        ->assertSee('sukiProfileMap', false)
+        ->assertSee('profile-location-map', false)
+        ->assertDontSee('class="brand-panel suki-reveal p-5 sm:p-6"', false);
 });
 
 test('user can delete their account', function () {

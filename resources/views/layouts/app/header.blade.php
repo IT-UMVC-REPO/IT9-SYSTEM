@@ -165,7 +165,11 @@
                         @endforeach
                     </div>
 
-                    <div class="ml-auto mr-3 hidden items-center gap-1 lg:flex">
+                    <div @class([
+                        'ml-auto hidden items-center lg:flex',
+                        'mr-1 gap-0.5' => $effectiveMarketplaceRole === \App\Enums\UserRole::Admin,
+                        'mr-3 gap-1' => $effectiveMarketplaceRole !== \App\Enums\UserRole::Admin,
+                    ])>
                         @foreach ($quickActionItems as $item)
                             @if ($item['route'] === route('shop.cart'))
                                 <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'header-cart-badge'" />

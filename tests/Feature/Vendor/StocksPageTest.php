@@ -31,7 +31,10 @@ test('vendor can visit the stocks page', function () {
     $this->actingAs($vendorUser)
         ->get(route('vendor.stocks'))
         ->assertOk()
-        ->assertSee('Stock Management');
+        ->assertSee('Stock Management')
+        ->assertSee('No products found')
+        ->assertSee('brand-panel px-6 py-14 text-center', false)
+        ->assertDontSee('brand-panel suki-reveal px-6 py-14 text-center', false);
 });
 
 test('non vendor is redirected away', function () {
