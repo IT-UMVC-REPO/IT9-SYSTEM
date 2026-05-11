@@ -737,11 +737,20 @@ function decodePolyline6(encoded) {
 
 window.sukiOrderLocationMap = (options) => ({
     map: null,
+    routeLine: null,
+    riderMarker: null,
+    echoChannel: null,
+    riderUpdatedHandler: null,
     distanceLabel: '',
     points: options.points ?? [],
     mapId: options.mapId,
     showDistance: options.showDistance ?? false,
     zoom: options.zoom ?? 14,
+    orderId: options.orderId ?? null,
+    riderPoint: options.riderPoint ?? null,
+    liveRider: options.liveRider ?? false,
+    routeMode: options.routeMode ?? null,
+    routeRequestSequence: 0,
 
     init() {
         this.$nextTick(() => {
@@ -779,28 +788,200 @@ window.sukiOrderLocationMap = (options) => ({
                     .bindPopup(`<strong>${escapeHtml(point.label)}</strong><br>${escapeHtml(point.address)}`);
             });
 
-            if (this.points.length > 1) {
-                const [from, to] = this.points;
-                fetchRoute(from, to)
-                    .then(({ latLngs, distance }) => {
-                        const routeLine = L.polyline(latLngs, {
-                            color: 'var(--brand-600, #059669)',
-                            weight: 4,
-                            opacity: 0.8,
-                        }).addTo(this.map);
+            if (this.riderPoint) {
+                this.updateRiderPoint(this.riderPoint, false);
+            }
 
-                        this.map.fitBounds(routeLine.getBounds(), {
-                            padding: [32, 32],
-                            maxZoom: 16,
-                        });
+            if (this.liveRider && this.routeMode) {
+                this.subscribeToRiderUpdates();
 
-                        if (this.showDistance) {
-                            this.distanceLabel = `~${distance.toFixed(1)} km by road`;
-                        }
-                    })
-                    .catch(() => {});
+                if (!this.riderPoint) {
+                    this.fitToVisiblePoints();
+                }
+            } else {
+                this.drawStaticRoute();
             }
         });
+    },
+
+    destroy() {
+        if (this.riderUpdatedHandler) {
+            window.removeEventListener('rider-location-updated', this.riderUpdatedHandler);
+            this.riderUpdatedHandler = null;
+        }
+
+        if (window.Echo && this.orderId) {
+            window.Echo.leave(`order.${this.orderId}`);
+        }
+
+        this.map?.remove();
+        this.map = null;
+        this.routeLine = null;
+        this.riderMarker = null;
+    },
+
+    subscribeToRiderUpdates() {
+        this.riderUpdatedHandler = (event) => {
+            const detail = event.detail ?? {};
+            const eventOrderId = Number(detail.order_id ?? detail.orderId);
+
+            if (this.orderId && Number.isFinite(eventOrderId) && eventOrderId !== Number(this.orderId)) {
+                return;
+            }
+
+            this.updateRiderPoint({
+                lat: detail.lat,
+                lng: detail.lng,
+                label: this.riderPoint?.label ?? 'Rider',
+                address: this.riderPoint?.address ?? 'Live rider location',
+                kind: 'rider',
+            });
+        };
+
+        window.addEventListener('rider-location-updated', this.riderUpdatedHandler);
+
+        if (window.Echo && this.orderId) {
+            this.echoChannel = window.Echo.private(`order.${this.orderId}`);
+            this.echoChannel.listen('.RiderLocationUpdated', (event) => {
+                this.updateRiderPoint({
+                    lat: event.lat,
+                    lng: event.lng,
+                    label: this.riderPoint?.label ?? 'Rider',
+                    address: this.riderPoint?.address ?? 'Live rider location',
+                    kind: 'rider',
+                });
+            });
+        }
+    },
+
+    updateRiderPoint(point, pan = true) {
+        const lat = this.numberOrNull(point.lat);
+        const lng = this.numberOrNull(point.lng);
+
+        if (lat === null || lng === null || !this.map) {
+            return;
+        }
+
+        this.riderPoint = {
+            ...point,
+            lat,
+            lng,
+            kind: 'rider',
+        };
+
+        const latlng = [lat, lng];
+
+        if (this.riderMarker) {
+            this.riderMarker.setLatLng(latlng);
+        } else {
+            this.riderMarker = window.L.marker(latlng, {
+                icon: this.markerIcon('rider'),
+            }).addTo(this.map).bindPopup(`<strong>${escapeHtml(this.riderPoint.label ?? 'Rider')}</strong>`);
+        }
+
+        this.drawRiderRoute();
+
+        if (pan) {
+            this.map.panTo(latlng, { animate: true, duration: 0.8 });
+        }
+    },
+
+    drawStaticRoute() {
+        if (this.points.length < 2) {
+            this.fitToVisiblePoints();
+
+            return;
+        }
+
+        const [from, to] = this.points;
+        this.drawRoute(from, to, 'var(--brand-600, #059669)');
+    },
+
+    drawRiderRoute() {
+        const target = this.routeTarget();
+
+        if (!this.riderPoint || !target) {
+            this.fitToVisiblePoints();
+
+            return;
+        }
+
+        this.drawRoute(this.riderPoint, target, this.routeMode === 'pickup' ? 'var(--brand-600, #059669)' : 'var(--map-customer-marker, royalblue)');
+    },
+
+    drawRoute(from, to, color) {
+        const requestId = ++this.routeRequestSequence;
+
+        fetchRoute(from, to)
+            .then(({ latLngs, distance }) => {
+                if (requestId !== this.routeRequestSequence || !this.map) {
+                    return;
+                }
+
+                this.replaceRouteLine(latLngs, color);
+
+                if (this.showDistance) {
+                    this.distanceLabel = `~${distance.toFixed(1)} km by road`;
+                }
+            })
+            .catch(() => {
+                if (requestId !== this.routeRequestSequence || !this.map) {
+                    return;
+                }
+
+                this.replaceRouteLine([[from.lat, from.lng], [to.lat, to.lng]], color);
+
+                if (this.showDistance) {
+                    this.distanceLabel = `~${haversineKm(from.lat, from.lng, to.lat, to.lng).toFixed(1)} km`;
+                }
+            });
+    },
+
+    replaceRouteLine(latLngs, color) {
+        if (this.routeLine) {
+            this.map.removeLayer(this.routeLine);
+        }
+
+        this.routeLine = window.L.polyline(latLngs, {
+            color,
+            weight: 4,
+            opacity: 0.85,
+        }).addTo(this.map);
+
+        this.map.fitBounds(this.routeLine.getBounds(), {
+            padding: [32, 32],
+            maxZoom: 16,
+        });
+    },
+
+    routeTarget() {
+        if (this.routeMode === 'pickup') {
+            return this.points.find((point) => point.kind === 'vendorGreen' || point.kind === 'vendorOrange') ?? null;
+        }
+
+        if (this.routeMode === 'dropoff') {
+            return this.points.find((point) => point.kind === 'customer') ?? null;
+        }
+
+        return null;
+    },
+
+    fitToVisiblePoints() {
+        const visiblePoints = [
+            ...this.points,
+            this.riderPoint,
+        ].filter((point) => point && this.numberOrNull(point.lat) !== null && this.numberOrNull(point.lng) !== null)
+            .map((point) => [Number(point.lat), Number(point.lng)]);
+
+        if (visiblePoints.length > 1) {
+            this.map.fitBounds(window.L.latLngBounds(visiblePoints).pad(0.2));
+        }
+    },
+
+    numberOrNull(value) {
+        const number = Number(value);
+
+        return Number.isFinite(number) ? number : null;
     },
 
     markerIcon(kind) {
@@ -808,6 +989,7 @@ window.sukiOrderLocationMap = (options) => ({
             customer: 'var(--map-customer-marker, royalblue)',
             vendorOrange: 'var(--map-vendor-warning-marker, orange)',
             vendorGreen: 'var(--brand-600, #059669)',
+            rider: '#d946ef',
         }[kind] ?? 'var(--brand-600, #059669)';
 
         return window.L.divIcon({

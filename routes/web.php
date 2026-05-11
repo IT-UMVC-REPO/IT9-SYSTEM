@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified', 'role:rider'])->prefix('api/rider')->name
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::livewire('/dashboard', 'pages::admin.dashboard')->name('dashboard');
+    Route::livewire('/applications', 'pages::admin.applications')->name('applications');
     Route::livewire('/vendors', 'pages::admin.vendors')->name('vendors');
     Route::livewire('/vendors/{vendorProfile}', 'pages::admin.vendor-detail')->name('vendors.show');
     Route::livewire('/riders', 'pages::admin.riders')->name('riders');

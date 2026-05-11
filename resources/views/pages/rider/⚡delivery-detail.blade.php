@@ -122,6 +122,14 @@ new #[Title('Delivery Detail')] class extends Component
 
             const sendLocation = () => {
                 navigator.geolocation.getCurrentPosition((pos) => {
+                    const payload = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        order_id: @js($this->order->id),
+                    };
+
+                    window.dispatchEvent(new CustomEvent('rider-location-updated', { detail: payload }));
+
                     fetch(@js(route('rider.location.update', absolute: false)), {
                         method: 'POST',
                         headers: {
@@ -129,11 +137,7 @@ new #[Title('Delivery Detail')] class extends Component
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                             ...(window.Echo?.socketId?.() ? { 'X-Socket-ID': window.Echo.socketId() } : {}),
                         },
-                        body: JSON.stringify({
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude,
-                            order_id: @js($this->order->id),
-                        }),
+                        body: JSON.stringify(payload),
                     });
                 });
             };
@@ -191,6 +195,10 @@ new #[Title('Delivery Detail')] class extends Component
                 vendor-marker="vendorGreen"
                 :show-distance="true"
                 heading="Delivery route"
+                :order="$this->order"
+                :enable-live-rider="true"
+                :route-mode="$this->order->order_status === OrderStatus::PickedUp ? 'pickup' : 'dropoff'"
+                rider-label="You"
             />
 
             <section class="brand-panel overflow-hidden">

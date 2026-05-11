@@ -8,6 +8,10 @@
     'showDistance' => false,
     'heading' => 'Delivery map',
     'mapId' => null,
+    'order' => null,
+    'enableLiveRider' => false,
+    'routeMode' => null,
+    'riderLabel' => 'Rider',
 ])
 
 @php
@@ -16,12 +20,26 @@
     $mapId ??= 'order-location-map-'.Str::random(8);
     $points = [];
 
-    if ($customer instanceof \App\Models\User && $customer->hasLocation()) {
+    $customerLat = null;
+    $customerLng = null;
+    $customerAddress = null;
+
+    if ($order instanceof \App\Models\Order && $order->delivery_lat !== null && $order->delivery_lng !== null) {
+        $customerLat = (float) $order->delivery_lat;
+        $customerLng = (float) $order->delivery_lng;
+        $customerAddress = $order->delivery_address ?: __('Delivery address');
+    } elseif ($customer instanceof \App\Models\User && $customer->hasLocation()) {
+        $customerLat = (float) $customer->lat;
+        $customerLng = (float) $customer->lng;
+        $customerAddress = $customer->address ?: __('Delivery address');
+    }
+
+    if ($customerLat !== null && $customerLng !== null) {
         $points[] = [
-            'lat' => (float) $customer->lat,
-            'lng' => (float) $customer->lng,
+            'lat' => $customerLat,
+            'lng' => $customerLng,
             'label' => __($customerLabel),
-            'address' => $customer->address ?: __('Delivery address'),
+            'address' => $customerAddress,
             'kind' => 'customer',
         ];
     }
@@ -33,6 +51,18 @@
             'label' => __($vendorLabel),
             'address' => $vendorProfile->vendor_address ?: __('Tagum City'),
             'kind' => $vendorMarker,
+        ];
+    }
+
+    $riderPoint = null;
+
+    if ($order instanceof \App\Models\Order && $order->rider_lat !== null && $order->rider_lng !== null) {
+        $riderPoint = [
+            'lat' => (float) $order->rider_lat,
+            'lng' => (float) $order->rider_lng,
+            'label' => __($riderLabel),
+            'address' => __('Live rider location'),
+            'kind' => 'rider',
         ];
     }
 @endphp
@@ -50,10 +80,17 @@
                                 'bg-[var(--brand-600)]' => $point['kind'] === 'vendorGreen',
                                 'bg-orange-500' => $point['kind'] === 'vendorOrange',
                                 'bg-blue-500' => $point['kind'] === 'customer',
+                                'bg-fuchsia-500' => $point['kind'] === 'rider',
                             ])></span>
                             {{ $point['label'] }}
                         </span>
                     @endforeach
+                    @if ($enableLiveRider)
+                        <span class="inline-flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-fuchsia-500"></span>
+                            {{ __($riderLabel) }}
+                        </span>
+                    @endif
                 </div>
             </div>
 
@@ -72,8 +109,13 @@
                 mapId: @js($mapId),
                 points: @js($points),
                 showDistance: @js($showDistance),
+                orderId: @js($order instanceof \App\Models\Order ? $order->getKey() : null),
+                riderPoint: @js($riderPoint),
+                liveRider: @js((bool) $enableLiveRider),
+                routeMode: @js($routeMode),
             })"
             x-init="init()"
+            x-on:destroy="destroy()"
             x-effect="if (distanceLabel) window.dispatchEvent(new CustomEvent('order-map-distance', { detail: distanceLabel }))"
             class="overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-900"
         >

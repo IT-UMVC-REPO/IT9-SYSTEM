@@ -379,26 +379,7 @@ new #[Title('Stock Management')] class extends Component {
         </div>
     </div>
 
-    <div class="flex items-center gap-1 rounded-2xl border border-stone-200 bg-stone-100 p-1 dark:border-white/10 dark:bg-zinc-800/60">
-        <a href="{{ route('vendor.products') }}" wire:navigate
-            @class([
-                'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
-                'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.products'),
-                'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.products'),
-            ])>
-            <i class="fa-solid fa-boxes-stacked text-xs"></i>
-            {{ __('Products') }}
-        </a>
-        <a href="{{ route('vendor.stocks') }}" wire:navigate
-            @class([
-                'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition',
-                'bg-white text-neutral-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100' => request()->routeIs('vendor.stocks'),
-                'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-zinc-100' => ! request()->routeIs('vendor.stocks'),
-            ])>
-            <i class="fa-solid fa-warehouse text-xs"></i>
-            {{ __('Stock Manager') }}
-        </a>
-    </div>
+    <x-vendor-management-tabs />
 
     <section class="brand-panel p-6">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5 dark:border-white/10">

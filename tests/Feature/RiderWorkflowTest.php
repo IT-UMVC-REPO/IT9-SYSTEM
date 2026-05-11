@@ -133,6 +133,51 @@ test('rider can claim a ready order and complete the delivery flow', function ()
     Queue::assertPushed(SendOrderNotificationJob::class, 3);
 });
 
+test('rider dashboard map follows the rider to pickup before delivery', function () {
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+    $order = createReadyRiderOrder([
+        'rider_id' => $rider->getKey(),
+        'order_status' => OrderStatus::PickedUp,
+        'rider_lat' => 7.4512345,
+        'rider_lng' => 125.8123456,
+    ]);
+
+    $response = $this->actingAs($rider)
+        ->get(route('rider.dashboard'))
+        ->assertOk()
+        ->assertSee('Delivery route')
+        ->assertSee('Message customer')
+        ->assertSee('rider-location-updated', false)
+        ->assertSee('liveRider: true', false)
+        ->assertSee('routeMode:', false)
+        ->assertSee('pickup', false)
+        ->assertSee(route('messages.conversation', ['conversationReference' => $order->customer_id, 'order' => $order->id]), false);
+
+    expect($response->getContent())->toContain('riderPoint:');
+});
+
+test('rider delivery detail map switches to the customer route when out for delivery', function () {
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+    $order = createReadyRiderOrder([
+        'rider_id' => $rider->getKey(),
+        'order_status' => OrderStatus::OutForDelivery,
+        'rider_lat' => 7.4512345,
+        'rider_lng' => 125.8123456,
+    ]);
+
+    $this->actingAs($rider)
+        ->get(route('rider.deliveries.show', ['orderReference' => $order->getKey()]))
+        ->assertOk()
+        ->assertSee('Delivery route')
+        ->assertSee('rider-location-updated', false)
+        ->assertSee('liveRider: true', false)
+        ->assertSee('routeMode:', false)
+        ->assertSee('dropoff', false)
+        ->assertSee('Message customer');
+});
+
 test('rider location endpoint updates the rider profile and assigned active order', function () {
     Event::fake([RiderLocationUpdated::class]);
 
@@ -189,6 +234,6 @@ test('customer order detail shows live rider tracking for active delivery coordi
     $this->actingAs($order->customer)
         ->get(route('shop.orders.show', ['orderReference' => $order->getKey()]))
         ->assertOk()
-        ->assertSee('Live Rider Tracking')
-        ->assertSee('rider-tracking-map');
+        ->assertSee('Live tracking')
+        ->assertSee('unified-order-map', false);
 });

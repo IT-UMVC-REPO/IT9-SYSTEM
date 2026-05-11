@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
 
@@ -32,6 +33,15 @@ test('shared dashboard route redirects users to their portal home and preserves 
         fn () => User::factory()->admin()->create(),
         'admin.dashboard',
     ],
+    'rider' => [
+        function () {
+            $user = User::factory()->rider()->create();
+            RiderProfile::factory()->for($user, 'user')->approved()->create();
+
+            return $user;
+        },
+        'rider.dashboard',
+    ],
 ]);
 
 test('shared app header shows role-aware navigation', function (callable $makeUser, string $routeName, string $expectedLabel) {
@@ -47,7 +57,7 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     'customer' => [
         fn () => User::factory()->create(),
         'customer.dashboard',
-        'Seller setup',
+        'Setup',
     ],
     'vendor' => [
         function () {
@@ -62,7 +72,17 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     'admin' => [
         fn () => User::factory()->admin()->create(),
         'admin.dashboard',
-        'Vendors',
+        'Applications',
+    ],
+    'rider' => [
+        function () {
+            $user = User::factory()->rider()->create();
+            RiderProfile::factory()->for($user, 'user')->approved()->create();
+
+            return $user;
+        },
+        'rider.dashboard',
+        'Messages',
     ],
 ]);
 
@@ -121,4 +141,21 @@ test('admin header shows the messaging quick action', function () {
         ->assertSee('title="Messages"', false);
 
     expect(substr_count($response->getContent(), route('messages.inbox')))->toBe(2);
+});
+
+test('rider header shows messaging and riders can open the inbox', function () {
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+
+    $this->actingAs($rider)
+        ->get(route('rider.dashboard'))
+        ->assertOk()
+        ->assertSee(route('messages.inbox'), false)
+        ->assertSee('title="Messages"', false)
+        ->assertSee('Mobile primary navigation');
+
+    $this->actingAs($rider)
+        ->get(route('messages.inbox'))
+        ->assertOk()
+        ->assertSee('Messages inbox');
 });

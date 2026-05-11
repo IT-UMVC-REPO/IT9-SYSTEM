@@ -237,6 +237,14 @@ new #[Title('Rider Dashboard')] class extends Component
 
             const sendLocation = () => {
                 navigator.geolocation.getCurrentPosition((pos) => {
+                    const payload = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        order_id: this.activeOrderId,
+                    };
+
+                    window.dispatchEvent(new CustomEvent('rider-location-updated', { detail: payload }));
+
                     fetch(@js(route('rider.location.update', absolute: false)), {
                         method: 'POST',
                         headers: {
@@ -244,11 +252,7 @@ new #[Title('Rider Dashboard')] class extends Component
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                             ...(window.Echo?.socketId?.() ? { 'X-Socket-ID': window.Echo.socketId() } : {}),
                         },
-                        body: JSON.stringify({
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude,
-                            order_id: this.activeOrderId,
-                        }),
+                        body: JSON.stringify(payload),
                     });
                 });
             };
@@ -377,6 +381,10 @@ new #[Title('Rider Dashboard')] class extends Component
                             vendor-marker="vendorGreen"
                             :show-distance="true"
                             heading="Delivery route"
+                            :order="$order"
+                            :enable-live-rider="true"
+                            :route-mode="$order->order_status === OrderStatus::PickedUp ? 'pickup' : 'dropoff'"
+                            rider-label="You"
                         />
                     </div>
 
@@ -395,6 +403,10 @@ new #[Title('Rider Dashboard')] class extends Component
 
                         <a href="{{ route('rider.deliveries.show', ['orderReference' => $order->id]) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]">
                             {{ __('View details') }}
+                        </a>
+
+                        <a href="{{ route('messages.conversation', ['conversationReference' => $order->customer_id, 'order' => $order->id]) }}" wire:navigate class="brand-button-secondary w-full transition-all duration-150 active:scale-[0.96]">
+                            {{ __('Message customer') }}
                         </a>
                     </div>
                 </article>

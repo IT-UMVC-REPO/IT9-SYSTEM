@@ -46,9 +46,7 @@
                     [
                         $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
                         $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
-                        $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks'], 'fa-solid fa-boxes-stacked'),
-                        $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
-                        $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
+                        $navItem('Management', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks', 'vendor.orders', 'vendor.orders.*', 'vendor.sales'], 'fa-solid fa-briefcase'),
                     ],
                     [
                         $navItem('Cart', 'shop.cart', ['shop.cart'], 'fa-solid fa-cart-shopping'),
@@ -60,8 +58,7 @@
                 \App\Enums\UserRole::Admin => [
                     [
                         $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
-                        $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
-                        $navItem('Riders', 'admin.riders', ['admin.riders', 'admin.riders.*'], 'fa-solid fa-motorcycle'),
+                        $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
                         $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                         $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                         $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
@@ -77,7 +74,9 @@
                         $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
                         $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
                     ],
-                    [],
+                    [
+                        $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
+                    ],
                     __('Pick up orders, track deliveries, and manage your availability.'),
                 ],
             };
@@ -103,10 +102,16 @@
                         ...$navigationItems,
                         ...array_filter([$mobileMessagesNavigationItem]),
                     ]
-                    : [
-                        $homeNavigationItem,
-                        ...$navigationItems,
-                    ],
+                    : ($effectiveMarketplaceRole === \App\Enums\UserRole::Rider
+                        ? [
+                            $homeNavigationItem,
+                            ...$navigationItems,
+                            ...array_filter([$mobileMessagesNavigationItem]),
+                        ]
+                        : [
+                            $homeNavigationItem,
+                            ...$navigationItems,
+                        ]),
                 fn (array $item): bool => ! in_array($item['label'], [__('Orders'), __('Setup')], true),
             ));
 
@@ -120,14 +125,13 @@
                 ],
                 \App\Enums\UserRole::Vendor => [
                     $navItem('Dashboard', 'vendor.dashboard', ['vendor.dashboard'], 'fa-solid fa-shop'),
-                    $navItem('Products', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks'], 'fa-solid fa-boxes-stacked'),
-                    $navItem('Orders', 'vendor.orders', ['vendor.orders', 'vendor.orders.*'], 'fa-solid fa-bag-shopping'),
+                    $navItem('Storefront', 'shop.home', ['shop.home', 'shop.products.*', 'shop.vendors', 'shop.vendors.*'], 'fa-solid fa-store'),
+                    $navItem('Management', 'vendor.products', ['vendor.products', 'vendor.products.*', 'vendor.stocks', 'vendor.orders', 'vendor.orders.*', 'vendor.sales'], 'fa-solid fa-briefcase'),
                     $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
-                    $navItem('Sales', 'vendor.sales', ['vendor.sales'], 'fa-solid fa-chart-line'),
                 ],
                 \App\Enums\UserRole::Admin => [
                     $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
-                    $navItem('Vendors', 'admin.vendors', ['admin.vendors', 'admin.vendors.*'], 'fa-solid fa-user-check'),
+                    $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
                     $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
                     $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
                     $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
@@ -135,6 +139,7 @@
                 \App\Enums\UserRole::Rider => [
                     $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
                     $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
+                    $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                     $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
                 ],
             };
@@ -216,7 +221,7 @@
                         @foreach ($quickActionItems as $item)
                             @if ($item['route'] === route('shop.cart'))
                                 <livewire:cart.cart-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'mobile-header-cart-badge'" />
-                            @elseif ($effectiveMarketplaceRole === \App\Enums\UserRole::Admin && $item['route'] === route('messages.inbox'))
+                            @elseif (in_array($effectiveMarketplaceRole, [\App\Enums\UserRole::Admin, \App\Enums\UserRole::Rider], true) && $item['route'] === route('messages.inbox'))
                                 <livewire:messaging.unread-badge :is-active="request()->routeIs(...$item['patterns'])" :key="'mobile-header-message-badge'" />
                             @endif
                         @endforeach

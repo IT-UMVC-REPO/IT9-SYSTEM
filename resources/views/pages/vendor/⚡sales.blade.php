@@ -35,6 +35,8 @@
         </div>
     </section>
 
+    <x-vendor-management-tabs />
+
     <section class="grid gap-4 md:grid-cols-3">
         @foreach ([
             ['label' => __('Total revenue'), 'value' => $this->peso($this->summary['total_revenue'])],

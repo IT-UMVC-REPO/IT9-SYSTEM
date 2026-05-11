@@ -152,6 +152,7 @@ test('vendor product forms use compact conversion controls and temporary upload 
     $registration = uiPolishBlade('views/pages/vendor/*registration.blade.php');
     $products = uiPolishBlade('views/pages/vendor/*products.blade.php');
     $stocks = uiPolishBlade('views/pages/vendor/*stocks.blade.php');
+    $vendorManagementTabs = uiPolishBlade('views/components/vendor-management-tabs.blade.php');
 
     expect($productCreate)
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
@@ -172,13 +173,17 @@ test('vendor product forms use compact conversion controls and temporary upload 
         ->toContain('$sampleProductUpload->temporaryUrl()')
         ->not->toContain('php artisan storage:link')
         ->and($products)
-        ->toContain('Stock Manager')
+        ->toContain('<x-vendor-management-tabs />')
         ->toContain('flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-stone-200 pb-5')
         ->not->toContain('<flux:navbar>')
         ->and($stocks)
-        ->toContain('Stock Manager')
+        ->toContain('<x-vendor-management-tabs />')
         ->not->toContain('<flux:navbar>')
-        ->not->toContain('border-b-4 px-4 py-4');
+        ->not->toContain('border-b-4 px-4 py-4')
+        ->and($vendorManagementTabs)
+        ->toContain('Stock Manager')
+        ->toContain('Orders')
+        ->toContain('Sales');
 });
 
 test('message groups anchor sender avatars to the final bubble row', function () {

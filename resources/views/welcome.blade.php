@@ -21,7 +21,7 @@
             : route('register');
         $riderPortalRoute = auth()->check()
             ? route(match (auth()->user()->effectiveMarketplaceRole()) {
-                \App\Enums\UserRole::Admin => 'admin.riders',
+                \App\Enums\UserRole::Admin => 'admin.applications',
                 \App\Enums\UserRole::Rider => 'rider.dashboard',
                 \App\Enums\UserRole::Vendor => 'vendor.dashboard',
                 default => 'rider.registration',
