@@ -10,6 +10,7 @@ use Illuminate\Contracts\Broadcasting\Broadcaster as BroadcasterContract;
 use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
+use Livewire\Livewire;
 
 function createVideoCallRecord(User $caller, User $receiver, array $overrides = []): VideoCall
 {
@@ -146,6 +147,76 @@ test('call initiation retries pusher when the default broadcaster is unavailable
         ->and($factory->broadcasts[0]['payload']['receiver_id'])->toBe($receiver->getKey());
 });
 
+test('call initiation keeps the pending call when realtime initiation broadcast is unavailable', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.pusher.key' => 'ably-app.key',
+        'broadcasting.connections.pusher.secret' => 'ably-secret',
+        'broadcasting.connections.pusher.app_id' => 'ably-app',
+    ]);
+
+    $factory = new class
+    {
+        public int $queueAttempts = 0;
+
+        /**
+         * @var array<int, string|null>
+         */
+        public array $connections = [];
+
+        public function queue(object $event): void
+        {
+            $this->queueAttempts++;
+
+            throw new RuntimeException('default broadcaster unavailable');
+        }
+
+        public function connection(?string $name = null): BroadcasterContract
+        {
+            $this->connections[] = $name;
+
+            return new class implements BroadcasterContract
+            {
+                public function auth($request): mixed
+                {
+                    return null;
+                }
+
+                public function validAuthenticationResponse($request, $result): mixed
+                {
+                    return $result;
+                }
+
+                public function broadcast(array $channels, $event, array $payload = []): void
+                {
+                    throw new RuntimeException('pusher fallback unavailable');
+                }
+            };
+        }
+    };
+
+    $this->app->instance(BroadcastFactory::class, $factory);
+
+    $this->actingAs($caller)
+        ->postJson(route('calls.initiate'), [
+            'receiver_id' => $receiver->getKey(),
+        ])
+        ->assertCreated()
+        ->assertJsonPath('realtime_available', false)
+        ->assertJsonPath('message', 'Video call service is unavailable right now.');
+
+    $call = VideoCall::query()->first();
+
+    expect($factory->queueAttempts)->toBe(1)
+        ->and($factory->connections)->toBe(['pusher'])
+        ->and($call)->not->toBeNull()
+        ->and($call->status)->toBe(VideoCallStatus::Pending)
+        ->and($call->ended_at)->toBeNull();
+});
+
 test('direct call initiation broadcasts on conversation and receiver notification channels', function () {
     $caller = User::factory()->create([
         'name' => 'Caller Mina',
@@ -170,6 +241,19 @@ test('direct call initiation broadcasts on conversation and receiver notificatio
             'conversation_key' => $call->conversation_key,
             'is_group_call' => false,
         ]);
+});
+
+test('conversation polling surfaces pending incoming calls when the initiation broadcast is missed', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+    $call = createVideoCallRecord($caller, $receiver);
+
+    Livewire::actingAs($receiver)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $caller->getKey()])
+        ->assertSet('incomingCallId', null)
+        ->call('refreshThread')
+        ->assertSet('incomingCallId', $call->getKey())
+        ->assertDispatched('conversation-auto-answer');
 });
 
 test('users cannot call themselves', function () {
@@ -421,6 +505,7 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('window.conversationVideoCall')
         ->toContain('window.groupConversationVideoCall')
         ->toContain('window.conversationVideoCallControl')
+        ->toContain('window.sukiMessageScroller')
         ->and($ringtone)
         ->toContain("new Audio('/sound/reader.mp3')")
         ->toContain('loop = true')
@@ -428,6 +513,7 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->and($videoCall)
         ->toContain('new RTCPeerConnection(peerConnectionOptions(this.iceServers, this.iceTransportPolicy))')
         ->toContain('await this.loadIceConfiguration();')
+        ->toContain('allowRealtimeUnavailable: true')
         ->toContain('iceTransportPolicy')
         ->toContain("bundlePolicy: 'max-bundle'")
         ->toContain("rtcpMuxPolicy: 'require'")
@@ -466,6 +552,7 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('groupCallErrorMessage')
         ->toContain('video: false, audio: true')
         ->toContain('video: true, audio: false')
+        ->toContain('allowRealtimeUnavailable: true')
         ->toContain('Could not start the group call.')
         ->toContain('formattedCallDuration')
         ->toContain('showCallChrome')
@@ -545,6 +632,8 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('conversation-call-local-background-video')
         ->toContain('transform: scaleX(-1)')
         ->toContain('Device settings')
+        ->toContain('sukiMessageScroller()')
+        ->toContain('x-on:message-sent.window="scrollToBottom()"')
         ->not->toContain('arrows-pointing-out')
         ->not->toContain('request'.'Full'.'screen')
         ->toContain('formattedCallDuration()')
@@ -596,6 +685,8 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
         ->toContain('group-call-join')
         ->toContain('A group call is in progress')
         ->toContain('Device settings')
+        ->toContain('sukiMessageScroller()')
+        ->toContain('x-on:group-message-sent.window="scrollToBottom()"')
         ->not->toContain('arrows-pointing-out')
         ->not->toContain('request'.'Full'.'screen')
         ->toContain('switchCamera()')

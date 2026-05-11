@@ -350,6 +350,7 @@ export const conversationVideoCall = (config) => ({
             const payload = await this.requestJson(this.routes.initiate, {
                 receiver_id: this.otherUserId,
             }, {
+                allowRealtimeUnavailable: true,
                 timeoutMs: 15000,
                 unavailableMessage: 'Could not reach the call server. Make sure the app server is running.',
             });
@@ -1040,6 +1041,7 @@ export const conversationVideoCall = (config) => ({
 
     async requestJson(url, body = null, options = {}) {
         const {
+            allowRealtimeUnavailable = false,
             method = 'POST',
             timeoutMs = 5000,
             unavailableMessage = 'Call server unavailable. Please try again later.',
@@ -1073,7 +1075,7 @@ export const conversationVideoCall = (config) => ({
             throw new Error(message);
         }
 
-        if (payload?.realtime_available === false) {
+        if (!allowRealtimeUnavailable && payload?.realtime_available === false) {
             const message = payload.message ?? unavailableMessage;
             this.statusMessage = message;
             throw new Error(message);

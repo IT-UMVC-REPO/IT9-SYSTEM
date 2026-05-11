@@ -28,6 +28,35 @@ const escapeHtml = (value) => String(value ?? '')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
+window.sukiMessageScroller = () => ({
+    _scrollTimer: null,
+
+    init() {
+        this.scrollToBottom();
+    },
+
+    scrollToBottom() {
+        const scroll = () => {
+            this.$el.scrollTop = this.$el.scrollHeight;
+        };
+
+        this.$nextTick(() => {
+            scroll();
+
+            if (typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(scroll);
+            }
+
+            window.clearTimeout(this._scrollTimer);
+            this._scrollTimer = window.setTimeout(scroll, 120);
+        });
+    },
+
+    destroy() {
+        window.clearTimeout(this._scrollTimer);
+    },
+});
+
 window.stepperButton = (callback) => ({
     _timer: null,
     _interval: null,

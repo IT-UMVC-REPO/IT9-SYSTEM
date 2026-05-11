@@ -348,7 +348,10 @@ export const groupConversationVideoCall = (config) => ({
 
             const payload = await this.requestJson(this.routes.initiate, {
                 group_id: this.groupId,
-            }, { timeoutMs: 15000 });
+            }, {
+                allowRealtimeUnavailable: true,
+                timeoutMs: 15000,
+            });
 
             this.callId = payload.id;
             this.callStatus = 'active';
@@ -1153,6 +1156,7 @@ export const groupConversationVideoCall = (config) => ({
 
     async requestJson(url, body = null, options = {}) {
         const {
+            allowRealtimeUnavailable = false,
             method = 'POST',
             timeoutMs = 5000,
             unavailableMessage = 'Group call server unavailable. Please try again later.',
@@ -1179,7 +1183,7 @@ export const groupConversationVideoCall = (config) => ({
             ? await response.json()
             : null;
 
-        if (!response.ok || payload?.realtime_available === false) {
+        if (!response.ok || (!allowRealtimeUnavailable && payload?.realtime_available === false)) {
             const message = payload?.message ?? unavailableMessage;
             this.statusMessage = message;
             throw new Error(message);

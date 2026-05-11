@@ -162,6 +162,13 @@ class Conversation extends Component
         $this->markMessagesAsRead();
         $this->loadMessages();
 
+        $previousIncomingCallId = $this->incomingCallId;
+        $this->incomingCallId = $this->resolvePendingIncomingCallId();
+
+        if ($this->incomingCallId !== null && $this->incomingCallId !== $previousIncomingCallId) {
+            $this->dispatch('conversation-auto-answer', callId: $this->incomingCallId);
+        }
+
         unset($this->linkedOrder);
 
         if ($shouldScroll) {
@@ -272,15 +279,20 @@ class Conversation extends Component
             return null;
         }
 
-        $requestedCallId = (int) request()->integer('call_id');
+        return $this->resolvePendingIncomingCallId((int) request()->integer('call_id'));
+    }
 
-        if ($requestedCallId > 0) {
-            $call = VideoCall::query()
+    private function resolvePendingIncomingCallId(?int $requestedCallId = null): ?int
+    {
+        $pendingCallQuery = VideoCall::query()
+            ->where('caller_id', $this->otherUserId)
+            ->where('receiver_id', auth()->id())
+            ->where('is_group_call', false)
+            ->where('status', VideoCallStatus::Pending);
+
+        if ($requestedCallId !== null && $requestedCallId > 0) {
+            $call = (clone $pendingCallQuery)
                 ->whereKey($requestedCallId)
-                ->where('caller_id', $this->otherUserId)
-                ->where('receiver_id', auth()->id())
-                ->where('is_group_call', false)
-                ->where('status', VideoCallStatus::Pending)
                 ->first();
 
             if ($call !== null) {
@@ -288,13 +300,11 @@ class Conversation extends Component
             }
         }
 
-        return VideoCall::query()
-            ->where('caller_id', $this->otherUserId)
-            ->where('receiver_id', auth()->id())
-            ->where('is_group_call', false)
-            ->where('status', VideoCallStatus::Pending)
+        $callId = $pendingCallQuery
             ->latest('created_at')
             ->value('id');
+
+        return $callId === null ? null : (int) $callId;
     }
 
     private function markMessagesAsRead(): void

@@ -360,9 +360,8 @@
                 @endif
 
                 <section class="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-950">
-                    <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data
-                        x-init="$el.scrollTop = $el.scrollHeight"
-                        @message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
+                    <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data="sukiMessageScroller()"
+                        x-on:message-sent.window="scrollToBottom()">
                         @php($previousMessage = null)
                         @php($latestOwnMessageId = $this->latestOwnMessageId())
                         @forelse ($messages as $message)

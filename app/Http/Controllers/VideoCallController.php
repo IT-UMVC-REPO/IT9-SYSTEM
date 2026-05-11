@@ -59,20 +59,11 @@ class VideoCallController extends Controller
             'VideoCallInitiated broadcast failed (Reverb may be down): ',
         );
 
-        if (! $broadcasted) {
-            $videoCall->forceFill([
-                'status' => VideoCallStatus::Ended,
-                'ended_at' => now(),
-            ])->save();
-
-            $videoCall->refresh();
-        }
-
         return response()->json([
             ...$this->callPayload($videoCall),
             'realtime_available' => $broadcasted,
             'message' => $broadcasted ? null : __('Video call service is unavailable right now.'),
-        ], $broadcasted ? 201 : 503);
+        ], 201);
     }
 
     public function signal(Request $request, VideoCall $call): JsonResponse
@@ -187,14 +178,7 @@ class VideoCallController extends Controller
             'GroupCallInitiated broadcast failed (Pusher may be unavailable): ',
         );
 
-        if (! $broadcasted) {
-            $videoCall->forceFill([
-                'status' => VideoCallStatus::Ended,
-                'ended_at' => now(),
-            ])->save();
-
-            $videoCall->refresh();
-        } else {
+        if ($broadcasted) {
             GroupMessageService::dispatchSystemMessage(
                 $group->getKey(),
                 'call_started',
@@ -207,7 +191,7 @@ class VideoCallController extends Controller
             ...$this->groupCallPayload($videoCall),
             'realtime_available' => $broadcasted,
             'message' => $broadcasted ? null : __('Group video call service is unavailable right now.'),
-        ], $broadcasted ? 201 : 503);
+        ], 201);
     }
 
     public function signalGroup(Request $request, VideoCall $call): JsonResponse

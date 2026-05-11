@@ -521,7 +521,7 @@
                         </div>
                     @endif
 
-                    <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data x-init="$el.scrollTop = $el.scrollHeight" @group-message-sent.window="$nextTick(() => { $el.scrollTop = $el.scrollHeight })">
+                    <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data="sukiMessageScroller()" x-on:group-message-sent.window="scrollToBottom()">
                         @forelse ($messages as $message)
                             @php
                                 $isOwnMessage = $message['sender_id'] === auth()->id();
