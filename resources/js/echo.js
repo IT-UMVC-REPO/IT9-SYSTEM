@@ -1,24 +1,28 @@
 /**
- * Broadcasting: Laravel Reverb (self-hosted, localhost:8080)
+ * Broadcasting: Pusher-compatible realtime transport.
  *
- * We deliberately use Reverb instead of Pusher because Pusher's ap1 cluster
- * (Singapore) introduced 80–150 ms per-hop latency for every broadcast event,
- * causing visible 10-second message delays and degraded WebRTC call signaling.
- * Reverb runs in-process via `composer dev` and has sub-millisecond latency.
- *
- * To start all services: composer dev
+ * Production points these VITE_REVERB_* values at Ably's Pusher adapter while
+ * local environments may still point them at a Reverb-compatible endpoint.
  */
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
+const realtimeScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
+const realtimeHost = (import.meta.env.VITE_REVERB_HOST ?? '').replace(/^https?:\/\//, '');
+const realtimePort = Number(import.meta.env.VITE_REVERB_PORT ?? (realtimeScheme === 'https' ? 443 : 80));
+
 window.Echo = new Echo({
-    broadcaster: 'reverb',
+    broadcaster: 'pusher',
     key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+    cluster: import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1',
+    wsHost: realtimeHost,
+    httpHost: realtimeHost,
+    wsPort: realtimePort,
+    wssPort: realtimePort,
+    forceTLS: realtimeScheme === 'https',
+    encrypted: realtimeScheme === 'https',
+    disableStats: true,
     enabledTransports: ['ws', 'wss'],
 });

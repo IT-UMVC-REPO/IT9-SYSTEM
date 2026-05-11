@@ -14,10 +14,13 @@ use App\Models\ConversationGroupMember;
 use App\Models\VideoCall;
 use App\Models\VideoCallParticipant;
 use App\Services\GroupMessageService;
+use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class VideoCallController extends Controller
 {
@@ -527,10 +530,56 @@ class VideoCallController extends Controller
             event($event);
 
             return true;
-        } catch (\Throwable $broadcastException) {
+        } catch (Throwable $broadcastException) {
             Log::warning($warningPrefix.$broadcastException->getMessage());
+        }
+
+        if (! $this->shouldRetryCallBroadcastViaPusher()) {
+            return false;
+        }
+
+        try {
+            $this->broadcastEventNow($event, 'pusher');
+
+            return true;
+        } catch (Throwable $pusherException) {
+            Log::warning($warningPrefix.'Pusher fallback failed: '.$pusherException->getMessage());
 
             return false;
         }
+    }
+
+    private function shouldRetryCallBroadcastViaPusher(): bool
+    {
+        if (config('broadcasting.default') === 'pusher') {
+            return false;
+        }
+
+        return filled(config('broadcasting.connections.pusher.key'))
+            && filled(config('broadcasting.connections.pusher.secret'))
+            && filled(config('broadcasting.connections.pusher.app_id'));
+    }
+
+    private function broadcastEventNow(object $event, string $connection): void
+    {
+        $channels = Arr::wrap($event->broadcastOn());
+
+        if ($channels === []) {
+            return;
+        }
+
+        $name = method_exists($event, 'broadcastAs')
+            ? $event->broadcastAs()
+            : $event::class;
+
+        $payload = method_exists($event, 'broadcastWith')
+            ? $event->broadcastWith()
+            : [];
+
+        app(BroadcastFactory::class)->connection($connection)->broadcast(
+            $channels,
+            $name,
+            $payload ?? [],
+        );
     }
 }

@@ -316,6 +316,15 @@ test('application javascript uses the auto injected livewire runtime once', func
         ->toContain('@fluxScripts');
 });
 
+test('view transition names stay unique on conversation surfaces', function () {
+    $appCss = file_get_contents(resource_path('css/app.css'));
+
+    expect($appCss)
+        ->toContain('body > header')
+        ->toContain('view-transition-name: suki-header')
+        ->not->toContain("\n    header {\n        view-transition-name: suki-header;");
+});
+
 test('admin and notification list items constrain long text and unread borders uniformly', function () {
     $vendors = uiPolishBlade('views/pages/admin/*vendors.blade.php');
     $users = uiPolishBlade('views/pages/admin/*users.blade.php');

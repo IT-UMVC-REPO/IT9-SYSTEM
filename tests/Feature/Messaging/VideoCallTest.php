@@ -6,6 +6,8 @@ use App\Events\VideoCallSignal;
 use App\Events\VideoCallStatusChanged;
 use App\Models\User;
 use App\Models\VideoCall;
+use Illuminate\Contracts\Broadcasting\Broadcaster as BroadcasterContract;
+use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 
@@ -66,6 +68,82 @@ test('authenticated users can initiate a call', function () {
         ->and($call->status)->toBe(VideoCallStatus::Pending);
 
     Event::assertDispatched(VideoCallInitiated::class, fn (VideoCallInitiated $event) => $event->videoCall->is($call));
+});
+
+test('call initiation retries pusher when the default broadcaster is unavailable', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.pusher.key' => 'ably-app.key',
+        'broadcasting.connections.pusher.secret' => 'ably-secret',
+        'broadcasting.connections.pusher.app_id' => 'ably-app',
+    ]);
+
+    $factory = new class
+    {
+        public int $queueAttempts = 0;
+
+        /**
+         * @var array<int, string|null>
+         */
+        public array $connections = [];
+
+        /**
+         * @var array<int, array{event: string, payload: array<string, mixed>}>
+         */
+        public array $broadcasts = [];
+
+        public function queue(object $event): void
+        {
+            $this->queueAttempts++;
+
+            throw new RuntimeException('default broadcaster unavailable');
+        }
+
+        public function connection(?string $name = null): BroadcasterContract
+        {
+            $this->connections[] = $name;
+
+            return new class($this) implements BroadcasterContract
+            {
+                public function __construct(private object $factory) {}
+
+                public function auth($request): mixed
+                {
+                    return null;
+                }
+
+                public function validAuthenticationResponse($request, $result): mixed
+                {
+                    return $result;
+                }
+
+                public function broadcast(array $channels, $event, array $payload = []): void
+                {
+                    $this->factory->broadcasts[] = [
+                        'event' => $event,
+                        'payload' => $payload,
+                    ];
+                }
+            };
+        }
+    };
+
+    $this->app->instance(BroadcastFactory::class, $factory);
+
+    $this->actingAs($caller)
+        ->postJson(route('calls.initiate'), [
+            'receiver_id' => $receiver->getKey(),
+        ])
+        ->assertCreated()
+        ->assertJsonPath('realtime_available', true);
+
+    expect($factory->queueAttempts)->toBe(1)
+        ->and($factory->connections)->toBe(['pusher'])
+        ->and($factory->broadcasts[0]['event'])->toBe('VideoCallInitiated')
+        ->and($factory->broadcasts[0]['payload']['receiver_id'])->toBe($receiver->getKey());
 });
 
 test('direct call initiation broadcasts on conversation and receiver notification channels', function () {
@@ -300,23 +378,28 @@ test('shared-secret turn credentials are temporary and preferred over static cre
     }
 });
 
-test('video call signaling uses reverb echo credentials', function () {
+test('video call signaling uses ably pusher-compatible echo credentials', function () {
     $client = file_get_contents(resource_path('js/echo.js'));
     $app = file_get_contents(resource_path('js/app.js'));
     $broadcasting = file_get_contents(config_path('broadcasting.php'));
 
     expect($client)
-        ->toContain('Broadcasting: Laravel Reverb')
-        ->toContain("broadcaster: 'reverb'")
+        ->toContain('Broadcasting: Pusher-compatible realtime transport')
+        ->toContain("broadcaster: 'pusher'")
         ->toContain('VITE_REVERB_APP_KEY')
         ->toContain('VITE_REVERB_HOST')
         ->toContain('VITE_REVERB_PORT')
         ->toContain('VITE_REVERB_SCHEME')
+        ->toContain("cluster: import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1'")
+        ->toContain('httpHost: realtimeHost')
+        ->toContain('disableStats: true')
         ->toContain("enabledTransports: ['ws', 'wss']")
-        ->not->toContain("broadcaster: 'pusher'")
+        ->not->toContain("broadcaster: 'reverb'")
         ->not->toContain('VITE_PUSHER_APP_KEY')
         ->not->toContain('VITE_PUSHER_APP_CLUSTER')
         ->and($broadcasting)
+        ->toContain("\$pusherCluster = env('PUSHER_APP_CLUSTER') ?: 'mt1';")
+        ->toContain("'host' => env('PUSHER_HOST') ?: ('api-'.\$pusherCluster.'.pusher.com')")
         ->toContain('PUSHER_CONNECT_TIMEOUT')
         ->toContain('PUSHER_TIMEOUT')
         ->toContain('REVERB_CONNECT_TIMEOUT')
