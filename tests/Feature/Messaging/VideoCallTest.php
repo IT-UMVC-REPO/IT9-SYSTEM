@@ -492,6 +492,27 @@ test('video call signaling uses ably pusher-compatible echo credentials', functi
         ->toContain("import './echo';");
 });
 
+test('video call signaling events stay synchronous and broadcast through pusher', function () {
+    $eventFiles = [
+        app_path('Events/VideoCallInitiated.php'),
+        app_path('Events/VideoCallSignal.php'),
+        app_path('Events/VideoCallStatusChanged.php'),
+        app_path('Events/GroupCallInitiated.php'),
+        app_path('Events/GroupCallSignal.php'),
+        app_path('Events/GroupCallStatusChanged.php'),
+    ];
+
+    foreach ($eventFiles as $eventFile) {
+        $source = file_get_contents($eventFile);
+
+        expect($source)
+            ->toContain('ShouldBroadcastNow')
+            ->toContain('InteractsWithBroadcasting')
+            ->toContain("\$this->broadcastVia('pusher');")
+            ->not->toContain('ShouldBroadcast,');
+    }
+});
+
 test('video call client uses native rtc peer connection and server-provided ice configuration', function () {
     $app = file_get_contents(resource_path('js/app.js'));
     $ringtone = file_get_contents(resource_path('js/ringtone.js'));

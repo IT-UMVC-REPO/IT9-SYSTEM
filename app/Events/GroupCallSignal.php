@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\VideoCall;
+use Illuminate\Broadcasting\InteractsWithBroadcasting;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -11,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 
 class GroupCallSignal implements ShouldBroadcastNow
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, InteractsWithBroadcasting, InteractsWithSockets, SerializesModels;
 
     /**
      * @param  array<string, mixed>  $signalData
@@ -21,7 +22,9 @@ class GroupCallSignal implements ShouldBroadcastNow
         public int $senderId,
         public ?int $recipientId,
         public array $signalData,
-    ) {}
+    ) {
+        $this->broadcastVia('pusher');
+    }
 
     public function broadcastAs(): string
     {
