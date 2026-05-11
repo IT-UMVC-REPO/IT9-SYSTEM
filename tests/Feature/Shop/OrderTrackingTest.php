@@ -177,6 +177,23 @@ test('customer cancellation restores stock for each order item', function () {
         ->and((int) $tracked['products'][0]->fresh()->stock_quantity)->toBe(10);
 });
 
+test('delivered order hides the delivery map section', function () {
+    $customer = User::factory()->create();
+    $tracked = seedTrackedOrder($customer, [
+        'order_status' => OrderStatus::Delivered,
+        'payment_status' => PaymentStatus::Paid,
+    ], [
+        'status' => PaymentStatus::Paid,
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.orders.show', ['orderReference' => $tracked['order']->getKey()]))
+        ->assertOk()
+        ->assertDontSee('Delivery map')
+        ->assertDontSee('Delivery Point')
+        ->assertDontSee('Vendor Stall');
+});
+
 test('cancelled order does not allow further cancellation', function () {
     Queue::fake();
 

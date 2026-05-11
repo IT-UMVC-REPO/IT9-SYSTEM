@@ -343,7 +343,7 @@ new #[Title('Order Detail')] class extends Component {
                 $trackingCustomerLng = $this->order->delivery_lng ?? $mapCustomer->lng;
             @endphp
 
-            @if ($hasCustomerLocation || $hasVendorLocation)
+            @if (($hasCustomerLocation || $hasVendorLocation) && ! in_array($this->order->order_status, [OrderStatus::Delivered, OrderStatus::Cancelled], true))
                 <section
                     x-data="sukiUnifiedOrderMap({
                         mapId: 'unified-order-map-{{ $this->order->id }}',

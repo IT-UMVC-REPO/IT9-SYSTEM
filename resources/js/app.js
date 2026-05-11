@@ -1,6 +1,4 @@
 // Enable View Transitions API for Livewire navigate.
-import { Livewire } from '../../vendor/livewire/livewire/dist/livewire.esm.js';
-
 document.addEventListener('livewire:navigate', () => {
     if (!document.startViewTransition) return;
 });
@@ -1458,7 +1456,7 @@ window.sukiRevealAll = function () {
 window.sukiReveal = window.sukiRevealAll;
 
 const registerSukiRevealLivewireHooks = () => {
-    const livewire = window.Livewire ?? Livewire;
+    const livewire = window.Livewire;
 
     if (window._sukiRevealLivewireHooksRegistered || typeof livewire?.hook !== 'function') {
         return;

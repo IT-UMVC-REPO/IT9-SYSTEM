@@ -304,6 +304,18 @@ test('bug fix pass removes reveal dependencies from always visible panels', func
         ->toContain('x-init="$nextTick(() => window.sukiRevealAll && window.sukiRevealAll())"');
 });
 
+test('application javascript uses the auto injected livewire runtime once', function () {
+    $appJs = file_get_contents(resource_path('js/app.js'));
+    $header = uiPolishBlade('views/layouts/app/header.blade.php');
+
+    expect($appJs)
+        ->toContain('const livewire = window.Livewire;')
+        ->not->toContain('vendor/livewire/livewire/dist/livewire.esm')
+        ->not->toContain('Livewire.start(')
+        ->and($header)
+        ->toContain('@fluxScripts');
+});
+
 test('admin and notification list items constrain long text and unread borders uniformly', function () {
     $vendors = uiPolishBlade('views/pages/admin/*vendors.blade.php');
     $users = uiPolishBlade('views/pages/admin/*users.blade.php');
