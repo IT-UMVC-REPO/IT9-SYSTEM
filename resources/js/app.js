@@ -1017,6 +1017,7 @@ window.sukiUnifiedOrderMap = (config) => ({
     riderMarker: null,
     echoChannel: null,
     distanceLabel: '',
+    orderId: config.orderId ?? null,
 
     init() {
         this.$nextTick(() => {
@@ -1032,8 +1033,9 @@ window.sukiUnifiedOrderMap = (config) => ({
             const customerLng = this.numberOrNull(config.customerLng);
             const vendorLat = this.numberOrNull(config.vendorLat);
             const vendorLng = this.numberOrNull(config.vendorLng);
-            const riderLat = this.numberOrNull(config.riderLat);
-            const riderLng = this.numberOrNull(config.riderLng);
+            const riderActive = config.riderActive === true;
+            const riderLat = riderActive ? this.numberOrNull(config.riderLat) : null;
+            const riderLng = riderActive ? this.numberOrNull(config.riderLng) : null;
             const center = [
                 customerLat ?? vendorLat ?? riderLat ?? 7.4479,
                 customerLng ?? vendorLng ?? riderLng ?? 125.8090,
@@ -1072,7 +1074,7 @@ window.sukiUnifiedOrderMap = (config) => ({
             }
 
             // Rider marker (only when active)
-            if (riderLat !== null && riderLng !== null) {
+            if (riderActive && riderLat !== null && riderLng !== null) {
                 this.riderMarker = L.marker([riderLat, riderLng], {
                     icon: this.createLetterIcon('#f97316', 'R'),
                 }).addTo(this.map).bindPopup('<strong>Your rider</strong>');
@@ -1081,8 +1083,8 @@ window.sukiUnifiedOrderMap = (config) => ({
 
             // Route line between customer and vendor
             if (customerLat !== null && customerLng !== null && vendorLat !== null && vendorLng !== null) {
-                const from = { lat: customerLat, lng: customerLng };
-                const to = { lat: vendorLat, lng: vendorLng };
+                const from = { lat: vendorLat, lng: vendorLng };
+                const to = { lat: customerLat, lng: customerLng };
 
                 fetchRoute(from, to)
                     .then(({ latLngs, distance }) => {
@@ -1095,7 +1097,7 @@ window.sukiUnifiedOrderMap = (config) => ({
                         // Fit bounds to include route + rider if present
                         const bounds = routeLine.getBounds();
 
-                        if (riderLat !== null && riderLng !== null) {
+                        if (riderActive && riderLat !== null && riderLng !== null) {
                             bounds.extend([riderLat, riderLng]);
                         }
 
@@ -1104,7 +1106,7 @@ window.sukiUnifiedOrderMap = (config) => ({
                             maxZoom: 16,
                         });
 
-                        if (!config.riderActive) {
+                        if (!riderActive) {
                             this.distanceLabel = `~${distance.toFixed(1)} km by road`;
                         }
                     })
@@ -1117,8 +1119,8 @@ window.sukiUnifiedOrderMap = (config) => ({
             }
 
             // Live rider tracking via Echo
-            if (config.riderActive && window.Echo) {
-                this.echoChannel = window.Echo.private(`order.${config.orderId}`);
+            if (riderActive && window.Echo && this.orderId) {
+                this.echoChannel = window.Echo.private(`order.${this.orderId}`);
                 this.echoChannel.listen('.RiderLocationUpdated', (event) => {
                     const nextLat = this.numberOrNull(event.lat);
                     const nextLng = this.numberOrNull(event.lng);
@@ -1147,8 +1149,8 @@ window.sukiUnifiedOrderMap = (config) => ({
     },
 
     destroy() {
-        if (window.Echo && config.orderId) {
-            window.Echo.leave(`order.${config.orderId}`);
+        if (window.Echo && this.orderId) {
+            window.Echo.leave(`order.${this.orderId}`);
         }
 
         this.map?.remove();

@@ -24,6 +24,7 @@ new #[Title('Rider Dashboard')] class extends Component
     {
         return Order::query()
             ->where('order_status', OrderStatus::Ready)
+            ->where('is_self_pickup', false)
             ->whereNull('rider_id')
             ->with(['vendor:id,user_id,store_name,vendor_address,lat,lng', 'customer:id,name,address,lat,lng'])
             ->withCount('orderItems')
@@ -99,6 +100,8 @@ new #[Title('Rider Dashboard')] class extends Component
                 ->whereNull('rider_id')
                 ->lockForUpdate()
                 ->findOrFail($orderId);
+
+            abort_if($order->is_self_pickup, 403);
 
             $order->forceFill([
                 'rider_id' => auth()->id(),

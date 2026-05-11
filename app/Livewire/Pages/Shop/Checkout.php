@@ -21,6 +21,7 @@ use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -30,6 +31,12 @@ use Livewire\Component;
 class Checkout extends Component
 {
     use OrderValidationRules;
+
+    private const FulfillmentDelivery = 'delivery';
+
+    private const FulfillmentSelfPickup = 'self_pickup';
+
+    public string $fulfillment_method = self::FulfillmentDelivery;
 
     public string $delivery_address = '';
 
@@ -64,12 +71,13 @@ class Checkout extends Component
 
     public function placeOrder(): mixed
     {
-        $validated = $this->validate($this->orderRules());
+        $validated = $this->validate($this->checkoutRules());
         $customer = auth()->user();
         $paymentMethod = PaymentMethod::Cod;
+        $isSelfPickup = $validated['fulfillment_method'] === self::FulfillmentSelfPickup;
 
         try {
-            $checkoutState = DB::transaction(function () use ($validated, $customer, $paymentMethod): array {
+            $checkoutState = DB::transaction(function () use ($validated, $customer, $paymentMethod, $isSelfPickup): array {
                 $cart = Cart::query()
                     ->where('customer_id', $customer->getKey())
                     ->lockForUpdate()
@@ -154,6 +162,7 @@ class Checkout extends Component
 
                 foreach ($groupedItems as $vendorId => $vendorItems) {
                     $vendorTotal = (float) $vendorItems->sum('line_total');
+                    $vendorProfile = $vendorItems->first()['product']->vendor;
 
                     $order = Order::query()->create([
                         'customer_id' => $customer->getKey(),
@@ -162,10 +171,13 @@ class Checkout extends Component
                         'payment_method' => $paymentMethod,
                         'payment_status' => PaymentStatus::Pending,
                         'order_status' => OrderStatus::Pending,
-                        'delivery_address' => $validated['delivery_address'],
-                        'delivery_lat' => $validated['delivery_lat'] ?? null,
-                        'delivery_lng' => $validated['delivery_lng'] ?? null,
+                        'delivery_address' => $isSelfPickup
+                            ? ($vendorProfile->vendor_address ?: 'Self-pickup at vendor stall')
+                            : $validated['delivery_address'],
+                        'delivery_lat' => $isSelfPickup ? $vendorProfile->lat : ($validated['delivery_lat'] ?? null),
+                        'delivery_lng' => $isSelfPickup ? $vendorProfile->lng : ($validated['delivery_lng'] ?? null),
                         'notes' => blank($validated['notes'] ?? null) ? null : $validated['notes'],
+                        'is_self_pickup' => $isSelfPickup,
                     ]);
 
                     foreach ($vendorItems as $resolvedItem) {
@@ -197,14 +209,12 @@ class Checkout extends Component
                         message: 'Your order #'.$order->getKey().' has been placed and is awaiting vendor confirmation.',
                     );
 
-                    $vendorProfile = $vendorItems->first()['product']->vendor;
-
                     AuditLogger::log(
                         AuditEvent::OrderPlaced,
                         "Order #{$order->id} placed by {$customer->name} with '{$vendorProfile->store_name}'. Total: ₱".number_format($vendorTotal, 2).'.',
                         $order,
                         $customer->getKey(),
-                        ['vendor_id' => (int) $vendorId, 'total' => $vendorTotal, 'item_count' => $vendorItems->count()],
+                        ['vendor_id' => (int) $vendorId, 'total' => $vendorTotal, 'item_count' => $vendorItems->count(), 'is_self_pickup' => $isSelfPickup],
                     );
 
                     $createdOrderIds[] = $order->getKey();
@@ -276,11 +286,36 @@ class Checkout extends Component
     }
 
     #[Computed]
+    public function pickupVendors(): Collection
+    {
+        return $this->groupedCartItems
+            ->map(fn (Collection $items) => $items->first()->product->vendor)
+            ->values();
+    }
+
+    #[Computed]
     public function orderTotal(): float
     {
         return (float) $this->cartItems->sum(
             fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
         );
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function checkoutRules(): array
+    {
+        $rules = $this->orderRules();
+        $rules['fulfillment_method'] = ['required', Rule::in([self::FulfillmentDelivery, self::FulfillmentSelfPickup])];
+
+        if ($this->fulfillment_method === self::FulfillmentSelfPickup) {
+            $rules['delivery_address'] = ['nullable', 'string', 'max:500'];
+            $rules['delivery_lat'] = ['nullable'];
+            $rules['delivery_lng'] = ['nullable'];
+        }
+
+        return $rules;
     }
 
     private function placedOrderMessage(int $orderCount): string

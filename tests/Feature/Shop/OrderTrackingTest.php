@@ -116,6 +116,45 @@ test('order detail shows correct line items and totals', function () {
         ->assertSee('View full message history in your inbox');
 });
 
+test('self pickup order detail uses pickup timeline and hides the delivery map', function () {
+    $customer = User::factory()->create();
+    $tracked = seedTrackedOrder($customer, [
+        'order_status' => OrderStatus::Ready,
+        'is_self_pickup' => true,
+        'delivery_address' => 'Public Market Stall 8, Tagum City',
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.orders.show', ['orderReference' => $tracked['order']->getKey()]))
+        ->assertOk()
+        ->assertSee('Pickup address')
+        ->assertSee('Ready for pickup')
+        ->assertSee('Collected')
+        ->assertSee('Your order is ready!')
+        ->assertSee('Public Market Stall 8, Tagum City')
+        ->assertDontSee('Delivery map')
+        ->assertDontSee('Out For Delivery');
+});
+
+test('order detail hides stale rider coordinates before an assigned pickup starts', function () {
+    $customer = User::factory()->create();
+    $tracked = seedTrackedOrder($customer, [
+        'order_status' => OrderStatus::Ready,
+        'rider_id' => null,
+        'rider_lat' => 7.4512345,
+        'rider_lng' => 125.8123456,
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.orders.show', ['orderReference' => $tracked['order']->getKey()]))
+        ->assertOk()
+        ->assertSee('riderActive: false', false)
+        ->assertSee('riderLat: null', false)
+        ->assertSee('riderLng: null', false)
+        ->assertDontSee('Live tracking')
+        ->assertDontSee('Rider</span>', false);
+});
+
 test('order detail shows estimated delivery and delay note', function () {
     $customer = User::factory()->create();
     $tracked = seedTrackedOrder($customer, [

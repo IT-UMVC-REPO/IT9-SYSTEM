@@ -133,16 +133,25 @@ new #[Title('Order Detail')] class extends Component {
             OrderStatus::Confirmed,
             OrderStatus::Preparing,
             OrderStatus::Ready,
-            OrderStatus::PickedUp,
-            OrderStatus::OutForDelivery,
             OrderStatus::Delivered,
         ];
+
+        if (! $order->is_self_pickup) {
+            array_splice($statuses, 4, 0, [OrderStatus::PickedUp, OrderStatus::OutForDelivery]);
+        }
+
+        $labels = $order->is_self_pickup
+            ? [
+                OrderStatus::Ready->value => 'Ready for pickup',
+                OrderStatus::Delivered->value => 'Collected',
+            ]
+            : [];
 
         if ($order->order_status === OrderStatus::Cancelled) {
             return collect($statuses)
                 ->map(fn (OrderStatus $status): array => [
                     'value' => $status->value,
-                    'label' => Str::headline($status->value),
+                    'label' => $labels[$status->value] ?? Str::headline($status->value),
                     'state' => $status === OrderStatus::Pending ? 'complete' : 'future',
                 ])
                 ->push([
@@ -156,7 +165,7 @@ new #[Title('Order Detail')] class extends Component {
         $currentIndex = array_search($order->order_status, $statuses, true);
 
         return collect($statuses)
-            ->map(function (OrderStatus $status, int $index) use ($currentIndex): array {
+            ->map(function (OrderStatus $status, int $index) use ($currentIndex, $labels): array {
                 $state = match (true) {
                     $index < $currentIndex => 'complete',
                     $index === $currentIndex => 'current',
@@ -165,7 +174,7 @@ new #[Title('Order Detail')] class extends Component {
 
                 return [
                     'value' => $status->value,
-                    'label' => Str::headline($status->value),
+                    'label' => $labels[$status->value] ?? Str::headline($status->value),
                     'state' => $state,
                 ];
             })
@@ -319,7 +328,7 @@ new #[Title('Order Detail')] class extends Component {
 
             <section class="grid gap-6 lg:grid-cols-2">
                 <div class="brand-panel-muted p-6">
-                    <p class="brand-kicker !mb-0">{{ __('Delivery address') }}</p>
+                    <p class="brand-kicker !mb-0">{{ $this->order->is_self_pickup ? __('Pickup address') : __('Delivery address') }}</p>
                     <p class="mt-3 text-sm leading-7 text-neutral-700 dark:text-zinc-300">{{ $this->order->delivery_address }}</p>
                 </div>
 
@@ -334,22 +343,23 @@ new #[Title('Order Detail')] class extends Component {
             @php
                 $mapCustomer = $this->order->customer;
                 $mapVendor = $this->order->vendor;
-                $hasCustomerLocation = $mapCustomer instanceof \App\Models\User && $mapCustomer->hasLocation();
-                $hasVendorLocation = $mapVendor instanceof \App\Models\VendorProfile && $mapVendor->hasLocation();
-                $isRiderActive = in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true)
-                    && $this->order->rider_lat !== null
-                    && $this->order->rider_lng !== null;
                 $trackingCustomerLat = $this->order->delivery_lat ?? $mapCustomer->lat;
                 $trackingCustomerLng = $this->order->delivery_lng ?? $mapCustomer->lng;
+                $hasCustomerLocation = $trackingCustomerLat !== null && $trackingCustomerLng !== null;
+                $hasVendorLocation = $mapVendor instanceof \App\Models\VendorProfile && $mapVendor->hasLocation();
+                $isRiderActive = $this->order->rider_id !== null
+                    && in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true)
+                    && $this->order->rider_lat !== null
+                    && $this->order->rider_lng !== null;
             @endphp
 
-            @if (($hasCustomerLocation || $hasVendorLocation) && ! in_array($this->order->order_status, [OrderStatus::Delivered, OrderStatus::Cancelled], true))
+            @if (! $this->order->is_self_pickup && ($hasCustomerLocation || $hasVendorLocation) && ! in_array($this->order->order_status, [OrderStatus::Delivered, OrderStatus::Cancelled], true))
                 <section
                     x-data="sukiUnifiedOrderMap({
                         mapId: 'unified-order-map-{{ $this->order->id }}',
-                        customerLat: @js($hasCustomerLocation ? (float) $mapCustomer->lat : null),
-                        customerLng: @js($hasCustomerLocation ? (float) $mapCustomer->lng : null),
-                        customerAddress: @js($mapCustomer->address ?: __('Delivery address')),
+                        customerLat: @js($hasCustomerLocation ? (float) $trackingCustomerLat : null),
+                        customerLng: @js($hasCustomerLocation ? (float) $trackingCustomerLng : null),
+                        customerAddress: @js($this->order->delivery_address ?: __('Delivery address')),
                         vendorLat: @js($hasVendorLocation ? (float) $mapVendor->lat : null),
                         vendorLng: @js($hasVendorLocation ? (float) $mapVendor->lng : null),
                         vendorName: @js($mapVendor->store_name),
@@ -516,6 +526,16 @@ new #[Title('Order Detail')] class extends Component {
                         </div>
                     @endif
                 </div>
+
+                @if ($this->order->is_self_pickup && $this->order->order_status === OrderStatus::Ready)
+                    <div wire:transition class="rounded-[1.5rem] border border-[oklch(from_var(--brand-400)_l_c_h_/_0.32)] bg-[oklch(from_var(--brand-100)_l_c_h_/_0.6)] p-4 text-sm font-semibold leading-7 text-[var(--brand-900)] dark:border-[oklch(from_var(--brand-500)_l_c_h_/_0.25)] dark:bg-[oklch(from_var(--brand-500)_l_c_h_/_0.12)] dark:text-[var(--brand-100)]">
+                        {{ __('🏪 Your order is ready! Head to :stall at :address and show your order number: #:number', [
+                            'stall' => $this->order->vendor->store_name,
+                            'address' => $this->order->vendor->vendor_address ?: __('the vendor stall'),
+                            'number' => str_pad((string) $this->order->id, 6, '0', STR_PAD_LEFT),
+                        ]) }}
+                    </div>
+                @endif
 
                 <a
                     href="{{ route('messages.conversation', ['conversationReference' => $this->order->vendor->user->id, 'order' => $this->order->id]) }}"

@@ -3,6 +3,7 @@
 use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\VendorStatus;
 use App\Events\OrderStatusUpdated;
 use App\Jobs\SendOrderNotificationJob;
@@ -49,6 +50,7 @@ new #[Title('Vendor Order Detail')] class extends Component
             OrderStatus::Pending => OrderStatus::Confirmed,
             OrderStatus::Confirmed => OrderStatus::Preparing,
             OrderStatus::Preparing => OrderStatus::Ready,
+            OrderStatus::Ready => $currentOrder->is_self_pickup ? OrderStatus::Delivered : null,
             default => null,
         };
 
@@ -65,13 +67,27 @@ new #[Title('Vendor Order Detail')] class extends Component
                 ->where('vendor_id', $this->vendorId())
                 ->findOrFail($this->orderId);
 
-            $order->forceFill(['order_status' => $nextStatus])->save();
+            $updates = ['order_status' => $nextStatus];
+
+            if ($nextStatus === OrderStatus::Delivered && $order->is_self_pickup) {
+                $updates['payment_status'] = PaymentStatus::Paid;
+            }
+
+            $order->forceFill($updates)->save();
+
+            if ($nextStatus === OrderStatus::Delivered && $order->is_self_pickup) {
+                $order->payment?->update([
+                    'status' => PaymentStatus::Paid,
+                    'paid_at' => now(),
+                ]);
+            }
 
             AuditLogger::log(
                 match ($order->order_status) {
                     OrderStatus::Confirmed => AuditEvent::OrderConfirmed,
                     OrderStatus::Preparing => AuditEvent::OrderPreparing,
                     OrderStatus::Ready => AuditEvent::OrderReady,
+                    OrderStatus::Delivered => AuditEvent::OrderDelivered,
                     default => AuditEvent::OrderCancelled,
                 },
                 "Order #{$order->id} status changed to '{$order->order_status->value}' by vendor.",
@@ -84,8 +100,12 @@ new #[Title('Vendor Order Detail')] class extends Component
         SendOrderNotificationJob::dispatch(
             orderId: $updatedOrder->getKey(),
             userId: $updatedOrder->customer_id,
-            title: 'Order '.Str::headline($nextStatus->value),
-            message: 'Your order #'.$this->orderId.' is now '.Str::lower(Str::headline($nextStatus->value)).'.',
+            title: $updatedOrder->is_self_pickup && $nextStatus === OrderStatus::Delivered
+                ? 'Order collected'
+                : 'Order '.Str::headline($nextStatus->value),
+            message: $updatedOrder->is_self_pickup && $nextStatus === OrderStatus::Delivered
+                ? 'Your order #'.$this->orderId.' has been collected. Thank you!'
+                : 'Your order #'.$this->orderId.' is now '.Str::lower(Str::headline($nextStatus->value)).'.',
             type: NotificationType::OrderUpdate,
             broadcastOrderStatus: true,
         );
@@ -193,6 +213,7 @@ new #[Title('Vendor Order Detail')] class extends Component
             OrderStatus::Pending => OrderStatus::Confirmed,
             OrderStatus::Confirmed => OrderStatus::Preparing,
             OrderStatus::Preparing => OrderStatus::Ready,
+            OrderStatus::Ready => $this->order->is_self_pickup ? OrderStatus::Delivered : null,
             default => null,
         };
     }
@@ -363,7 +384,12 @@ new #[Title('Vendor Order Detail')] class extends Component
                     </div>
                 </div>
 
-                @if ($this->order->rider_id !== null)
+                @if ($this->order->is_self_pickup && $this->order->order_status === OrderStatus::Ready)
+                    <div class="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                        <p class="font-semibold text-emerald-800 dark:text-emerald-200">{{ __('Awaiting customer pickup') }}</p>
+                        <p class="mt-1 text-emerald-700 dark:text-emerald-300">{{ __('The customer will come to your stall. Mark as delivered when they collect the order.') }}</p>
+                    </div>
+                @elseif ($this->order->rider_id !== null)
                     <section class="mt-6 brand-panel-muted p-5">
                         <p class="brand-kicker !mb-0">{{ __('Rider assigned') }}</p>
                         <div class="mt-4 space-y-2 text-sm">
@@ -408,7 +434,9 @@ new #[Title('Vendor Order Detail')] class extends Component
                             wire:target="advanceStatus"
                             class="brand-button-primary w-full transition-all duration-200 hover:shadow-lg active:scale-[0.96]"
                         >
-                            {{ __('Advance to :status', ['status' => Str::headline($this->nextStatus->value)]) }}
+                            {{ $this->order->is_self_pickup && $this->order->order_status === OrderStatus::Ready
+                                ? __('Mark as collected by customer')
+                                : __('Advance to :status', ['status' => Str::headline($this->nextStatus->value)]) }}
                         </button>
                     @endif
 

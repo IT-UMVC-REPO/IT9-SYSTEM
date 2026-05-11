@@ -133,6 +133,27 @@ test('rider can claim a ready order and complete the delivery flow', function ()
     Queue::assertPushed(SendOrderNotificationJob::class, 3);
 });
 
+test('rider dashboard excludes and rejects self pickup orders', function () {
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+    $order = createReadyRiderOrder([
+        'is_self_pickup' => true,
+    ]);
+
+    Livewire::actingAs($rider)
+        ->test('pages::rider.dashboard')
+        ->assertDontSee('Nanay Cora Greens')
+        ->assertDontSee('Claim delivery');
+
+    Livewire::actingAs($rider)
+        ->test('pages::rider.dashboard')
+        ->call('claimOrder', $order->getKey())
+        ->assertForbidden();
+
+    expect($order->fresh()->rider_id)->toBeNull()
+        ->and($order->fresh()->order_status)->toBe(OrderStatus::Ready);
+});
+
 test('rider dashboard map follows the rider to pickup before delivery', function () {
     $rider = User::factory()->rider()->create();
     RiderProfile::factory()->for($rider, 'user')->approved()->create();

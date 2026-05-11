@@ -126,6 +126,38 @@ test('status advances correctly from pending to ready for rider pickup', functio
     expect($tracked['payment']->fresh()->status)->toBe(PaymentStatus::Pending);
 });
 
+test('self pickup ready order is marked delivered and paid by the vendor', function () {
+    Queue::fake();
+
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $tracked = createVendorManagedOrder($vendorProfile, [
+        'order_status' => OrderStatus::Ready,
+        'payment_status' => PaymentStatus::Pending,
+        'is_self_pickup' => true,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.order-detail', ['orderReference' => (string) $tracked['order']->getKey()])
+        ->assertSee('Awaiting customer pickup')
+        ->assertSee('Mark as collected by customer')
+        ->call('advanceStatus')
+        ->assertHasNoErrors();
+
+    $order = $tracked['order']->fresh();
+
+    expect($order->order_status)->toBe(OrderStatus::Delivered)
+        ->and($order->payment_status)->toBe(PaymentStatus::Paid)
+        ->and($tracked['payment']->fresh()->status)->toBe(PaymentStatus::Paid)
+        ->and($tracked['payment']->fresh()->paid_at)->not->toBeNull();
+
+    Queue::assertPushed(SendOrderNotificationJob::class, function (SendOrderNotificationJob $job) use ($tracked) {
+        return $job->orderId === $tracked['order']->getKey()
+            && $job->userId === $tracked['customer']->getKey()
+            && $job->broadcastOrderStatus === true;
+    });
+});
+
 test('cannot advance past delivered', function () {
     Queue::fake();
 
