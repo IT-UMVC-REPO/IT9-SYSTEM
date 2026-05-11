@@ -190,9 +190,9 @@ test('self pickup checkout uses the vendor stall address and skips delivery addr
     Queue::fake();
 
     $customer = User::factory()->create([
-        'address' => null,
-        'lat' => null,
-        'lng' => null,
+        'address' => 'Home Base, Tagum City',
+        'lat' => 7.4433,
+        'lng' => 125.8066,
     ]);
     $vendor = VendorProfile::factory()->approved()->create([
         'store_name' => 'Nanay Cora Greens',
@@ -208,6 +208,11 @@ test('self pickup checkout uses the vendor stall address and skips delivery addr
     Livewire::actingAs($customer)
         ->test('pages::shop.checkout')
         ->set('fulfillment_method', 'self_pickup')
+        ->assertSee("checkout-self-pickup-map-{$vendor->id}", false)
+        ->assertSee('sukiUnifiedOrderMap', false)
+        ->assertSee('Pickup route')
+        ->assertSee('Your location')
+        ->assertSee('Vendor Stall')
         ->set('delivery_address', '')
         ->set('delivery_lat', 91.0)
         ->set('delivery_lng', 181.0)

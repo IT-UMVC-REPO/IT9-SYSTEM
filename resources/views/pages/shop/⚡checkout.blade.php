@@ -133,6 +133,20 @@
                         </div>
                     </div>
                 @else
+                    @php
+                        $pickupCustomer = auth()->user();
+                        $pickupCustomerLat = is_numeric($delivery_lat) ? (float) $delivery_lat : null;
+                        $pickupCustomerLng = is_numeric($delivery_lng) ? (float) $delivery_lng : null;
+                        $hasPickupCustomerLocation = $pickupCustomerLat !== null
+                            && $pickupCustomerLng !== null
+                            && $pickupCustomerLat >= -90
+                            && $pickupCustomerLat <= 90
+                            && $pickupCustomerLng >= -180
+                            && $pickupCustomerLng <= 180;
+                        $pickupCustomerAddress = $delivery_address
+                            ?: ($pickupCustomer?->address ?: __('Your saved location'));
+                    @endphp
+
                     <div class="rounded-[1.5rem] border border-[oklch(from_var(--brand-400)_l_c_h_/_0.32)] bg-[oklch(from_var(--brand-100)_l_c_h_/_0.6)] p-5 dark:border-[oklch(from_var(--brand-500)_l_c_h_/_0.25)] dark:bg-[oklch(from_var(--brand-500)_l_c_h_/_0.12)]">
                         <div class="flex items-start gap-4">
                             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-600)] text-white">
@@ -148,11 +162,60 @@
 
                         <div class="mt-4 space-y-3">
                             @foreach ($this->pickupVendors as $vendor)
+                                @php
+                                    $hasPickupVendorLocation = $vendor->hasLocation();
+                                @endphp
+
                                 <div wire:key="checkout-pickup-vendor-{{ $vendor->id }}" class="rounded-2xl border border-white/70 bg-white/70 p-4 dark:border-white/10 dark:bg-zinc-900/60">
                                     <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $vendor->store_name }}</p>
                                     <p class="mt-1 text-sm leading-6 text-neutral-600 dark:text-zinc-300">
                                         {{ $vendor->vendor_address ?: __('Self-pickup at vendor stall') }}
                                     </p>
+
+                                    @if ($hasPickupCustomerLocation || $hasPickupVendorLocation)
+                                        <div
+                                            x-data="sukiUnifiedOrderMap({
+                                                mapId: 'checkout-self-pickup-map-{{ $vendor->id }}',
+                                                customerLat: @js($hasPickupCustomerLocation ? $pickupCustomerLat : null),
+                                                customerLng: @js($hasPickupCustomerLocation ? $pickupCustomerLng : null),
+                                                customerAddress: @js($pickupCustomerAddress),
+                                                vendorLat: @js($hasPickupVendorLocation ? (float) $vendor->lat : null),
+                                                vendorLng: @js($hasPickupVendorLocation ? (float) $vendor->lng : null),
+                                                vendorName: @js($vendor->store_name),
+                                                vendorAddress: @js($vendor->vendor_address ?: __('Tagum City')),
+                                                riderActive: false,
+                                                riderLat: null,
+                                                riderLng: null,
+                                                orderId: null,
+                                            })"
+                                            x-init="init()"
+                                            x-on:livewire:navigating.window="destroy()"
+                                            class="mt-4 overflow-hidden rounded-[1.25rem] border border-stone-200 bg-white dark:border-white/10 dark:bg-zinc-950"
+                                            wire:key="checkout-self-pickup-route-{{ $vendor->id }}"
+                                        >
+                                            <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                                                <div class="flex flex-wrap items-center gap-3 text-xs font-semibold text-neutral-500 dark:text-zinc-400">
+                                                    <span class="text-[11px] uppercase tracking-[0.18em] text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ __('Pickup route') }}</span>
+                                                    @if ($hasPickupCustomerLocation)
+                                                        <span class="inline-flex items-center gap-2">
+                                                            <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
+                                                            {{ __('Your location') }}
+                                                        </span>
+                                                    @endif
+                                                    @if ($hasPickupVendorLocation)
+                                                        <span class="inline-flex items-center gap-2">
+                                                            <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                                                            {{ __('Vendor Stall') }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <p x-text="distanceLabel" class="min-h-5 text-xs font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]"></p>
+                                            </div>
+
+                                            <div id="checkout-self-pickup-map-{{ $vendor->id }}" wire:ignore class="h-[220px] w-full sm:h-[260px]"></div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

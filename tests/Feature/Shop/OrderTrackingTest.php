@@ -116,12 +116,22 @@ test('order detail shows correct line items and totals', function () {
         ->assertSee('View full message history in your inbox');
 });
 
-test('self pickup order detail uses pickup timeline and hides the delivery map', function () {
-    $customer = User::factory()->create();
+test('self pickup order detail uses pickup timeline and shows the stall route map', function () {
+    $customer = User::factory()->create([
+        'address' => 'Home Base, Tagum City',
+        'lat' => 7.4433,
+        'lng' => 125.8066,
+    ]);
     $tracked = seedTrackedOrder($customer, [
         'order_status' => OrderStatus::Ready,
         'is_self_pickup' => true,
         'delivery_address' => 'Public Market Stall 8, Tagum City',
+    ]);
+    $tracked['vendor']->update([
+        'store_name' => 'Nanay Cora Greens',
+        'vendor_address' => 'Public Market Stall 8, Tagum City',
+        'lat' => 7.4479,
+        'lng' => 125.809,
     ]);
 
     $this->actingAs($customer)
@@ -132,6 +142,11 @@ test('self pickup order detail uses pickup timeline and hides the delivery map',
         ->assertSee('Collected')
         ->assertSee('Your order is ready!')
         ->assertSee('Public Market Stall 8, Tagum City')
+        ->assertSee('Pickup map')
+        ->assertSee('Your Location')
+        ->assertSee('Vendor Stall')
+        ->assertSee('sukiUnifiedOrderMap', false)
+        ->assertSee('riderActive: false', false)
         ->assertDontSee('Delivery map')
         ->assertDontSee('Out For Delivery');
 });

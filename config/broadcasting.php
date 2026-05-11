@@ -54,15 +54,15 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
-                'host' => env('PUSHER_HOST') ?: 'api-'.env('PUSHER_APP_CLUSTER', 'mt1').'.pusher.com',
+                'host' => env('PUSHER_HOST') ?: ('api-'.env('PUSHER_APP_CLUSTER', 'mt1').'.pusher.com'),
                 'port' => env('PUSHER_PORT', 443),
                 'scheme' => env('PUSHER_SCHEME', 'https'),
                 'encrypted' => true,
                 'useTLS' => env('PUSHER_SCHEME', 'https') === 'https',
             ],
             'client_options' => [
-                'connect_timeout' => (float) env('PUSHER_CONNECT_TIMEOUT', 2),
-                'timeout' => (float) env('PUSHER_TIMEOUT', 4),
+                'connect_timeout' => (float) env('PUSHER_CONNECT_TIMEOUT', 3),
+                'timeout' => (float) env('PUSHER_TIMEOUT', 3),
             ],
         ],
 

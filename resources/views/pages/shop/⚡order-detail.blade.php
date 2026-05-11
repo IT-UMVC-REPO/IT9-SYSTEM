@@ -343,23 +343,30 @@ new #[Title('Order Detail')] class extends Component {
             @php
                 $mapCustomer = $this->order->customer;
                 $mapVendor = $this->order->vendor;
-                $trackingCustomerLat = $this->order->delivery_lat ?? $mapCustomer->lat;
-                $trackingCustomerLng = $this->order->delivery_lng ?? $mapCustomer->lng;
+                $trackingCustomerLat = $this->order->is_self_pickup
+                    ? $mapCustomer->lat
+                    : ($this->order->delivery_lat ?? $mapCustomer->lat);
+                $trackingCustomerLng = $this->order->is_self_pickup
+                    ? $mapCustomer->lng
+                    : ($this->order->delivery_lng ?? $mapCustomer->lng);
                 $hasCustomerLocation = $trackingCustomerLat !== null && $trackingCustomerLng !== null;
                 $hasVendorLocation = $mapVendor instanceof \App\Models\VendorProfile && $mapVendor->hasLocation();
+                $mapCustomerAddress = $this->order->is_self_pickup
+                    ? ($mapCustomer->address ?: __('Your saved location'))
+                    : ($this->order->delivery_address ?: __('Delivery address'));
                 $isRiderActive = $this->order->rider_id !== null
                     && in_array($this->order->order_status, [OrderStatus::PickedUp, OrderStatus::OutForDelivery], true)
                     && $this->order->rider_lat !== null
                     && $this->order->rider_lng !== null;
             @endphp
 
-            @if (! $this->order->is_self_pickup && ($hasCustomerLocation || $hasVendorLocation) && ! in_array($this->order->order_status, [OrderStatus::Delivered, OrderStatus::Cancelled], true))
+            @if (($hasCustomerLocation || $hasVendorLocation) && ! in_array($this->order->order_status, [OrderStatus::Delivered, OrderStatus::Cancelled], true))
                 <section
                     x-data="sukiUnifiedOrderMap({
                         mapId: 'unified-order-map-{{ $this->order->id }}',
                         customerLat: @js($hasCustomerLocation ? (float) $trackingCustomerLat : null),
                         customerLng: @js($hasCustomerLocation ? (float) $trackingCustomerLng : null),
-                        customerAddress: @js($this->order->delivery_address ?: __('Delivery address')),
+                        customerAddress: @js($mapCustomerAddress),
                         vendorLat: @js($hasVendorLocation ? (float) $mapVendor->lat : null),
                         vendorLng: @js($hasVendorLocation ? (float) $mapVendor->lng : null),
                         vendorName: @js($mapVendor->store_name),
@@ -379,13 +386,17 @@ new #[Title('Order Detail')] class extends Component {
                                 @if ($isRiderActive)
                                     <span class="flex h-3 w-3 animate-pulse rounded-full bg-orange-500"></span>
                                 @endif
-                                <p class="brand-kicker !mb-0">{{ $isRiderActive ? __('Delivery map · Live tracking') : __('Delivery map') }}</p>
+                                <p class="brand-kicker !mb-0">
+                                    {{ $this->order->is_self_pickup
+                                        ? __('Pickup map')
+                                        : ($isRiderActive ? __('Delivery map · Live tracking') : __('Delivery map')) }}
+                                </p>
                             </div>
                             <div class="mt-3 flex flex-wrap items-center gap-3 text-xs font-semibold text-neutral-500 dark:text-zinc-400">
                                 @if ($hasCustomerLocation)
                                     <span class="inline-flex items-center gap-2">
                                         <span class="h-2.5 w-2.5 rounded-full bg-blue-500"></span>
-                                        {{ __('Delivery Point') }}
+                                        {{ $this->order->is_self_pickup ? __('Your Location') : __('Delivery Point') }}
                                     </span>
                                 @endif
                                 @if ($hasVendorLocation)
