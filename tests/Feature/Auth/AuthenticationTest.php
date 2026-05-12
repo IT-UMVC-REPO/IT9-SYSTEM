@@ -7,7 +7,8 @@ use Laravel\Fortify\Features;
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false);
 });
 
 test('users can authenticate using the login screen', function () {
@@ -20,9 +21,27 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticated();
+});
+
+test('users are redirected to their intended page after login', function () {
+    $user = User::factory()->create();
+
+    $this->get(route('shop.cart'))
+        ->assertRedirect(route('login'));
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('shop.cart', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
 });
 
 test('vendors are redirected to the vendor dashboard after login', function () {
@@ -39,6 +58,21 @@ test('vendors are redirected to the vendor dashboard after login', function () {
         ->assertRedirect(route('vendor.dashboard', absolute: false));
 
     $this->assertAuthenticatedAs($user);
+});
+
+test('approved vendors can browse the storefront', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('shop.home'))
+        ->assertOk()
+        ->assertSee('A brighter market floor for your next market run.');
+
+    $this->actingAs($user)
+        ->get(route('customer.dashboard'))
+        ->assertOk()
+        ->assertSee('Browse storefront');
 });
 
 test('inactive users can not authenticate using the login screen', function () {
@@ -65,7 +99,7 @@ test('pending vendors are redirected to the customer storefront after login', fu
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });
@@ -81,7 +115,7 @@ test('rejected vendors are redirected to the customer storefront after login', f
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('shop.home', absolute: false));
+        ->assertRedirect(route('customer.dashboard', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });

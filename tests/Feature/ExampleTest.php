@@ -1,7 +1,9 @@
 <?php
 
 test('returns a successful response', function () {
-    $response = $this->get(route('home'));
-
-    $response->assertOk();
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('Your Local Market, Delivered')
+        ->assertSee('Fresh from the palengke')
+        ->assertSee('Create a customer account');
 });

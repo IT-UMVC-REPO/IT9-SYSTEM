@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -33,8 +34,10 @@ class UserFactory extends Factory
             'role' => UserRole::Customer,
             'phone' => null,
             'address' => null,
+            ...TagumCoordinate::random(),
             'profile_image' => null,
             'is_active' => true,
+            'brand_color' => null,
             'remember_token' => Str::random(10),
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
@@ -75,6 +78,13 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Vendor,
+        ]);
+    }
+
+    public function rider(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Rider,
         ]);
     }
 

@@ -24,3 +24,6 @@ yarn-error.log
 .agents/
 .codex/
 AGENTS.md
+**/caddy
+frankenphp
+frankenphp-worker.php

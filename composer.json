@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/livewire-starter-kit",
     "type": "project",
-    "description": "The official Laravel starter kit for Livewire.",
+    "description": "SukiMarket, a Laravel and Livewire Filipino wet market delivery platform.",
     "keywords": [
         "laravel",
         "framework"
@@ -12,9 +12,15 @@
         "php": "^8.5",
         "laravel/fortify": "^1.34",
         "laravel/framework": "^13.0",
+        "laravel/reverb": "^1.10",
+        "laravel/telescope": "^5.20",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.32",
         "livewire/flux": "^2.13.1",
         "livewire/livewire": "^4.1",
+        "paymongo/paymongo-php": "^0.0.0",
+        "pusher/pusher-php-server": "^7.2",
+        "resend/resend-laravel": "*",
         "spatie/laravel-permission": "^7.3"
     },
     "require-dev": {
@@ -51,7 +57,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74,#86efac\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan reverb:start\" \"npm run dev\" --names='server,queue,reverb,vite'"
         ],
         "lint": [
             "pint --parallel"

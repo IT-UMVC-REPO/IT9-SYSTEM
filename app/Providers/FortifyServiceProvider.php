@@ -4,11 +4,17 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\AuditEvent;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\RegisterResponse;
+use App\Mail\EmailVerification as EmailVerificationMail;
 use App\Models\User;
+use App\Services\AuditLogger;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -37,6 +43,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureAuthentication();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configureTransactionalEmails();
     }
 
     /**
@@ -69,6 +76,8 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
+            AuditLogger::log(AuditEvent::UserLoggedIn, "User {$user->email} logged in.", $user, $user->getKey());
+
             return $user;
         });
     }
@@ -79,12 +88,40 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn () => view('pages.auth.login'));
-        Fortify::verifyEmailView(fn () => view('pages.auth.verify-email'));
         Fortify::twoFactorChallengeView(fn () => view('pages.auth.two-factor-challenge'));
         Fortify::confirmPasswordView(fn () => view('pages.auth.confirm-password'));
         Fortify::registerView(fn () => view('pages.auth.register'));
         Fortify::resetPasswordView(fn () => view('pages.auth.reset-password'));
         Fortify::requestPasswordResetLinkView(fn () => view('pages.auth.forgot-password'));
+    }
+
+    /**
+     * Configure branded transactional emails.
+     */
+    private function configureTransactionalEmails(): void
+    {
+        VerifyEmail::toMailUsing(function (User $notifiable, string $url): EmailVerificationMail {
+            return (new EmailVerificationMail(
+                user: $notifiable,
+                verificationUrl: $url,
+                verificationCode: $notifiable->email_verification_code,
+            ))->to($notifiable->email, $notifiable->name);
+        });
+
+        ResetPassword::toMailUsing(function (User $notifiable, string $token): MailMessage {
+            $resetUrl = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            return (new MailMessage)
+                ->subject('Reset your SukiMarket password')
+                ->markdown('emails.auth.reset-password', [
+                    'user' => $notifiable,
+                    'resetUrl' => $resetUrl,
+                    'expirationMinutes' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
+                ]);
+        });
     }
 
     /**

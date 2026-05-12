@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
 use Livewire\Attributes\Locked;
@@ -7,28 +7,16 @@ use Livewire\Component;
 new class extends Component {
     #[Locked]
     public array $recoveryCodes = [];
-
-    /**
-     * Mount the component.
-     */
     public function mount(): void
     {
         $this->loadRecoveryCodes();
     }
-
-    /**
-     * Generate new recovery codes for the user.
-     */
     public function regenerateRecoveryCodes(GenerateNewRecoveryCodes $generateNewRecoveryCodes): void
     {
         $generateNewRecoveryCodes(auth()->user());
 
         $this->loadRecoveryCodes();
     }
-
-    /**
-     * Load the recovery codes for the user.
-     */
     private function loadRecoveryCodes(): void
     {
         $user = auth()->user();
@@ -46,11 +34,11 @@ new class extends Component {
 }; ?>
 
 <div
-    class="py-6 space-y-6 border shadow-sm rounded-xl border-zinc-200 dark:border-white/10"
+    class="space-y-6 rounded-[1.5rem] border border-stone-200 bg-white/70 p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
     wire:cloak
     x-data="{ showRecoveryCodes: false }"
 >
-    <div class="px-6 space-y-2">
+    <div class="space-y-2">
         <div class="flex items-center gap-2">
             <flux:icon.lock-closed variant="outline" class="size-4"/>
             <flux:heading size="lg" level="3">{{ __('2FA recovery codes') }}</flux:heading>
@@ -60,7 +48,7 @@ new class extends Component {
         </flux:text>
     </div>
 
-    <div class="px-6">
+    <div>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <flux:button
                 x-show="!showRecoveryCodes"
@@ -100,7 +88,12 @@ new class extends Component {
 
         <div
             x-show="showRecoveryCodes"
-            x-transition
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 -translate-y-3"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-3"
             id="recovery-codes-section"
             class="relative overflow-hidden"
             x-bind:aria-hidden="!showRecoveryCodes"
@@ -112,14 +105,14 @@ new class extends Component {
 
                 @if (filled($recoveryCodes))
                     <div
-                        class="grid gap-1 p-4 font-mono text-sm rounded-lg bg-zinc-100 dark:bg-white/5"
+                        class="grid gap-1 rounded-xl bg-zinc-100 p-4 font-mono text-sm dark:bg-zinc-950"
                         role="list"
                         aria-label="{{ __('Recovery codes') }}"
                     >
                         @foreach($recoveryCodes as $code)
                             <div
                                 role="listitem"
-                                class="select-text"
+                                class="select-text transition-opacity duration-200"
                                 wire:loading.class="opacity-50 animate-pulse"
                             >
                                 {{ $code }}

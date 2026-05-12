@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\ProductUnit;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['order_id', 'product_id', 'quantity', 'unit_price'])]
+#[Fillable(['order_id', 'product_id', 'quantity', 'unit_price', 'unit'])]
 class OrderItem extends Model
 {
     public $timestamps = false;
@@ -21,7 +22,18 @@ class OrderItem extends Model
         return [
             'quantity' => 'int',
             'unit_price' => 'decimal:2',
+            'unit' => ProductUnit::class,
         ];
+    }
+
+    public function lineTotal(): string
+    {
+        return '₱'.number_format((float) $this->unit_price * $this->quantity, 2);
+    }
+
+    public function quantityLabel(): string
+    {
+        return $this->unit->stockLabel($this->quantity);
     }
 
     public function order(): BelongsTo

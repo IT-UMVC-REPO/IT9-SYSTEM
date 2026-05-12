@@ -2,16 +2,13 @@
     'sidebar' => false,
 ])
 
-@if($sidebar)
-    <flux:sidebar.brand name="Laravel Starter Kit" {{ $attributes }}>
-        <x-slot name="logo" class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-            <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
-        </x-slot>
-    </flux:sidebar.brand>
-@else
-    <flux:brand name="Laravel Starter Kit" {{ $attributes }}>
-        <x-slot name="logo" class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-            <x-app-logo-icon class="size-5 fill-current text-white dark:text-black" />
-        </x-slot>
-    </flux:brand>
-@endif
+<a {{ $attributes->class('flex items-center gap-3') }}>
+    <span class="brand-logo-badge flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold shadow-sm">
+        <img src="{{ asset('imgs/sukilogo.png') }}" alt="SukiMarket Logo" class="h-full w-full object-cover" />
+    </span>
+
+    <span class="{{ $sidebar ? 'min-w-0 in-data-flux-sidebar-collapsed-desktop:hidden' : 'min-w-0' }}">
+        <span class="brand-serif block text-lg font-bold text-neutral-900 dark:text-zinc-100">SukiMarket</span>
+        <span class="block text-[11px] uppercase tracking-[0.28em] text-neutral-400 dark:text-zinc-400">Your Local Market, Delivered</span>
+    </span>
+</a>

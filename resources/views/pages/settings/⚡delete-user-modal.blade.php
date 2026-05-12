@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Concerns\PasswordValidationRules;
 use App\Livewire\Actions\Logout;
@@ -9,10 +9,6 @@ new class extends Component {
     use PasswordValidationRules;
 
     public string $password = '';
-
-    /**
-     * Delete the currently authenticated user.
-     */
     public function deleteUser(Logout $logout): void
     {
         $this->validate([
@@ -26,7 +22,7 @@ new class extends Component {
 }; ?>
 
 <flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
-    <form method="POST" wire:submit="deleteUser" class="space-y-6">
+    <form method="POST" wire:submit="deleteUser" class="space-y-6 p-6">
         <div>
             <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
 

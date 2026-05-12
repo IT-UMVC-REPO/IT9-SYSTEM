@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Enums\TagumCoordinate;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
@@ -16,7 +17,7 @@ class CreateNewUser implements CreatesNewUsers
     /**
      * Validate and create a newly registered user.
      *
-     * @param  array<string, string>  $input
+     * @param  array<string, mixed>  $input
      */
     public function create(array $input): User
     {
@@ -31,6 +32,9 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $input['password'],
             'role' => UserRole::Customer,
             'is_active' => true,
+            'phone' => $input['phone'] ?? null,
+            'address' => $input['address'] ?? null,
+            ...TagumCoordinate::random(),
         ]);
     }
 }

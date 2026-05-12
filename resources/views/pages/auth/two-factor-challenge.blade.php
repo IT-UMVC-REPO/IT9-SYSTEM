@@ -28,6 +28,12 @@
                     :title="__('Authentication code')"
                     :description="__('Enter the authentication code provided by your authenticator application.')"
                 />
+
+                <flux:callout
+                    icon="clock"
+                    heading="{{ __('Use the 6-digit code from your authenticator app. It is not sent by email and refreshes every 30 seconds.') }}"
+                    class="mt-4 text-left"
+                />
             </div>
 
             <div x-show="showRecoveryInput">
@@ -37,7 +43,7 @@
                 />
             </div>
 
-            <form method="POST" action="{{ route('two-factor.login.store') }}">
+            <form method="POST" action="{{ route('two-factor.login.store') }}" class="suki-reveal" style="transition-delay: 120ms">
                 @csrf
 
                 <div class="space-y-5 text-center">
@@ -47,6 +53,8 @@
                                 x-model="code"
                                 length="6"
                                 name="code"
+                                mode="numeric"
+                                autocomplete="one-time-code"
                                 label="OTP Code"
                                 label:sr-only
                                 class="mx-auto"
@@ -76,7 +84,7 @@
                     <flux:button
                         variant="primary"
                         type="submit"
-                        class="w-full"
+                        class="w-full transition-all duration-150 active:scale-[0.97]"
                     >
                         {{ __('Continue') }}
                     </flux:button>

@@ -47,7 +47,7 @@ test('security settings page renders without two factor when feature is disabled
         ->assertDontSee('Two-factor authentication');
 });
 
-test('two factor authentication disabled when confirmation abandoned between requests', function () {
+test('pending two factor setup is preserved when security settings are revisited', function () {
     $user = User::factory()->create();
 
     $user->forceFill([
@@ -62,11 +62,11 @@ test('two factor authentication disabled when confirmation abandoned between req
 
     $component->assertSet('twoFactorEnabled', false);
 
-    $this->assertDatabaseHas('users', [
-        'id' => $user->id,
-        'two_factor_secret' => null,
-        'two_factor_recovery_codes' => null,
-    ]);
+    $user->refresh();
+
+    expect($user->two_factor_secret)->not->toBeNull()
+        ->and($user->two_factor_recovery_codes)->not->toBeNull()
+        ->and($user->two_factor_confirmed_at)->toBeNull();
 });
 
 test('password can be updated', function () {

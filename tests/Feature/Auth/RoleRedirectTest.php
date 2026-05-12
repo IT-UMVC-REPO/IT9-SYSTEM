@@ -17,7 +17,7 @@ test('users are redirected to their own portal when they hit another role route'
 
     $response = $this->actingAs($user)->get(route('admin.dashboard'));
 
-    $response->assertRedirect(route('shop.home', absolute: false));
+    $response->assertRedirect(route('customer.dashboard', absolute: false));
 });
 
 test('non approved vendors are redirected to the customer portal when visiting vendor routes', function () {
@@ -26,5 +26,29 @@ test('non approved vendors are redirected to the customer portal when visiting v
 
     $response = $this->actingAs($user)->get(route('vendor.dashboard'));
 
-    $response->assertRedirect(route('shop.home', absolute: false));
+    $response->assertRedirect(route('customer.dashboard', absolute: false));
+});
+
+test('approved vendors can access customer shopping routes', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('customer.dashboard'))
+        ->assertOk()
+        ->assertSee('Browse storefront');
+
+    $this->actingAs($user)
+        ->get(route('shop.vendors'))
+        ->assertOk()
+        ->assertSee('Browse Vendors &amp; Find Stalls', false);
+});
+
+test('approved vendor can access the cart page without switching roles', function () {
+    $user = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($user, 'user')->approved()->create();
+
+    $this->actingAs($user)
+        ->get(route('shop.cart'))
+        ->assertOk();
 });

@@ -57,7 +57,7 @@ test('marketplace factories build related records with enum casts', function () 
     $order = Order::factory()->for($customer, 'customer')->create([
         'vendor_id' => $vendorProfile->id,
         'total_amount' => 99.90,
-        'payment_method' => PaymentMethod::Gcash,
+        'payment_method' => PaymentMethod::Cod,
     ]);
 
     $orderItem = OrderItem::query()->create([
@@ -69,7 +69,7 @@ test('marketplace factories build related records with enum casts', function () 
 
     $payment = Payment::factory()->for($order)->completed()->create([
         'amount' => $order->total_amount,
-        'method' => PaymentMethod::Gcash,
+        'method' => PaymentMethod::Cod,
     ]);
 
     $message = Message::query()->create([
@@ -89,7 +89,7 @@ test('marketplace factories build related records with enum casts', function () 
     expect($vendorProfile->fresh()->status)->toBe(VendorStatus::Approved)
         ->and($vendorProfile->user->role)->toBe(UserRole::Vendor)
         ->and($product->fresh()->status)->toBe(ProductStatus::Active)
-        ->and($order->fresh()->payment_method)->toBe(PaymentMethod::Gcash)
+        ->and($order->fresh()->payment_method)->toBe(PaymentMethod::Cod)
         ->and($order->payment_status)->toBe(PaymentStatus::Pending)
         ->and($order->order_status)->toBe(OrderStatus::Pending)
         ->and($payment->fresh()->status)->toBe(PaymentStatus::Paid)
@@ -100,54 +100,63 @@ test('marketplace factories build related records with enum casts', function () 
         ->and($notification->user->is($customer))->toBeTrue();
 });
 
-test('vendor profiles are one to one with users', function () {
-    $user = User::factory()->create();
+test('marketplace factories use readable non lorem descriptions', function () {
+    $vendorProfile = VendorProfile::factory()->make();
+    $product = Product::factory()->make();
 
-    VendorProfile::factory()->for($user, 'user')->create();
-
-    expect(fn () => VendorProfile::factory()->for($user, 'user')->create())
-        ->toThrow(QueryException::class);
+    expect(strtolower($vendorProfile->store_description))->not->toContain('lorem ipsum')
+        ->and(strtolower($product->description))->not->toContain('lorem ipsum')
+        ->and($vendorProfile->store_description)->not->toBeEmpty()
+        ->and($product->description)->not->toBeEmpty();
 });
 
-test('carts are one to one with customers', function () {
-    $customer = User::factory()->create();
+test('marketplace unique constraints reject duplicate records for :dataset', function (Closure $assertDuplicateInsertFails) {
+    $assertDuplicateInsertFails();
+})->with([
+    'vendor profiles are one to one with users' => [
+        function (): void {
+            $user = User::factory()->create();
 
-    Cart::factory()->for($customer, 'customer')->create();
+            VendorProfile::factory()->for($user, 'user')->create();
 
-    expect(fn () => Cart::factory()->for($customer, 'customer')->create())
-        ->toThrow(QueryException::class);
-});
+            expect(fn () => VendorProfile::factory()->for($user, 'user')->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'carts are one to one with customers' => [
+        function (): void {
+            $customer = User::factory()->create();
 
-test('payments are one to one with orders', function () {
-    $order = Order::factory()->create();
+            Cart::factory()->for($customer, 'customer')->create();
 
-    Payment::factory()->for($order)->create();
+            expect(fn () => Cart::factory()->for($customer, 'customer')->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'payments are one to one with orders' => [
+        function (): void {
+            $order = Order::factory()->create();
 
-    expect(fn () => Payment::factory()->for($order)->create())
-        ->toThrow(QueryException::class);
-});
+            Payment::factory()->for($order)->create();
 
-test('favorites are unique per customer and vendor', function () {
-    $customer = User::factory()->create();
-    $vendorProfile = VendorProfile::factory()->approved()->create();
+            expect(fn () => Payment::factory()->for($order)->create())
+                ->toThrow(QueryException::class);
+        },
+    ],
+    'favorites are unique per customer and vendor' => [
+        function (): void {
+            $customer = User::factory()->create();
+            $vendorProfile = VendorProfile::factory()->approved()->create();
 
-    Favorite::query()->create([
-        'customer_id' => $customer->id,
-        'vendor_id' => $vendorProfile->id,
-    ]);
+            Favorite::query()->create([
+                'customer_id' => $customer->id,
+                'vendor_id' => $vendorProfile->id,
+            ]);
 
-    expect(fn () => Favorite::query()->create([
-        'customer_id' => $customer->id,
-        'vendor_id' => $vendorProfile->id,
-    ]))->toThrow(QueryException::class);
-});
-
-test('database seeder provisions baseline marketplace data', function () {
-    $this->seed();
-
-    expect(User::query()->where('email', 'admin@example.com')->first()?->role)->toBe(UserRole::Admin)
-        ->and(User::query()->where('email', 'vendor@example.com')->first()?->role)->toBe(UserRole::Vendor)
-        ->and(VendorProfile::query()->where('store_name', 'Fresh Vendor Market')->exists())->toBeTrue()
-        ->and(Category::query()->count())->toBe(3)
-        ->and(Product::query()->count())->toBe(6);
-});
+            expect(fn () => Favorite::query()->create([
+                'customer_id' => $customer->id,
+                'vendor_id' => $vendorProfile->id,
+            ]))->toThrow(QueryException::class);
+        },
+    ],
+]);

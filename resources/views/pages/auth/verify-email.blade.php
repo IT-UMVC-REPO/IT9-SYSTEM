@@ -1,28 +1,56 @@
-<x-layouts::auth :title="__('Email verification')">
-    <div class="mt-4 flex flex-col gap-6">
-        <flux:text class="text-center">
-            {{ __('Please verify your email address by clicking on the link we just emailed to you.') }}
-        </flux:text>
+@php($user = auth()->user())
 
-        @if (session('status') == 'verification-link-sent')
-            <flux:text class="text-center font-medium !dark:text-green-400 !text-green-600">
-                {{ __('A new verification link has been sent to the email address you provided during registration.') }}
-            </flux:text>
+<x-layouts::auth :title="__('Verify your email')">
+    <div class="flex flex-col gap-5">
+        <div
+            class="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/60 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <i class="fa-solid fa-envelope-open-text text-lg"></i>
+        </div>
+        <x-auth-header :title="__('Verify your email')" :description="__('We sent a 6-digit code to :email. Enter it below or click the link in the email.', [
+            'email' => $user->email,
+        ])" />
+
+        @if (session('status') === 'verification-email-sent')
+            <p class="text-center text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                {{ __('A fresh verification email has been sent.') }}
+            </p>
         @endif
 
-        <div class="flex flex-col items-center justify-between space-y-3">
+        <form method="POST" action="{{ route('verification.code.verify') }}" class="suki-reveal flex flex-col gap-4" style="transition-delay: 120ms">
+            @csrf
+
+            <div class="flex flex-col items-center gap-2">
+                <flux:otp
+                    name="code"
+                    length="6"
+                    mode="numeric"
+                    autocomplete="one-time-code"
+                    autofocus
+                    class="mx-auto"
+                />
+                @error('code')
+                    <flux:text color="red" class="text-center text-sm">{{ $message }}</flux:text>
+                @enderror
+            </div>
+
+            <flux:button type="submit" variant="primary" class="w-full transition-all duration-150 active:scale-[0.97]">
+                {{ __('Verify email') }}
+            </flux:button>
+        </form>
+        <hr class="border-t border-stone-200 dark:border-white/10" />
+        <div class="flex items-center justify-center gap-3 text-sm text-neutral-500 dark:text-zinc-400">
             <form method="POST" action="{{ route('verification.send') }}">
                 @csrf
-                <flux:button type="submit" variant="primary" class="w-full">
-                    {{ __('Resend verification email') }}
-                </flux:button>
+                <button type="submit" class="font-medium underline transition-colors duration-150 hover:text-neutral-800 dark:hover:text-zinc-100">
+                    {{ __('Resend email') }}
+                </button>
             </form>
-
+            <span aria-hidden="true">&middot;</span>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <flux:button variant="ghost" type="submit" class="text-sm cursor-pointer" data-test="logout-button">
+                <button type="submit" class="font-medium underline transition-colors duration-150 hover:text-neutral-800 dark:hover:text-zinc-100">
                     {{ __('Log out') }}
-                </flux:button>
+                </button>
             </form>
         </div>
     </div>
