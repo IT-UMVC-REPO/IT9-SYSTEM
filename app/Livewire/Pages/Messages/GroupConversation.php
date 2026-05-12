@@ -55,6 +55,8 @@ class GroupConversation extends Component
 
     public ?int $incomingCallId = null;
 
+    public bool $callInProgress = false;
+
     /**
      * @var array<int, array<string, mixed>>
      */
@@ -149,6 +151,12 @@ class GroupConversation extends Component
 
     public function refreshThread(bool $shouldScroll = false): void
     {
+        if ($this->callInProgress) {
+            $this->skipRender();
+
+            return;
+        }
+
         $this->markRead();
         $this->loadMessages();
         unset($this->group);

@@ -561,8 +561,12 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('requestPictureInPicture')
         ->toContain('if (peer.restartIce)')
         ->toContain('peer.restartIce();')
+        ->toContain('callStatusLabel()')
+        ->toContain('Connection interrupted. Trying to recover...')
+        ->toContain('this.peer?.restartIce')
         ->toContain('new MediaStream([event.track])')
         ->toContain('remoteVideoActive')
+        ->not->toContain('void this.endCall(this.connectionFailureMessage());')
         ->and($groupCall)
         ->toContain('peerConnectionOptions')
         ->toContain('videoCallDisabledReason()')
@@ -637,15 +641,18 @@ test('video call client uses native rtc peer connection and server-provided ice 
 
 test('conversation keeps video call alpine controls stable during livewire refreshes', function () {
     $conversation = messagingBladeSource('conversation');
+    $conversationComponent = file_get_contents(app_path('Livewire/Pages/Messages/Conversation.php'));
+    $groupConversationComponent = file_get_contents(app_path('Livewire/Pages/Messages/GroupConversation.php'));
 
     expect($conversation)
         ->toContain('wire:key="conversation-video-call-{{ $otherUserId }}"')
         ->toContain('wire:ignore.self')
         ->toContain('data-conversation-video-call')
         ->toContain('realtimeEnabled: @js($realtimeEnabled)')
+        ->toContain('x-effect="$wire.$set(\'callInProgress\', callStatus !== \'idle\', false)"')
         ->toContain("iceServers: @js(route('calls.ice-servers'))")
         ->toContain("callStatus === 'active' || callStatus === 'connecting'")
-        ->toContain("callStatus === 'active' ? 'Connected' : 'Connecting'")
+        ->toContain('callStatusLabel()')
         ->toContain('lg:h-[calc(100dvh-52px)]')
         ->toContain('x-show="showTurnWarning"')
         ->toContain('Cross-network calls require TURN credentials')
@@ -670,7 +677,15 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->not->toContain('Cancel call')
         ->not->toContain('LOCAL PREVIEW')
         ->not->toContain('CALL STATUS')
-        ->not->toContain('reverbEnabled');
+        ->not->toContain('reverbEnabled')
+        ->and($conversationComponent)
+        ->toContain('public bool $callInProgress = false;')
+        ->toContain('if ($this->callInProgress) {')
+        ->toContain('$this->skipRender();')
+        ->and($groupConversationComponent)
+        ->toContain('public bool $callInProgress = false;')
+        ->toContain('if ($this->callInProgress) {')
+        ->toContain('$this->skipRender();');
 });
 
 test('group conversation call overlay uses desktop tiles and a mobile filmstrip', function () {
@@ -678,6 +693,7 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
 
     expect($groupConversation)
         ->toContain('participantSummaries: @js($this->groupParticipantSummaries())')
+        ->toContain('x-effect="$wire.$set(\'callInProgress\', callStatus !== \'idle\', false)"')
         ->toContain('group-call-local-background-video')
         ->toContain('group-call-local-grid-video')
         ->toContain('group-call-speaker-video')

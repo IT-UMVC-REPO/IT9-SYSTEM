@@ -28,7 +28,8 @@
             callId = @js($incomingCallId);
             callStatus = 'incoming';
             window.setTimeout(() => acceptCall());
-        }" x-on:beforeunload.window="disposeOnLeave()"
+        }" x-effect="$wire.$set('callInProgress', callStatus !== 'idle', false)"
+        x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         x-on:video-call-start.window="startCall()" class="contents">
@@ -48,7 +49,7 @@
                             <div class="min-w-0">
                                 <p class="truncate text-lg font-semibold text-white" x-text="otherUserName"></p>
                                 <p class="mt-1 text-xs text-white/70">
-                                    <span x-text="callStatus === 'active' ? 'Connected' : (callStatus === 'incoming' ? 'Incoming call' : 'Calling')"></span>
+                                    <span x-text="callStatusLabel()"></span>
                                     <span>&middot;</span>
                                     <span x-text="formattedCallDuration()"></span>
                                 </p>
@@ -148,7 +149,7 @@
                     class="absolute bottom-28 left-4 z-10 text-sm font-medium text-white drop-shadow-lg">
                     <p x-text="otherUserName"></p>
                     <p class="mt-1 text-xs text-white/70">
-                        <span x-text="callStatus === 'active' ? 'Connected' : 'Connecting'"></span>
+                        <span x-text="callStatusLabel()"></span>
                         <span>&middot;</span>
                         <span x-text="formattedCallDuration()"></span>
                     </p>

@@ -71,6 +71,7 @@
         if (@js($incomingCallId) !== null) {
             window.setTimeout(() => $dispatch('group-call-join', { callId: @js($incomingCallId) }));
         }"
+        x-effect="$wire.$set('callInProgress', callStatus !== 'idle', false)"
         x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:group-call-start.window="startCall()"

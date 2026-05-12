@@ -199,6 +199,10 @@ test('user can remove their profile image from profile settings', function () {
 });
 
 test('user avatar component shows profile image when available and initials otherwise', function () {
+    config(['filesystems.disks.public.driver' => 'local']);
+    Storage::fake('public');
+    Storage::disk('public')->put('profile-images/avatar.jpg', 'avatar');
+
     $userWithImage = User::factory()->make([
         'name' => 'Maria Santos',
         'profile_image' => 'profile-images/avatar.jpg',
@@ -219,11 +223,29 @@ test('user avatar component shows profile image when available and initials othe
 
     expect($withImage)->toContain('<img')
         ->and($withImage)->toContain(Storage::disk('public')->url('profile-images/avatar.jpg'))
-        ->and($withImage)->toContain('onerror="this.onerror=null; this.classList.add(\'hidden\');')
-        ->and($withImage)->toContain('brand-logo-badge hidden')
+        ->and($withImage)->toContain('x-on:error="imageFailed = true"')
+        ->and($withImage)->toContain('x-show="imageFailed"')
         ->and($withImage)->toContain($userWithImage->initials())
         ->and($withoutImage)->toContain($userWithoutImage->initials())
         ->and($withoutImage)->toContain('<span');
+});
+
+test('user avatar component falls back for stale local profile image paths', function () {
+    config(['filesystems.disks.public.driver' => 'local']);
+    Storage::fake('public');
+
+    $user = User::factory()->make([
+        'name' => 'Arthur Navarro',
+        'profile_image' => 'profile-images/missing-avatar.jpg',
+    ]);
+
+    $rendered = Blade::render('<x-user-avatar :user="$user" size="md" />', [
+        'user' => $user,
+    ]);
+
+    expect($rendered)
+        ->not->toContain('<img')
+        ->toContain('AN');
 });
 
 test('profile location map remains immediately visible after profile renders', function () {

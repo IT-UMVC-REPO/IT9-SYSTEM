@@ -49,6 +49,8 @@ class Conversation extends Component
 
     public ?int $incomingCallId = null;
 
+    public bool $callInProgress = false;
+
     /**
      * @var array<int, array<string, mixed>>
      */
@@ -159,6 +161,12 @@ class Conversation extends Component
 
     public function refreshThread(bool $shouldScroll = false): void
     {
+        if ($this->callInProgress) {
+            $this->skipRender();
+
+            return;
+        }
+
         $this->markMessagesAsRead();
         $this->loadMessages();
 

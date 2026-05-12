@@ -4,7 +4,20 @@
     $isArrayUser = is_array($user);
     $userName = $isArrayUser ? ($user['name'] ?? null) : $user?->name;
     $profileImage = $isArrayUser ? ($user['profile_image'] ?? null) : $user?->profile_image;
+    $profileImageUrl = null;
     $initials = $isArrayUser ? ($user['initials'] ?? null) : $user?->initials();
+
+    if (filled($profileImage)) {
+        $profileImage = (string) $profileImage;
+        $isAbsoluteProfileImage = \Illuminate\Support\Str::startsWith($profileImage, ['http://', 'https://', '/']);
+        $usesLocalPublicDisk = config('filesystems.disks.public.driver') === 'local';
+
+        if ($isAbsoluteProfileImage) {
+            $profileImageUrl = $profileImage;
+        } elseif (! $usesLocalPublicDisk || \Illuminate\Support\Facades\Storage::disk('public')->exists($profileImage)) {
+            $profileImageUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($profileImage);
+        }
+    }
 
     if (! filled($initials)) {
         $initials = collect(explode(' ', (string) $userName))
@@ -26,16 +39,20 @@
     };
 @endphp
 
-<span {{ $attributes->class(['relative inline-flex shrink-0 rounded-full transition-transform duration-200']) }}>
-    @if ($profileImage)
+<span
+    {{ $attributes->class(['relative inline-flex shrink-0 rounded-full transition-transform duration-200']) }}
+    @if ($profileImageUrl) x-data="{ imageFailed: false }" @endif
+>
+    @if ($profileImageUrl)
         <img
-            src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($profileImage) }}"
+            x-show="! imageFailed"
+            x-on:error="imageFailed = true"
+            src="{{ $profileImageUrl }}"
             alt="{{ $userName ?? __('User') }}"
-            onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
             class="{{ $sizeClasses }} rounded-full object-cover shadow-sm ring-2 ring-stone-200 transition-opacity duration-300 dark:ring-white/10"
             loading="lazy"
         >
-        <span class="{{ $sizeClasses }} brand-logo-badge hidden items-center justify-center rounded-full font-semibold shadow-sm">
+        <span x-cloak x-show="imageFailed" class="{{ $sizeClasses }} brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm">
             {{ filled($initials) ? $initials : '?' }}
         </span>
     @else

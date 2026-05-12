@@ -287,6 +287,26 @@ export const conversationVideoCall = (config) => ({
         return `${minutes}:${seconds}`;
     },
 
+    callStatusLabel() {
+        if (this.statusMessage && ['active', 'connecting'].includes(this.callStatus)) {
+            return this.statusMessage;
+        }
+
+        if (this.callStatus === 'active') {
+            return 'Connected';
+        }
+
+        if (this.callStatus === 'connecting') {
+            return 'Connecting';
+        }
+
+        if (this.callStatus === 'incoming') {
+            return 'Incoming call';
+        }
+
+        return 'Calling';
+    },
+
     callPreviewStyle() {
         return `right: ${this.previewPosition.right}px; bottom: ${this.previewPosition.bottom}px;`;
     },
@@ -534,20 +554,32 @@ export const conversationVideoCall = (config) => ({
             }
 
             if (peer.iceConnectionState === 'disconnected') {
+                this.statusMessage = 'Connection interrupted. Trying to recover...';
+
                 if (peer.restartIce) {
                     peer.restartIce();
                 }
 
                 window.setTimeout(() => {
                     if (this.peer === peer && peer.iceConnectionState === 'disconnected') {
-                        void this.endCall(this.connectionFailureMessage());
+                        this.showTurnWarning = !this.usesTurnServers();
+                        this.statusMessage = this.connectionFailureMessage();
+
+                        if (peer.restartIce) {
+                            peer.restartIce();
+                        }
                     }
                 }, 8000);
                 return;
             }
 
             if (peer.iceConnectionState === 'failed') {
-                void this.endCall(this.connectionFailureMessage());
+                this.showTurnWarning = !this.usesTurnServers();
+                this.statusMessage = this.connectionFailureMessage();
+
+                if (peer.restartIce) {
+                    peer.restartIce();
+                }
             }
         };
 
@@ -610,7 +642,12 @@ export const conversationVideoCall = (config) => ({
                 return;
             }
 
-            void this.endCall(this.connectionFailureMessage());
+            this.showTurnWarning = !this.usesTurnServers();
+            this.statusMessage = this.connectionFailureMessage();
+
+            if (this.peer?.restartIce) {
+                this.peer.restartIce();
+            }
         }, videoCallConnectingTimeout);
     },
 
