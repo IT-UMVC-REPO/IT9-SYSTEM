@@ -554,7 +554,7 @@ new #[Title('Edit product')] class extends Component {
                             <flux:label>{{ __('Price') }}</flux:label>
                             <flux:input.group>
                                 <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
-                                <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class="h-11" required />
+                                <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class:input="h-11" required />
                             </flux:input.group>
                             <flux:error name="price" />
                             @if ($this->pricePreview)
@@ -565,7 +565,7 @@ new #[Title('Edit product')] class extends Component {
                         <flux:field>
                             <flux:label>{{ __('Stock quantity') }}</flux:label>
                             <flux:input.group>
-                                <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class="h-11" required />
+                                <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class:input="h-11" required />
                                 @if ($selectedUnit)
                                     <flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>
                                 @endif

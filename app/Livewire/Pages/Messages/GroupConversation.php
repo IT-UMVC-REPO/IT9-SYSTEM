@@ -12,6 +12,7 @@ use App\Models\GroupMessageReaction;
 use App\Models\User;
 use App\Models\VideoCall;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -287,14 +288,27 @@ class GroupConversation extends Component
             return null;
         }
 
+        $this->expireInactiveGroupCalls();
+
         return VideoCall::query()
             ->where('group_id', $this->groupId)
             ->where('is_group_call', true)
-            ->whereIn('status', [
-                VideoCallStatus::Active->value,
-                VideoCallStatus::Pending->value,
-            ])
-            ->where('created_at', '>=', now()->subMinutes(90))
+            ->where(function (Builder $query): void {
+                $query
+                    ->where(function (Builder $query): void {
+                        $query
+                            ->where('status', VideoCallStatus::Active->value)
+                            ->where('created_at', '>=', now()->subMinutes(90));
+                    })
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->where('status', VideoCallStatus::Pending->value)
+                            ->where('created_at', '>=', now()->subMinutes(2));
+                    });
+            })
+            ->whereHas('participants', function (Builder $query): void {
+                $query->whereNull('left_at');
+            })
             ->latest('created_at')
             ->first();
     }
@@ -422,6 +436,33 @@ class GroupConversation extends Component
             ->where('created_at', '>=', now()->subMinutes(2))
             ->latest('created_at')
             ->value('id');
+    }
+
+    private function expireInactiveGroupCalls(): void
+    {
+        VideoCall::query()
+            ->where('group_id', $this->groupId)
+            ->where('is_group_call', true)
+            ->whereIn('status', [
+                VideoCallStatus::Active->value,
+                VideoCallStatus::Pending->value,
+            ])
+            ->where(function (Builder $query): void {
+                $query
+                    ->where('created_at', '<', now()->subMinutes(90))
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->where('status', VideoCallStatus::Pending->value)
+                            ->where('created_at', '<', now()->subMinutes(2));
+                    })
+                    ->orWhereDoesntHave('participants', function (Builder $query): void {
+                        $query->whereNull('left_at');
+                    });
+            })
+            ->update([
+                'status' => VideoCallStatus::Ended->value,
+                'ended_at' => now(),
+            ]);
     }
 
     private function validateAttachmentTotalSize(): void

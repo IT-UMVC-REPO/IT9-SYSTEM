@@ -35,8 +35,18 @@ new #[Title('Vendor Order Detail')] class extends Component
         }
 
         $order = Order::query()
-            ->where('vendor_id', $this->vendorId())
+            ->select(['id', 'customer_id', 'vendor_id', 'estimated_delivery_at', 'delay_note'])
             ->findOrFail((int) $orderReference);
+
+        if ((int) $order->vendor_id !== $this->vendorId()) {
+            if ((int) $order->customer_id === auth()->id()) {
+                $this->redirectRoute('shop.orders.show', ['orderReference' => $order->getKey()], navigate: true);
+
+                return;
+            }
+
+            abort(404);
+        }
 
         $this->orderId = $order->getKey();
         $this->hydrateDeliveryEstimateForm($order);

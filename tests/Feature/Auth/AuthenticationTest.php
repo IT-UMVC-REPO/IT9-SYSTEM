@@ -176,3 +176,13 @@ test('users can logout', function () {
 
     $this->assertGuest();
 });
+
+test('logout url redirects safely when opened with get', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/logout')
+        ->assertRedirect(route('home'));
+
+    $this->assertAuthenticatedAs($user);
+});

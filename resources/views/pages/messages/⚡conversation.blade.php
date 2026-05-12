@@ -49,14 +49,14 @@
             callId = @js($incomingCallId);
             callStatus = 'incoming';
             window.setTimeout(() => acceptCall());
-        }" x-effect="$wire.$set('callInProgress', callStatus !== 'idle', false)"
+        }" x-effect="$wire.$set('callInProgress', callStatus !== 'idle' && callStatus !== 'ended', false)"
         x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="keepAliveOnNavigate()"
         x-on:conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
             x-on:mousemove="showCallChrome()" x-on:click="showCallChrome()" x-on:touchstart.passive="showCallChrome()"
-            class="fixed inset-0 z-[70] overflow-hidden bg-neutral-950 text-white">
+            class="fixed inset-0 z-[100] overflow-hidden bg-neutral-950 text-white">
             <div class="relative h-full w-full overflow-hidden">
                 <header x-cloak x-show="callChromeVisible" x-transition.opacity
                     class="absolute left-0 right-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-4">

@@ -87,6 +87,21 @@ test('vendor cannot view another vendors orders', function () {
         ->assertNotFound();
 });
 
+test('vendor viewing their own purchase from another vendor is sent to customer order detail', function () {
+    $vendorUser = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+
+    $otherVendorUser = User::factory()->vendor()->create();
+    $otherVendorProfile = VendorProfile::factory()->for($otherVendorUser, 'user')->approved()->create();
+    $other = createVendorManagedOrder($otherVendorProfile, [
+        'customer_id' => $vendorUser->getKey(),
+    ]);
+
+    $this->actingAs($vendorUser)
+        ->get(route('vendor.orders.show', ['orderReference' => $other['order']->getKey()]))
+        ->assertRedirect(route('shop.orders.show', ['orderReference' => $other['order']->getKey()]));
+});
+
 test('vendor order detail shows the back link and peso totals', function () {
     $vendorUser = User::factory()->vendor()->create();
     $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();

@@ -12,6 +12,10 @@ $verificationThrottle = 'throttle:'.config('fortify.limiters.verification', '6,1
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
 
+Route::get('/logout', function () {
+    return redirect()->route('home');
+});
+
 Route::get('/api/map/vendors', [MapController::class, 'vendors'])->name('map.vendors');
 
 Route::middleware(['auth', $verificationThrottle])->group(function () {

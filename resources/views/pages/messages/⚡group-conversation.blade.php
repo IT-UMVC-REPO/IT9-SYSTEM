@@ -85,7 +85,7 @@
         if (@js($incomingCallId) !== null) {
             window.setTimeout(() => $dispatch('group-call-join', { callId: @js($incomingCallId) }));
         }"
-        x-effect="$wire.$set('callInProgress', callStatus !== 'idle', false)"
+        x-effect="$wire.$set('callInProgress', callStatus !== 'idle' && callStatus !== 'ended', false)"
         x-on:beforeunload.window="disposeOnLeave()"
         x-on:livewire:navigating.window="disposeOnLeave()"
         x-on:group-call-start.window="startCall()"
@@ -132,19 +132,19 @@
 
         <div wire:ignore x-cloak x-show="callStatus === 'active' || callStatus === 'connecting' || callStatus === 'ended'" x-transition.opacity
             x-on:mousemove="showCallChrome()" x-on:click="showCallChrome()" x-on:touchstart.passive="showCallChrome()"
-            class="fixed inset-0 z-[70] overflow-hidden bg-neutral-950 text-white">
+            class="fixed inset-0 z-[100] overflow-hidden bg-[#0b0f14] text-white">
             <div class="relative h-full w-full overflow-hidden">
                 <header x-cloak x-show="callChromeVisible" x-transition.opacity
-                    class="absolute left-0 right-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-4">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex min-w-0 items-start gap-3">
+                    class="absolute left-0 right-0 top-0 z-30 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5">
+                    <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                        <div class="flex min-w-0 items-center gap-3">
                             <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="leaveCall()"
-                                class="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
+                                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
                                 aria-label="{{ __('Back to messages') }}">
                                 <flux:icon.arrow-left variant="mini" />
                             </a>
                             <div class="min-w-0">
-                                <p class="truncate text-lg font-semibold text-white">{{ $groupDisplayName }}</p>
+                                <p class="truncate text-base font-semibold text-white sm:text-lg">{{ $groupDisplayName }}</p>
                                 <p class="mt-1 text-xs text-white/70">
                                     {{ __('Group call') }}
                                     <span>&middot;</span>
@@ -210,8 +210,8 @@
                 <video id="group-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="remoteParticipants.length === 0"
                     x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover transition-opacity duration-200"></video>
-                <div class="absolute inset-0 bg-black/45"></div>
+                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover brightness-[0.55] blur-2xl transition-opacity duration-200"></video>
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_34%),linear-gradient(180deg,_rgba(4,7,12,0.72),_rgba(4,7,12,0.96))]"></div>
 
                 <div class="absolute inset-0 z-10"
                     x-data="{
@@ -226,8 +226,8 @@
                     }"
                     x-init="updateViewport(); window.addEventListener('resize', () => { updateViewport(); })"
                 >
-                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight)">
-                        <div class="relative overflow-hidden bg-neutral-900" x-cloak x-show="remoteParticipants.length > 0">
+                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full p-4 pb-32 pt-24" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight) + ' gap: 12px;'">
+                        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30" x-cloak x-show="remoteParticipants.length > 0">
                             <video id="group-call-local-grid-video" autoplay muted playsinline
                                 x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
                                 class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
@@ -248,11 +248,11 @@
                                 @endif
                                 <span class="mt-2 text-xs font-semibold text-white/70">{{ __('Camera off') }}</span>
                             </div>
-                            <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white">{{ __(':name (You)', ['name' => $authUser?->name]) }}</span>
+                            <span class="absolute bottom-3 left-3 z-20 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">{{ __(':name (You)', ['name' => $authUser?->name]) }}</span>
                         </div>
 
                         <template x-for="participant in remoteParticipants" :key="participant.id">
-                            <div class="relative overflow-hidden bg-neutral-900">
+                            <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30">
                                 <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
                                     <span class="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
                                         style="background-color: var(--brand-600);"
@@ -264,11 +264,11 @@
                                     x-effect="$el.volume = Number(volume);"
                                     x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                     class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
-                                <span class="absolute bottom-2 left-2 z-20 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="participant.name"></span>
+                                <span class="absolute bottom-3 left-3 z-20 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur" x-text="participant.name"></span>
                             </div>
                         </template>
 
-                        <div class="flex flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
+                        <div class="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-8 text-center shadow-2xl shadow-black/30 backdrop-blur" x-cloak x-show="remoteParticipants.length === 0">
                             <div class="relative flex h-24 w-24 items-center justify-center">
                                 <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
                                 <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
@@ -277,8 +277,8 @@
                         </div>
                     </div>
 
-                    <div x-cloak x-show="isMobileViewport" class="flex h-full w-full flex-col">
-                        <div class="relative min-h-0 flex-1 overflow-hidden bg-neutral-900">
+                    <div x-cloak x-show="isMobileViewport" class="flex h-full w-full flex-col px-3 pb-[max(7.5rem,env(safe-area-inset-bottom))] pt-[max(5.25rem,env(safe-area-inset-top))]">
+                        <div class="relative min-h-0 flex-1 overflow-hidden rounded-[1.75rem] border border-white/10 bg-neutral-900 shadow-2xl shadow-black/40">
                             <div x-cloak x-show="remoteParticipants.length > 0" class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
                                 <span class="flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white"
                                     style="background-color: var(--brand-600);"
@@ -291,7 +291,7 @@
                                 x-bind:class="speakerParticipant() && remoteVideoActive.get(speakerParticipant().id) ? 'opacity-100' : 'opacity-0'"
                                 class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
 
-                            <div class="flex h-full flex-col items-center justify-center bg-neutral-950 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
+                            <div class="flex h-full flex-col items-center justify-center bg-neutral-950/90 px-8 text-center" x-cloak x-show="remoteParticipants.length === 0">
                                 <div class="relative flex h-24 w-24 items-center justify-center">
                                     <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
                                     <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
@@ -299,12 +299,12 @@
                                 <p class="mt-4 text-sm text-white/60">{{ __('Waiting for others to join...') }}</p>
                             </div>
 
-                            <span x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-56 left-3 rounded-md bg-black/50 px-1.5 py-0.5 text-xs font-semibold text-white" x-text="speakerParticipant()?.name"></span>
+                            <span x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur" x-text="speakerParticipant()?.name"></span>
                         </div>
 
-                        <div x-cloak x-show="remoteParticipants.length > 0" class="absolute bottom-24 left-0 right-0 z-20 overflow-x-auto px-3">
+                        <div x-cloak x-show="remoteParticipants.length > 0" class="mt-3 overflow-x-auto pb-1">
                             <div class="flex w-max gap-2">
-                                <div class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
+                                <div class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-900 shadow-lg">
                                     <video id="group-call-local-thumbnail-video" autoplay muted playsinline
                                         x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
                                         class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
@@ -325,11 +325,11 @@
                                         @endif
                                         <span class="mt-1 text-[9px] font-semibold text-white/70">{{ __('Camera off') }}</span>
                                     </div>
-                                    <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white">{{ __('You') }}</span>
+                                    <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded-full bg-black/55 px-2 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur">{{ __('You') }}</span>
                                 </div>
 
                                 <template x-for="participant in thumbnailParticipants()" :key="participant.id">
-                                    <button type="button" x-on:click="selectSpeaker(participant.id)" class="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-neutral-900 shadow-lg">
+                                    <button type="button" x-on:click="selectSpeaker(participant.id)" class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-neutral-900 shadow-lg transition focus:border-[var(--brand-400)]">
                                         <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
                                             <span class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
                                                 style="background-color: var(--brand-600);"
@@ -340,7 +340,7 @@
                                             x-effect="$el.volume = Number(volume);"
                                             x-bind:class="remoteVideoActive.get(participant.id) ? 'opacity-100' : 'opacity-0'"
                                             class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
-                                        <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded bg-black/50 px-1 py-0.5 text-left text-[10px] font-semibold text-white" x-text="participant.name"></span>
+                                        <span class="absolute bottom-1 left-1 right-1 z-20 truncate rounded-full bg-black/55 px-2 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur" x-text="participant.name"></span>
                                     </button>
                                 </template>
                             </div>
@@ -372,8 +372,8 @@
                     </div>
                 </div>
 
-                <div class="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 pb-6 pt-10">
-                    <div class="flex items-center gap-3 rounded-full bg-white/60 px-5 py-3 backdrop-blur-md dark:bg-black/60">
+                <div class="absolute bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 sm:px-4">
+                    <div class="flex max-w-[calc(100vw-1.5rem)] items-center gap-2 overflow-x-auto rounded-[2rem] border border-white/10 bg-black/55 px-3 py-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:gap-3 sm:px-5">
                         <button type="button" x-on:click="toggleMicrophone()"
                             x-bind:class="microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
                             class="relative flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle microphone') }}">

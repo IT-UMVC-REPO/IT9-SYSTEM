@@ -15,6 +15,7 @@ use App\Models\VideoCall;
 use App\Models\VideoCallParticipant;
 use App\Services\GroupMessageService;
 use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -366,7 +367,18 @@ class VideoCallController extends Controller
                 VideoCallStatus::Active->value,
                 VideoCallStatus::Pending->value,
             ])
-            ->where('created_at', '<', now()->subMinutes(90))
+            ->where(function (Builder $query): void {
+                $query
+                    ->where('created_at', '<', now()->subMinutes(90))
+                    ->orWhere(function (Builder $query): void {
+                        $query
+                            ->where('status', VideoCallStatus::Pending->value)
+                            ->where('created_at', '<', now()->subMinutes(2));
+                    })
+                    ->orWhereDoesntHave('participants', function (Builder $query): void {
+                        $query->whereNull('left_at');
+                    });
+            })
             ->update([
                 'status' => VideoCallStatus::Ended->value,
                 'ended_at' => now(),

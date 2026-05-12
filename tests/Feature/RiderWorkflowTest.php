@@ -199,6 +199,24 @@ test('rider delivery detail map switches to the customer route when out for deli
         ->assertSee('Message customer');
 });
 
+test('rider can message the customer from an assigned delivery order', function () {
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+    $order = createReadyRiderOrder([
+        'rider_id' => $rider->getKey(),
+        'order_status' => OrderStatus::OutForDelivery,
+    ]);
+
+    $this->actingAs($rider)
+        ->get(route('messages.conversation', [
+            'conversationReference' => $order->customer_id,
+            'order' => $order->getKey(),
+        ]))
+        ->assertOk()
+        ->assertSee('Linked order')
+        ->assertSee('Order #'.str_pad((string) $order->getKey(), 6, '0', STR_PAD_LEFT));
+});
+
 test('rider location endpoint updates the rider profile and assigned active order', function () {
     Event::fake([RiderLocationUpdated::class]);
 

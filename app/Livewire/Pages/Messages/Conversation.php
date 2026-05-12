@@ -272,9 +272,13 @@ class Conversation extends Component
             return null;
         }
 
-        $order = Order::query()->with('vendor:id,user_id')->findOrFail($orderReference);
+        $order = Order::query()
+            ->with('vendor:id,user_id')
+            ->findOrFail($orderReference);
 
-        $isParticipant = $order->customer_id === auth()->id() || $order->vendor?->user_id === auth()->id();
+        $isParticipant = $order->customer_id === auth()->id()
+            || $order->vendor?->user_id === auth()->id()
+            || $order->rider_id === auth()->id();
 
         abort_if(! $isParticipant, 403);
 

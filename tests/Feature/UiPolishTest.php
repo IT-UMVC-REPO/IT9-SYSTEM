@@ -156,6 +156,8 @@ test('vendor product forms use compact conversion controls and temporary upload 
 
     expect($productCreate)
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
+        ->toContain('wire:model.live.debounce.250ms="price"')
+        ->toContain('class:input="h-11"')
         ->toContain('<flux:input.group.suffix>')
         ->toContain("__('How many :base per 1 :unit?'")
         ->toContain('border-2 border-[var(--brand-500)]')
@@ -164,6 +166,7 @@ test('vendor product forms use compact conversion controls and temporary upload 
         ->not->toContain('border-l-4 border-l-[var(--brand-600)]')
         ->and($productEdit)
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
+        ->toContain('wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class:input="h-11"')
         ->toContain('<flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>')
         ->toContain('$productImageUpload->temporaryUrl()')
         ->not->toContain('php artisan storage:link')

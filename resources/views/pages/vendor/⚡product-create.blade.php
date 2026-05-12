@@ -487,7 +487,7 @@ new #[Title('Create product')] class extends Component {
                                     inputmode="decimal"
                                     step="0.01"
                                     min="0.01"
-                                    class="h-11"
+                                    class:input="h-11"
                                     required
                                 />
                             </flux:input.group>
@@ -505,7 +505,7 @@ new #[Title('Create product')] class extends Component {
                                     type="number"
                                     min="0"
                                     step="1"
-                                    class="h-11"
+                                    class:input="h-11"
                                     required
                                 />
                                 @if ($selectedUnit)

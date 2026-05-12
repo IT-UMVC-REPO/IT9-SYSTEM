@@ -158,6 +158,71 @@ test('group conversation ignores stale group call banners', function () {
         ->assertDontSee('Join call');
 });
 
+test('group conversation expires old pending call banners', function () {
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member], [
+        'name' => 'Morning Market Crew',
+    ]);
+    $stalePendingCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Pending,
+        'created_at' => now()->subMinutes(3),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $stalePendingCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('Morning Market Crew')
+        ->assertDontSee('A group call is in progress')
+        ->assertDontSee('Join call');
+
+    expect($stalePendingCall->fresh()->status)->toBe(VideoCallStatus::Ended);
+});
+
+test('group conversation hides calls with no active participants', function () {
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member], [
+        'name' => 'Morning Market Crew',
+    ]);
+    $emptyCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Active,
+        'started_at' => now()->subMinute(),
+        'created_at' => now()->subMinute(),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $emptyCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => now(),
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('Morning Market Crew')
+        ->assertDontSee('A group call is in progress')
+        ->assertDontSee('Join call');
+
+    expect($emptyCall->fresh()->status)->toBe(VideoCallStatus::Ended);
+});
+
 test('group conversation resolves incoming group call deep links', function () {
     $caller = User::factory()->create();
     $member = User::factory()->create();
