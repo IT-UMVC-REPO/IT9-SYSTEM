@@ -1,6 +1,6 @@
-# Contributing to LocalPalengke
+# Contributing to SukiMarket
 
-LocalPalengke is a Laravel 13 + Livewire 4 marketplace for the Filipino wet market experience. This document reflects the current implementation state in the repository so contributors can verify what is already shipped before planning new work.
+SukiMarket is a Laravel 13 + Livewire 4 marketplace for the Filipino wet market experience. This document reflects the current implementation state in the repository so contributors can verify what is already shipped before planning new work.
 
 ---
 
@@ -62,8 +62,8 @@ There are currently no routed marketplace pages using the shared `placeholder-pa
 1. Clone the repository and install dependencies:
 
    ```bash
-   git clone [REPO GIT LINK] localpalengke
-   cd localpalengke
+   git clone [REPO GIT LINK] SukiMarket
+   cd SukiMarket
    composer install
    npm install
    ```

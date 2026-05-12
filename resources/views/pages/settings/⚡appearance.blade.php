@@ -65,7 +65,7 @@ new #[Title('Appearance settings')] class extends Component {
 
         <flux:heading class="sr-only">{{ __('Appearance settings') }}</flux:heading>
 
-        <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Choose how LocalPalengke should look while you browse and manage your account')">
+        <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Choose how SukiMarket should look while you browse and manage your account')">
             <section class="settings-section-card">
                 <div class="flex items-start gap-4">
                     <span class="brand-soft-surface flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
@@ -89,7 +89,7 @@ new #[Title('Appearance settings')] class extends Component {
                 </div>
 
                 <p class="text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                    {{ __('System follows your device preference automatically, while Light and Dark keep the same look every time you return to LocalPalengke.') }}
+                    {{ __('System follows your device preference automatically, while Light and Dark keep the same look every time you return to SukiMarket.') }}
                 </p>
             </section>
 
@@ -109,7 +109,7 @@ new #[Title('Appearance settings')] class extends Component {
                     <div>
                         <h3 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Brand color') }}</h3>
                         <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                            {{ __('Pick your accent color. The entire LocalPalengke interface — buttons, badges, active states, and navigation — updates to match.') }}
+                            {{ __('Pick your accent color. The entire SukiMarket interface — buttons, badges, active states, and navigation — updates to match.') }}
                         </p>
                     </div>
                 </div>

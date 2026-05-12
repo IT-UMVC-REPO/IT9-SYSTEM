@@ -20,7 +20,7 @@
         </h1>
 
         <p class="mt-4 max-w-2xl text-base leading-8 text-stone-600 dark:text-zinc-400">
-            {{ __('Manage your identity, sign-in protection, and visual preferences from one focused LocalPalengke workspace.') }}
+            {{ __('Manage your identity, sign-in protection, and visual preferences from one focused SukiMarket workspace.') }}
         </p>
     </div>
 

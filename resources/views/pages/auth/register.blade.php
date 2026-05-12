@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create your LocalPalengke account')" :description="__('Register to access the customer storefront and follow the next marketplace features as they launch.')" />
+        <x-auth-header :title="__('Create your SukiMarket account')" :description="__('Register to access the customer storefront and follow the next marketplace features as they launch.')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('register.store') }}" class="suki-reveal flex flex-col gap-6" style="transition-delay: 120ms">
@@ -27,7 +27,7 @@
             <flux:input
                 name="phone"
                 :label="__('Phone number')"
-                :description="__('Optional — used for delivery coordination')"
+                :description="__('Optional ï¿½ used for delivery coordination')"
                 :value="old('phone')"
                 type="tel"
                 autocomplete="tel"
@@ -36,7 +36,7 @@
             <flux:input
                 name="address"
                 :label="__('Delivery address')"
-                :description="__('Optional — you can update this later in profile settings')"
+                :description="__('Optional ï¿½ you can update this later in profile settings')"
                 :value="old('address')"
                 type="text"
                 autocomplete="street-address"

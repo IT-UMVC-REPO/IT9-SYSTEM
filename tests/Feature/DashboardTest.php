@@ -50,7 +50,7 @@ test('shared app header shows role-aware navigation', function (callable $makeUs
     $response = $this->actingAs($user)->get(route($routeName));
 
     $response->assertOk()
-        ->assertSee('LocalPalengke')
+        ->assertSee('SukiMarket')
         ->assertSee($expectedLabel)
         ->assertSee('Settings');
 })->with([

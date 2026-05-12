@@ -37,7 +37,7 @@ new #[Title('Rider History')] class extends Component
         <span class="brand-kicker">{{ __('History') }}</span>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Completed deliveries') }}</h1>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Review delivered orders and totals from your completed LocalPalengke runs.') }}
+            {{ __('Review delivered orders and totals from your completed SukiMarket runs.') }}
         </p>
     </div>
 

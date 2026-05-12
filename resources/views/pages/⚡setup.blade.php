@@ -59,7 +59,7 @@ new #[Title('Setup')] class extends Component
             {{ __('Return to Storefront') }}
         </a>
         <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
-            {{ __('Expand your role on LocalPalengke') }}
+            {{ __('Expand your role on SukiMarket') }}
         </h1>
         <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
             {{ __('Choose a path below to register as a vendor or delivery rider. Each application is reviewed by our admin team before activation.') }}

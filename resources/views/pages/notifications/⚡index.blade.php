@@ -141,7 +141,7 @@ new #[Title('Notifications')] class extends Component
         :kicker="__('Notification center')"
         icon="fa-solid fa-bell"
         :title="__('Notifications')"
-        :description="__('Review order updates, messages, and LocalPalengke system notices in one tidy feed.')"
+        :description="__('Review order updates, messages, and SukiMarket system notices in one tidy feed.')"
     />
 
     <section class="brand-panel p-4 sm:p-6">

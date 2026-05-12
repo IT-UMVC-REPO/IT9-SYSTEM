@@ -338,7 +338,7 @@ window.conversationSidebarPresence = (config) => ({
 });
 
 function ensureLeafletDefaultIcon(L) {
-    if (!L?.Icon?.Default || L.Icon.Default.prototype._localPalengkeDefaultIconPatched) {
+    if (!L?.Icon?.Default || L.Icon.Default.prototype._SukiMarketDefaultIconPatched) {
         return;
     }
 
@@ -348,7 +348,7 @@ function ensureLeafletDefaultIcon(L) {
         iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
         shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href,
     });
-    L.Icon.Default.prototype._localPalengkeDefaultIconPatched = true;
+    L.Icon.Default.prototype._SukiMarketDefaultIconPatched = true;
 }
 
 window.vendorLocationMap = (mapId, zoom, vendor) => ({
@@ -547,7 +547,7 @@ window.checkoutDeliveryMap = (config) => ({
             const response = await fetch(url, {
                 headers: {
                     'Accept-Language': 'en',
-                    'User-Agent': 'LocalPalengke/1.0 (localpalengke.app)',
+                    'User-Agent': 'SukiMarket/1.0 (SukiMarket.app)',
                 },
             });
             const data = await response.json();
@@ -585,7 +585,7 @@ window.checkoutDeliveryMap = (config) => ({
             const response = await fetch(url, {
                 headers: {
                     'Accept-Language': 'en',
-                    'User-Agent': 'LocalPalengke/1.0 (localpalengke.app)',
+                    'User-Agent': 'SukiMarket/1.0 (SukiMarket.app)',
                 },
             });
             const results = await response.json();
@@ -1432,7 +1432,7 @@ window.sukiDatePicker = (config) => ({
     },
 });
 
-/* -- LocalPalengke scroll-reveal (IntersectionObserver) --------------- */
+/* -- SukiMarket scroll-reveal (IntersectionObserver) --------------- */
 const scheduleSukiReveal = (delay = 0) => {
     const reveal = () => window.sukiRevealAll?.();
 
@@ -1510,7 +1510,7 @@ document.addEventListener('livewire:init', registerSukiRevealLivewireHooks);
 document.addEventListener('livewire:initialized', registerSukiRevealLivewireHooks);
 registerSukiRevealLivewireHooks();
 
-/* -- LocalPalengke image progressive load ------------------------------ */
+/* -- SukiMarket image progressive load ------------------------------ */
 window.sukiLazyImage = () => ({
     loaded: false,
     error: false,

@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Log in')">
     <div class="flex flex-col gap-6 ">
-        <x-auth-header :title="__('Welcome back to LocalPalengke')" :description="__('Sign in to continue browsing the storefront and return to your account.')" />
+        <x-auth-header :title="__('Welcome back to SukiMarket')" :description="__('Sign in to continue browsing the storefront and return to your account.')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
 
         <form method="POST" action="{{ route('login.store') }}" class="suki-reveal flex flex-col gap-6" style="transition-delay: 120ms">

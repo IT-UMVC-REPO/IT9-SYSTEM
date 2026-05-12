@@ -221,7 +221,7 @@ class MarketplaceDemoSeeder extends Seeder
         $users = [
             'admin' => $this->seedStableUser(
                 email: self::STABLE_ADMIN_EMAIL,
-                name: 'LocalPalengke Tagum Admin',
+                name: 'SukiMarket Tagum Admin',
                 role: UserRole::Admin,
                 phone: $this->tagumPhone(),
                 place: $adminPlace,
@@ -962,12 +962,12 @@ class MarketplaceDemoSeeder extends Seeder
                     ['route' => 'shop.products.show', 'vendor_id' => $vendor->id, 'product_id' => $product->id],
                 ],
                 NotificationType::Message => [
-                    'May nag-message sa LocalPalengke',
+                    'May nag-message sa SukiMarket',
                     'May bagong mensahe mula sa isang customer sa Tagum City.',
                     ['route' => 'messages.index'],
                 ],
                 default => [
-                    fake()->randomElement(['LocalPalengke Tagum update', 'Orchid City market alert', 'Palengke reminder']),
+                    fake()->randomElement(['SukiMarket Tagum update', 'Orchid City market alert', 'Palengke reminder']),
                     fake()->randomElement(self::systemNotifications()),
                     ['route' => 'shop.home'],
                 ],
@@ -1356,7 +1356,7 @@ class MarketplaceDemoSeeder extends Seeder
             ->lower()
             ->replaceMatches('/[^a-z0-9]+/', '.')
             ->trim('.')
-            ->append('.', $label, '.', Str::lower(Str::random(10)), '@tagum.localpalengke.test')
+            ->append('.', $label, '.', Str::lower(Str::random(10)), '@tagum.SukiMarket.test')
             ->toString();
     }
 
@@ -1391,7 +1391,7 @@ class MarketplaceDemoSeeder extends Seeder
      */
     private function printSummary(array $summary): void
     {
-        $this->command?->info('✅ Tagum City LocalPalengke seeded!');
+        $this->command?->info('✅ Tagum City SukiMarket seeded!');
         $this->command?->info('📦 Products: '.$summary['products'].' | 👥 Users: '.$summary['users'].' | 🛒 Orders: '.$summary['orders']);
         $this->command?->info('💬 Messages: '.$summary['messages'].' direct / '.$summary['group_messages'].' group | 📢 Notifications: '.$summary['notifications'].' | 🚩 Reports: '.$summary['reports']);
         $this->command?->info('🌺 Vendors: '.$summary['approved_vendors'].' approved, '.$summary['pending_vendors'].' pending, '.$summary['rejected_vendors'].' rejected | 📹 Calls: '.$summary['video_calls']);
@@ -1592,7 +1592,7 @@ class MarketplaceDemoSeeder extends Seeder
             'Nagtitinda ako ng sariwang gulay mula sa aming taniman sa Apokon, Tagum City. Araw-araw na hinaharvest para masiguro ang freshness. Sample products: pechay ₱35, talong ₱60, sitaw ₱55.',
             'Maliit na seafood stall kami malapit sa Pag-asa Wet Market. May bangus, tilapia, hipon, at pusit depende sa dating ng umaga. Sample prices: bangus ₱160/kilo, hipon ₱280/kilo.',
             'Gumagawa kami ng kakanin para sa Tagum City Night Market. May puto, kutsinta, biko, at suman. Fresh luto tuwing madaling araw.',
-            'Backyard poultry at fresh eggs mula sa Canocotan. Gusto naming magbenta ng dressed chicken, itlog, at ready-to-cook cuts sa LocalPalengke.',
+            'Backyard poultry at fresh eggs mula sa Canocotan. Gusto naming magbenta ng dressed chicken, itlog, at ready-to-cook cuts sa SukiMarket.',
             'Bigasan at pantry stall sa Magugpo. May regular rice, premium rice, mais, harina, suka, toyo, at mantika para sa araw-araw na lutuan.',
         ];
     }
@@ -1962,12 +1962,12 @@ class MarketplaceDemoSeeder extends Seeder
     private static function systemNotifications(): array
     {
         return [
-            'Maligayang pagdating sa LocalPalengke Tagum! 🌺',
+            'Maligayang pagdating sa SukiMarket Tagum! 🌺',
             'Nag-update na ang presyo ng gulay ngayong linggo.',
             'Flash sale sa mga vendor ngayon!',
             'Tip: mag-message muna sa vendor para sa pinaka-fresh na stock.',
             'Tagum City Night Market picks are moving fast tonight.',
-            'COD-only checkout is active for all LocalPalengke orders.',
+            'COD-only checkout is active for all SukiMarket orders.',
         ];
     }
 

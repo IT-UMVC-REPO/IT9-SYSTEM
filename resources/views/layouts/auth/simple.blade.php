@@ -42,7 +42,7 @@
                             one place.
                         </p>
                         <p class="mt-4 text-sm leading-7 text-neutral-400">
-                            From daily essentials to fresh finds, LocalPalengke is built to feel familiar from the very
+                            From daily essentials to fresh finds, SukiMarket is built to feel familiar from the very
                             first order.
                         </p>
                     </div>

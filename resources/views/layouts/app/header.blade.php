@@ -364,7 +364,7 @@
                     <div class="border-b border-stone-200 bg-stone-50 px-5 py-4 dark:border-white/10 dark:bg-zinc-900/95">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Welcome to LocalPalengke') }}</p>
+                                <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Welcome to SukiMarket') }}</p>
                                 <p class="mt-2 text-xs leading-6 text-neutral-500 dark:text-zinc-400">
                                     {{ __('Sign in to open your dashboard or create an account to start browsing the market.') }}
                                 </p>

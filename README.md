@@ -1,6 +1,6 @@
-# LocalPalengke
+# SukiMarket
 
-LocalPalengke is a Laravel + Livewire marketplace prototype for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, a seeded customer storefront, and customer, vendor, rider, and admin experiences.
+SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, a seeded customer storefront, and customer, vendor, rider, and admin experiences.
 
 ## Current Product Surface
 
@@ -29,8 +29,8 @@ LocalPalengke is a Laravel + Livewire marketplace prototype for Filipino wet-mar
 1. Install PHP and Node.js dependencies:
 
    ```bash
-   git clone [REPO GIT LINK] localpalengke
-   cd localpalengke
+   git clone [REPO GIT LINK] SukiMarket
+   cd SukiMarket
    git checkout devtest
    composer install
    npm install

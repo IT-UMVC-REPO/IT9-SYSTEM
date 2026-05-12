@@ -12,7 +12,7 @@
             {{ __('Operational overview') }}
         </h1>
         <p class="max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-            {{ __('Monitor marketplace activity, review pending approvals, and keep a close eye on orders and seller health across LocalPalengke.') }}
+            {{ __('Monitor marketplace activity, review pending approvals, and keep a close eye on orders and seller health across SukiMarket.') }}
         </p>
     </section>
 

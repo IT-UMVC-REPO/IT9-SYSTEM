@@ -134,7 +134,7 @@ new #[Title('Security settings')] class extends Component {
                                 <div>
                                     <h3 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Two-factor authentication') }}</h3>
                                     <p class="mt-2 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                                        {{ __('Add an extra layer of sign-in protection so your LocalPalengke account is harder to access without your device.') }}
+                                        {{ __('Add an extra layer of sign-in protection so your SukiMarket account is harder to access without your device.') }}
                                     </p>
                                 </div>
 

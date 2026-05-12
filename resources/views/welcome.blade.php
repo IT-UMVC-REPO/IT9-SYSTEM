@@ -67,7 +67,7 @@
                     </h1>
 
                     <p class="suki-reveal mt-6 max-w-xl text-lg leading-8 text-neutral-500 dark:text-zinc-400" style="transition-delay: 80ms">
-                        LocalPalengke brings your neighborhood market online with recognizable stalls, fresh listings, rider delivery updates, and a storefront that keeps trusted vendors easy to find.
+                        SukiMarket brings your neighborhood market online with recognizable stalls, fresh listings, rider delivery updates, and a storefront that keeps trusted vendors easy to find.
                     </p>
 
                     <div class="suki-reveal mt-8 flex flex-wrap gap-3" style="transition-delay: 160ms">
@@ -226,7 +226,7 @@
                             </div>
                             <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">Local stall spirit</p>
                             <h3 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">Keep the market relationship alive</h3>
-                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">LocalPalengke keeps local trust intact while making ordering, pickup, delivery, and status updates easier to follow.</p>
+                            <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">SukiMarket keeps local trust intact while making ordering, pickup, delivery, and status updates easier to follow.</p>
                         </div>
                     </article>
                 </div>
@@ -331,7 +331,7 @@
             <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
                 <h2 class="brand-serif mt-6 text-4xl font-bold text-white sm:text-5xl">Explore the customer storefront today.</h2>
                 <p class="mt-5 text-lg leading-8 text-neutral-300">
-                    Step into LocalPalengke with real storefronts, rider delivery tracking, strong vendor identity, and a warm market-first browsing experience.
+                    Step into SukiMarket with real storefronts, rider delivery tracking, strong vendor identity, and a warm market-first browsing experience.
                 </p>
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
                     @foreach ($ctaActions as $action)
@@ -365,7 +365,7 @@
                 </div>
 
                 <div class="mt-8 border-t border-stone-200 pt-6 text-center text-xs text-neutral-400 dark:border-white/10 dark:text-zinc-400">
-                    &copy; {{ date('Y') }} LocalPalengke. All rights reserved.
+                    &copy; {{ date('Y') }} SukiMarket. All rights reserved.
                 </div>
             </div>
         </footer>

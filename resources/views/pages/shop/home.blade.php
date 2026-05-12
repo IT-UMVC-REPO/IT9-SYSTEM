@@ -1,10 +1,10 @@
-<x-layouts::app :title="__('LocalPalengke Storefront')">
+<x-layouts::app :title="__('SukiMarket Storefront')">
     <div class="suki-reveal">
     <section class="relative min-h-[420px] overflow-hidden border-b text-white" style="border-color: oklch(from var(--brand-900) l c h / 0.12);">
         <div class="absolute inset-0 z-0">
           
             <img
-                src="{{ asset('imgs/localpalengke.webp') }}"
+                src="{{ asset('imgs/SukiMarket.webp') }}"
                 alt=""
                 aria-hidden="true"
                 class="h-full w-full object-cover object-center"

@@ -137,7 +137,7 @@ new #[Title('Rider registration')] class extends Component
                         {{ __('Return to storefront') }}
                     </a>
                     <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
-                        {{ __('Deliver with LocalPalengke') }}
+                        {{ __('Deliver with SukiMarket') }}
                     </h1>
                     <p class="text-base leading-8 text-neutral-500 dark:text-zinc-400">
                         {{ __('Tell us how you will handle deliveries so the admin team can approve your rider account.') }}

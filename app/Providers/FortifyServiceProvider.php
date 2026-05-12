@@ -115,7 +115,7 @@ class FortifyServiceProvider extends ServiceProvider
             ], false));
 
             return (new MailMessage)
-                ->subject('Reset your LocalPalengke password')
+                ->subject('Reset your SukiMarket password')
                 ->markdown('emails.auth.reset-password', [
                     'user' => $notifiable,
                     'resetUrl' => $resetUrl,

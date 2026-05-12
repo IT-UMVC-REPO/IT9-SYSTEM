@@ -12,7 +12,7 @@ new #[Title('Vendor Map')] class extends Component {};
             <span class="brand-kicker">{{ __('Discover stalls') }}</span>
             <h1 class="brand-serif mt-4 text-4xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Vendor Map') }}</h1>
             <p class="mt-4 max-w-3xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
-                {{ __('Find approved LocalPalengke vendors near you across Tagum City. Click any marker to visit their stall.') }}
+                {{ __('Find approved SukiMarket vendors near you across Tagum City. Click any marker to visit their stall.') }}
             </p>
         </div>
     </section>
