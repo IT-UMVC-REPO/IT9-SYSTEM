@@ -31,11 +31,9 @@ return [
     |
     */
     'stun_urls' => $parseUrls(env('WEBRTC_STUN_URLS'), [
-        'stun:stun.cloudflare.com:3478',
+        'stun:openrelay.metered.ca:80',
         'stun:stun.l.google.com:19302',
         'stun:stun1.l.google.com:19302',
-        'stun:stun2.l.google.com:19302',
-        'stun:stun3.l.google.com:19302',
     ], 'stun'),
 
     /*
@@ -47,9 +45,14 @@ return [
     | networks. Use static credentials or a shared secret from your TURN provider.
     |
     */
-    'turn_urls' => $parseUrls(env('WEBRTC_TURN_URLS'), [], 'turn'),
-    'turn_username' => env('WEBRTC_TURN_USERNAME'),
-    'turn_credential' => env('WEBRTC_TURN_CREDENTIAL'),
+    'turn_urls' => $parseUrls(env('WEBRTC_TURN_URLS'), [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:80?transport=tcp',
+        'turn:openrelay.metered.ca:443',
+        'turns:openrelay.metered.ca:443?transport=tcp',
+    ], 'turn'),
+    'turn_username' => env('WEBRTC_TURN_USERNAME', 'openrelayproject'),
+    'turn_credential' => env('WEBRTC_TURN_CREDENTIAL', 'openrelayproject'),
     'turn_shared_secret' => env('WEBRTC_TURN_SHARED_SECRET'),
     'turn_ttl' => (int) env('WEBRTC_TURN_TTL', 3600),
     'ice_transport_policy' => env('WEBRTC_ICE_TRANSPORT_POLICY', 'all'),

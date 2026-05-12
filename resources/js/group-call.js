@@ -694,7 +694,11 @@ export const groupConversationVideoCall = (config) => ({
     },
 
     connectToParticipants() {
-        if (this.localStream === null || this.callStatus !== 'active') {
+        if (this.callStatus !== 'active') return;
+
+        if (this.localStream === null) {
+            // Stream not yet ready - retry after a short delay
+            window.setTimeout(() => this.connectToParticipants(), 500);
             return;
         }
 
@@ -736,23 +740,9 @@ export const groupConversationVideoCall = (config) => ({
             this.remoteStreams = new Map(this.remoteStreams);
             this.updateRemoteVideoActive(peerId, incomingStream);
             this.watchRemoteVideoTrack(peerId, event.track, incomingStream);
+            // Refresh participant list and then attach video sources once Alpine
+            // has committed the new x-for DOM nodes. Use a generous retry window.
             this.refreshRemoteParticipants();
-
-            const participant = this.remoteParticipants.find((remoteParticipant) => remoteParticipant.id === peerId);
-
-            if (participant) {
-                [participant.tileElementId, participant.thumbnailElementId].forEach((elementId) => {
-                    const element = document.getElementById(elementId);
-
-                    if (element instanceof HTMLVideoElement) {
-                        element.srcObject = incomingStream;
-                        element.play().catch(() => {});
-                    }
-                });
-
-                this.refreshSpeakerVideo();
-            }
-
             void this.setMaxBitrate(peer);
         };
 
@@ -782,22 +772,39 @@ export const groupConversationVideoCall = (config) => ({
             if (state === 'disconnected' && this.callStatus !== 'idle') {
                 this.statusMessage = 'Connection interrupted. Trying to recover...';
 
-                if (peer.restartIce) {
-                    peer.restartIce();
-                }
-
                 window.setTimeout(() => {
-                    if (this.peerConnections.get(peerId) === peer && peer.iceConnectionState === 'disconnected') {
-                        this.removePeer(peerId);
-                        if (this.callStatus === 'active' && this.participants.includes(peerId)) {
-                            window.setTimeout(() => {
-                                if (!this.peerConnections.has(peerId) && this.participants.includes(peerId)) {
-                                    this.createPeerConnection(peerId, this.shouldInitiatePeerConnection(peerId));
+                    if (this.peerConnections.get(peerId) !== peer) return;
+                    if (peer.iceConnectionState !== 'disconnected' && peer.iceConnectionState !== 'failed') return;
+
+                    const shouldInitiate = this.shouldInitiatePeerConnection(peerId);
+                    if (shouldInitiate) {
+                        // Re-offer with iceRestart flag set
+                        void (async () => {
+                            try {
+                                const offer = await peer.createOffer({
+                                    offerToReceiveAudio: true,
+                                    offerToReceiveVideo: true,
+                                    iceRestart: true,
+                                });
+                                await peer.setLocalDescription(offer);
+                                await waitForIceGathering(peer, 3500);
+                                if (this.peerConnections.get(peerId) !== peer || !this.callId) return;
+                                const sent = await this.safeSendGroupSignal(peerId, {
+                                    type: peer.localDescription.type,
+                                    sdp: stripSdp(peer.localDescription.sdp),
+                                }, { fatal: false });
+                                if (!sent) {
+                                    this.removePeer(peerId);
                                 }
-                            }, 1000);
-                        }
+                            } catch {
+                                this.removePeer(peerId);
+                            }
+                        })();
+                    } else {
+                        // Non-initiator: remove and let the initiator side re-offer
+                        this.removePeer(peerId);
                     }
-                }, 5000);
+                }, 6000);
             }
         };
 
@@ -1000,19 +1007,25 @@ export const groupConversationVideoCall = (config) => ({
             this.speakerParticipantId = this.remoteParticipants[0]?.id ?? null;
         }
 
-        const attemptSources = (attemptsLeft) => {
+        // Wait for Alpine to render x-for nodes, then attach srcObject.
+        // Poll up to 60 times x 200 ms = 12 seconds. This is necessary because
+        // Alpine processes reactive updates asynchronously and <video> elements
+        // for new participants don't exist immediately after remoteParticipants changes.
+        const attachSources = (retriesLeft) => {
             this.refreshParticipantVideoSources();
 
-            const allMounted = this.remoteParticipants.every((participant) => (
-                document.getElementById(participant.tileElementId) instanceof HTMLVideoElement
-            ));
+            const allMounted = this.remoteParticipants.every((participant) => {
+                const el = document.getElementById(participant.tileElementId);
+                return el instanceof HTMLVideoElement && el.srcObject instanceof MediaStream;
+            });
 
-            if (!allMounted && attemptsLeft > 0) {
-                window.setTimeout(() => attemptSources(attemptsLeft - 1), 150);
+            if (!allMounted && retriesLeft > 0) {
+                window.setTimeout(() => attachSources(retriesLeft - 1), 200);
             }
         };
 
-        window.setTimeout(() => attemptSources(10), 50);
+        // First tick: let Alpine queue the reactive update
+        window.setTimeout(() => attachSources(60), 50);
     },
 
     refreshParticipantVideoSources() {
@@ -1069,22 +1082,23 @@ export const groupConversationVideoCall = (config) => ({
 
     removePeer(peerId) {
         const peer = this.peerConnections.get(peerId);
-
-        if (peer) {
-            peer.close();
-        }
-
+        if (peer) peer.close();
         this.peerConnections.delete(peerId);
 
+        // Clean reactive maps immediately so no zombie participants appear
+        this.remoteStreams.delete(peerId);
+        this.remoteStreams = new Map(this.remoteStreams);
+        this.remoteVideoActive.delete(peerId);
+        this.remoteVideoActive = new Map(this.remoteVideoActive);
+        this.refreshRemoteParticipants();
+
+        // After a brief wait, do a final reconciliation in case a new stream
+        // for the same peer arrived (reconnect scenario)
         window.setTimeout(() => {
             if (!this.peerConnections.has(peerId)) {
-                this.remoteStreams.delete(peerId);
-                this.remoteStreams = new Map(this.remoteStreams);
-                this.remoteVideoActive.delete(peerId);
-                this.remoteVideoActive = new Map(this.remoteVideoActive);
                 this.refreshRemoteParticipants();
             }
-        }, 3000);
+        }, 500);
     },
 
     cleanupGroupCall(nextStatus = 'idle', message = '') {

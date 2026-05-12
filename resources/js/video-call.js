@@ -21,7 +21,7 @@ export function peerConnectionOptions(iceServers, iceTransportPolicy = 'all') {
     };
 }
 
-export function waitForIceGathering(peer, timeoutMs = 1500) {
+export function waitForIceGathering(peer, timeoutMs = 3500) {
     return new Promise((resolve) => {
         if (peer.iceGatheringState === 'complete') {
             resolve();
@@ -44,45 +44,18 @@ export function waitForIceGathering(peer, timeoutMs = 1500) {
     });
 }
 
-/**
- * Strip large/unnecessary SDP lines to keep signal payloads small enough
- * for Pusher's free-tier 10KB message limit.
- *
- * IMPORTANT: When removing an a=rtpmap / a=fmtp line we must also remove its
- * payload type number from the m= line, otherwise the browser rejects the SDP.
- */
 export function stripSdp(sdp) {
     if (!sdp) return sdp;
 
-    // Normalize line endings: SDP spec requires CRLF, browsers may emit LF only.
     const lines = sdp.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
-    const removedPts = new Set();
-
     const filtered = lines.filter((line) => {
-        // Drop all a=ssrc lines (they bloat the payload)
-        if (line.startsWith('a=ssrc')) return false;
-
-        // Drop a=rtpmap / a=fmtp / a=rtcp-fb lines for removed codec IDs
-        const attrPt = line.match(/^a=(?:rtpmap|fmtp|rtcp-fb):(\d+)/);
-        if (attrPt && removedPts.has(attrPt[1])) return false;
-
+        // Drop a=ssrc-group lines only (MSID grouping, redundant with a=msid)
+        // Do NOT drop a=ssrc lines - Firefox needs them for track demuxing
+        if (line.startsWith('a=ssrc-group')) return false;
         return true;
-    }).map((line) => {
-        // Patch m= lines: remove the dead payload type numbers from the PT list.
-        // e.g. "m=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103" → drop 102, 103
-        if (line.startsWith('m=') && removedPts.size > 0) {
-            // m= format: "m=<media> <port> <proto> <pt1> <pt2> ..."
-            return line.replace(/^(m=\S+ \S+ \S+)((?:\s+\d+)+)/, (_, header, pts) => {
-                const kept = pts.trim().split(/\s+/).filter((pt) => !removedPts.has(pt));
-                return header + ' ' + kept.join(' ');
-            });
-        }
-
-        return line;
     });
 
-    // Rejoin with \r\n per SDP spec and ensure a trailing \r\n
     return filtered.join('\r\n') + '\r\n';
 }
 
@@ -541,45 +514,35 @@ export const conversationVideoCall = (config) => ({
         };
 
         peer.oniceconnectionstatechange = () => {
-            if (this.peer !== peer) {
-                return;
-            }
+            if (this.peer !== peer) return;
 
-            if (peer.iceConnectionState === 'checking' && this.callStatus === 'connecting') {
-                this.statusMessage = `Connecting media with ${this.otherUserName}...`;
-            }
+            const state = peer.iceConnectionState;
 
-            if (peer.iceConnectionState === 'connected' || peer.iceConnectionState === 'completed') {
+            if (state === 'connected' || state === 'completed') {
                 this.markPeerConnected();
-            }
-
-            if (peer.iceConnectionState === 'disconnected') {
-                this.statusMessage = 'Connection interrupted. Trying to recover...';
-
-                if (peer.restartIce) {
-                    peer.restartIce();
-                }
-
-                window.setTimeout(() => {
-                    if (this.peer === peer && peer.iceConnectionState === 'disconnected') {
-                        this.showTurnWarning = !this.usesTurnServers();
-                        this.statusMessage = this.connectionFailureMessage();
-
-                        if (peer.restartIce) {
-                            peer.restartIce();
-                        }
-                    }
-                }, 8000);
                 return;
             }
 
-            if (peer.iceConnectionState === 'failed') {
-                this.showTurnWarning = !this.usesTurnServers();
-                this.statusMessage = this.connectionFailureMessage();
+            if (state === 'checking' && this.callStatus === 'connecting') {
+                this.statusMessage = `Connecting media with ${this.otherUserName}...`;
+                return;
+            }
 
-                if (peer.restartIce) {
-                    peer.restartIce();
-                }
+            if (state === 'disconnected') {
+                this.statusMessage = 'Connection interrupted. Attempting recovery...';
+                // Give the browser 6 seconds to self-recover (transient network blip)
+                window.setTimeout(() => {
+                    if (this.peer !== peer) return;
+                    if (peer.iceConnectionState === 'disconnected' || peer.iceConnectionState === 'failed') {
+                        this._attemptIceRestart(peer, initiator);
+                    }
+                }, 6000);
+                return;
+            }
+
+            if (state === 'failed') {
+                this.showTurnWarning = !this.usesTurnServers();
+                this._attemptIceRestart(peer, initiator);
             }
         };
 
@@ -610,6 +573,37 @@ export const conversationVideoCall = (config) => ({
                     }
                 }
             })();
+        }
+    },
+
+    async _attemptIceRestart(peer, initiator) {
+        if (this.peer !== peer || !this.callId) return;
+
+        this.statusMessage = 'Restarting connection...';
+
+        // ICE restart: restartIce() marks the flag, but you MUST send a new offer/answer
+        if (initiator) {
+            try {
+                const offer = await peer.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true,
+                    iceRestart: true,
+                });
+                await peer.setLocalDescription(offer);
+                await waitForIceGathering(peer, 3500);
+                if (this.peer !== peer || !this.callId) return;
+                const strippedSdp = stripSdp(peer.localDescription.sdp);
+                await this.requestJson(this.callRoute('signal'), {
+                    signal_data: { type: peer.localDescription.type, sdp: strippedSdp },
+                }, { timeoutMs: 15000 });
+            } catch {
+                // If ICE restart itself fails, end the call cleanly
+                this.cleanupCall('ended', 'Call connection could not be recovered.');
+            }
+        } else {
+            // Non-initiator: set the restartIce flag and wait for the initiator
+            // to send a new offer - handled by the existing handleIncomingSignal path
+            peer.restartIce();
         }
     },
 
@@ -644,10 +638,6 @@ export const conversationVideoCall = (config) => ({
 
             this.showTurnWarning = !this.usesTurnServers();
             this.statusMessage = this.connectionFailureMessage();
-
-            if (this.peer?.restartIce) {
-                this.peer.restartIce();
-            }
         }, videoCallConnectingTimeout);
     },
 
@@ -696,8 +686,7 @@ export const conversationVideoCall = (config) => ({
         if (signalData.type === 'offer') {
             void (async () => {
                 try {
-                    // Strip the remote SDP before setting it so inbound descriptions
-                    // follow the same SSRC cleanup.
+                    // Normalize the remote SDP before setting it.
                     const cleanOffer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
                     await peer.setRemoteDescription(new RTCSessionDescription(cleanOffer));
 
@@ -738,8 +727,7 @@ export const conversationVideoCall = (config) => ({
         if (signalData.type === 'answer') {
             void (async () => {
                 try {
-                    // Strip the remote SDP before setting it so inbound descriptions
-                    // follow the same SSRC cleanup.
+                    // Normalize the remote SDP before setting it.
                     const cleanAnswer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
                     await peer.setRemoteDescription(new RTCSessionDescription(cleanAnswer));
 
