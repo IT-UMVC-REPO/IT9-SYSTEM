@@ -5,7 +5,28 @@
     $authUser = auth()->user();
 @endphp
 
-<div wire:poll.5s="refreshThread" class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]">
+<div
+    x-data="{
+        pollTimer: null,
+        initPolling() {
+            this.pollTimer = setInterval(() => {
+                const callEl = document.querySelector('[data-conversation-video-call]');
+                const callData = callEl ? (callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
+                const callStatus = callData ? callData.callStatus : 'idle';
+                
+                if (callStatus === 'idle') {
+                    this.$wire.refreshThread();
+                }
+            }, 5000);
+        },
+        destroy() {
+            clearInterval(this.pollTimer);
+        }
+    }"
+    x-init="initPolling()"
+    x-on:destroy="destroy()"
+    class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
+>
     <div wire:key="conversation-video-call-{{ $otherUserId }}" wire:ignore.self data-conversation-video-call
         x-data="{ volume: 1.0, ...window.conversationVideoCall({
             authUserId: @js((int) auth()->id()),

@@ -6,7 +6,6 @@
 @endphp
 
 <div
-    wire:poll.8s="refreshThread"
     x-data="{
         ...groupOnlinePresence({
             groupId: @js($groupId),
@@ -43,8 +42,23 @@
                 this.showInfo = latestStored === null ? true : latestStored === 'true';
             });
         },
+        pollTimer: null,
+        initPolling() {
+            this.pollTimer = setInterval(() => {
+                const callEl = document.querySelector('[data-group-video-call]');
+                const callData = callEl ? (callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
+                const callStatus = callData ? callData.callStatus : 'idle';
+                
+                if (callStatus === 'idle') {
+                    this.$wire.refreshThread();
+                }
+            }, 8000);
+        },
+        destroy() {
+            clearInterval(this.pollTimer);
+        }
     }"
-    x-init="init(); initInfoPanel()"
+    x-init="init(); initInfoPanel(); initPolling()"
     x-on:destroy="destroy()"
     class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
 >
