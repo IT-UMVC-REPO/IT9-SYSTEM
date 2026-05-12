@@ -261,7 +261,7 @@ new #[Title('Order Detail')] class extends Component {
                 <h1 class="brand-serif text-4xl font-bold text-neutral-900 dark:text-zinc-100">
                     {{ __('Order #:number', ['number' => str_pad((string) $this->order->id, 6, '0', STR_PAD_LEFT)]) }}
                 </h1>
-                <p class="max-w-2xl text-base leading-8 text-neutral-500 dark:text-zinc-400">
+                <p class="hidden max-w-2xl text-base leading-8 text-neutral-500 sm:block dark:text-zinc-400">
                     {{ __('Track your order progress, review each item, and reach the vendor if you need help before delivery.') }}
                 </p>
             </div>
