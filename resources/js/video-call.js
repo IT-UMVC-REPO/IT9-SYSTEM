@@ -21,7 +21,7 @@ export function peerConnectionOptions(iceServers, iceTransportPolicy = 'all') {
     };
 }
 
-export function waitForIceGathering(peer, timeoutMs = 3500) {
+export function waitForIceGathering(peer, timeoutMs = 8000) {
     return new Promise((resolve) => {
         if (peer.iceGatheringState === 'complete') {
             resolve();
@@ -120,6 +120,8 @@ export const conversationVideoCall = (config) => ({
     callChromeVisible: true,
     callChromeTimer: null,
     previewPosition: { right: 16, bottom: 96 },
+    persistentPipVideo: null,
+    persistentRemoteStream: null,
 
     init() {
         if (this.initialized || !this.realtimeEnabled || !window.Echo) {
@@ -427,8 +429,6 @@ export const conversationVideoCall = (config) => ({
     },
 
     disposeOnLeave() {
-        void this.exitPip();
-
         if (this.localStream === null && this.peer === null) {
             return;
         }
@@ -444,6 +444,24 @@ export const conversationVideoCall = (config) => ({
         }
 
         this.cleanupCall('idle');
+    },
+
+    keepAliveOnNavigate() {
+        if (!this.isCallInProgress()) {
+            return;
+        }
+
+        if (document.pictureInPictureElement) {
+            return;
+        }
+
+        void this.enterPip();
+    },
+
+    isCallInProgress() {
+        return ['calling', 'incoming', 'connecting', 'active'].includes(this.callStatus)
+            || this.localStream !== null
+            || this.peer !== null;
     },
 
     async loadIceConfiguration() {
@@ -495,7 +513,7 @@ export const conversationVideoCall = (config) => ({
                     return new MediaStream([event.track]);
                 })();
 
-            this.setVideoSource(remoteVideoElementId, incomingStream);
+            this.setRemoteStream(incomingStream);
 
             if (event.track.kind === 'video') {
                 this.remoteVideoActive = event.track.readyState === 'live' && !event.track.muted;
@@ -530,7 +548,6 @@ export const conversationVideoCall = (config) => ({
 
             if (state === 'disconnected') {
                 this.statusMessage = 'Connection interrupted. Attempting recovery...';
-                // Give the browser 6 seconds to self-recover (transient network blip)
                 window.setTimeout(() => {
                     if (this.peer !== peer) return;
                     if (peer.iceConnectionState === 'disconnected' || peer.iceConnectionState === 'failed') {
@@ -597,13 +614,10 @@ export const conversationVideoCall = (config) => ({
                     signal_data: { type: peer.localDescription.type, sdp: strippedSdp },
                 }, { timeoutMs: 15000 });
             } catch {
-                // If ICE restart itself fails, end the call cleanly
                 this.cleanupCall('ended', 'Call connection could not be recovered.');
             }
         } else {
-            // Non-initiator: set the restartIce flag and wait for the initiator
-            // to send a new offer - handled by the existing handleIncomingSignal path
-            peer.restartIce();
+            peer.restartIce?.();
         }
     },
 
@@ -838,16 +852,16 @@ export const conversationVideoCall = (config) => ({
         const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
 
         return {
-            width: { ideal: isMobile ? 480 : (useFallback ? 640 : 1280) },
-            height: { ideal: isMobile ? 360 : (useFallback ? 480 : 720) },
-            frameRate: { ideal: isMobile ? 15 : 30, max: isMobile ? 20 : 60 },
+            width: { ideal: isMobile ? (useFallback ? 640 : 960) : (useFallback ? 960 : 1280) },
+            height: { ideal: isMobile ? (useFallback ? 480 : 540) : (useFallback ? 540 : 720) },
+            frameRate: { ideal: isMobile ? 24 : 30, max: isMobile ? 30 : 60 },
             facingMode: { ideal: this.facingMode },
         };
     },
 
     async setMaxBitrate(peer) {
         const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
-        const videoMaxKbps = isMobile ? 300 : 1200;
+        const videoMaxKbps = isMobile ? 900 : 1800;
         const audioMaxKbps = 64;
         const senders = peer.getSenders();
 
@@ -863,7 +877,7 @@ export const conversationVideoCall = (config) => ({
                 params.encodings[0].maxFramerate = isMobile ? 15 : 30;
 
                 if (isMobile) {
-                    params.encodings[0].scaleResolutionDownBy = 1.5;
+                    params.encodings[0].scaleResolutionDownBy = 1;
                 }
             } else if (sender.track?.kind === 'audio') {
                 params.encodings[0].maxBitrate = audioMaxKbps * 1000;
@@ -889,13 +903,13 @@ export const conversationVideoCall = (config) => ({
     },
 
     async enterPip() {
-        const remoteVideo = document.getElementById(remoteVideoElementId);
+        const remoteVideo = this.ensurePersistentPipVideo();
 
         if (!remoteVideo) {
             return;
         }
 
-        const stream = remoteVideo.srcObject;
+        const stream = remoteVideo.srcObject ?? this.persistentRemoteStream;
         if (!(stream instanceof MediaStream) || stream.getVideoTracks().length === 0) {
             this.statusMessage = 'No remote video to show in picture-in-picture.';
             window.setTimeout(() => {
@@ -915,6 +929,9 @@ export const conversationVideoCall = (config) => ({
                 await document.exitPictureInPicture();
             }
 
+            remoteVideo.srcObject = stream;
+            remoteVideo.muted = false;
+            await remoteVideo.play().catch(() => {});
             await remoteVideo.requestPictureInPicture();
         } catch {
             this.statusMessage = 'Picture-in-picture is not available in this browser.';
@@ -925,15 +942,48 @@ export const conversationVideoCall = (config) => ({
     },
 
     async exitPip() {
-        if (!document.pictureInPictureElement) {
+        if (!document.pictureInPictureElement || document.pictureInPictureElement !== this.persistentPipVideo) {
             return;
         }
 
         try {
             await document.exitPictureInPicture();
+            this.persistentPipVideo.muted = true;
         } catch {
             // Ignore PiP cleanup failures.
         }
+    },
+
+    ensurePersistentPipVideo() {
+        if (this.persistentPipVideo instanceof HTMLVideoElement && document.body.contains(this.persistentPipVideo)) {
+            return this.persistentPipVideo;
+        }
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.style.position = 'fixed';
+        video.style.width = '1px';
+        video.style.height = '1px';
+        video.style.right = '0';
+        video.style.bottom = '0';
+        video.style.opacity = '0.01';
+        video.style.pointerEvents = 'none';
+        video.setAttribute('aria-hidden', 'true');
+        video.dataset.sukiCallPip = 'true';
+        video.addEventListener('leavepictureinpicture', () => {
+            video.muted = true;
+        });
+        document.body.appendChild(video);
+
+        this.persistentPipVideo = video;
+
+        if (this.persistentRemoteStream instanceof MediaStream) {
+            video.srcObject = this.persistentRemoteStream;
+        }
+
+        return video;
     },
 
     isMobileDevice() {
@@ -1028,6 +1078,7 @@ export const conversationVideoCall = (config) => ({
         }
 
         this.localStream = null;
+        this.persistentRemoteStream = null;
         this.pendingSignals = [];
         this.iceServers = null;
         this.iceTransportPolicy = 'all';
@@ -1037,6 +1088,10 @@ export const conversationVideoCall = (config) => ({
         this.setVideoSource(localVideoElementId, null);
         this.setVideoSource(localVideoBackgroundElementId, null);
         this.setVideoSource(remoteVideoElementId, null);
+
+        if (this.persistentPipVideo instanceof HTMLVideoElement) {
+            this.persistentPipVideo.srcObject = null;
+        }
 
         this.callId = null;
         this.callStatus = nextStatus;
@@ -1148,6 +1203,20 @@ export const conversationVideoCall = (config) => ({
 
         if (element instanceof HTMLVideoElement) {
             element.srcObject = stream;
+        }
+    },
+
+    setRemoteStream(stream) {
+        this.persistentRemoteStream = stream;
+        this.setVideoSource(remoteVideoElementId, stream);
+
+        const pipVideo = this.ensurePersistentPipVideo();
+        if (pipVideo instanceof HTMLVideoElement && pipVideo.srcObject !== stream) {
+            pipVideo.srcObject = stream;
+        }
+
+        if (document.pictureInPictureElement === pipVideo) {
+            pipVideo.play().catch(() => {});
         }
     },
 });

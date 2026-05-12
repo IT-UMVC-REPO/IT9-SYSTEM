@@ -51,7 +51,7 @@
             window.setTimeout(() => acceptCall());
         }" x-effect="$wire.$set('callInProgress', callStatus !== 'idle', false)"
         x-on:beforeunload.window="disposeOnLeave()"
-        x-on:livewire:navigating.window="disposeOnLeave()"
+        x-on:livewire:navigating.window="keepAliveOnNavigate()"
         x-on:conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
@@ -62,7 +62,7 @@
                     class="absolute left-0 right-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-4">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex min-w-0 items-start gap-3">
-                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="disposeOnLeave()"
+                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="keepAliveOnNavigate()"
                                 class="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
                                 aria-label="{{ __('Back to messages') }}">
                                 <flux:icon.arrow-left variant="mini" />
