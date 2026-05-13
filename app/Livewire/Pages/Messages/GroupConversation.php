@@ -293,7 +293,10 @@ class GroupConversation extends Component
         return VideoCall::query()
             ->where('group_id', $this->groupId)
             ->where('is_group_call', true)
-            ->where('status', VideoCallStatus::Active->value)
+            ->whereIn('status', [
+                VideoCallStatus::Active->value,
+                VideoCallStatus::Pending->value,
+            ])
             ->whereNull('ended_at')
             ->where('created_at', '>=', now()->subMinutes(90))
             ->whereHas('participants', function (Builder $query): void {

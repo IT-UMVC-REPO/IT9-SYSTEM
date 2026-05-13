@@ -1,10 +1,12 @@
 import {
+    iceCandidateSignal,
+    isSessionDescriptionSignal,
+    localDescriptionSignal,
     peerConnectionOptions,
     preferCodecs,
     stripSdp,
     videoCallIceServers,
     videoCallResetDelay,
-    waitForIceGathering,
 } from './video-call';
 
 const reusableGroupCallFor = (config) => {
@@ -39,6 +41,9 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     remoteParticipants: [],
     participants: [],
     pendingSignals: new Map(),
+    peerStates: new Map(),
+    peerSignalQueues: new Map(),
+    peerReconnectTimers: new Map(),
     statusMessage: '',
     initialized: false,
     speakerParticipantId: null,
@@ -723,10 +728,11 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     },
 
     connectToParticipants() {
-        if (this.callStatus !== 'active') return;
+        if (this.callStatus !== 'active') {
+            return;
+        }
 
         if (this.localStream === null) {
-            // Stream not yet ready - retry after a short delay
             window.setTimeout(() => this.connectToParticipants(), 500);
             return;
         }
@@ -747,11 +753,24 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         }
 
         const peer = new RTCPeerConnection(peerConnectionOptions(this.iceServers, this.iceTransportPolicy));
+        const state = this.createPeerState(peerId, peer, initiator);
 
         this.peerConnections.set(peerId, peer);
         this.localStream.getTracks().forEach((track) => peer.addTrack(track, this.localStream));
 
+        peer.onicecandidate = (event) => {
+            if (this.peerConnections.get(peerId) !== peer || !event.candidate || !this.callId) {
+                return;
+            }
+
+            void this.safeSendGroupSignal(peerId, iceCandidateSignal(event.candidate), { fatal: false });
+        };
+
         peer.ontrack = (event) => {
+            if (this.peerConnections.get(peerId) !== peer) {
+                return;
+            }
+
             const incomingStream = (event.streams && event.streams.length > 0)
                 ? event.streams[0]
                 : (() => {
@@ -767,113 +786,191 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
             this.remoteStreams.set(peerId, incomingStream);
             this.remoteStreams = new Map(this.remoteStreams);
+            state.connected = true;
             this.updateRemoteVideoActive(peerId, incomingStream);
             this.watchRemoteVideoTrack(peerId, event.track, incomingStream);
-            // Refresh participant list and then attach video sources once Alpine
-            // has committed the new x-for DOM nodes. Use a generous retry window.
             this.refreshRemoteParticipants();
             void this.setMaxBitrate(peer);
         };
 
-        peer.oniceconnectionstatechange = () => {
+        const handleConnectionStateChange = () => {
             if (this.peerConnections.get(peerId) !== peer) {
                 return;
             }
 
-            const state = peer.iceConnectionState;
+            const iceState = peer.iceConnectionState;
+            const connectionState = peer.connectionState;
 
-            if (state === 'failed') {
-                this.removePeer(peerId);
-                if (this.callStatus === 'active' && this.callId !== null) {
-                    window.setTimeout(() => {
-                        if (
-                            this.callStatus === 'active'
-                            && !this.peerConnections.has(peerId)
-                            && this.participants.includes(peerId)
-                        ) {
-                            this.createPeerConnection(peerId, this.shouldInitiatePeerConnection(peerId));
-                        }
-                    }, 2000);
-                }
+            if (iceState === 'connected' || iceState === 'completed' || connectionState === 'connected') {
+                state.connected = true;
+                this.statusMessage = 'Connected.';
                 return;
             }
 
-            if (state === 'disconnected' && this.callStatus !== 'idle') {
+            if (iceState === 'checking' || connectionState === 'connecting') {
+                if (this.callStatus === 'active') {
+                    this.statusMessage = `Connecting with ${this.participantName(peerId)}...`;
+                }
+
+                return;
+            }
+
+            if (iceState === 'disconnected' || connectionState === 'disconnected') {
                 this.statusMessage = 'Connection interrupted. Trying to recover...';
 
                 window.setTimeout(() => {
                     if (this.peerConnections.get(peerId) !== peer) return;
-                    if (peer.iceConnectionState !== 'disconnected' && peer.iceConnectionState !== 'failed') return;
-
-                    const shouldInitiate = this.shouldInitiatePeerConnection(peerId);
-                    if (shouldInitiate) {
-                        // Re-offer with iceRestart flag set
-                        void (async () => {
-                            try {
-                                const offer = await peer.createOffer({
-                                    offerToReceiveAudio: true,
-                                    offerToReceiveVideo: true,
-                                    iceRestart: true,
-                                });
-                                await peer.setLocalDescription(offer);
-                                await waitForIceGathering(peer, 3500);
-                                if (this.peerConnections.get(peerId) !== peer || !this.callId) return;
-                                const sent = await this.safeSendGroupSignal(peerId, {
-                                    type: peer.localDescription.type,
-                                    sdp: stripSdp(peer.localDescription.sdp),
-                                }, { fatal: false });
-                                if (!sent) {
-                                    this.removePeer(peerId);
-                                }
-                            } catch {
-                                this.removePeer(peerId);
-                            }
-                        })();
-                    } else {
-                        // Non-initiator: remove and let the initiator side re-offer
-                        this.removePeer(peerId);
+                    if (
+                        peer.iceConnectionState !== 'disconnected'
+                        && peer.iceConnectionState !== 'failed'
+                        && peer.connectionState !== 'disconnected'
+                        && peer.connectionState !== 'failed'
+                    ) {
+                        return;
                     }
-                }, 6000);
+
+                    this.schedulePeerReconnect(peerId, 0);
+                }, 4500);
+
+                return;
+            }
+
+            if (iceState === 'failed' || connectionState === 'failed') {
+                this.schedulePeerReconnect(peerId, 0);
             }
         };
 
+        peer.oniceconnectionstatechange = handleConnectionStateChange;
+        peer.onconnectionstatechange = handleConnectionStateChange;
+
         if (initiator) {
-            void (async () => {
-                try {
-                    const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                    const preferredOffer = offer.sdp
-                        ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
-                        : offer;
-
-                    await peer.setLocalDescription(preferredOffer);
-                    await waitForIceGathering(peer);
-
-                    const localDescription = peer.localDescription ?? preferredOffer;
-                    const sent = await this.safeSendGroupSignal(peerId, {
-                        type: localDescription.type,
-                        sdp: stripSdp(localDescription.sdp),
-                    });
-
-                    if (!sent) {
-                        this.removePeer(peerId);
-                    }
-                } catch {
-                    this.removePeer(peerId);
-                }
-            })();
+            void this.negotiateGroupPeer(peerId, peer, state);
         }
 
         return peer;
     },
 
-    async safeHandleGroupSignal(senderId, signalData) {
-        try {
-            await this.handleGroupSignal(senderId, signalData);
-        } catch (error) {
-            if (this.callStatus !== 'idle') {
-                this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not sync the group call.'));
-            }
+    createPeerState(peerId, peer, shouldOffer) {
+        const state = {
+            peer,
+            shouldOffer,
+            polite: Number(this.authUserId) > Number(peerId),
+            makingOffer: false,
+            ignoreOffer: false,
+            isSettingRemoteAnswerPending: false,
+            connected: false,
+        };
+
+        this.peerStates.set(peerId, state);
+
+        return state;
+    },
+
+    async negotiateGroupPeer(peerId, peer, state, options = {}) {
+        if (
+            this.peerConnections.get(peerId) !== peer
+            || !this.callId
+            || !state.shouldOffer
+            || state.makingOffer
+        ) {
+            return;
         }
+
+        const { iceRestart = false } = options;
+
+        try {
+            state.makingOffer = true;
+
+            const offer = await peer.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+                iceRestart,
+            });
+            const preferredOffer = offer.sdp
+                ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
+                : offer;
+
+            await peer.setLocalDescription(preferredOffer);
+
+            if (this.peerConnections.get(peerId) !== peer || !this.callId) {
+                return;
+            }
+
+            const localDescription = peer.localDescription ?? preferredOffer;
+            const sent = await this.safeSendGroupSignal(peerId, localDescriptionSignal(localDescription), { fatal: false });
+
+            if (!sent) {
+                this.schedulePeerReconnect(peerId, 1500);
+            }
+        } catch {
+            this.schedulePeerReconnect(peerId, 1500);
+        } finally {
+            state.makingOffer = false;
+        }
+    },
+
+    schedulePeerReconnect(peerId, delayMs = 1200) {
+        if (this.callStatus !== 'active' || this.callId === null || !this.participants.includes(peerId)) {
+            return;
+        }
+
+        const previousTimer = this.peerReconnectTimers.get(peerId);
+
+        if (previousTimer !== undefined) {
+            window.clearTimeout(previousTimer);
+        }
+
+        this.statusMessage = `Reconnecting with ${this.participantName(peerId)}...`;
+
+        const timer = window.setTimeout(() => {
+            this.peerReconnectTimers.delete(peerId);
+
+            if (this.callStatus !== 'active' || this.callId === null || !this.participants.includes(peerId)) {
+                return;
+            }
+
+            const shouldOffer = this.shouldInitiatePeerConnection(peerId);
+            this.closePeerConnection(peerId);
+
+            if (shouldOffer) {
+                this.createPeerConnection(peerId, true);
+                return;
+            }
+
+            void this.safeSendGroupSignal(peerId, { type: 'renegotiate' }, { fatal: false });
+        }, delayMs);
+
+        this.peerReconnectTimers.set(peerId, timer);
+    },
+
+    closePeerConnection(peerId) {
+        const peer = this.peerConnections.get(peerId);
+
+        if (peer) {
+            peer.onicecandidate = null;
+            peer.ontrack = null;
+            peer.oniceconnectionstatechange = null;
+            peer.onconnectionstatechange = null;
+            peer.close();
+        }
+
+        this.peerConnections.delete(peerId);
+        this.peerStates.delete(peerId);
+    },
+
+    async safeHandleGroupSignal(senderId, signalData) {
+        const nextQueue = (this.peerSignalQueues.get(senderId) ?? Promise.resolve())
+            .catch(() => {})
+            .then(() => this.handleGroupSignal(senderId, signalData))
+            .catch(() => {
+                if (this.callStatus !== 'idle') {
+                    this.schedulePeerReconnect(senderId, 1200);
+                }
+            });
+
+        this.peerSignalQueues.set(senderId, nextQueue);
+
+        await nextQueue;
     },
 
     async safeSendGroupSignal(recipientId, signalData, options = {}) {
@@ -912,47 +1009,99 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             return;
         }
 
-        const isOffer = signalData.type === 'offer';
-        const peer = this.peerConnections.has(senderId)
-            ? this.peerConnections.get(senderId)
-            : this.createPeerConnection(senderId, isOffer ? false : !this.shouldInitiatePeerConnection(senderId));
-
-        if (!peer) {
-            return;
-        }
-
-        if (signalData.type === 'offer') {
-            await peer.setRemoteDescription(new RTCSessionDescription({
-                ...signalData,
-                sdp: stripSdp(signalData.sdp),
-            }));
-
-            const answer = await peer.createAnswer();
-            const preferredAnswer = answer.sdp
-                ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
-                : answer;
-
-            await peer.setLocalDescription(preferredAnswer);
-            await waitForIceGathering(peer);
-            const localDescription = peer.localDescription ?? preferredAnswer;
-            const sent = await this.safeSendGroupSignal(senderId, {
-                type: localDescription.type,
-                sdp: stripSdp(localDescription.sdp),
-            });
-
-            if (sent) {
-                this.flushGroupSignals(senderId);
+        if (signalData.type === 'renegotiate') {
+            if (this.shouldInitiatePeerConnection(senderId)) {
+                this.schedulePeerReconnect(senderId, 0);
             }
 
             return;
         }
 
-        if (signalData.type === 'answer') {
-            await peer.setRemoteDescription(new RTCSessionDescription({
-                ...signalData,
-                sdp: stripSdp(signalData.sdp),
-            }));
+        const isDescription = isSessionDescriptionSignal(signalData);
+
+        if (!this.peerConnections.has(senderId) && signalData.type === 'answer') {
+            return;
+        }
+
+        if (!this.peerConnections.has(senderId) && !isDescription) {
+            const signals = this.pendingSignals.get(senderId) ?? [];
+            signals.push(signalData);
+            this.pendingSignals.set(senderId, signals);
+            return;
+        }
+
+        const peer = this.peerConnections.has(senderId)
+            ? this.peerConnections.get(senderId)
+            : this.createPeerConnection(senderId, signalData.type === 'offer' ? false : this.shouldInitiatePeerConnection(senderId));
+
+        if (!peer) {
+            return;
+        }
+
+        const state = this.peerStates.get(senderId) ?? this.createPeerState(
+            senderId,
+            peer,
+            this.shouldInitiatePeerConnection(senderId),
+        );
+
+        if (isDescription) {
+            if (signalData.type === 'answer' && peer.signalingState === 'stable') {
+                return;
+            }
+
+            const readyForOffer = !state.makingOffer
+                && (peer.signalingState === 'stable' || state.isSettingRemoteAnswerPending);
+            const offerCollision = signalData.type === 'offer' && !readyForOffer;
+
+            state.ignoreOffer = !state.polite && offerCollision;
+
+            if (state.ignoreOffer) {
+                return;
+            }
+
+            if (offerCollision) {
+                await peer.setLocalDescription({ type: 'rollback' });
+            }
+
+            const cleanDescription = signalData.sdp
+                ? { ...signalData, sdp: stripSdp(signalData.sdp) }
+                : signalData;
+
+            state.isSettingRemoteAnswerPending = signalData.type === 'answer';
+
+            try {
+                await peer.setRemoteDescription(new RTCSessionDescription(cleanDescription));
+            } finally {
+                state.isSettingRemoteAnswerPending = false;
+            }
+
+            if (this.peerConnections.get(senderId) !== peer) {
+                return;
+            }
+
+            if (signalData.type === 'offer') {
+                const answer = await peer.createAnswer();
+                const preferredAnswer = answer.sdp
+                    ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
+                    : answer;
+
+                await peer.setLocalDescription(preferredAnswer);
+
+                if (this.peerConnections.get(senderId) !== peer || !this.callId) {
+                    return;
+                }
+
+                const localDescription = peer.localDescription ?? preferredAnswer;
+                const sent = await this.safeSendGroupSignal(senderId, localDescriptionSignal(localDescription), { fatal: false });
+
+                if (!sent) {
+                    this.schedulePeerReconnect(senderId, 1500);
+                    return;
+                }
+            }
+
             this.flushGroupSignals(senderId);
+
             return;
         }
 
@@ -964,7 +1113,17 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
                 return;
             }
 
-            await peer.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+            const candidate = signalData.type === 'candidate'
+                ? signalData.candidate
+                : signalData;
+
+            try {
+                await peer.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (error) {
+                if (!state.ignoreOffer) {
+                    throw error;
+                }
+            }
         }
     },
 
@@ -1131,11 +1290,17 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     },
 
     removePeer(peerId) {
-        const peer = this.peerConnections.get(peerId);
-        if (peer) peer.close();
-        this.peerConnections.delete(peerId);
+        const reconnectTimer = this.peerReconnectTimers.get(peerId);
 
-        // Clean reactive maps immediately so no zombie participants appear
+        if (reconnectTimer !== undefined) {
+            window.clearTimeout(reconnectTimer);
+            this.peerReconnectTimers.delete(peerId);
+        }
+
+        this.closePeerConnection(peerId);
+        this.peerSignalQueues.delete(peerId);
+        this.pendingSignals.delete(peerId);
+
         this.remoteStreams.delete(peerId);
         this.remoteStreams = new Map(this.remoteStreams);
         this.remoteVideoActive.delete(peerId);
@@ -1167,6 +1332,10 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.remoteParticipants = [];
         this.participants = [];
         this.pendingSignals.clear();
+        this.peerStates.clear();
+        this.peerSignalQueues.clear();
+        this.peerReconnectTimers.forEach((timer) => window.clearTimeout(timer));
+        this.peerReconnectTimers.clear();
         this.speakerParticipantId = null;
         this.iceServers = null;
         this.iceTransportPolicy = 'all';

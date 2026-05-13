@@ -231,7 +231,7 @@ class VideoCallController extends Controller
 
         abort_unless($this->isGroupMember($call->group_id, $userId), 403);
 
-        $this->expireStaleGroupCalls((int) $call->group_id, 30);
+        $this->expireStaleGroupCalls((int) $call->group_id);
         $call->refresh();
 
         abort_if($call->status === VideoCallStatus::Ended || $call->status === VideoCallStatus::Declined, 409);

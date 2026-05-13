@@ -88,6 +88,24 @@ export function preferCodecs(sdp, kind = 'video') {
     return lines.join('\r\n');
 }
 
+export function isSessionDescriptionSignal(signalData) {
+    return signalData?.type === 'offer' || signalData?.type === 'answer';
+}
+
+export function localDescriptionSignal(description) {
+    return {
+        type: description.type,
+        sdp: stripSdp(description.sdp),
+    };
+}
+
+export function iceCandidateSignal(candidate) {
+    return {
+        type: 'candidate',
+        candidate: candidate.toJSON(),
+    };
+}
+
 export const conversationVideoCall = (config) => ({
     authUserId: config.authUserId,
     conversationKey: config.conversationKey,
@@ -101,6 +119,11 @@ export const conversationVideoCall = (config) => ({
     peer: null,
     localStream: null,
     pendingSignals: [],
+    signalQueue: Promise.resolve(),
+    makingOffer: false,
+    ignoreOffer: false,
+    isSettingRemoteAnswerPending: false,
+    politePeer: false,
     iceServers: null,
     iceTransportPolicy: 'all',
     facingMode: 'user',
@@ -153,7 +176,7 @@ export const conversationVideoCall = (config) => ({
                 }
 
                 this.callId ??= event.call_id;
-                this.handleIncomingSignal(event.signal_data);
+                void this.handleIncomingSignal(event.signal_data);
             })
             .listen('.VideoCallStatusChanged', (event) => {
                 if (this.callId !== null && event.call_id !== this.callId) {
@@ -489,11 +512,29 @@ export const conversationVideoCall = (config) => ({
         const peer = new RTCPeerConnection(peerConnectionOptions(this.iceServers, this.iceTransportPolicy));
 
         this.peer = peer;
+        this.politePeer = !initiator;
+        this.makingOffer = false;
+        this.ignoreOffer = false;
+        this.isSettingRemoteAnswerPending = false;
         this.startConnectionTimers();
 
         this.localStream.getTracks().forEach((track) => {
             peer.addTrack(track, this.localStream);
         });
+
+        peer.onicecandidate = (event) => {
+            if (this.peer !== peer || !event.candidate || !this.callId) {
+                return;
+            }
+
+            void this.requestJson(this.callRoute('signal'), {
+                signal_data: iceCandidateSignal(event.candidate),
+            }, { timeoutMs: 10000 }).catch(() => {
+                if (this.peer === peer && this.callStatus !== 'idle') {
+                    this.statusMessage = 'Realtime media sync is unstable. Trying to reconnect...';
+                }
+            });
+        };
 
         peer.ontrack = (event) => {
             if (this.peer !== peer) {
@@ -531,7 +572,7 @@ export const conversationVideoCall = (config) => ({
             this.markPeerConnected();
         };
 
-        peer.oniceconnectionstatechange = () => {
+        const handleConnectionStateChange = () => {
             if (this.peer !== peer) return;
 
             const state = peer.iceConnectionState;
@@ -563,33 +604,61 @@ export const conversationVideoCall = (config) => ({
             }
         };
 
+        peer.oniceconnectionstatechange = handleConnectionStateChange;
+        peer.onconnectionstatechange = () => {
+            if (this.peer !== peer) return;
+
+            if (peer.connectionState === 'connected') {
+                this.markPeerConnected();
+                return;
+            }
+
+            if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {
+                handleConnectionStateChange();
+            }
+        };
+
         if (initiator) {
-            void (async () => {
-                try {
-                    const offer = await peer.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                    const preferredOffer = offer.sdp
-                        ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
-                        : offer;
+            void this.negotiatePeer(peer);
+        }
+    },
 
-                    await peer.setLocalDescription(preferredOffer);
-                    await waitForIceGathering(peer);
+    async negotiatePeer(peer, options = {}) {
+        if (this.peer !== peer || !this.callId || this.makingOffer) {
+            return;
+        }
 
-                    if (this.peer !== peer || !this.callId) {
-                        return;
-                    }
+        const { iceRestart = false } = options;
 
-                    const localDescription = peer.localDescription ?? preferredOffer;
-                    const strippedSdp = stripSdp(localDescription.sdp);
+        try {
+            this.makingOffer = true;
 
-                    await this.requestJson(this.callRoute('signal'), {
-                        signal_data: { type: localDescription.type, sdp: strippedSdp },
-                    }, { timeoutMs: 15000 });
-                } catch (error) {
-                    if (this.peer === peer) {
-                        void this.endCall(this.callErrorMessage(error, 'Could not create call offer.'));
-                    }
-                }
-            })();
+            const offer = await peer.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true,
+                iceRestart,
+            });
+            const preferredOffer = offer.sdp
+                ? { type: offer.type, sdp: this.preferCodecs(offer.sdp) }
+                : offer;
+
+            await peer.setLocalDescription(preferredOffer);
+
+            if (this.peer !== peer || !this.callId) {
+                return;
+            }
+
+            const localDescription = peer.localDescription ?? preferredOffer;
+
+            await this.requestJson(this.callRoute('signal'), {
+                signal_data: localDescriptionSignal(localDescription),
+            }, { timeoutMs: 10000 });
+        } catch (error) {
+            if (this.peer === peer) {
+                this.statusMessage = this.callErrorMessage(error, 'Could not sync the media connection. Retrying...');
+            }
+        } finally {
+            this.makingOffer = false;
         }
     },
 
@@ -598,26 +667,18 @@ export const conversationVideoCall = (config) => ({
 
         this.statusMessage = 'Restarting connection...';
 
-        // ICE restart: restartIce() marks the flag, but you MUST send a new offer/answer
         if (initiator) {
-            try {
-                const offer = await peer.createOffer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true,
-                    iceRestart: true,
-                });
-                await peer.setLocalDescription(offer);
-                await waitForIceGathering(peer, 3500);
-                if (this.peer !== peer || !this.callId) return;
-                const strippedSdp = stripSdp(peer.localDescription.sdp);
-                await this.requestJson(this.callRoute('signal'), {
-                    signal_data: { type: peer.localDescription.type, sdp: strippedSdp },
-                }, { timeoutMs: 15000 });
-            } catch {
-                this.cleanupCall('ended', 'Call connection could not be recovered.');
-            }
+            peer.restartIce?.();
+            await this.negotiatePeer(peer, { iceRestart: true });
         } else {
             peer.restartIce?.();
+            await this.requestJson(this.callRoute('signal'), {
+                signal_data: { type: 'renegotiate' },
+            }, { timeoutMs: 10000 }).catch(() => {
+                if (this.peer === peer) {
+                    this.statusMessage = 'Connection recovery is waiting for the other caller...';
+                }
+            });
         }
     },
 
@@ -685,11 +746,27 @@ export const conversationVideoCall = (config) => ({
         return 'Could not establish the media connection. Please check your network and try again.';
     },
 
-    handleIncomingSignal(signalData) {
+    async handleIncomingSignal(signalData) {
         if (!signalData || typeof signalData !== 'object') {
             return;
         }
 
+        const nextQueue = this.signalQueue
+            .catch(() => {})
+            .then(() => this.processIncomingSignal(signalData))
+            .catch((error) => {
+                if (this.peer !== null && this.callStatus !== 'idle') {
+                    this.statusMessage = this.callErrorMessage(error, 'Could not sync the media connection. Retrying...');
+                    void this._attemptIceRestart(this.peer, !this.politePeer);
+                }
+            });
+
+        this.signalQueue = nextQueue;
+
+        await nextQueue;
+    },
+
+    async processIncomingSignal(signalData) {
         if (this.peer === null) {
             this.pendingSignals.push(signalData);
             return;
@@ -697,63 +774,70 @@ export const conversationVideoCall = (config) => ({
 
         const peer = this.peer;
 
-        if (signalData.type === 'offer') {
-            void (async () => {
-                try {
-                    // Normalize the remote SDP before setting it.
-                    const cleanOffer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
-                    await peer.setRemoteDescription(new RTCSessionDescription(cleanOffer));
-
-                    if (this.peer !== peer) {
-                        return;
-                    }
-
-                    const answer = await peer.createAnswer();
-                    const preferredAnswer = answer.sdp
-                        ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
-                        : answer;
-
-                    await peer.setLocalDescription(preferredAnswer);
-                    await waitForIceGathering(peer);
-
-                    if (this.peer !== peer || !this.callId) {
-                        return;
-                    }
-
-                    const localDescription = peer.localDescription ?? preferredAnswer;
-                    const strippedSdp = stripSdp(localDescription.sdp);
-
-                    await this.requestJson(this.callRoute('signal'), {
-                        signal_data: { type: localDescription.type, sdp: strippedSdp },
-                    }, { timeoutMs: 15000 });
-
-                    this.flushPendingSignals();
-                } catch (error) {
-                    if (this.peer === peer) {
-                        void this.endCall(this.callErrorMessage(error, 'Could not accept call offer.'));
-                    }
-                }
-            })();
+        if (signalData.type === 'renegotiate') {
+            if (!this.politePeer) {
+                peer.restartIce?.();
+                await this.negotiatePeer(peer, { iceRestart: true });
+            }
 
             return;
         }
 
-        if (signalData.type === 'answer') {
-            void (async () => {
-                try {
-                    // Normalize the remote SDP before setting it.
-                    const cleanAnswer = signalData.sdp ? { ...signalData, sdp: stripSdp(signalData.sdp) } : signalData;
-                    await peer.setRemoteDescription(new RTCSessionDescription(cleanAnswer));
+        if (isSessionDescriptionSignal(signalData)) {
+            if (signalData.type === 'answer' && peer.signalingState === 'stable') {
+                return;
+            }
 
-                    if (this.peer === peer) {
-                        this.flushPendingSignals();
-                    }
-                } catch (error) {
-                    if (this.peer === peer) {
-                        void this.endCall(this.callErrorMessage(error, 'Could not process call answer.'));
-                    }
+            const readyForOffer = !this.makingOffer
+                && (peer.signalingState === 'stable' || this.isSettingRemoteAnswerPending);
+            const offerCollision = signalData.type === 'offer' && !readyForOffer;
+
+            this.ignoreOffer = !this.politePeer && offerCollision;
+
+            if (this.ignoreOffer) {
+                return;
+            }
+
+            if (offerCollision) {
+                await peer.setLocalDescription({ type: 'rollback' });
+            }
+
+            const cleanDescription = signalData.sdp
+                ? { ...signalData, sdp: stripSdp(signalData.sdp) }
+                : signalData;
+
+            this.isSettingRemoteAnswerPending = signalData.type === 'answer';
+
+            try {
+                await peer.setRemoteDescription(new RTCSessionDescription(cleanDescription));
+            } finally {
+                this.isSettingRemoteAnswerPending = false;
+            }
+
+            if (this.peer !== peer) {
+                return;
+            }
+
+            if (signalData.type === 'offer') {
+                const answer = await peer.createAnswer();
+                const preferredAnswer = answer.sdp
+                    ? { type: answer.type, sdp: this.preferCodecs(answer.sdp) }
+                    : answer;
+
+                await peer.setLocalDescription(preferredAnswer);
+
+                if (this.peer !== peer || !this.callId) {
+                    return;
                 }
-            })();
+
+                const localDescription = peer.localDescription ?? preferredAnswer;
+
+                await this.requestJson(this.callRoute('signal'), {
+                    signal_data: localDescriptionSignal(localDescription),
+                }, { timeoutMs: 10000 });
+            }
+
+            this.flushPendingSignals();
 
             return;
         }
@@ -793,7 +877,7 @@ export const conversationVideoCall = (config) => ({
             }
 
             if (signalData !== undefined) {
-                this.handleIncomingSignal(signalData);
+                void this.handleIncomingSignal(signalData);
             }
 
             if (isSessionDescription) {
@@ -1080,6 +1164,11 @@ export const conversationVideoCall = (config) => ({
         this.localStream = null;
         this.persistentRemoteStream = null;
         this.pendingSignals = [];
+        this.signalQueue = Promise.resolve();
+        this.makingOffer = false;
+        this.ignoreOffer = false;
+        this.isSettingRemoteAnswerPending = false;
+        this.politePeer = false;
         this.iceServers = null;
         this.iceTransportPolicy = 'all';
         this.microphoneMuted = false;
