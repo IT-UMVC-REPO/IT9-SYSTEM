@@ -2,15 +2,14 @@
 
 namespace App\Concerns;
 
+use App\Enums\UserRole;
 use App\Models\RiderProfile;
 
 trait HasRiderGuard
 {
     public function mountHasRiderGuard(): void
     {
-        if (! $this->hasApprovedRiderProfile()) {
-            $this->redirectRoute('customer.dashboard', navigate: true);
-        }
+        abort_unless(auth()->user()?->effectiveMarketplaceRole() === UserRole::Rider, 403);
     }
 
     protected function hasApprovedRiderProfile(): bool

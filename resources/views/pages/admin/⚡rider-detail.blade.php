@@ -129,6 +129,27 @@ new #[Title('Rider review')] class extends Component
                     <p class="mt-2 text-sm text-neutral-500 dark:text-zinc-400">{{ $riderProfile->user->address ?: __('No address on profile') }}</p>
                 </div>
             </section>
+
+            <section class="grid gap-6 lg:grid-cols-4">
+                @foreach ([
+                    ['label' => __('Rating'), 'value' => $riderProfile->formattedRating().' ★'],
+                    ['label' => __('Total earnings'), 'value' => $riderProfile->formattedEarnings()],
+                    ['label' => __('Acceptance rate'), 'value' => number_format((float) $riderProfile->acceptance_rate, 2).'%'],
+                    ['label' => __('Avg delivery'), 'value' => $riderProfile->average_delivery_minutes ? __(':minutes min', ['minutes' => $riderProfile->average_delivery_minutes]) : __('Not enough data')],
+                ] as $stat)
+                    <article class="brand-panel-muted p-5">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ $stat['label'] }}</p>
+                        <p class="mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $stat['value'] }}</p>
+                    </article>
+                @endforeach
+            </section>
+
+            @if ($riderProfile->bio)
+                <section class="brand-panel-muted p-6">
+                    <p class="brand-kicker !mb-0">{{ __('Bio') }}</p>
+                    <p class="mt-3 text-sm leading-7 text-neutral-600 dark:text-zinc-300">{{ $riderProfile->bio }}</p>
+                </section>
+            @endif
         </div>
 
         <aside class="brand-panel h-fit p-6 xl:sticky xl:top-24">

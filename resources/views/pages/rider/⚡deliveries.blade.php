@@ -79,7 +79,7 @@ new #[Title('Rider Deliveries')] class extends Component
                 <i class="fa-solid fa-box-open text-xl"></i>
             </span>
             <h2 class="brand-serif mt-5 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('No active deliveries') }}</h2>
-            <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ __('Claim ready orders from the rider dashboard when you are available.') }}</p>
+            <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">{{ __('Accepted delivery offers will appear here when you are assigned to an order.') }}</p>
         </div>
     @endif
 </section>

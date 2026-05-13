@@ -73,6 +73,7 @@
                         $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
                         $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
                         $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
+                        $navItem('Performance', 'rider.performance', ['rider.performance'], 'fa-solid fa-chart-line'),
                     ],
                     [
                         $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
@@ -141,6 +142,7 @@
                     $navItem('Deliveries', 'rider.deliveries', ['rider.deliveries', 'rider.deliveries.*'], 'fa-solid fa-box'),
                     $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
                     $navItem('History', 'rider.history', ['rider.history'], 'fa-solid fa-clock-rotate-left'),
+                    $navItem('Performance', 'rider.performance', ['rider.performance'], 'fa-solid fa-chart-line'),
                 ],
             };
         }

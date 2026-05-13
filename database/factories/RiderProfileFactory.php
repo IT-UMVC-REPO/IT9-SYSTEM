@@ -21,13 +21,23 @@ class RiderProfileFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'vehicle_type' => fake()->randomElement(['motorcycle', 'bicycle', 'e-bike']),
+            'vehicle_type' => fake()->randomElement(['motorcycle', 'bicycle', 'e-bike', 'e-scooter', 'tricycle', 'car', 'van']),
             'plate_number' => fake()->optional()->bothify('???-####'),
             'contact_number' => fake()->phoneNumber(),
+            'bio' => fake()->optional()->sentence(8),
             'status' => 'pending',
             'is_available' => false,
             'current_lat' => null,
             'current_lng' => null,
+            'rating' => 0,
+            'total_ratings' => 0,
+            'total_earnings' => 0,
+            'average_delivery_minutes' => null,
+            'acceptance_rate' => 0,
+            'total_offers_received' => 0,
+            'total_offers_accepted' => 0,
+            'session_started_at' => null,
+            'last_seen_at' => null,
             'approved_at' => null,
         ];
     }

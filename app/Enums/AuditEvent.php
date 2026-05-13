@@ -23,6 +23,15 @@ enum AuditEvent: string
     case RiderApplicationSubmitted = 'rider.application_submitted';
     case RiderApproved = 'rider.approved';
     case RiderDeactivated = 'rider.deactivated';
+    case RiderOfferSent = 'rider.offer_sent';
+    case RiderOfferAccepted = 'rider.offer_accepted';
+    case RiderOfferDeclined = 'rider.offer_declined';
+    case RiderOfferExpired = 'rider.offer_expired';
+    case ProofOfDeliveryUploaded = 'rider.proof_of_delivery_uploaded';
+    case RiderRated = 'rider.rated';
+    case RiderSessionStarted = 'rider.session_started';
+    case RiderSessionEnded = 'rider.session_ended';
+    case RiderEarningRecorded = 'rider.earning_recorded';
     case ProductCreated = 'product.created';
     case ProductUpdated = 'product.updated';
     case ProductDeleted = 'product.deleted';
@@ -75,6 +84,15 @@ enum AuditEvent: string
             self::RiderApplicationSubmitted => 'Rider application submitted',
             self::RiderApproved => 'Rider approved',
             self::RiderDeactivated => 'Rider deactivated',
+            self::RiderOfferSent => 'Rider offer sent',
+            self::RiderOfferAccepted => 'Rider offer accepted',
+            self::RiderOfferDeclined => 'Rider offer declined',
+            self::RiderOfferExpired => 'Rider offer expired',
+            self::ProofOfDeliveryUploaded => 'Proof of delivery uploaded',
+            self::RiderRated => 'Rider rated',
+            self::RiderSessionStarted => 'Rider session started',
+            self::RiderSessionEnded => 'Rider session ended',
+            self::RiderEarningRecorded => 'Rider earning recorded',
             self::ProductCreated => 'Product created',
             self::ProductUpdated => 'Product updated',
             self::ProductDeleted => 'Product deleted',
@@ -119,7 +137,11 @@ enum AuditEvent: string
             self::VendorApproved, self::VendorRejected,
             self::VendorStoreUpdated => 'fa-solid fa-store',
             self::RiderApplicationSubmitted, self::RiderApproved,
-            self::RiderDeactivated => 'fa-solid fa-motorcycle',
+            self::RiderDeactivated, self::RiderOfferSent,
+            self::RiderOfferAccepted, self::RiderOfferDeclined,
+            self::RiderOfferExpired, self::ProofOfDeliveryUploaded,
+            self::RiderRated, self::RiderSessionStarted,
+            self::RiderSessionEnded, self::RiderEarningRecorded => 'fa-solid fa-motorcycle',
             self::ProductCreated, self::ProductUpdated,
             self::ProductDeleted, self::ProductActivated,
             self::ProductSoldOut, self::ProductRestocked => 'fa-solid fa-tag',
@@ -145,6 +167,11 @@ enum AuditEvent: string
                 self::UserEmailVerified,
                 self::VendorApproved,
                 self::RiderApproved,
+                self::RiderOfferAccepted,
+                self::ProofOfDeliveryUploaded,
+                self::RiderRated,
+                self::RiderSessionStarted,
+                self::RiderEarningRecorded,
                 self::ProductCreated,
                 self::ProductActivated,
                 self::ProductRestocked,
@@ -166,6 +193,9 @@ enum AuditEvent: string
                 self::VendorRejected,
                 self::UserDeactivated,
                 self::RiderDeactivated,
+                self::RiderOfferDeclined,
+                self::RiderOfferExpired,
+                self::RiderSessionEnded,
                 self::OrderCancelled,
                 self::ProductDeleted,
                 self::ReportSubmitted,
@@ -179,6 +209,7 @@ enum AuditEvent: string
                 self::ProductSoldOut,
                 self::VendorApplicationSubmitted,
                 self::RiderApplicationSubmitted,
+                self::RiderOfferSent,
                 self::UserProfileUpdated,
             ], true) => 'amber',
             default => 'neutral',

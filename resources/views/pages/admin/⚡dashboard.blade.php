@@ -203,9 +203,9 @@
         <article class="brand-panel suki-reveal p-6" style="transition-delay: 200ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Pending approvals') }}</p>
-                    <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Newest vendor applications') }}</h2>
-                </div>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Pending approvals') }}</p>
+                <h2 class="brand-serif mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Newest applications') }}</h2>
+            </div>
 
                 <a href="{{ route('admin.vendors') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
                     {{ __('View all') }}
@@ -230,6 +230,33 @@
                         {{ __('No pending vendor applications right now.') }}
                     </div>
                 @endforelse
+            </div>
+
+            <div class="mt-6 border-t border-stone-200 pt-5 dark:border-white/10">
+                <div class="mb-3 flex items-center justify-between gap-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Riders') }}</p>
+                    <a href="{{ route('admin.riders') }}" wire:navigate class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ __('View all') }}</a>
+                </div>
+
+                <div class="space-y-3">
+                    @forelse ($this->pendingRiderApprovals as $riderProfile)
+                        <article class="brand-panel-muted flex items-center justify-between gap-4 p-4">
+                            <div class="min-w-0">
+                                <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $riderProfile->user->name }}</p>
+                                <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ ucfirst($riderProfile->vehicle_type) }}</p>
+                                <p class="mt-2 text-xs uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ $riderProfile->created_at->diffForHumans() }}</p>
+                            </div>
+
+                            <a href="{{ route('admin.riders.show', $riderProfile) }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
+                                {{ __('Review') }}
+                            </a>
+                        </article>
+                    @empty
+                        <div class="rounded-[1.5rem] border border-dashed border-stone-200 p-8 text-center text-sm text-neutral-500 dark:border-white/10 dark:text-zinc-400">
+                            {{ __('No pending rider applications right now.') }}
+                        </div>
+                    @endforelse
+                </div>
             </div>
         </article>
 

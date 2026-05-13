@@ -25,8 +25,14 @@ class RiderLocationController extends Controller
             $profile->update([
                 'current_lat' => $validated['lat'],
                 'current_lng' => $validated['lng'],
+                'last_seen_at' => now(),
             ]);
         }
+
+        $user?->forceFill([
+            'lat' => $validated['lat'],
+            'lng' => $validated['lng'],
+        ])->save();
 
         if (isset($validated['order_id'])) {
             $updated = Order::query()

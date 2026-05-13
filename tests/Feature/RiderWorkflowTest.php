@@ -6,13 +6,18 @@ use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Events\NotificationCreated;
 use App\Events\RiderLocationUpdated;
+use App\Events\RiderOfferCreated;
+use App\Jobs\ExpireRiderOfferJob;
+use App\Jobs\RecordRiderEarningJob;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\RiderDeliveryOffer;
 use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
+use App\Services\RiderDispatchService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -96,23 +101,30 @@ test('customer can apply for rider access and admin can approve the profile', fu
         ->and($profile->approved_at)->not->toBeNull();
 });
 
-test('rider can claim a ready order and complete the delivery flow', function () {
-    Queue::fake([SendOrderNotificationJob::class]);
+test('rider can accept a dispatched ready order and complete the delivery flow', function () {
+    Event::fake([NotificationCreated::class, RiderOfferCreated::class]);
+    Queue::fake([ExpireRiderOfferJob::class, RecordRiderEarningJob::class, SendOrderNotificationJob::class]);
 
     $rider = User::factory()->rider()->create();
     RiderProfile::factory()->for($rider, 'user')->approved()->create();
     $order = createReadyRiderOrder();
 
-    $component = Livewire::actingAs($rider)
-        ->test('pages::rider.dashboard');
+    expect((new RiderDispatchService)->dispatchOrder($order))->toBeTrue();
 
-    $component->call('claimOrder', $order->getKey());
+    $offer = RiderDeliveryOffer::query()->whereBelongsTo($order)->firstOrFail();
+
+    $this->actingAs($rider)
+        ->postJson(route('rider.offers.accept', $offer))
+        ->assertOk();
 
     $order->refresh();
 
     expect($order->rider_id)->toBe($rider->getKey())
         ->and($order->order_status)->toBe(OrderStatus::PickedUp)
         ->and($order->picked_up_at)->not->toBeNull();
+
+    $component = Livewire::actingAs($rider)
+        ->test('pages::rider.dashboard');
 
     $component->call('markOutForDelivery', $order->getKey());
 
@@ -131,6 +143,7 @@ test('rider can claim a ready order and complete the delivery flow', function ()
         ->and($order->payment?->paid_at)->not->toBeNull();
 
     Queue::assertPushed(SendOrderNotificationJob::class, 3);
+    Queue::assertPushed(RecordRiderEarningJob::class);
 });
 
 test('rider dashboard excludes and rejects self pickup orders', function () {
@@ -145,10 +158,7 @@ test('rider dashboard excludes and rejects self pickup orders', function () {
         ->assertDontSee('Nanay Cora Greens')
         ->assertDontSee('Claim delivery');
 
-    Livewire::actingAs($rider)
-        ->test('pages::rider.dashboard')
-        ->call('claimOrder', $order->getKey())
-        ->assertForbidden();
+    expect((new RiderDispatchService)->dispatchOrder($order))->toBeFalse();
 
     expect($order->fresh()->rider_id)->toBeNull()
         ->and($order->fresh()->order_status)->toBe(OrderStatus::Ready);
@@ -241,6 +251,8 @@ test('rider location endpoint updates the rider profile and assigned active orde
 
     expect($profile->current_lat)->toBe(7.4512345)
         ->and($profile->current_lng)->toBe(125.8123456)
+        ->and((float) $rider->fresh()->lat)->toBe(7.451235)
+        ->and((float) $rider->fresh()->lng)->toBe(125.812346)
         ->and((float) $order->rider_lat)->toBe(7.4512345)
         ->and((float) $order->rider_lng)->toBe(125.8123456);
 

@@ -437,6 +437,10 @@ new #[Title('Order Detail')] class extends Component {
                 </section>
             @endif
 
+            @if ($this->order->rider_id !== null && $this->order->order_status === OrderStatus::Delivered)
+                <livewire:rider.rate-rider :order-id="$this->order->id" />
+            @endif
+
             @if ($this->suggestedProducts->isNotEmpty())
                 <section class="space-y-5">
                     <div class="flex items-center justify-between gap-3 pt-4">

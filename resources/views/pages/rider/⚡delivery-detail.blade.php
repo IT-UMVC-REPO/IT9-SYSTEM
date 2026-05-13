@@ -5,44 +5,59 @@ use App\Enums\AuditEvent;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Jobs\RecordRiderEarningJob;
 use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
+use App\Models\RiderEarning;
 use App\Services\AuditLogger;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('Delivery Detail')] class extends Component
 {
     use HasRiderGuard;
+    use WithFileUploads;
 
     public int $orderId;
+
+    public string $delivered_note = '';
+
+    public $proofUpload = null;
 
     public function mount(string $orderReference): void
     {
         $order = Order::query()
-            ->select('id', 'rider_id')
+            ->select('id', 'rider_id', 'delivered_note')
             ->where('rider_id', auth()->id())
             ->findOrFail((int) $orderReference);
 
         $this->orderId = $order->getKey();
+        $this->delivered_note = $order->delivered_note ?? '';
     }
 
     public function markOutForDelivery(): void
     {
-        $order = Order::query()
-            ->where('rider_id', auth()->id())
-            ->where('order_status', OrderStatus::PickedUp)
-            ->findOrFail($this->orderId);
+        $order = DB::transaction(function (): Order {
+            $order = Order::query()
+                ->where('rider_id', auth()->id())
+                ->where('order_status', OrderStatus::PickedUp)
+                ->lockForUpdate()
+                ->findOrFail($this->orderId);
 
-        $order->forceFill([
-            'order_status' => OrderStatus::OutForDelivery,
-            'out_for_delivery_at' => now(),
-        ])->save();
+            $order->forceFill([
+                'order_status' => OrderStatus::OutForDelivery,
+                'out_for_delivery_at' => now(),
+            ])->save();
 
-        AuditLogger::log(AuditEvent::OrderOutForDelivery, "Order #{$order->id} is out for delivery.", $order);
+            AuditLogger::log(AuditEvent::OrderOutForDelivery, "Order #{$order->id} is out for delivery.", $order);
+
+            return $order;
+        });
 
         SendOrderNotificationJob::dispatch(
             orderId: $order->getKey(),
@@ -53,9 +68,46 @@ new #[Title('Delivery Detail')] class extends Component
             broadcastOrderStatus: true,
         );
 
+        RecordRiderEarningJob::dispatch($order->getKey());
+
         unset($this->order);
 
         Flux::toast(variant: 'success', text: __('Marked as out for delivery.'));
+    }
+
+    public function saveProofOfDelivery(): void
+    {
+        $validated = $this->validate([
+            'proofUpload' => ['nullable', 'image', 'max:5120'],
+            'delivered_note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $order = Order::query()
+            ->where('rider_id', auth()->id())
+            ->whereIn('order_status', [OrderStatus::OutForDelivery, OrderStatus::Delivered])
+            ->findOrFail($this->orderId);
+
+        $path = $order->proof_of_delivery_path;
+
+        if ($this->proofUpload !== null) {
+            if ($path && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            $path = $this->proofUpload->store('proof-of-delivery', 'public');
+            $this->proofUpload = null;
+        }
+
+        $order->forceFill([
+            'proof_of_delivery_path' => $path,
+            'delivered_note' => blank($validated['delivered_note'] ?? null) ? null : $validated['delivered_note'],
+        ])->save();
+
+        AuditLogger::log(AuditEvent::ProofOfDeliveryUploaded, "Proof of delivery updated for order #{$order->id}.", $order);
+
+        unset($this->order);
+
+        Flux::toast(variant: 'success', text: __('Proof of delivery saved.'));
     }
 
     public function markDelivered(): void
@@ -95,8 +147,6 @@ new #[Title('Delivery Detail')] class extends Component
         unset($this->order);
 
         Flux::toast(variant: 'success', text: __('Order marked as delivered!'));
-
-        $this->redirectRoute('rider.history', navigate: true);
     }
 
     #[Computed]
@@ -109,8 +159,20 @@ new #[Title('Delivery Detail')] class extends Component
                 'vendor:id,user_id,store_name,vendor_address,lat,lng',
                 'orderItems.product.category',
                 'payment',
+                'riderRating',
+                'riderEarning',
             ])
             ->findOrFail($this->orderId);
+    }
+
+    public function proofUrl(?string $path): ?string
+    {
+        return $path === null ? null : Storage::disk('public')->url($path);
+    }
+
+    public function peso(float|int $value): string
+    {
+        return sprintf("\u{20B1}%s", number_format((float) $value, 2));
     }
 }; ?>
 
@@ -134,7 +196,7 @@ new #[Title('Delivery Detail')] class extends Component
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
                             ...(window.Echo?.socketId?.() ? { 'X-Socket-ID': window.Echo.socketId() } : {}),
                         },
                         body: JSON.stringify(payload),
@@ -166,7 +228,14 @@ new #[Title('Delivery Detail')] class extends Component
                     {{ __('Order #:number', ['number' => str_pad((string) $this->order->id, 6, '0', STR_PAD_LEFT)]) }}
                 </h1>
             </div>
-            <x-order-status-badge :status="$this->order->order_status" />
+            <div class="flex flex-wrap items-center gap-3">
+                @if ($this->order->riderRating)
+                    <span class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+                        {{ __('Customer rated: ★ :rating', ['rating' => number_format((float) $this->order->riderRating->rating, 1)]) }}
+                    </span>
+                @endif
+                <x-order-status-badge :status="$this->order->order_status" />
+            </div>
         </div>
     </div>
 
@@ -218,6 +287,42 @@ new #[Title('Delivery Detail')] class extends Component
                     @endforeach
                 </div>
             </section>
+
+            @if (in_array($this->order->order_status, [OrderStatus::OutForDelivery, OrderStatus::Delivered], true))
+                <section class="brand-panel p-6 sm:p-8">
+                    <div class="flex flex-col gap-2">
+                        <p class="brand-kicker !mb-0">{{ __('Proof of delivery') }}</p>
+                        <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Delivery handoff') }}</h2>
+                    </div>
+
+                    <form wire:submit="saveProofOfDelivery" class="mt-6 grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+                        <div class="overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
+                            @if ($proofUpload)
+                                <img src="{{ $proofUpload->temporaryUrl() }}" alt="{{ __('Proof preview') }}" class="h-48 w-full object-cover">
+                            @elseif ($this->proofUrl($this->order->proof_of_delivery_path))
+                                <img src="{{ $this->proofUrl($this->order->proof_of_delivery_path) }}" alt="{{ __('Saved proof of delivery') }}" class="h-48 w-full object-cover">
+                            @else
+                                <div class="flex h-48 items-center justify-center text-neutral-400 dark:text-zinc-500">
+                                    <i class="fa-solid fa-image text-2xl"></i>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="space-y-5">
+                            <flux:input type="file" wire:model="proofUpload" :label="__('Proof image')" accept="image/*" />
+                            <flux:error name="proofUpload" />
+
+                            <flux:textarea wire:model="delivered_note" :label="__('Delivery note')" :placeholder="__('Optional note for this handoff')" maxlength="200" />
+                            <flux:error name="delivered_note" />
+
+                            <button type="submit" wire:loading.attr="disabled" wire:target="saveProofOfDelivery,proofUpload" class="brand-button-primary transition-all duration-150 active:scale-[0.96]">
+                                <span wire:loading.remove wire:target="saveProofOfDelivery">{{ __('Save proof') }}</span>
+                                <span wire:loading wire:target="saveProofOfDelivery">{{ __('Saving...') }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            @endif
         </div>
 
         <aside class="space-y-6 xl:sticky xl:top-24 xl:self-start">
@@ -255,6 +360,16 @@ new #[Title('Delivery Detail')] class extends Component
                     </div>
                 </div>
             </section>
+
+            @if ($this->order->riderEarning)
+                <section class="brand-panel p-6">
+                    <p class="brand-kicker !mb-0">{{ __('Earning recorded') }}</p>
+                    <div class="mt-4 inline-flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span class="font-semibold">{{ __('You earned :amount for this delivery', ['amount' => $this->peso((float) $this->order->riderEarning->amount)]) }}</span>
+                    </div>
+                </section>
+            @endif
         </aside>
     </div>
 </section>

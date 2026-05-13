@@ -202,6 +202,7 @@ new #[Title('Rider approvals')] class extends Component
                     <flux:table.columns>
                         <flux:table.column>{{ __('Rider') }}</flux:table.column>
                         <flux:table.column>{{ __('Vehicle') }}</flux:table.column>
+                        <flux:table.column>{{ __('Performance') }}</flux:table.column>
                         <flux:table.column>{{ __('Contact') }}</flux:table.column>
                         <flux:table.column>{{ __('Status') }}</flux:table.column>
                         <flux:table.column>{{ __('Submitted') }}</flux:table.column>
@@ -218,6 +219,12 @@ new #[Title('Rider approvals')] class extends Component
                                     </div>
                                 </flux:table.cell>
                                 <flux:table.cell>{{ Str::headline($profile->vehicle_type) }}{{ $profile->plate_number ? ' - '.$profile->plate_number : '' }}</flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="text-sm">
+                                        <p class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $profile->formattedRating() }} ★</p>
+                                        <p class="text-neutral-500 dark:text-zinc-400">{{ $profile->formattedEarnings() }} · {{ number_format((float) $profile->acceptance_rate, 2) }}%</p>
+                                    </div>
+                                </flux:table.cell>
                                 <flux:table.cell>{{ $profile->contact_number ?: $profile->user->phone ?: __('Not provided') }}</flux:table.cell>
                                 <flux:table.cell>
                                     <span @class([
@@ -257,6 +264,8 @@ new #[Title('Rider approvals')] class extends Component
 
                         <div class="mt-4 grid gap-2 text-sm text-neutral-500 dark:text-zinc-400">
                             <p>{{ Str::headline($profile->vehicle_type) }}{{ $profile->plate_number ? ' - '.$profile->plate_number : '' }}</p>
+                            <p>{{ __('Rating: :rating ★', ['rating' => $profile->formattedRating()]) }} · {{ __('Earned: :amount', ['amount' => $profile->formattedEarnings()]) }}</p>
+                            <p>{{ __('Acceptance: :rate%', ['rate' => number_format((float) $profile->acceptance_rate, 2)]) }}</p>
                             <p>{{ $profile->contact_number ?: __('No contact provided') }}</p>
                         </div>
 

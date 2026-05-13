@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['customer_id', 'vendor_id', 'rider_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'delivery_lat', 'delivery_lng', 'rider_lat', 'rider_lng', 'notes', 'is_self_pickup', 'estimated_delivery_at', 'delay_note', 'picked_up_at', 'out_for_delivery_at'])]
+#[Fillable(['customer_id', 'vendor_id', 'rider_id', 'total_amount', 'payment_method', 'payment_status', 'order_status', 'delivery_address', 'delivery_lat', 'delivery_lng', 'rider_lat', 'rider_lng', 'notes', 'is_self_pickup', 'estimated_delivery_at', 'delay_note', 'picked_up_at', 'out_for_delivery_at', 'proof_of_delivery_path', 'delivered_note'])]
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
@@ -83,6 +83,21 @@ class Order extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    public function riderOffer(): HasOne
+    {
+        return $this->hasOne(RiderDeliveryOffer::class);
+    }
+
+    public function riderRating(): HasOne
+    {
+        return $this->hasOne(RiderRating::class);
+    }
+
+    public function riderEarning(): HasOne
+    {
+        return $this->hasOne(RiderEarning::class);
     }
 
     public function products(): BelongsToMany

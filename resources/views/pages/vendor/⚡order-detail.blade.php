@@ -10,6 +10,7 @@ use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\AuditLogger;
+use App\Services\RiderDispatchService;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -113,6 +114,10 @@ new #[Title('Vendor Order Detail')] class extends Component
             type: NotificationType::OrderUpdate,
             broadcastOrderStatus: true,
         );
+
+        if ($nextStatus === OrderStatus::Ready && ! $updatedOrder->is_self_pickup) {
+            (new RiderDispatchService)->dispatchOrder($updatedOrder);
+        }
 
         unset($this->order);
 

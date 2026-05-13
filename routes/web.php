@@ -3,7 +3,9 @@
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\RiderEarningsController;
 use App\Http\Controllers\RiderLocationController;
+use App\Http\Controllers\RiderOfferController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -90,10 +92,14 @@ Route::middleware(['auth', 'verified', 'role:rider'])->prefix('rider')->name('ri
     Route::livewire('/deliveries', 'pages::rider.deliveries')->name('deliveries');
     Route::livewire('/deliveries/{orderReference}', 'pages::rider.delivery-detail')->name('deliveries.show');
     Route::livewire('/history', 'pages::rider.history')->name('history');
+    Route::livewire('/performance', 'pages::rider.performance')->name('performance');
 });
 
 Route::middleware(['auth', 'verified', 'role:rider'])->prefix('api/rider')->name('rider.')->group(function (): void {
     Route::post('/location', [RiderLocationController::class, 'update'])->name('location.update');
+    Route::post('/offers/{offer}/accept', [RiderOfferController::class, 'accept'])->name('offers.accept');
+    Route::post('/offers/{offer}/decline', [RiderOfferController::class, 'decline'])->name('offers.decline');
+    Route::get('/earnings/summary', [RiderEarningsController::class, 'summary'])->name('earnings.summary');
 });
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {

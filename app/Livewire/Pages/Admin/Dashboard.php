@@ -12,6 +12,7 @@ use App\Models\Notification;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Carbon\CarbonInterface;
@@ -40,7 +41,10 @@ class Dashboard extends Component
         $totalUsers = User::query()->count();
         $pendingApplications = VendorProfile::query()
             ->where('status', VendorStatus::Pending)
-            ->count();
+            ->count()
+            + RiderProfile::query()
+                ->where('status', 'pending')
+                ->count();
         $ordersToday = Order::query()
             ->whereBetween('created_at', [$todayStart, $todayEnd])
             ->count();
@@ -58,6 +62,14 @@ class Dashboard extends Component
             ->count()
             - VendorProfile::query()
                 ->where('status', VendorStatus::Pending)
+                ->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])
+                ->count()
+            + RiderProfile::query()
+                ->where('status', 'pending')
+                ->whereBetween('created_at', [$todayStart, $todayEnd])
+                ->count()
+            - RiderProfile::query()
+                ->where('status', 'pending')
                 ->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])
                 ->count();
 
@@ -80,7 +92,7 @@ class Dashboard extends Component
             ],
             [
                 'icon' => 'fa-solid fa-store',
-                'label' => __('Pending vendor applications'),
+                'label' => __('Pending applications'),
                 'value' => number_format($pendingApplications),
                 'delta' => $this->signedCount($pendingDelta).' '.__('submissions vs yesterday'),
                 'delta_class' => $this->deltaClass($pendingDelta),
@@ -108,6 +120,17 @@ class Dashboard extends Component
         return VendorProfile::query()
             ->with('user:id,name')
             ->where('status', VendorStatus::Pending)
+            ->latest('created_at')
+            ->take(3)
+            ->get();
+    }
+
+    #[Computed]
+    public function pendingRiderApprovals(): Collection
+    {
+        return RiderProfile::query()
+            ->with('user:id,name')
+            ->where('status', 'pending')
             ->latest('created_at')
             ->take(3)
             ->get();
