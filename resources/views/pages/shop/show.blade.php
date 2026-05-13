@@ -83,7 +83,7 @@
                         <img
                             x-ref="img"
                             x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
-                            src="{{ $product->image }}"
+                            src="{{ $product->image_url }}"
                             alt="{{ $product->name }}"
                             onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
                             class="h-full w-full object-cover transition-opacity duration-500"

@@ -311,6 +311,7 @@ new #[Title('Create product')] class extends Component {
             }
         }"
     >
+        {{-- ─── Sticky header ─────────────────────────────────────────────── --}}
         <div
             x-data="{ scrolled: false }"
             x-on:scroll.window.passive="scrolled = window.scrollY > 16"
@@ -341,10 +342,16 @@ new #[Title('Create product')] class extends Component {
             </div>
         </div>
 
-        <div class="grid gap-8 p-5 sm:p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:p-8">
-            <section class="space-y-4 self-start">
+        {{-- ─── 3-column layout ────────────────────────────────────────────── --}}
+        {{-- Col 1: Photo + Publishing  |  Col 2: Basics + Category  |  Col 3: Pricing + Units --}}
+        <div class="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)_minmax(0,6fr)] lg:items-start lg:gap-8 lg:p-8">
+
+            {{-- ── COLUMN 1 · Photo & Publishing ──────────────────────────── --}}
+            <div class="space-y-6">
+
+                {{-- Photo upload --}}
                 <div
-                    class="relative flex min-h-[320px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition-all duration-250 hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900 lg:min-h-[320px]"
+                    class="relative flex min-h-[300px] overflow-hidden rounded-[1.75rem] border-2 border-dashed border-stone-300 bg-stone-50 transition-all duration-250 hover:bg-stone-100 dark:border-zinc-600 dark:bg-zinc-900/70 dark:hover:bg-zinc-900"
                     x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[var(--brand-50)] dark:bg-[var(--brand-500)]/10' : ''"
                     x-on:dragover.prevent="dragOver = true"
                     x-on:dragleave.prevent="dragOver = false"
@@ -388,8 +395,8 @@ new #[Title('Create product')] class extends Component {
                             </span>
                             <span class="space-y-2">
                                 <span class="block text-lg font-bold text-neutral-900 dark:text-zinc-100">{{ __('Add a product photo') }}</span>
-                                <span class="block max-w-sm text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                                    {{ __('Use a clean, well-lit photo of the actual item customers will receive. Square photos work best.') }}
+                                <span class="block max-w-[220px] text-sm leading-6 text-neutral-500 dark:text-zinc-400">
+                                    {{ __('Square, well-lit photo works best.') }}
                                 </span>
                             </span>
                         </label>
@@ -428,12 +435,80 @@ new #[Title('Create product')] class extends Component {
                         <li>{{ __('Avoid watermarks.') }}</li>
                     </ul>
                 </details>
-            </section>
 
-            <section class="space-y-8">
+                {{-- Publishing — lives with the photo since both are about presentation --}}
+                <div class="space-y-4 rounded-2xl border border-stone-200 bg-stone-50/60 p-4 dark:border-white/10 dark:bg-zinc-900/60">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-eye text-[var(--brand-600)]"></i>
+                        <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Publishing') }}</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            wire:click="$set('status', '{{ ProductStatus::Inactive->value }}')"
+                            @class([
+                                'relative rounded-2xl bg-stone-100 p-4 text-left transition-all duration-200 active:scale-[0.97] dark:bg-zinc-900',
+                                'border-2 border-[var(--brand-500)]' => $status === ProductStatus::Inactive->value,
+                                'border border-stone-200 dark:border-white/10' => $status !== ProductStatus::Inactive->value,
+                            ])
+                        >
+                            @if ($status === ProductStatus::Inactive->value)
+                                <span class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-600)] text-white">
+                                    <i class="fa-solid fa-check text-[9px]"></i>
+                                </span>
+                            @endif
+                            <i class="fa-solid fa-lock text-neutral-500 dark:text-zinc-400"></i>
+                            <p class="mt-2 text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Draft') }}</p>
+                            <p class="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-zinc-400">{{ __('Hidden from storefront.') }}</p>
+                        </button>
+
+                        <button
+                            type="button"
+                            wire:click="$set('status', '{{ ProductStatus::Active->value }}')"
+                            @class([
+                                'relative rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97]',
+                                'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
+                                'border border-stone-200 bg-[var(--brand-50)] text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]' => $status !== ProductStatus::Active->value,
+                            ])
+                        >
+                            @if ($status === ProductStatus::Active->value)
+                                <span class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
+                                    <i class="fa-solid fa-check text-[9px]"></i>
+                                </span>
+                            @endif
+                            <i class="fa-solid fa-globe"></i>
+                            <p class="mt-2 text-sm font-bold">{{ __('Active') }}</p>
+                            <p class="mt-0.5 text-xs leading-5 opacity-80">{{ __('Visible on storefront.') }}</p>
+                        </button>
+                    </div>
+
+                    @if ($status === ProductStatus::Active->value && (int) $stock_quantity === 0)
+                        <flux:callout icon="exclamation-triangle" variant="warning">
+                            <flux:callout.text>{{ __('Active but 0 stock — will appear as sold out.') }}</flux:callout.text>
+                        </flux:callout>
+                    @endif
+                </div>
+
+                {{-- Save button — bottom of col 1 on desktop --}}
+                <flux:button
+                    variant="primary"
+                    type="submit"
+                    wire:loading.attr="disabled"
+                    wire:target="save,productImageUpload"
+                    class="hidden w-full justify-center py-3.5 text-base transition-all duration-150 active:scale-[0.97] lg:flex"
+                >
+                    <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
+                    <span wire:loading wire:target="save">{{ __('Saving product…') }}</span>
+                </flux:button>
+            </div>
+
+            {{-- ── COLUMN 2 · Listing basics + Category ───────────────────── --}}
+            <div class="space-y-8">
                 @php($selectedUnit = $this->selectedUnit)
 
-                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
+                {{-- Listing basics --}}
+                <section class="space-y-5">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-tag text-[var(--brand-600)]"></i>
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Listing basics') }}</h2>
@@ -461,7 +536,7 @@ new #[Title('Create product')] class extends Component {
                         </div>
                         <flux:textarea
                             wire:model.live.debounce.250ms="description"
-                            rows="4"
+                            rows="6"
                             maxlength="1000"
                             :placeholder="__('Describe freshness, sourcing, how it is prepared, and anything local buyers should know before ordering.')"
                             required
@@ -470,60 +545,8 @@ new #[Title('Create product')] class extends Component {
                     </flux:field>
                 </section>
 
-                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-peso-sign text-[var(--brand-600)]"></i>
-                        <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Pricing & stock') }}</h2>
-                    </div>
-
-                    <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
-                        <flux:field>
-                            <flux:label>{{ __('Price') }}</flux:label>
-                            <flux:input.group>
-                                <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
-                                <flux:input
-                                    wire:model.live.debounce.250ms="price"
-                                    type="number"
-                                    inputmode="decimal"
-                                    step="0.01"
-                                    min="0.01"
-                                    class:input="h-11"
-                                    required
-                                />
-                            </flux:input.group>
-                            <flux:error name="price" />
-                            @if ($this->pricePreview)
-                                <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->pricePreview }}</p>
-                            @endif
-                        </flux:field>
-
-                        <flux:field>
-                            <flux:label>{{ __('Stock quantity') }}</flux:label>
-                            <flux:input.group>
-                                <flux:input
-                                    wire:model.live.debounce.250ms="stock_quantity"
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    class:input="h-11"
-                                    required
-                                />
-                                @if ($selectedUnit)
-                                    <flux:input.group.suffix>
-                                        {{ $selectedUnit->abbreviation() }}
-                                    </flux:input.group.suffix>
-                                @endif
-                            </flux:input.group>
-                            <flux:error name="stock_quantity" />
-                        </flux:field>
-                    </div>
-
-                    <flux:callout icon="information-circle" variant="secondary">
-                        <flux:callout.text>{{ __('Set the price per single unit. Customers choose how many units to add to cart.') }}</flux:callout.text>
-                    </flux:callout>
-                </section>
-
-                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
+                {{-- Category --}}
+                <section class="space-y-5 border-t border-stone-200 pt-8 dark:border-white/10">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-layer-group text-[var(--brand-600)]"></i>
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Category') }}</h2>
@@ -546,15 +569,86 @@ new #[Title('Create product')] class extends Component {
                     @endif
                 </section>
 
-                <section class="space-y-4 border-b border-stone-200 pb-8 dark:border-white/10" wire:key="unit-selector-{{ $categoryId }}">
+                {{-- Mobile-only save button --}}
+                <div class="border-t border-stone-200 pt-6 dark:border-white/10 lg:hidden">
+                    <flux:button
+                        variant="primary"
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="save,productImageUpload"
+                        class="w-full justify-center py-4 text-base transition-all duration-150 active:scale-[0.97]"
+                    >
+                        <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
+                        <span wire:loading wire:target="save">{{ __('Saving product…') }}</span>
+                    </flux:button>
+                </div>
+            </div>
+
+            {{-- ── COLUMN 3 · Pricing, Stock, Unit, Conversion ────────────── --}}
+            <div class="space-y-8">
+
+                {{-- Pricing & Stock --}}
+                <section class="space-y-5">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-peso-sign text-[var(--brand-600)]"></i>
+                        <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Pricing & stock') }}</h2>
+                    </div>
+
+                    <flux:field>
+                        <flux:label>{{ __('Price') }}</flux:label>
+                        <flux:input.group>
+                            <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
+                            <flux:input
+                                wire:model.live.debounce.250ms="price"
+                                type="number"
+                                inputmode="decimal"
+                                step="0.01"
+                                min="0.01"
+                                class:input="h-11"
+                                required
+                            />
+                        </flux:input.group>
+                        <flux:error name="price" />
+                        @if ($this->pricePreview)
+                            <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->pricePreview }}</p>
+                        @endif
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Stock quantity') }}</flux:label>
+                        <flux:input.group>
+                            <flux:input
+                                wire:model.live.debounce.250ms="stock_quantity"
+                                type="number"
+                                min="0"
+                                step="1"
+                                class:input="h-11"
+                                required
+                            />
+                            @if ($selectedUnit)
+                                <flux:input.group.suffix>
+                                    {{ $selectedUnit->abbreviation() }}
+                                </flux:input.group.suffix>
+                            @endif
+                        </flux:input.group>
+                        <flux:error name="stock_quantity" />
+                    </flux:field>
+
+                    <flux:callout icon="information-circle" variant="secondary">
+                        <flux:callout.text>{{ __('Set the price per single unit. Customers choose how many units to add to cart.') }}</flux:callout.text>
+                    </flux:callout>
+                </section>
+
+                {{-- Selling unit --}}
+                <section class="space-y-4 border-t border-stone-200 pt-8 dark:border-white/10" wire:key="unit-selector-{{ $categoryId }}">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-ruler text-[var(--brand-600)]"></i>
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Selling unit') }}</h2>
                     </div>
 
                     <div class="space-y-3">
-                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ __('Suggested units') }}</p>
-                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-neutral-400 dark:text-zinc-500">{{ __('Suggested') }}</p>
+                        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
                             @foreach ($this->suggestedUnitOptions as $unitOption)
                                 <button
                                     type="button"
@@ -566,7 +660,7 @@ new #[Title('Create product')] class extends Component {
                                     ])
                                 >
                                     <span class="block text-sm font-bold">{{ __($unitOption->label()) }}</span>
-                                    <span class="mt-1 block text-xs opacity-75">{{ $unitOption->abbreviation() }}</span>
+                                    <span class="mt-0.5 block text-xs opacity-75">{{ $unitOption->abbreviation() }}</span>
                                     @if ($unit === $unitOption->value)
                                         <i class="fa-solid fa-check absolute right-3 top-3 text-xs"></i>
                                     @endif
@@ -575,11 +669,11 @@ new #[Title('Create product')] class extends Component {
                         </div>
                     </div>
 
-                    <details class="mt-2 rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-900">
+                    <details class="rounded-2xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-900">
                         <summary class="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-zinc-100">
                             {{ __('Show all units') }}
                         </summary>
-                        <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
                             @foreach ($this->otherUnitOptions as $unitOption)
                                 <button
                                     type="button"
@@ -605,13 +699,14 @@ new #[Title('Create product')] class extends Component {
                     @enderror
 
                     @if ($this->unitFormulaPreview)
-                        <p class="mt-3 rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-3 text-sm font-semibold text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]">
+                        <p class="rounded-2xl border border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-3 text-sm font-semibold text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]">
                             {{ $this->unitFormulaPreview }}
                         </p>
                     @endif
                 </section>
 
-                <section class="space-y-4 border-b border-stone-200 pb-8 dark:border-white/10">
+                {{-- Unit conversion --}}
+                <section class="space-y-4 border-t border-stone-200 pt-8 dark:border-white/10">
                     <label class="brand-soft-surface flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-stone-300 p-4 dark:border-zinc-600">
                         <span class="flex min-w-0 items-start gap-3">
                             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--brand-600)] shadow-sm dark:bg-zinc-900">
@@ -646,7 +741,7 @@ new #[Title('Create product')] class extends Component {
                                 <flux:callout.text>{{ __("Conversion is not needed - you're already selling by a base unit.") }}</flux:callout.text>
                             </flux:callout>
                         @else
-                            <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="space-y-4">
                                 <flux:field>
                                     <flux:label>{{ __('Base unit') }}</flux:label>
                                     <div class="flex flex-wrap gap-2">
@@ -713,17 +808,17 @@ new #[Title('Create product')] class extends Component {
                                                 {{ __('Value is too large - please enter a realistic quantity.') }}
                                             </p>
                                         @else
-                                        <p class="text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->unitConversionPreview }}</p>
-                                        @if ($this->pricePerBaseUnit)
-                                            <p class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">
-                                                {{ $this->pricePreview }} <span class="mx-2">→</span> {{ $this->pricePerBaseUnit }}
-                                            </p>
-                                        @endif
-                                        @if ($this->customerConversionSummary)
-                                            <p class="text-sm text-neutral-500 dark:text-zinc-400">
-                                                {{ __('Customers will see: ":summary"', ['summary' => $this->customerConversionSummary]) }}
-                                            </p>
-                                        @endif
+                                            <p class="text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->unitConversionPreview }}</p>
+                                            @if ($this->pricePerBaseUnit)
+                                                <p class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">
+                                                    {{ $this->pricePreview }} <span class="mx-2">→</span> {{ $this->pricePerBaseUnit }}
+                                                </p>
+                                            @endif
+                                            @if ($this->customerConversionSummary)
+                                                <p class="text-sm text-neutral-500 dark:text-zinc-400">
+                                                    {{ __('Customers will see: ":summary"', ['summary' => $this->customerConversionSummary]) }}
+                                                </p>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -732,74 +827,7 @@ new #[Title('Create product')] class extends Component {
                     </div>
                 </section>
 
-                <section class="space-y-5">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-eye text-[var(--brand-600)]"></i>
-                        <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Publishing') }}</h2>
-                    </div>
-
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <button
-                            type="button"
-                            wire:click="$set('status', '{{ ProductStatus::Inactive->value }}')"
-                            @class([
-                                'relative rounded-2xl bg-stone-100 p-4 text-left transition-all duration-200 active:scale-[0.97] dark:bg-zinc-900',
-                                'border-2 border-[var(--brand-500)]' => $status === ProductStatus::Inactive->value,
-                                'border' => $status !== ProductStatus::Inactive->value,
-                                'border-stone-200 dark:border-white/10' => $status !== ProductStatus::Inactive->value,
-                            ])
-                        >
-                            @if ($status === ProductStatus::Inactive->value)
-                                <span class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand-600)] text-white">
-                                    <i class="fa-solid fa-check text-[10px]"></i>
-                                </span>
-                            @endif
-                            <i class="fa-solid fa-lock text-neutral-500 dark:text-zinc-400"></i>
-                            <p class="mt-3 text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Draft') }}</p>
-                            <p class="mt-1 text-xs leading-5 text-neutral-500 dark:text-zinc-400">{{ __('Hidden from storefront. Only you can see it.') }}</p>
-                        </button>
-
-                        <button
-                            type="button"
-                            wire:click="$set('status', '{{ ProductStatus::Active->value }}')"
-                            @class([
-                                'relative rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97]',
-                                'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $status === ProductStatus::Active->value,
-                                'border' => $status !== ProductStatus::Active->value,
-                                'border-stone-200 bg-[var(--brand-50)] text-[var(--brand-800)] dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-200)]' => $status !== ProductStatus::Active->value,
-                            ])
-                        >
-                            @if ($status === ProductStatus::Active->value)
-                                <span class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
-                                    <i class="fa-solid fa-check text-[10px]"></i>
-                                </span>
-                            @endif
-                            <i class="fa-solid fa-globe"></i>
-                            <p class="mt-3 text-sm font-bold">{{ __('Active') }}</p>
-                            <p class="mt-1 text-xs leading-5 opacity-80">{{ __('Visible to shoppers on the storefront.') }}</p>
-                        </button>
-                    </div>
-
-                    @if ($status === ProductStatus::Active->value && (int) $stock_quantity === 0)
-                        <flux:callout icon="exclamation-triangle" variant="warning">
-                            <flux:callout.text>{{ __('This product is active but has 0 stock - it will appear as sold out to customers.') }}</flux:callout.text>
-                        </flux:callout>
-                    @endif
-                </section>
-
-                <div class="space-y-3 pt-2">
-                    <flux:button
-                        variant="primary"
-                        type="submit"
-                        wire:loading.attr="disabled"
-                        wire:target="save,productImageUpload"
-                        class="w-full justify-center py-4 text-base transition-all duration-150 active:scale-[0.97]"
-                    >
-                        <span wire:loading.remove wire:target="save">{{ __('Save product') }}</span>
-                        <span wire:loading wire:target="save">{{ __('Saving product…') }}</span>
-                    </flux:button>
-                </div>
-            </section>
-        </div>
+            </div>{{-- end col 3 --}}
+        </div>{{-- end 3-col grid --}}
     </form>
 </div>

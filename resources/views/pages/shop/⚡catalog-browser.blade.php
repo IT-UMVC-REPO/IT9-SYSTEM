@@ -296,7 +296,7 @@ new class extends Component {
                                         <img
                                             x-ref="img"
                                             x-bind:class="loaded ? 'opacity-100' : 'opacity-0'"
-                                            src="{{ $product->image }}"
+                                            src="{{ $product->image_url }}"
                                             alt="{{ $product->name }}"
                                             onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
                                             class="h-full w-full object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-105 will-change-transform"

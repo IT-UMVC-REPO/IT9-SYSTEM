@@ -17,6 +17,15 @@ trait HasStorageImage
             return $path;
         }
 
+        if (($this->publicDiskDriver()) === 'local' && ! Storage::disk('public')->exists($path)) {
+            return $fallback;
+        }
+
         return Storage::disk('public')->url($path);
+    }
+
+    private function publicDiskDriver(): string
+    {
+        return config('filesystems.disks.public.driver', 'local');
     }
 }

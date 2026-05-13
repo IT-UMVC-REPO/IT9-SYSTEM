@@ -126,6 +126,7 @@
                                     loading="lazy"
                                     src="{{ $product->image_url }}"
                                     alt="{{ $product->name }}"
+                                    onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
                                     class="aspect-[5/4] w-full object-cover transition duration-300 hover:scale-[1.02]"
                                 >
                             </a>

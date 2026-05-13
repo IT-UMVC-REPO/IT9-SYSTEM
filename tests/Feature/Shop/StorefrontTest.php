@@ -4,6 +4,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('authenticated customers can view the storefront', function () {
@@ -41,6 +42,59 @@ test('authenticated customers can view the storefront', function () {
         ->assertSee($product->name)
         ->assertSee($vendor->store_name)
         ->assertSee($category->name);
+});
+
+test('storefront product images render through public disk urls', function () {
+    Storage::fake('public');
+
+    $customer = User::factory()->create();
+    $vendor = VendorProfile::factory()->approved()->create([
+        'store_name' => 'Photo Ready Stall',
+    ]);
+    $category = Category::factory()->standalone()->create([
+        'name' => 'Fresh Aromatics',
+    ]);
+
+    Storage::disk('public')->put('product-images/pechay.png', 'image-bytes');
+
+    $product = Product::factory()
+        ->for($vendor, 'vendor')
+        ->for($category)
+        ->active()
+        ->create([
+            'name' => 'Pechay Photo Pack',
+            'image' => 'product-images/pechay.png',
+        ]);
+
+    $expectedImageUrl = $product->image_url;
+
+    $this->actingAs($customer)
+        ->get(route('shop.home'))
+        ->assertOk()
+        ->assertSee('src="'.$expectedImageUrl.'"', false)
+        ->assertDontSee('src="product-images/pechay.png"', false);
+
+    $this->actingAs($customer)
+        ->get(route('shop.products.show', $product))
+        ->assertOk()
+        ->assertSee('src="'.$expectedImageUrl.'"', false)
+        ->assertDontSee('src="product-images/pechay.png"', false);
+
+    $this->actingAs($customer)
+        ->get(route('shop.vendors.show', $vendor))
+        ->assertOk()
+        ->assertSee('src="'.$expectedImageUrl.'"', false)
+        ->assertSee("onerror=\"this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'\"", false);
+});
+
+test('missing local public product images fall back to the placeholder image', function () {
+    Storage::fake('public');
+
+    $product = Product::factory()->make([
+        'image' => 'product-images/missing.png',
+    ]);
+
+    expect($product->image_url)->toBe('https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image');
 });
 
 test('storefront shows only active products from approved vendors', function () {
