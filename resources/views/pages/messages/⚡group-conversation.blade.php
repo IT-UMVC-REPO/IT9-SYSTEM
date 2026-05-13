@@ -518,7 +518,7 @@
                     @php
                         $activeGroupCall = $this->activeGroupCall;
                     @endphp
-                    @if ($activeGroupCall !== null && $activeGroupCall->caller_id !== auth()->id())
+                    @if ($activeGroupCall !== null)
                         <div wire:poll.10s class="shrink-0 border-b border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-2">
