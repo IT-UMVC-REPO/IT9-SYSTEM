@@ -12,6 +12,7 @@ import { RingtonePlayer } from './ringtone';
 import { conversationVideoCall } from './video-call';
 import { conversationVideoCallControl } from './video-call-control';
 import { groupConversationVideoCall } from './group-call';
+import { sukiGroupCallPip } from './group-call-pip';
 import { sukiVendorMap } from './maps/vendor-map';
 
 window.sukiRingtone = window.sukiRingtone ?? new RingtonePlayer();
@@ -19,6 +20,7 @@ window.sukiRingtone = window.sukiRingtone ?? new RingtonePlayer();
 window.conversationVideoCall = conversationVideoCall;
 window.groupConversationVideoCall = groupConversationVideoCall;
 window.conversationVideoCallControl = conversationVideoCallControl;
+window.sukiGroupCallPip = window.sukiGroupCallPip ?? sukiGroupCallPip;
 window.sukiVendorMap = sukiVendorMap;
 
 const escapeHtml = (value) => String(value ?? '')

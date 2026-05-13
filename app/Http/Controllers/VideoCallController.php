@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -230,7 +231,7 @@ class VideoCallController extends Controller
 
         abort_unless($this->isGroupMember($call->group_id, $userId), 403);
 
-        $this->expireStaleGroupCalls((int) $call->group_id);
+        $this->expireStaleGroupCalls((int) $call->group_id, 30);
         $call->refresh();
 
         abort_if($call->status === VideoCallStatus::Ended || $call->status === VideoCallStatus::Declined, 409);
@@ -294,11 +295,51 @@ class VideoCallController extends Controller
 
         abort_unless($this->isGroupMember($call->group_id, $userId), 403);
 
-        $leftParticipantCount = VideoCallParticipant::query()
-            ->where('video_call_id', $call->getKey())
-            ->where('user_id', $userId)
-            ->whereNull('left_at')
-            ->update(['left_at' => now()]);
+        $leftParticipantCount = 0;
+        $shouldDispatchCallEnded = false;
+
+        $call = DB::transaction(function () use ($call, $userId, &$leftParticipantCount, &$shouldDispatchCallEnded): VideoCall {
+            $lockedCall = VideoCall::query()
+                ->whereKey($call->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $leftAt = now();
+
+            $leftParticipantCount = VideoCallParticipant::query()
+                ->where('video_call_id', $lockedCall->getKey())
+                ->where('user_id', $userId)
+                ->whereNull('left_at')
+                ->update(['left_at' => $leftAt]);
+
+            $activeParticipants = VideoCallParticipant::query()
+                ->where('video_call_id', $lockedCall->getKey())
+                ->whereNull('left_at')
+                ->lockForUpdate()
+                ->get(['id', 'user_id']);
+
+            $onlyCallerRemains = $activeParticipants->count() === 1
+                && (int) $activeParticipants->first()->user_id === (int) $lockedCall->caller_id;
+
+            if ($activeParticipants->isEmpty() || $onlyCallerRemains) {
+                if ($onlyCallerRemains) {
+                    VideoCallParticipant::query()
+                        ->whereKey($activeParticipants->first()->getKey())
+                        ->update(['left_at' => $leftAt]);
+                }
+
+                if ($lockedCall->status !== VideoCallStatus::Ended) {
+                    $lockedCall->forceFill([
+                        'status' => VideoCallStatus::Ended,
+                        'ended_at' => $lockedCall->ended_at ?? $leftAt,
+                    ])->save();
+
+                    $shouldDispatchCallEnded = true;
+                }
+            }
+
+            return $lockedCall->refresh();
+        });
 
         if ($leftParticipantCount > 0) {
             GroupMessageService::dispatchSystemMessage(
@@ -309,12 +350,7 @@ class VideoCallController extends Controller
             );
         }
 
-        if ($this->activeGroupParticipantCount($call) === 0) {
-            $call->forceFill([
-                'status' => VideoCallStatus::Ended,
-                'ended_at' => now(),
-            ])->save();
-
+        if ($shouldDispatchCallEnded) {
             GroupMessageService::dispatchSystemMessage(
                 (int) $call->group_id,
                 'call_ended',
@@ -322,8 +358,6 @@ class VideoCallController extends Controller
                 __('Group call ended.'),
             );
         }
-
-        $call->refresh();
 
         $broadcasted = $this->dispatchBroadcastSafely(
             new GroupCallStatusChanged($call),
@@ -358,7 +392,7 @@ class VideoCallController extends Controller
             ->count();
     }
 
-    private function expireStaleGroupCalls(int $groupId): void
+    private function expireStaleGroupCalls(int $groupId, int $activeCallMinutes = 90): void
     {
         VideoCall::query()
             ->where('group_id', $groupId)
@@ -367,9 +401,8 @@ class VideoCallController extends Controller
                 VideoCallStatus::Active->value,
                 VideoCallStatus::Pending->value,
             ])
-            ->where(function (Builder $query): void {
-                $query
-                    ->where('created_at', '<', now()->subMinutes(90))
+            ->where(function (Builder $query) use ($activeCallMinutes): void {
+                $query->where('created_at', '<', now()->subMinutes($activeCallMinutes))
                     ->orWhere(function (Builder $query): void {
                         $query
                             ->where('status', VideoCallStatus::Pending->value)
@@ -505,6 +538,7 @@ class VideoCallController extends Controller
             'status' => $call->status->value,
             'participants' => $call->participants()
                 ->whereNull('left_at')
+                ->orderBy('user_id')
                 ->pluck('user_id')
                 ->values()
                 ->all(),

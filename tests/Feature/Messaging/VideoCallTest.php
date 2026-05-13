@@ -518,6 +518,7 @@ test('video call client uses native rtc peer connection and server-provided ice 
     $ringtone = file_get_contents(resource_path('js/ringtone.js'));
     $videoCall = file_get_contents(resource_path('js/video-call.js'));
     $groupCall = file_get_contents(resource_path('js/group-call.js'));
+    $groupCallPip = file_get_contents(resource_path('js/group-call-pip.js'));
     $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
 
     expect($app)
@@ -526,6 +527,8 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('window.conversationVideoCall')
         ->toContain('window.groupConversationVideoCall')
         ->toContain('window.conversationVideoCallControl')
+        ->toContain("import { sukiGroupCallPip } from './group-call-pip';")
+        ->toContain('window.sukiGroupCallPip')
         ->toContain('window.sukiMessageScroller')
         ->and($ringtone)
         ->toContain("new Audio('/sound/reader.mp3')")
@@ -605,7 +608,6 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain("const isOffer = signalData.type === 'offer';")
         ->toContain('this.createPeerConnection(senderId, isOffer ? false : !this.shouldInitiatePeerConnection(senderId))')
         ->toContain('element.play().catch(() => {})')
-        ->toContain('}, 3000);')
         ->toContain('catch(() => {})')
         ->toContain('Could not sync the group call. Please check your realtime connection.')
         ->toContain('group-call-local-grid-video')
@@ -615,10 +617,20 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('declineGroupCall')
         ->toContain('remoteVideoActive')
         ->toContain('setMaxBitrate')
-        ->toContain('requestPictureInPicture')
+        ->toContain('window.__activeGroupCall')
+        ->toContain('window.sukiGroupCallPip.enter')
+        ->toContain('window.sukiGroupCallPip?.sync(this)')
+        ->toContain('keepAliveOnNavigate')
         ->toContain('iceRestart: true')
         ->toContain('new MediaStream([event.track])')
         ->toContain('this.remoteStreams = new Map(this.remoteStreams)')
+        ->not->toContain('requestPictureInPicture')
+        ->and($groupCallPip)
+        ->toContain('data-pip-grid')
+        ->toContain('window.__activeGroupCall = call')
+        ->toContain('toggleMicrophone')
+        ->toContain('toggleCamera')
+        ->toContain('Waiting for others to join...')
         ->and($videoCallControl)
         ->toContain('conversationVideoCallControl')
         ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall')
@@ -700,6 +712,9 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
     expect($groupConversation)
         ->toContain('participantSummaries: @js($this->groupParticipantSummaries())')
         ->toContain('x-effect="$wire.$set(\'callInProgress\', callStatus !== \'idle\' && callStatus !== \'ended\', false)"')
+        ->toContain('x-on:beforeunload.window="disposeOnLeave({ force: true })"')
+        ->toContain('x-on:livewire:navigating.window="keepAliveOnNavigate()"')
+        ->toContain("conversation: @js(route('messages.group', ['groupId' => \$groupId]))")
         ->toContain('z-[100]')
         ->toContain('group-call-local-background-video')
         ->toContain('group-call-local-grid-video')

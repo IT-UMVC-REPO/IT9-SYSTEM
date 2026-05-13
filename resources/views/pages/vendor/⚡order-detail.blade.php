@@ -28,7 +28,10 @@ new #[Title('Vendor Order Detail')] class extends Component
 
     public function mount(string $orderReference): void
     {
-        if (! $this->hasApprovedVendorProfile()) {
+        $user = auth()->user()->loadMissing('vendorProfile');
+        $vendorProfile = $user->vendorProfile;
+
+        if ($vendorProfile?->status !== VendorStatus::Approved) {
             $this->redirectRoute('customer.dashboard', navigate: true);
 
             return;
@@ -36,17 +39,8 @@ new #[Title('Vendor Order Detail')] class extends Component
 
         $order = Order::query()
             ->select(['id', 'customer_id', 'vendor_id', 'estimated_delivery_at', 'delay_note'])
+            ->where('vendor_id', $vendorProfile->getKey())
             ->findOrFail((int) $orderReference);
-
-        if ((int) $order->vendor_id !== $this->vendorId()) {
-            if ((int) $order->customer_id === auth()->id()) {
-                $this->redirectRoute('shop.orders.show', ['orderReference' => $order->getKey()], navigate: true);
-
-                return;
-            }
-
-            abort(404);
-        }
 
         $this->orderId = $order->getKey();
         $this->hydrateDeliveryEstimateForm($order);
@@ -230,12 +224,7 @@ new #[Title('Vendor Order Detail')] class extends Component
 
     private function vendorId(): int
     {
-        return auth()->user()->vendorProfile->getKey();
-    }
-
-    private function hasApprovedVendorProfile(): bool
-    {
-        return auth()->user()->vendorProfile?->status === VendorStatus::Approved;
+        return auth()->user()->loadMissing('vendorProfile')->vendorProfile->getKey();
     }
 
     private function hydrateDeliveryEstimateForm(Order $order): void

@@ -223,6 +223,38 @@ test('group conversation hides calls with no active participants', function () {
     expect($emptyCall->fresh()->status)->toBe(VideoCallStatus::Ended);
 });
 
+test('group conversation hides calls with an ended timestamp even when participants remain', function () {
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member], [
+        'name' => 'Morning Market Crew',
+    ]);
+    $endedCall = VideoCall::query()->create([
+        'caller_id' => $member->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Active,
+        'started_at' => now()->subMinute(),
+        'ended_at' => now(),
+        'created_at' => now()->subMinute(),
+    ]);
+
+    VideoCallParticipant::factory()->create([
+        'video_call_id' => $endedCall->getKey(),
+        'user_id' => $member->getKey(),
+        'left_at' => null,
+    ]);
+
+    $this->actingAs($creator)
+        ->get(route('messages.group', ['groupId' => $group->getKey()]))
+        ->assertOk()
+        ->assertSee('Morning Market Crew')
+        ->assertDontSee('A group call is in progress')
+        ->assertDontSee('Join call');
+});
+
 test('group conversation resolves incoming group call deep links', function () {
     $caller = User::factory()->create();
     $member = User::factory()->create();
@@ -571,18 +603,25 @@ test('group call routes authorize members and persist active participants', func
     $this->actingAs($member)
         ->postJson(route('calls.group.end', ['call' => $call]))
         ->assertSuccessful()
-        ->assertJsonPath('status', VideoCallStatus::Active->value);
+        ->assertJsonPath('status', VideoCallStatus::Ended->value)
+        ->assertJsonPath('participants', []);
 
     $this->actingAs($creator)
         ->postJson(route('calls.group.end', ['call' => $call]))
         ->assertSuccessful()
         ->assertJsonPath('status', VideoCallStatus::Ended->value);
 
+    expect(VideoCallParticipant::query()
+        ->where('video_call_id', $call->getKey())
+        ->whereIn('user_id', [$creator->getKey(), $member->getKey()])
+        ->whereNull('left_at')
+        ->exists())->toBeFalse();
+
     expect(GroupMessage::query()
         ->where('group_id', $group->getKey())
         ->where('is_system_message', true)
         ->where('system_event', 'user_left')
-        ->count())->toBe(2)
+        ->count())->toBe(1)
         ->and(GroupMessage::query()
             ->where('group_id', $group->getKey())
             ->where('is_system_message', true)
@@ -594,6 +633,13 @@ test('group call routes authorize members and persist active participants', func
         && $event->senderId === $member->getKey()
         && $event->recipientId === $creator->getKey());
     Event::assertDispatched(GroupCallStatusChanged::class, fn (GroupCallStatusChanged $event) => $event->videoCall->is($call));
+    Event::assertDispatched(GroupCallStatusChanged::class, function (GroupCallStatusChanged $event) use ($call): bool {
+        $payload = $event->broadcastWith();
+
+        return $event->videoCall->is($call)
+            && $payload['status'] === VideoCallStatus::Ended->value
+            && $payload['participants'] === [];
+    });
 });
 
 test('group call routes expire stale calls before starting or joining', function () {

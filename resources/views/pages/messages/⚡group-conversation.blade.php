@@ -66,7 +66,7 @@
         wire:key="group-video-call-{{ $groupId }}"
         wire:ignore.self
         data-group-video-call
-        x-data="{ volume: 1.0, ...window.groupConversationVideoCall({
+        x-data="window.groupConversationVideoCall({
             authUserId: @js((int) auth()->id()),
             groupId: @js($groupId),
             groupName: @js($groupDisplayName),
@@ -78,16 +78,17 @@
                 signal: @js(route('calls.group.signal', ['call' => '__CALL_ID__'])),
                 answer: @js(route('calls.group.answer', ['call' => '__CALL_ID__'])),
                 end: @js(route('calls.group.end', ['call' => '__CALL_ID__'])),
+                conversation: @js(route('messages.group', ['groupId' => $groupId])),
             },
-        }) }"
+        })"
         x-init="$el.__groupConversationVideoCall = $data;
         init();
         if (@js($incomingCallId) !== null) {
             window.setTimeout(() => $dispatch('group-call-join', { callId: @js($incomingCallId) }));
         }"
         x-effect="$wire.$set('callInProgress', callStatus !== 'idle' && callStatus !== 'ended', false)"
-        x-on:beforeunload.window="disposeOnLeave()"
-        x-on:livewire:navigating.window="disposeOnLeave()"
+        x-on:beforeunload.window="disposeOnLeave({ force: true })"
+        x-on:livewire:navigating.window="keepAliveOnNavigate()"
         x-on:group-call-start.window="startCall()"
         class="contents"
     >
@@ -426,7 +427,7 @@
                         </div>
                         <button type="button"
                             x-cloak
-                            x-show="callStatus === 'active' && remoteParticipants.length > 0 && isPipSupported()"
+                            x-show="callStatus === 'active' && isPipSupported()"
                             x-on:click="enterPip()"
                             class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
                             title="{{ __('Picture in picture') }}"

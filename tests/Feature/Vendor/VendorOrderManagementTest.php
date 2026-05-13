@@ -87,7 +87,7 @@ test('vendor cannot view another vendors orders', function () {
         ->assertNotFound();
 });
 
-test('vendor viewing their own purchase from another vendor is sent to customer order detail', function () {
+test('vendor order detail returns not found for purchases from another vendor', function () {
     $vendorUser = User::factory()->vendor()->create();
     VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
 
@@ -99,7 +99,7 @@ test('vendor viewing their own purchase from another vendor is sent to customer 
 
     $this->actingAs($vendorUser)
         ->get(route('vendor.orders.show', ['orderReference' => $other['order']->getKey()]))
-        ->assertRedirect(route('shop.orders.show', ['orderReference' => $other['order']->getKey()]));
+        ->assertNotFound();
 });
 
 test('vendor order detail shows the back link and peso totals', function () {

@@ -293,19 +293,9 @@ class GroupConversation extends Component
         return VideoCall::query()
             ->where('group_id', $this->groupId)
             ->where('is_group_call', true)
-            ->where(function (Builder $query): void {
-                $query
-                    ->where(function (Builder $query): void {
-                        $query
-                            ->where('status', VideoCallStatus::Active->value)
-                            ->where('created_at', '>=', now()->subMinutes(90));
-                    })
-                    ->orWhere(function (Builder $query): void {
-                        $query
-                            ->where('status', VideoCallStatus::Pending->value)
-                            ->where('created_at', '>=', now()->subMinutes(2));
-                    });
-            })
+            ->where('status', VideoCallStatus::Active->value)
+            ->whereNull('ended_at')
+            ->where('created_at', '>=', now()->subMinutes(90))
             ->whereHas('participants', function (Builder $query): void {
                 $query->whereNull('left_at');
             })

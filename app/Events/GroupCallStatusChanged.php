@@ -41,6 +41,7 @@ class GroupCallStatusChanged implements ShouldBroadcastNow
     {
         $participants = $this->videoCall->participants()
             ->whereNull('left_at')
+            ->orderBy('user_id')
             ->pluck('user_id')
             ->values()
             ->all();
