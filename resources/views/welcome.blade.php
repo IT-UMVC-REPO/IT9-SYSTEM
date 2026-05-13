@@ -88,7 +88,7 @@
                     </div>
                 </div>
 
-                <div class="relative hidden h-130 items-center justify-center overflow-hidden lg:flex">
+                <div class="relative hidden h-130 items-center justify-center lg:flex">
                     @if ($featuredVendor)
                         <div class="brand-floating-card brand-float-a absolute left-0 top-8 w-72" style="will-change: transform; transition: transform 0.3s ease, box-shadow 0.3s ease;">
                             <div class="flex items-start justify-between gap-4">
