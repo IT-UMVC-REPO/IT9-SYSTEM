@@ -347,8 +347,10 @@ class Conversation extends Component
                     });
             })
             ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
-            ->orderBy('created_at')
+            ->latest('created_at')
+            ->limit(100)
             ->get()
+            ->sortBy('created_at')
             ->map(fn (Message $message): array => $this->messageToArray($message))
             ->values()
             ->all();

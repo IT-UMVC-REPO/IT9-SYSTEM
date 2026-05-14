@@ -43,16 +43,30 @@
             });
         },
         pollTimer: null,
+        pollInFlight: false,
+        fallbackPolling: @js(! $realtimeEnabled),
         initPolling() {
+            if (! this.fallbackPolling) {
+                return;
+            }
+
             this.pollTimer = setInterval(() => {
+                if (this.pollInFlight || document.hidden) {
+                    return;
+                }
+
                 const callEl = document.querySelector('[data-group-video-call]');
                 const callData = callEl ? (callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
                 const callStatus = callData ? callData.callStatus : 'idle';
-                
+
                 if (callStatus === 'idle') {
-                    this.$wire.refreshThread();
+                    this.pollInFlight = true;
+
+                    Promise.resolve(this.$wire.refreshThread()).finally(() => {
+                        this.pollInFlight = false;
+                    });
                 }
-            }, 8000);
+            }, 30000);
         },
         destroy() {
             clearInterval(this.pollTimer);
@@ -520,7 +534,7 @@
                         $activeGroupCall = $this->activeGroupCall;
                     @endphp
                     @if ($activeGroupCall !== null && $activeGroupCall->caller_id !== auth()->id())
-                        <div wire:poll.10s class="shrink-0 border-b border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
+                        <div wire:poll.visible.30s class="shrink-0 border-b border-[var(--brand-200)] bg-[var(--brand-50)] px-4 py-2 dark:border-[var(--brand-500)]/20 dark:bg-[var(--brand-500)]/10">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-2">
                                     <span class="inline-flex h-2 w-2 animate-pulse rounded-full bg-[var(--brand-600)]"></span>

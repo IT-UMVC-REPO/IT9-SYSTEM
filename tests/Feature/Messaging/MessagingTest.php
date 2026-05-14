@@ -111,6 +111,50 @@ test('sending a message creates a message record', function () {
     Event::assertDispatched(MessageSent::class);
 });
 
+test('conversation only hydrates the latest direct messages', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    foreach (range(1, 105) as $index) {
+        Message::factory()->create([
+            'sender_id' => $index % 2 === 0 ? $user->getKey() : $otherUser->getKey(),
+            'receiver_id' => $index % 2 === 0 ? $otherUser->getKey() : $user->getKey(),
+            'content' => sprintf('Direct message %03d', $index),
+            'created_at' => now()->subMinutes(106 - $index),
+        ]);
+    }
+
+    $messages = Livewire::actingAs($user)
+        ->test('pages::messages.conversation', ['conversationReference' => (string) $otherUser->getKey()])
+        ->get('messages');
+
+    expect($messages)
+        ->toHaveCount(100)
+        ->and($messages[0]['content'])->toBe('Direct message 006')
+        ->and($messages[99]['content'])->toBe('Direct message 105');
+});
+
+test('messaging views use realtime-first fallback polling', function () {
+    $conversation = file_get_contents(resource_path('views/pages/messages/⚡conversation.blade.php'));
+    $groupConversation = file_get_contents(resource_path('views/pages/messages/⚡group-conversation.blade.php'));
+    $sidebar = file_get_contents(resource_path('views/components/messages/⚡conversation-sidebar.blade.php'));
+    $unreadBadge = file_get_contents(resource_path('views/components/messaging/⚡unread-badge.blade.php'));
+
+    expect($conversation)
+        ->toContain('fallbackPolling: @js(! $realtimeEnabled)')
+        ->toContain('pollInFlight: false')
+        ->toContain('document.hidden')
+        ->toContain('}, 30000);')
+        ->and($groupConversation)
+        ->toContain('fallbackPolling: @js(! $realtimeEnabled)')
+        ->toContain('pollInFlight: false')
+        ->toContain('wire:poll.visible.30s')
+        ->and($sidebar)
+        ->toContain('wire:poll.visible.60s')
+        ->and($unreadBadge)
+        ->toContain('wire:poll.visible.60s');
+});
+
 test('reverb allows client whispers on private channels', function () {
     expect(config('reverb.apps.apps.0.accept_client_events_from'))->toBe('all');
 });

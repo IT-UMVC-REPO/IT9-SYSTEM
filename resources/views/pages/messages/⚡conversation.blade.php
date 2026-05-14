@@ -8,16 +8,30 @@
 <div
     x-data="{
         pollTimer: null,
+        pollInFlight: false,
+        fallbackPolling: @js(! $realtimeEnabled),
         initPolling() {
+            if (! this.fallbackPolling) {
+                return;
+            }
+
             this.pollTimer = setInterval(() => {
+                if (this.pollInFlight || document.hidden) {
+                    return;
+                }
+
                 const callEl = document.querySelector('[data-conversation-video-call]');
                 const callData = callEl ? (callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
                 const callStatus = callData ? callData.callStatus : 'idle';
-                
+
                 if (callStatus === 'idle') {
-                    this.$wire.refreshThread();
+                    this.pollInFlight = true;
+
+                    Promise.resolve(this.$wire.refreshThread()).finally(() => {
+                        this.pollInFlight = false;
+                    });
                 }
-            }, 5000);
+            }, 30000);
         },
         destroy() {
             clearInterval(this.pollTimer);

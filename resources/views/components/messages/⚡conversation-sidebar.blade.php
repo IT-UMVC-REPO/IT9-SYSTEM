@@ -6,6 +6,7 @@ use App\Models\GroupMessage;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -54,30 +55,44 @@ new class extends Component
 
     private function directThreads(): Collection
     {
+        $userId = (int) auth()->id();
+        $latestMessageIds = DB::query()
+            ->fromSub(
+                Message::query()
+                    ->select('id')
+                    ->selectRaw('ROW_NUMBER() OVER (PARTITION BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id) ORDER BY created_at DESC, id DESC) as thread_rank')
+                    ->where(function ($query) use ($userId): void {
+                        $query
+                            ->where('sender_id', $userId)
+                            ->orWhere('receiver_id', $userId);
+                    }),
+                'ranked_messages',
+            )
+            ->where('thread_rank', 1)
+            ->pluck('id');
+
+        if ($latestMessageIds->isEmpty()) {
+            return collect();
+        }
+
+        $unreadCounts = Message::query()
+            ->select('sender_id')
+            ->selectRaw('count(*) as aggregate')
+            ->where('receiver_id', $userId)
+            ->where('is_read', false)
+            ->groupBy('sender_id')
+            ->pluck('aggregate', 'sender_id');
+
         return Message::query()
-            ->where(function ($query): void {
-                $query
-                    ->where('sender_id', auth()->id())
-                    ->orWhere('receiver_id', auth()->id());
-            })
+            ->whereIn('id', $latestMessageIds)
             ->with([
                 'sender:id,name,profile_image',
                 'receiver:id,name,profile_image',
                 'order:id,order_status',
             ])
-            ->orderByDesc('created_at')
             ->get()
-            ->groupBy(fn (Message $message): string => Message::conversationKey(
-                $message->sender_id === auth()->id() ? $message->receiver_id : $message->sender_id,
-            ))
-            ->map(function (Collection $messages): array {
-                $message = $messages->first();
+            ->map(function (Message $message) use ($unreadCounts): array {
                 $otherUser = $this->otherParticipant($message);
-                $unreadCount = Message::query()
-                    ->where('sender_id', $otherUser->getKey())
-                    ->where('receiver_id', auth()->id())
-                    ->where('is_read', false)
-                    ->count();
 
                 return [
                     'type' => 'direct',
@@ -86,11 +101,12 @@ new class extends Component
                     'preview' => Str::limit($message->content ?: __('Attachment'), 60),
                     'latest_at' => $message->created_at,
                     'time' => $message->timeAgo(),
-                    'unread_count' => $unreadCount,
+                    'unread_count' => (int) ($unreadCounts[$otherUser->getKey()] ?? 0),
                     'message' => $message,
                     'user' => $otherUser,
                 ];
             })
+            ->sortByDesc('latest_at')
             ->values();
     }
 
@@ -144,7 +160,7 @@ new class extends Component
 ?>
 
 <div
-    wire:poll.15s
+    wire:poll.visible.60s
     x-data="conversationSidebarPresence({
         conversations: @js($this->directPresenceConversations()),
     })"

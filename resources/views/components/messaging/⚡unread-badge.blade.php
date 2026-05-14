@@ -59,7 +59,7 @@ new class extends Component
     href="{{ route('messages.inbox') }}"
     title="{{ __('Messages') }}"
     wire:navigate
-    wire:poll.15s
+    wire:poll.visible.60s
     class="relative flex h-9 w-9 items-center justify-center rounded-xl transition-transform duration-150 active:scale-90 {{ $isActive ? 'quick-action-active' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-zinc-300 dark:hover:bg-white/10 dark:hover:text-white' }}"
 >
     <i class="fa-solid fa-comments text-sm"></i>

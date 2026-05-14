@@ -648,9 +648,34 @@ function routeRequestSignal(timeoutMs) {
     return controller.signal;
 }
 
+const routeProviderCooldowns = new Map();
+const routeCache = new Map();
+const routeFailureCooldownMs = 120000;
+
+function routeCacheKey(from, to) {
+    return [from, to]
+        .map((point) => `${Number(point.lat).toFixed(4)},${Number(point.lng).toFixed(4)}`)
+        .join('|');
+}
+
+function isRouteProviderCoolingDown(name) {
+    return (routeProviderCooldowns.get(name) ?? 0) > Date.now();
+}
+
+function coolDownRouteProvider(name) {
+    routeProviderCooldowns.set(name, Date.now() + routeFailureCooldownMs);
+}
+
 async function fetchRoute(from, to) {
+    const cacheKey = routeCacheKey(from, to);
+    const cached = routeCache.get(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
     const providers = [
-        async () => {
+        async function valhallaRoute() {
             const body = JSON.stringify({
                 locations: [
                     { lon: from.lng, lat: from.lat },
@@ -665,6 +690,16 @@ async function fetchRoute(from, to) {
                 body,
                 signal: routeRequestSignal(6000),
             });
+
+            if (response.status === 429) {
+                coolDownRouteProvider('valhalla');
+                throw new Error('valhalla rate limited');
+            }
+
+            if (!response.ok) {
+                throw new Error('valhalla unavailable');
+            }
+
             const data = await response.json();
             const shape = data.trip?.legs?.[0]?.shape;
 
@@ -677,9 +712,19 @@ async function fetchRoute(from, to) {
                 distance: data.trip?.summary?.length,
             };
         },
-        async () => {
+        async function osrmRoute() {
             const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&alternatives=true`;
             const response = await fetch(url, { signal: routeRequestSignal(6000) });
+
+            if (response.status === 429) {
+                coolDownRouteProvider('osrm');
+                throw new Error('osrm rate limited');
+            }
+
+            if (!response.ok) {
+                throw new Error('osrm unavailable');
+            }
+
             const data = await response.json();
             const route = (data.routes ?? []).sort((a, b) => a.distance - b.distance)[0];
 
@@ -697,6 +742,10 @@ async function fetchRoute(from, to) {
     const straightLine = haversineKm(from.lat, from.lng, to.lat, to.lng);
 
     for (const provider of providers) {
+        if (isRouteProviderCoolingDown(provider.name.replace('Route', ''))) {
+            continue;
+        }
+
         try {
             const result = await provider();
 
@@ -704,16 +753,21 @@ async function fetchRoute(from, to) {
                 continue;
             }
 
+            routeCache.set(cacheKey, result);
             return result;
         } catch {
             // Try the next provider.
         }
     }
 
-    return {
+    const fallback = {
         latLngs: [[from.lat, from.lng], [to.lat, to.lng]],
         distance: straightLine,
     };
+
+    routeCache.set(cacheKey, fallback);
+
+    return fallback;
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -780,6 +834,8 @@ window.sukiOrderLocationMap = (options) => ({
     liveRider: options.liveRider ?? false,
     routeMode: options.routeMode ?? null,
     routeRequestSequence: 0,
+    routeRequestKey: null,
+    routeRequestPendingKey: null,
 
     init() {
         this.$nextTick(() => {
@@ -939,6 +995,13 @@ window.sukiOrderLocationMap = (options) => ({
     },
 
     drawRoute(from, to, color) {
+        const routeKey = routeCacheKey(from, to);
+
+        if (this.routeRequestPendingKey === routeKey || (this.routeLine && this.routeRequestKey === routeKey)) {
+            return;
+        }
+
+        this.routeRequestPendingKey = routeKey;
         const requestId = ++this.routeRequestSequence;
 
         fetchRoute(from, to)
@@ -947,6 +1010,7 @@ window.sukiOrderLocationMap = (options) => ({
                     return;
                 }
 
+                this.routeRequestKey = routeKey;
                 this.replaceRouteLine(latLngs, color);
 
                 if (this.showDistance) {
@@ -958,10 +1022,16 @@ window.sukiOrderLocationMap = (options) => ({
                     return;
                 }
 
+                this.routeRequestKey = routeKey;
                 this.replaceRouteLine([[from.lat, from.lng], [to.lat, to.lng]], color);
 
                 if (this.showDistance) {
                     this.distanceLabel = `~${haversineKm(from.lat, from.lng, to.lat, to.lng).toFixed(1)} km`;
+                }
+            })
+            .finally(() => {
+                if (this.routeRequestPendingKey === routeKey) {
+                    this.routeRequestPendingKey = null;
                 }
             });
     },

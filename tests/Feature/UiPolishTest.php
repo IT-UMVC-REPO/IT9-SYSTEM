@@ -88,6 +88,7 @@ test('map components keep complex leaflet setup out of inline alpine', function 
     $vendorMap = uiPolishBlade('views/components/vendor-location-map.blade.php');
     $orderMap = uiPolishBlade('views/components/order-location-map.blade.php');
     $appJs = file_get_contents(resource_path('js/app.js'));
+    $vendorMapJs = file_get_contents(resource_path('js/maps/vendor-map.js'));
 
     expect($vendorMap)
         ->toContain('x-data="vendorLocationMap(@js($mapId), @js($zoom), @js($vendorPoint))"')
@@ -102,10 +103,18 @@ test('map components keep complex leaflet setup out of inline alpine', function 
         ->toContain('initialized: false')
         ->toContain('Number.isFinite(vendorLat)')
         ->toContain('router.project-osrm.org/route/v1/driving')
+        ->toContain('const routeProviderCooldowns = new Map();')
+        ->toContain('const routeCache = new Map();')
+        ->toContain('routeRequestPendingKey: null')
+        ->toContain('if (this.routeRequestPendingKey === routeKey || (this.routeLine && this.routeRequestKey === routeKey))')
         ->toContain('attributionControl: false')
         ->toContain('L.control.attribution({ prefix: false }).addTo(this.map);')
         ->not->toContain('L.polyline(bounds')
-        ->not->toContain('distanceInKilometers(');
+        ->not->toContain('distanceInKilometers(')
+        ->and($vendorMapJs)
+        ->toContain('const routeProviderCooldowns = new Map();')
+        ->toContain('const routeCache = new Map();')
+        ->toContain("if (response.status === 429) {\n                coolDownRouteProvider('valhalla');");
 });
 
 test('profile map and audit date picker use shared javascript helpers', function () {
