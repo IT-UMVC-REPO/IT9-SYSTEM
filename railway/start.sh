@@ -4,7 +4,7 @@ set -eu
 role="${RAILWAY_RUN_ROLE:-${SERVICE_ROLE:-web}}"
 
 if [ "$role" = "worker" ]; then
-    exec php artisan queue:work redis --tries=3 --sleep=1 --timeout=90
+    exec php artisan queue:work "${QUEUE_CONNECTION:-redis}" --tries=3 --sleep=1 --timeout=90
 fi
 
 php artisan migrate --force
