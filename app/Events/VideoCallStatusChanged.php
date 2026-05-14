@@ -28,6 +28,7 @@ class VideoCallStatusChanged implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('messaging.'.$this->videoCall->conversation_key),
+            new PrivateChannel('call.'.$this->videoCall->getKey()),
         ];
     }
 

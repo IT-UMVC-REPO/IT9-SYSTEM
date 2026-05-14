@@ -251,6 +251,13 @@
                                 <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
                                 <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
                             </button>
+                            <button type="button" x-on:click="toggleScreenShare()"
+                                x-bind:class="screenSharing ? 'bg-[var(--brand-600)] text-white' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                                class="flex h-12 w-12 items-center justify-center rounded-full transition"
+                                title="{{ __('Share screen') }}"
+                                aria-label="{{ __('Share screen') }}">
+                                <flux:icon.computer-desktop variant="mini" />
+                            </button>
                             <div class="relative flex items-center" x-data="{ showVolume: false }">
                                 <button type="button" x-on:click="showVolume = !showVolume" 
                                     x-bind:class="showVolume ? 'bg-[var(--brand-600)] text-white' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"

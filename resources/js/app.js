@@ -7,6 +7,7 @@ window.global = window.global ?? window;
 
 import './echo';
 import './brand-color';
+import './pip-manager';
 import 'emoji-picker-element';
 import { RingtonePlayer } from './ringtone';
 import { conversationVideoCall } from './video-call';
@@ -836,6 +837,9 @@ window.sukiOrderLocationMap = (options) => ({
     routeRequestSequence: 0,
     routeRequestKey: null,
     routeRequestPendingKey: null,
+    hasUserAdjustedView: false,
+    hasAutoAdjustedViewport: false,
+    adjustingViewport: false,
 
     init() {
         this.$nextTick(() => {
@@ -854,6 +858,8 @@ window.sukiOrderLocationMap = (options) => ({
                 scrollWheelZoom: false,
                 attributionControl: false,
             });
+
+            this.trackViewportIntent();
 
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
@@ -903,6 +909,27 @@ window.sukiOrderLocationMap = (options) => ({
         this.map = null;
         this.routeLine = null;
         this.riderMarker = null;
+    },
+
+    trackViewportIntent() {
+        this.map?.on('dragstart zoomstart', (event) => {
+            if (!this.adjustingViewport && event?.originalEvent) {
+                this.hasUserAdjustedView = true;
+            }
+        });
+    },
+
+    adjustViewport(callback) {
+        this.adjustingViewport = true;
+        callback();
+        this.hasAutoAdjustedViewport = true;
+        window.setTimeout(() => {
+            this.adjustingViewport = false;
+        }, 0);
+    },
+
+    shouldAutoAdjustViewport() {
+        return !this.hasUserAdjustedView && !this.hasAutoAdjustedViewport;
     },
 
     subscribeToRiderUpdates() {
@@ -966,8 +993,10 @@ window.sukiOrderLocationMap = (options) => ({
 
         this.drawRiderRoute();
 
-        if (pan) {
-            this.map.panTo(latlng, { animate: true, duration: 0.8 });
+        if (pan && this.shouldAutoAdjustViewport()) {
+            this.adjustViewport(() => {
+                this.map.panTo(latlng, { animate: true, duration: 0.8 });
+            });
         }
     },
 
@@ -1047,10 +1076,14 @@ window.sukiOrderLocationMap = (options) => ({
             opacity: 0.85,
         }).addTo(this.map);
 
-        this.map.fitBounds(this.routeLine.getBounds(), {
-            padding: [32, 32],
-            maxZoom: 16,
-        });
+        if (this.shouldAutoAdjustViewport()) {
+            this.adjustViewport(() => {
+                this.map.fitBounds(this.routeLine.getBounds(), {
+                    padding: [32, 32],
+                    maxZoom: 16,
+                });
+            });
+        }
     },
 
     routeTarget() {
@@ -1072,8 +1105,10 @@ window.sukiOrderLocationMap = (options) => ({
         ].filter((point) => point && this.numberOrNull(point.lat) !== null && this.numberOrNull(point.lng) !== null)
             .map((point) => [Number(point.lat), Number(point.lng)]);
 
-        if (visiblePoints.length > 1) {
-            this.map.fitBounds(window.L.latLngBounds(visiblePoints).pad(0.2));
+        if (visiblePoints.length > 1 && this.shouldAutoAdjustViewport()) {
+            this.adjustViewport(() => {
+                this.map.fitBounds(window.L.latLngBounds(visiblePoints).pad(0.2));
+            });
         }
     },
 
@@ -1119,6 +1154,9 @@ window.sukiUnifiedOrderMap = (config) => ({
     echoChannel: null,
     distanceLabel: '',
     orderId: config.orderId ?? null,
+    hasUserAdjustedView: false,
+    hasAutoAdjustedViewport: false,
+    adjustingViewport: false,
 
     init() {
         this.$nextTick(() => {
@@ -1149,6 +1187,8 @@ window.sukiUnifiedOrderMap = (config) => ({
                 scrollWheelZoom: false,
                 attributionControl: false,
             });
+
+            this.trackViewportIntent();
 
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
@@ -1202,10 +1242,14 @@ window.sukiUnifiedOrderMap = (config) => ({
                             bounds.extend([riderLat, riderLng]);
                         }
 
-                        this.map.fitBounds(bounds, {
-                            padding: [32, 32],
-                            maxZoom: 16,
-                        });
+                        if (this.shouldAutoAdjustViewport()) {
+                            this.adjustViewport(() => {
+                                this.map.fitBounds(bounds, {
+                                    padding: [32, 32],
+                                    maxZoom: 16,
+                                });
+                            });
+                        }
 
                         if (!riderActive) {
                             this.distanceLabel = `~${distance.toFixed(1)} km by road`;
@@ -1241,7 +1285,12 @@ window.sukiUnifiedOrderMap = (config) => ({
                     }
 
                     this.updateDistanceLabel(nextLat, nextLng);
-                    this.map.panTo(latlng, { animate: true, duration: 1 });
+
+                    if (this.shouldAutoAdjustViewport()) {
+                        this.adjustViewport(() => {
+                            this.map.panTo(latlng, { animate: true, duration: 1 });
+                        });
+                    }
                 });
             }
 
@@ -1259,6 +1308,27 @@ window.sukiUnifiedOrderMap = (config) => ({
         this.riderMarker = null;
     },
 
+    trackViewportIntent() {
+        this.map?.on('dragstart zoomstart', (event) => {
+            if (!this.adjustingViewport && event?.originalEvent) {
+                this.hasUserAdjustedView = true;
+            }
+        });
+    },
+
+    adjustViewport(callback) {
+        this.adjustingViewport = true;
+        callback();
+        this.hasAutoAdjustedViewport = true;
+        window.setTimeout(() => {
+            this.adjustingViewport = false;
+        }, 0);
+    },
+
+    shouldAutoAdjustViewport() {
+        return !this.hasUserAdjustedView && !this.hasAutoAdjustedViewport;
+    },
+
     fitToAllMarkers(L, customerLat, customerLng, vendorLat, vendorLng, riderLat, riderLng) {
         const points = [
             [customerLat, customerLng],
@@ -1266,8 +1336,10 @@ window.sukiUnifiedOrderMap = (config) => ({
             [riderLat, riderLng],
         ].filter(([lat, lng]) => lat !== null && lng !== null);
 
-        if (points.length > 1) {
-            this.map.fitBounds(L.latLngBounds(points).pad(0.2));
+        if (points.length > 1 && this.shouldAutoAdjustViewport()) {
+            this.adjustViewport(() => {
+                this.map.fitBounds(L.latLngBounds(points).pad(0.2));
+            });
         }
     },
 

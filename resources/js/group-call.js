@@ -56,6 +56,11 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     callChromeTimer: null,
     previewPosition: { right: 16, bottom: 96 },
     groupJoinHandler: null,
+    callChannelRef: null,
+    callChannelName: null,
+    screenSharing: false,
+    screenTrack: null,
+    cameraTrackBeforeShare: null,
 
     adoptConfig(nextConfig) {
         this.authUserId = nextConfig.authUserId;
@@ -95,39 +100,13 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
                 }
 
                 this.callId = event.call_id;
+                this.subscribeCallChannel();
                 this.callStatus = 'ringing';
                 this.statusMessage = `${event.caller_name} started a group call.`;
                 window.sukiRingtone?.start();
             })
-            .listen('.GroupCallSignal', (event) => {
-                if (event.sender_id === this.authUserId || event.call_id !== this.callId) {
-                    return;
-                }
-
-                if (event.recipient_id !== null && event.recipient_id !== this.authUserId) {
-                    return;
-                }
-
-                void this.safeHandleGroupSignal(event.sender_id, event.signal_data);
-            })
             .listen('.GroupCallStatusChanged', (event) => {
-                if (this.callId !== null && event.call_id !== this.callId) {
-                    return;
-                }
-
-                if (event.status === 'ended') {
-                    this.cleanupGroupCall('idle');
-                    return;
-                }
-
-                this.participants = this.normalizeParticipantIds(event.participants);
-                this.removeDepartedPeers();
-
-                if (this.localStream !== null && (this.callStatus === 'active' || this.callStatus === 'connecting')) {
-                    this.connectToParticipants();
-                }
-
-                this.refreshRemoteParticipants();
+                this.handleGroupStatusChanged(event);
             });
 
         this.groupJoinHandler = (event) => {
@@ -147,6 +126,65 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         };
 
         document.addEventListener('group-call-join', this.groupJoinHandler);
+    },
+
+    subscribeCallChannel() {
+        if (!window.Echo || !this.callId) {
+            return;
+        }
+
+        const channelName = `call.${this.callId}`;
+
+        if (this.callChannelName === channelName && this.callChannelRef !== null) {
+            return;
+        }
+
+        this.unsubscribeCallChannel();
+        this.callChannelName = channelName;
+        this.callChannelRef = window.Echo.private(channelName)
+            .listen('.GroupCallSignal', (event) => {
+                if (event.sender_id === this.authUserId || event.call_id !== this.callId) {
+                    return;
+                }
+
+                if (event.recipient_id !== null && event.recipient_id !== this.authUserId) {
+                    return;
+                }
+
+                void this.safeHandleGroupSignal(event.sender_id, event.signal_data);
+            })
+            .listen('.GroupCallStatusChanged', (event) => {
+                this.handleGroupStatusChanged(event);
+            });
+    },
+
+    unsubscribeCallChannel() {
+        if (this.callChannelName && window.Echo) {
+            window.Echo.leave(this.callChannelName);
+        }
+
+        this.callChannelRef = null;
+        this.callChannelName = null;
+    },
+
+    handleGroupStatusChanged(event) {
+        if (this.callId !== null && event.call_id !== this.callId) {
+            return;
+        }
+
+        if (event.status === 'ended') {
+            this.cleanupGroupCall('idle');
+            return;
+        }
+
+        this.participants = this.normalizeParticipantIds(event.participants);
+        this.removeDepartedPeers();
+
+        if (this.localStream !== null && (this.callStatus === 'active' || this.callStatus === 'connecting')) {
+            this.connectToParticipants();
+        }
+
+        this.refreshRemoteParticipants();
     },
 
     destroy() {
@@ -358,13 +396,20 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.localStream?.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
+        window.sukiGroupCallPip?.sync(this);
     },
 
-    toggleCamera() {
+    async toggleCamera() {
+        if (this.cameraDisabled && this.localStream?.getVideoTracks().length === 0) {
+            await this.enableCameraTrack();
+            return;
+        }
+
         this.cameraDisabled = !this.cameraDisabled;
         this.localStream?.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
+        window.sukiGroupCallPip?.sync(this);
     },
 
     participantName(participantId) {
@@ -424,6 +469,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             });
 
             this.callId = payload.id;
+            this.subscribeCallChannel();
             this.callStatus = 'active';
             this.participants = this.normalizeParticipantIds(payload.participants ?? [this.authUserId]);
             this.statusMessage = 'Group call started.';
@@ -444,6 +490,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
         try {
             window.sukiRingtone?.stop();
+            this.subscribeCallChannel();
             this.callStatus = 'connecting';
             this.statusMessage = 'Joining group call...';
             this.startCallTimer();
@@ -489,7 +536,14 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             return;
         }
 
-        this.enterPip();
+        if (window.sukiPipManager?.activeCall === this && window.sukiPipManager?.mode === 'document-pip') {
+            return;
+        }
+
+        window.sukiPipManager?.enterOverlay(this, {
+            kind: 'group',
+            title: this.groupName,
+        });
     },
 
     disposeOnLeave(options = {}) {
@@ -530,13 +584,21 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             return this.localStream;
         }
 
-        const attempts = [
-            { video: this.getBestVideoConstraints(), audio: true },
-            { video: this.getBestVideoConstraints(true), audio: true },
-            { video: true, audio: true },
-            { video: true, audio: false },
-            { video: false, audio: true },
-        ];
+        const mobileAudioFirst = this.isMobileDevice();
+        const attempts = mobileAudioFirst
+            ? [
+                { video: false, audio: true },
+                { video: this.getBestVideoConstraints(true), audio: true },
+                { video: true, audio: true },
+                { video: true, audio: false },
+            ]
+            : [
+                { video: this.getBestVideoConstraints(), audio: true },
+                { video: this.getBestVideoConstraints(true), audio: true },
+                { video: true, audio: true },
+                { video: true, audio: false },
+                { video: false, audio: true },
+            ];
 
         let lastError = null;
 
@@ -560,6 +622,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.localStream.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
+        this.cameraDisabled = this.cameraDisabled || this.localStream.getVideoTracks().length === 0;
         this.localStream.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
@@ -708,6 +771,160 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         newVideoTrack.enabled = !this.cameraDisabled;
         this.syncLocalVideoSources();
         await this.updateCameraCapabilities();
+    },
+
+    async enableCameraTrack() {
+        if (!this.localStream) {
+            return;
+        }
+
+        let cameraStream;
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: this.facingMode } },
+                audio: false,
+            });
+        } catch (error) {
+            this.statusMessage = this.groupCallErrorMessage(error, 'Could not turn on the camera.');
+            return;
+        }
+
+        const [videoTrack] = cameraStream.getVideoTracks();
+
+        if (!videoTrack) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+            this.statusMessage = 'Could not turn on the camera.';
+            return;
+        }
+
+        videoTrack.enabled = true;
+        this.localStream.addTrack(videoTrack);
+
+        for (const [peerId, peer] of this.peerConnections.entries()) {
+            const sender = peer.getSenders().find((candidateSender) => candidateSender.track?.kind === 'video');
+
+            if (sender) {
+                await sender.replaceTrack(videoTrack);
+                continue;
+            }
+
+            peer.addTrack(videoTrack, this.localStream);
+            const state = this.peerStates.get(peerId);
+
+            if (state?.shouldOffer) {
+                await this.negotiateGroupPeer(peerId, peer, state);
+            } else {
+                await this.safeSendGroupSignal(peerId, { type: 'renegotiate' }, { fatal: false });
+            }
+        }
+
+        this.cameraDisabled = false;
+        this.syncLocalVideoSources();
+        await this.updateCameraCapabilities();
+        window.sukiGroupCallPip?.sync(this);
+    },
+
+    async toggleScreenShare() {
+        if (this.screenSharing) {
+            await this.stopScreenShare();
+            return;
+        }
+
+        await this.startScreenShare();
+    },
+
+    async startScreenShare() {
+        if (!navigator.mediaDevices?.getDisplayMedia || !this.localStream) {
+            this.statusMessage = 'Screen sharing is not available in this browser.';
+            return;
+        }
+
+        let displayStream;
+
+        try {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: false,
+            });
+        } catch (error) {
+            this.statusMessage = this.groupCallErrorMessage(error, 'Could not start screen sharing.');
+            return;
+        }
+
+        const [screenTrack] = displayStream.getVideoTracks();
+
+        if (!screenTrack) {
+            displayStream.getTracks().forEach((track) => track.stop());
+            this.statusMessage = 'Could not start screen sharing.';
+            return;
+        }
+
+        this.cameraTrackBeforeShare = this.localStream.getVideoTracks()[0] ?? null;
+
+        try {
+            await this.replaceOutgoingVideoTrack(screenTrack);
+        } catch (error) {
+            screenTrack.stop();
+            this.statusMessage = this.groupCallErrorMessage(error, 'Could not start screen sharing.');
+            return;
+        }
+
+        this.screenTrack = screenTrack;
+        this.screenSharing = true;
+        this.localStream = new MediaStream([...this.localStream.getAudioTracks(), screenTrack]);
+        this.syncLocalVideoSources();
+        window.sukiGroupCallPip?.sync(this);
+
+        screenTrack.addEventListener('ended', () => {
+            if (this.screenSharing) {
+                void this.stopScreenShare();
+            }
+        }, { once: true });
+    },
+
+    async stopScreenShare() {
+        const previousScreenTrack = this.screenTrack;
+        const audioTracks = this.localStream?.getAudioTracks() ?? [];
+        let nextVideoTrack = this.cameraTrackBeforeShare;
+
+        if (!nextVideoTrack || nextVideoTrack.readyState !== 'live') {
+            try {
+                const cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: this.facingMode } },
+                    audio: false,
+                });
+                [nextVideoTrack] = cameraStream.getVideoTracks();
+            } catch {
+                nextVideoTrack = null;
+            }
+        }
+
+        if (nextVideoTrack) {
+            nextVideoTrack.enabled = !this.cameraDisabled;
+            await this.replaceOutgoingVideoTrack(nextVideoTrack);
+            this.localStream = new MediaStream([...audioTracks, nextVideoTrack]);
+        } else {
+            await this.replaceOutgoingVideoTrack(null);
+            this.localStream = new MediaStream(audioTracks);
+        }
+
+        previousScreenTrack?.stop();
+        this.screenTrack = null;
+        this.cameraTrackBeforeShare = null;
+        this.screenSharing = false;
+        this.syncLocalVideoSources();
+        window.sukiGroupCallPip?.sync(this);
+    },
+
+    async replaceOutgoingVideoTrack(track) {
+        const videoSenders = Array.from(this.peerConnections.values())
+            .flatMap((peer) => peer.getSenders())
+            .filter((sender) => sender.track?.kind === 'video');
+
+        for (const sender of videoSenders) {
+            await sender.replaceTrack(track);
+        }
     },
 
     async loadIceConfiguration() {
@@ -1324,6 +1541,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         void this.exitPip();
         window.sukiRingtone?.stop();
         this.stopCallTimer();
+        this.unsubscribeCallChannel();
         this.peerConnections.forEach((peer) => peer.close());
         this.peerConnections.clear();
         this.remoteStreams = new Map();
@@ -1344,12 +1562,16 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             this.localStream.getTracks().forEach((track) => track.stop());
         }
 
+        this.screenTrack?.stop();
         this.localStream = null;
         this.callId = null;
         this.callStatus = nextStatus;
         this.statusMessage = message;
         this.microphoneMuted = false;
         this.cameraDisabled = false;
+        this.screenSharing = false;
+        this.screenTrack = null;
+        this.cameraTrackBeforeShare = null;
         this.setVideoSource('group-call-local-video', null);
         this.setVideoSource('group-call-local-background-video', null);
         this.setVideoSource('group-call-local-grid-video', null);
@@ -1373,6 +1595,8 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     },
 
     teardownRealtimeListeners() {
+        this.unsubscribeCallChannel();
+
         if (this.groupJoinHandler !== null) {
             document.removeEventListener('group-call-join', this.groupJoinHandler);
             this.groupJoinHandler = null;

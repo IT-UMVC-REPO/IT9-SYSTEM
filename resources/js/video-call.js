@@ -116,6 +116,8 @@ export const conversationVideoCall = (config) => ({
     routes: config.routes,
     callStatus: 'idle',
     callId: null,
+    callChannelRef: null,
+    callChannelName: null,
     peer: null,
     localStream: null,
     pendingSignals: [],
@@ -136,6 +138,9 @@ export const conversationVideoCall = (config) => ({
     initialized: false,
     microphoneMuted: false,
     cameraDisabled: false,
+    screenSharing: false,
+    screenTrack: null,
+    cameraTrackBeforeShare: null,
     remoteVideoActive: false,
     callStartedAt: null,
     callDurationTimer: null,
@@ -143,7 +148,6 @@ export const conversationVideoCall = (config) => ({
     callChromeVisible: true,
     callChromeTimer: null,
     previewPosition: { right: 16, bottom: 96 },
-    persistentPipVideo: null,
     persistentRemoteStream: null,
 
     init() {
@@ -161,44 +165,85 @@ export const conversationVideoCall = (config) => ({
                 }
 
                 this.callId = event.call_id;
+                this.subscribeCallChannel();
                 this.callStatus = 'incoming';
                 this.statusMessage = `${event.caller_name} is calling...`;
                 this.startCallTimer();
                 this.showCallChrome();
             })
+            .listen('.VideoCallStatusChanged', (event) => {
+                this.handleStatusChanged(event);
+            });
+    },
+
+    subscribeCallChannel() {
+        if (!window.Echo || !this.callId) {
+            return;
+        }
+
+        const channelName = `call.${this.callId}`;
+
+        if (this.callChannelName === channelName && this.callChannelRef !== null) {
+            return;
+        }
+
+        this.unsubscribeCallChannel();
+        this.callChannelName = channelName;
+        this.callChannelRef = window.Echo.private(channelName)
             .listen('.VideoCallSignal', (event) => {
                 if (event.sender_id === this.authUserId) {
                     return;
                 }
 
-                if (this.callId !== null && event.call_id !== this.callId) {
+                if (event.call_id !== this.callId) {
                     return;
                 }
 
-                this.callId ??= event.call_id;
                 void this.handleIncomingSignal(event.signal_data);
             })
             .listen('.VideoCallStatusChanged', (event) => {
-                if (this.callId !== null && event.call_id !== this.callId) {
+                if (event.call_id !== this.callId) {
                     return;
                 }
 
-                if (event.status === 'active' && this.callStatus === 'calling') {
-                    this.callStatus = 'connecting';
-                    this.statusMessage = `${this.otherUserName} accepted. Connecting media...`;
-                    this.startConnectionTimers();
-                    return;
-                }
-
-                if (event.status === 'declined') {
-                    this.cleanupCall('ended', `${this.otherUserName} declined the call.`);
-                    return;
-                }
-
-                if (event.status === 'ended') {
-                    this.cleanupCall('ended', 'Call ended.');
-                }
+                this.handleStatusChanged(event);
             });
+    },
+
+    unsubscribeCallChannel() {
+        if (this.callChannelName && window.Echo) {
+            window.Echo.leave(this.callChannelName);
+        }
+
+        this.callChannelRef = null;
+        this.callChannelName = null;
+    },
+
+    handleStatusChanged(event) {
+        if (this.callId !== null && event.call_id !== this.callId) {
+            return;
+        }
+
+        if (event.status === 'active' && this.callStatus === 'calling') {
+            this.callStatus = 'connecting';
+            this.statusMessage = `${this.otherUserName} accepted. Connecting media...`;
+            this.startConnectionTimers();
+
+            if (this.peer !== null) {
+                void this.negotiatePeer(this.peer);
+            }
+
+            return;
+        }
+
+        if (event.status === 'declined') {
+            this.cleanupCall('ended', `${this.otherUserName} declined the call.`);
+            return;
+        }
+
+        if (event.status === 'ended') {
+            this.cleanupCall('ended', 'Call ended.');
+        }
     },
 
     supportsVideoCalling() {
@@ -349,13 +394,20 @@ export const conversationVideoCall = (config) => ({
         this.localStream?.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
+        window.sukiPipManager?.sync(this);
     },
 
-    toggleCamera() {
+    async toggleCamera() {
+        if (this.cameraDisabled && this.localStream?.getVideoTracks().length === 0) {
+            await this.enableCameraTrack();
+            return;
+        }
+
         this.cameraDisabled = !this.cameraDisabled;
         this.localStream?.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
+        window.sukiPipManager?.sync(this);
     },
 
     async startCall() {
@@ -374,6 +426,7 @@ export const conversationVideoCall = (config) => ({
             });
 
             this.callId = payload.id;
+            this.subscribeCallChannel();
             this.callStatus = 'calling';
             this.statusMessage = 'Preparing your camera...';
             this.startCallTimer();
@@ -405,6 +458,7 @@ export const conversationVideoCall = (config) => ({
         }
 
         try {
+            this.subscribeCallChannel();
             await this.ensureLocalStream();
             this.statusMessage = 'Loading call connection settings...';
             await this.loadIceConfiguration();
@@ -474,11 +528,14 @@ export const conversationVideoCall = (config) => ({
             return;
         }
 
-        if (document.pictureInPictureElement) {
+        if (window.sukiPipManager?.activeCall === this && window.sukiPipManager?.mode === 'document-pip') {
             return;
         }
 
-        void this.enterPip();
+        window.sukiPipManager?.enterOverlay(this, {
+            kind: 'direct',
+            title: this.otherUserName,
+        });
     },
 
     isCallInProgress() {
@@ -892,13 +949,21 @@ export const conversationVideoCall = (config) => ({
             return this.localStream;
         }
 
-        const attempts = [
-            { video: this.getBestVideoConstraints(), audio: true },
-            { video: this.getBestVideoConstraints(true), audio: true },
-            { video: true, audio: true },
-            { video: true, audio: false },
-            { video: false, audio: true },
-        ];
+        const mobileAudioFirst = this.isMobileDevice();
+        const attempts = mobileAudioFirst
+            ? [
+                { video: false, audio: true },
+                { video: this.getBestVideoConstraints(true), audio: true },
+                { video: true, audio: true },
+                { video: true, audio: false },
+            ]
+            : [
+                { video: this.getBestVideoConstraints(), audio: true },
+                { video: this.getBestVideoConstraints(true), audio: true },
+                { video: true, audio: true },
+                { video: true, audio: false },
+                { video: false, audio: true },
+            ];
 
         let lastError = null;
 
@@ -922,6 +987,7 @@ export const conversationVideoCall = (config) => ({
         this.localStream.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
+        this.cameraDisabled = this.cameraDisabled || this.localStream.getVideoTracks().length === 0;
         this.localStream.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
@@ -980,94 +1046,22 @@ export const conversationVideoCall = (config) => ({
     },
 
     isPipSupported() {
-        return Boolean(
-            document.pictureInPictureEnabled
-            && !document.querySelector(`#${remoteVideoElementId}`)?.disablePictureInPicture,
-        );
+        return Boolean(window.sukiPipManager?.supportsVideoCalling?.());
     },
 
     async enterPip() {
-        const remoteVideo = this.ensurePersistentPipVideo();
-
-        if (!remoteVideo) {
+        if (!window.sukiPipManager) {
             return;
         }
 
-        const stream = remoteVideo.srcObject ?? this.persistentRemoteStream;
-        if (!(stream instanceof MediaStream) || stream.getVideoTracks().length === 0) {
-            this.statusMessage = 'No remote video to show in picture-in-picture.';
-            window.setTimeout(() => {
-                if (this.statusMessage.startsWith('No remote')) {
-                    this.statusMessage = '';
-                }
-            }, 3000);
-            return;
-        }
-
-        if (!document.pictureInPictureEnabled) {
-            return;
-        }
-
-        try {
-            if (document.pictureInPictureElement) {
-                await document.exitPictureInPicture();
-            }
-
-            remoteVideo.srcObject = stream;
-            remoteVideo.muted = false;
-            await remoteVideo.play().catch(() => {});
-            await remoteVideo.requestPictureInPicture();
-        } catch {
-            this.statusMessage = 'Picture-in-picture is not available in this browser.';
-            window.setTimeout(() => {
-                this.statusMessage = '';
-            }, 3000);
-        }
+        await window.sukiPipManager.enter(this, {
+            kind: 'direct',
+            title: this.otherUserName,
+        });
     },
 
     async exitPip() {
-        if (!document.pictureInPictureElement || document.pictureInPictureElement !== this.persistentPipVideo) {
-            return;
-        }
-
-        try {
-            await document.exitPictureInPicture();
-            this.persistentPipVideo.muted = true;
-        } catch {
-            // Ignore PiP cleanup failures.
-        }
-    },
-
-    ensurePersistentPipVideo() {
-        if (this.persistentPipVideo instanceof HTMLVideoElement && document.body.contains(this.persistentPipVideo)) {
-            return this.persistentPipVideo;
-        }
-
-        const video = document.createElement('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        video.muted = true;
-        video.style.position = 'fixed';
-        video.style.width = '1px';
-        video.style.height = '1px';
-        video.style.right = '0';
-        video.style.bottom = '0';
-        video.style.opacity = '0.01';
-        video.style.pointerEvents = 'none';
-        video.setAttribute('aria-hidden', 'true');
-        video.dataset.sukiCallPip = 'true';
-        video.addEventListener('leavepictureinpicture', () => {
-            video.muted = true;
-        });
-        document.body.appendChild(video);
-
-        this.persistentPipVideo = video;
-
-        if (this.persistentRemoteStream instanceof MediaStream) {
-            video.srcObject = this.persistentRemoteStream;
-        }
-
-        return video;
+        window.sukiPipManager?.hide(this);
     },
 
     isMobileDevice() {
@@ -1145,10 +1139,157 @@ export const conversationVideoCall = (config) => ({
         await this.updateCameraCapabilities();
     },
 
+    async enableCameraTrack() {
+        if (!this.localStream) {
+            return;
+        }
+
+        let cameraStream;
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: this.getBestVideoConstraints(true),
+                audio: false,
+            });
+        } catch (error) {
+            this.statusMessage = this.callErrorMessage(error, 'Could not turn on the camera.');
+            return;
+        }
+
+        const [videoTrack] = cameraStream.getVideoTracks();
+
+        if (!videoTrack) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+            this.statusMessage = 'Could not turn on the camera.';
+            return;
+        }
+
+        videoTrack.enabled = true;
+        this.localStream.addTrack(videoTrack);
+
+        const sender = this.peer?.getSenders().find((candidateSender) => candidateSender.track?.kind === 'video');
+
+        if (sender) {
+            await sender.replaceTrack(videoTrack);
+        } else if (this.peer) {
+            this.peer.addTrack(videoTrack, this.localStream);
+            await this.negotiatePeer(this.peer);
+        }
+
+        this.cameraDisabled = false;
+        this.setVideoSource(localVideoElementId, this.localStream);
+        this.setVideoSource(localVideoBackgroundElementId, this.localStream);
+        await this.updateCameraCapabilities();
+        window.sukiPipManager?.sync(this);
+    },
+
+    async toggleScreenShare() {
+        if (this.screenSharing) {
+            await this.stopScreenShare();
+            return;
+        }
+
+        await this.startScreenShare();
+    },
+
+    async startScreenShare() {
+        if (!navigator.mediaDevices?.getDisplayMedia || !this.localStream) {
+            this.statusMessage = 'Screen sharing is not available in this browser.';
+            return;
+        }
+
+        let displayStream;
+
+        try {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: false,
+            });
+        } catch (error) {
+            this.statusMessage = this.callErrorMessage(error, 'Could not start screen sharing.');
+            return;
+        }
+
+        const [screenTrack] = displayStream.getVideoTracks();
+
+        if (!screenTrack) {
+            displayStream.getTracks().forEach((track) => track.stop());
+            this.statusMessage = 'Could not start screen sharing.';
+            return;
+        }
+
+        this.cameraTrackBeforeShare = this.localStream.getVideoTracks()[0] ?? null;
+
+        try {
+            await this.replaceOutgoingVideoTrack(screenTrack);
+        } catch (error) {
+            screenTrack.stop();
+            this.statusMessage = this.callErrorMessage(error, 'Could not start screen sharing.');
+            return;
+        }
+
+        this.screenTrack = screenTrack;
+        this.screenSharing = true;
+        this.localStream = new MediaStream([...this.localStream.getAudioTracks(), screenTrack]);
+        this.setVideoSource(localVideoElementId, this.localStream);
+        this.setVideoSource(localVideoBackgroundElementId, this.localStream);
+        window.sukiPipManager?.sync(this);
+
+        screenTrack.addEventListener('ended', () => {
+            if (this.screenSharing) {
+                void this.stopScreenShare();
+            }
+        }, { once: true });
+    },
+
+    async stopScreenShare() {
+        const previousScreenTrack = this.screenTrack;
+        const audioTracks = this.localStream?.getAudioTracks() ?? [];
+        let nextVideoTrack = this.cameraTrackBeforeShare;
+
+        if (!nextVideoTrack || nextVideoTrack.readyState !== 'live') {
+            try {
+                const cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: this.getBestVideoConstraints(true),
+                    audio: false,
+                });
+                [nextVideoTrack] = cameraStream.getVideoTracks();
+            } catch {
+                nextVideoTrack = null;
+            }
+        }
+
+        if (nextVideoTrack) {
+            nextVideoTrack.enabled = !this.cameraDisabled;
+            await this.replaceOutgoingVideoTrack(nextVideoTrack);
+            this.localStream = new MediaStream([...audioTracks, nextVideoTrack]);
+        } else {
+            await this.replaceOutgoingVideoTrack(null);
+            this.localStream = new MediaStream(audioTracks);
+        }
+
+        previousScreenTrack?.stop();
+        this.screenTrack = null;
+        this.cameraTrackBeforeShare = null;
+        this.screenSharing = false;
+        this.setVideoSource(localVideoElementId, this.localStream);
+        this.setVideoSource(localVideoBackgroundElementId, this.localStream);
+        window.sukiPipManager?.sync(this);
+    },
+
+    async replaceOutgoingVideoTrack(track) {
+        const sender = this.peer?.getSenders().find((candidateSender) => candidateSender.track?.kind === 'video');
+
+        if (sender) {
+            await sender.replaceTrack(track);
+        }
+    },
+
     cleanupCall(nextStatus, message = '') {
         void this.exitPip();
         this.clearConnectionTimers();
         this.stopCallTimer();
+        this.unsubscribeCallChannel();
 
         const peer = this.peer;
         this.peer = null;
@@ -1160,6 +1301,8 @@ export const conversationVideoCall = (config) => ({
         if (this.localStream !== null) {
             this.localStream.getTracks().forEach((track) => track.stop());
         }
+
+        this.screenTrack?.stop();
 
         this.localStream = null;
         this.persistentRemoteStream = null;
@@ -1173,14 +1316,13 @@ export const conversationVideoCall = (config) => ({
         this.iceTransportPolicy = 'all';
         this.microphoneMuted = false;
         this.cameraDisabled = false;
+        this.screenSharing = false;
+        this.screenTrack = null;
+        this.cameraTrackBeforeShare = null;
         this.remoteVideoActive = false;
         this.setVideoSource(localVideoElementId, null);
         this.setVideoSource(localVideoBackgroundElementId, null);
         this.setVideoSource(remoteVideoElementId, null);
-
-        if (this.persistentPipVideo instanceof HTMLVideoElement) {
-            this.persistentPipVideo.srcObject = null;
-        }
 
         this.callId = null;
         this.callStatus = nextStatus;
@@ -1298,14 +1440,6 @@ export const conversationVideoCall = (config) => ({
     setRemoteStream(stream) {
         this.persistentRemoteStream = stream;
         this.setVideoSource(remoteVideoElementId, stream);
-
-        const pipVideo = this.ensurePersistentPipVideo();
-        if (pipVideo instanceof HTMLVideoElement && pipVideo.srcObject !== stream) {
-            pipVideo.srcObject = stream;
-        }
-
-        if (document.pictureInPictureElement === pipVideo) {
-            pipVideo.play().catch(() => {});
-        }
+        window.sukiPipManager?.sync(this);
     },
 });

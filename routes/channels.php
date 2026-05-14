@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Models\ConversationGroupMember;
 use App\Models\Order;
+use App\Models\VideoCall;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('order.{orderId}', function ($user, int $orderId): bool {
@@ -50,6 +51,32 @@ Broadcast::channel('presence.conversation.{conversationKey}', function ($user, s
 
 Broadcast::channel('calls.{userId}', function ($user, int $userId): bool {
     return $user->id === $userId;
+});
+
+Broadcast::channel('call.{callId}', function ($user, int $callId): bool {
+    $call = VideoCall::query()
+        ->select(['id', 'caller_id', 'receiver_id', 'group_id', 'is_group_call'])
+        ->find($callId);
+
+    if ($call === null) {
+        return false;
+    }
+
+    if (! $call->is_group_call) {
+        return in_array((int) $user->id, [
+            (int) $call->caller_id,
+            (int) $call->receiver_id,
+        ], true);
+    }
+
+    if ($call->group_id === null) {
+        return false;
+    }
+
+    return ConversationGroupMember::query()
+        ->where('group_id', $call->group_id)
+        ->where('user_id', $user->id)
+        ->exists();
 });
 
 Broadcast::channel('group.{groupId}', function ($user, int $groupId): bool {

@@ -357,6 +357,24 @@ test('participants can send opaque peer signal payloads', function () {
     );
 });
 
+test('opaque peer signal payloads broadcast on a private per-call channel', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+    $call = createVideoCallRecord($caller, $receiver);
+    $event = new VideoCallSignal($call, $caller->getKey(), [
+        'type' => 'candidate',
+        'candidate' => ['candidate' => 'candidate:1'],
+    ]);
+
+    $channels = collect($event->broadcastOn())
+        ->map(fn ($channel): string => $channel->name)
+        ->all();
+
+    expect($channels)
+        ->toBe(['private-call.'.$call->getKey()])
+        ->and($event->broadcastWith()['signal_data']['type'])->toBe('candidate');
+});
+
 test('third parties cannot signal on a call they are not part of', function () {
     $caller = User::factory()->create();
     $receiver = User::factory()->create();
@@ -375,6 +393,48 @@ test('third parties cannot signal on a call they are not part of', function () {
         ->assertForbidden();
 
     Event::assertNotDispatched(VideoCallSignal::class);
+});
+
+test('video call policy limits answer signal and end actions to participants', function () {
+    $caller = User::factory()->create();
+    $receiver = User::factory()->create();
+    $outsider = User::factory()->create();
+    $call = createVideoCallRecord($caller, $receiver);
+
+    expect($receiver->can('answer', $call))->toBeTrue()
+        ->and($caller->can('answer', $call))->toBeFalse()
+        ->and($caller->can('signal', $call))->toBeTrue()
+        ->and($receiver->can('signal', $call))->toBeTrue()
+        ->and($outsider->can('signal', $call))->toBeFalse()
+        ->and($caller->can('end', $call))->toBeTrue()
+        ->and($receiver->can('end', $call))->toBeTrue()
+        ->and($outsider->can('end', $call))->toBeFalse();
+});
+
+test('call feature bootstrap owns rate limiting secure requests and private call channel auth', function () {
+    $provider = file_get_contents(app_path('Providers/CallFeatureServiceProvider.php'));
+    $routes = file_get_contents(base_path('routes/calls.php'));
+    $channels = file_get_contents(base_path('routes/channels.php'));
+    $middleware = file_get_contents(app_path('Http/Middleware/EnsureSecureVideoCalls.php'));
+    $layout = file_get_contents(resource_path('views/layouts/app/header.blade.php'));
+
+    expect($provider)
+        ->toContain("RateLimiter::for('video-calls'")
+        ->toContain('Limit::perHour(10)')
+        ->and($routes)
+        ->toContain('EnsureSecureVideoCalls::class')
+        ->toContain("middleware('throttle:video-calls')")
+        ->and($channels)
+        ->toContain("Broadcast::channel('call.{callId}'")
+        ->toContain('VideoCall::query()')
+        ->toContain('ConversationGroupMember::query()')
+        ->and($middleware)
+        ->toContain('app()->isProduction()')
+        ->toContain('Video calls require HTTPS in production.')
+        ->and($layout)
+        ->toContain('<livewire:call-overlay')
+        ->toContain('serverMobile:')
+        ->toContain('navigator.maxTouchPoints > 1');
 });
 
 test('guests cannot read call ice server configuration', function () {
@@ -520,9 +580,12 @@ test('video call client uses native rtc peer connection and server-provided ice 
     $groupCall = file_get_contents(resource_path('js/group-call.js'));
     $groupCallPip = file_get_contents(resource_path('js/group-call-pip.js'));
     $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
+    $pipManager = file_get_contents(resource_path('js/pip-manager.js'));
+    $callOverlay = file_get_contents(resource_path('views/components/⚡call-overlay.blade.php'));
 
     expect($app)
         ->toContain("import { RingtonePlayer } from './ringtone';")
+        ->toContain("import './pip-manager';")
         ->toContain('window.sukiRingtone')
         ->toContain('window.conversationVideoCall')
         ->toContain('window.groupConversationVideoCall')
@@ -568,13 +631,15 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('Could not switch cameras. Your current camera is still active.')
         ->toContain('preferCodecs')
         ->toContain('setMaxBitrate')
-        ->toContain('requestPictureInPicture')
-        ->toContain('persistentPipVideo')
+        ->toContain('window.sukiPipManager.enter')
+        ->toContain('window.sukiPipManager?.enterOverlay')
         ->toContain('keepAliveOnNavigate')
-        ->toContain('ensurePersistentPipVideo')
         ->toContain('setRemoteStream')
         ->toContain('peer.restartIce?.();')
         ->toContain('callStatusLabel()')
+        ->toContain('toggleScreenShare')
+        ->toContain('getDisplayMedia')
+        ->toContain('{ video: false, audio: true }')
         ->toContain('Connection interrupted. Attempting recovery...')
         ->toContain('new MediaStream([event.track])')
         ->toContain('remoteVideoActive')
@@ -596,6 +661,8 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('showCallChrome')
         ->toContain('toggleMicrophone')
         ->toContain('toggleCamera')
+        ->toContain('toggleScreenShare')
+        ->toContain('getDisplayMedia')
         ->toContain('switchCamera')
         ->toContain('updateCameraCapabilities')
         ->toContain('normalizeParticipantIds')
@@ -640,11 +707,22 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('this.remoteStreams = new Map(this.remoteStreams)')
         ->not->toContain('requestPictureInPicture')
         ->and($groupCallPip)
-        ->toContain('data-pip-grid')
+        ->toContain('window.sukiPipManager?.enter')
         ->toContain('window.__activeGroupCall = call')
-        ->toContain('toggleMicrophone')
-        ->toContain('toggleCamera')
+        ->toContain('exitToConversation')
+        ->and($pipManager)
+        ->toContain("Alpine.store('pipManager'")
+        ->toContain("mode: 'overlay'")
+        ->toContain("mode = 'document-pip'")
+        ->toContain('documentPictureInPicture.requestWindow')
+        ->toContain('data-pip-grid')
+        ->toContain('toggleScreenShare')
         ->toContain('Waiting for others to join...')
+        ->and($callOverlay)
+        ->toContain('$store.pipManager')
+        ->toContain('touchmove.window')
+        ->toContain('minimize()')
+        ->toContain('Share screen')
         ->and($videoCallControl)
         ->toContain('conversationVideoCallControl')
         ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall')
@@ -697,6 +775,8 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('formattedCallDuration()')
         ->toContain('toggleMicrophone()')
         ->toContain('toggleCamera()')
+        ->toContain('toggleScreenShare()')
+        ->toContain('Share screen')
         ->toContain('phone-x-mark')
         ->toContain('Camera off')
         ->toContain('Picture in picture')
@@ -761,6 +841,8 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
         ->not->toContain('arrows-pointing-out')
         ->not->toContain('request'.'Full'.'screen')
         ->toContain('switchCamera()')
+        ->toContain('toggleScreenShare()')
+        ->toContain('Share screen')
         ->toContain('Waiting for others to join...')
         ->toContain('activeParticipantCount()')
         ->toContain('phone-x-mark')

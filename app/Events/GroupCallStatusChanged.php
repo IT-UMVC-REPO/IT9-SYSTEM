@@ -31,6 +31,7 @@ class GroupCallStatusChanged implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('group.'.$this->videoCall->group_id),
+            new PrivateChannel('call.'.$this->videoCall->getKey()),
         ];
     }
 

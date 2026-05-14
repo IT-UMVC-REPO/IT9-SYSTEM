@@ -150,10 +150,14 @@
         $logoHref = $user !== null && filled($navigationItems)
             ? $navigationItems[0]['route']
             : route('home');
+        $mobileUserAgent = \Illuminate\Support\Str::contains(
+            \Illuminate\Support\Str::lower(request()->userAgent() ?? ''),
+            ['android', 'iphone', 'ipad', 'ipod', 'blackberry', 'iemobile', 'opera mini'],
+        );
     @endphp
     <body
-        x-data="{ mobileMenuOpen: false, showBackToTop: false }"
-        x-init="showBackToTop = window.scrollY > 400; window.addEventListener('scroll', () => showBackToTop = window.scrollY > 400, { passive: true })"
+        x-data="{ mobileMenuOpen: false, showBackToTop: false, serverMobile: @js($mobileUserAgent), touchMobile: false }"
+        x-init="showBackToTop = window.scrollY > 400; touchMobile = navigator.maxTouchPoints > 1; document.body.dataset.serverMobile = serverMobile ? 'true' : 'false'; document.body.dataset.touchMobile = touchMobile ? 'true' : 'false'; window.addEventListener('scroll', () => showBackToTop = window.scrollY > 400, { passive: true })"
         x-on:keydown.escape.window="mobileMenuOpen = false"
         x-on:livewire:navigating.window="mobileMenuOpen = false"
         @class([
@@ -451,6 +455,7 @@
         @endif
 
         @auth
+            <livewire:call-overlay :key="'call-overlay'" />
             <livewire:calls.incoming-call-notification :key="'incoming-call-notification'" />
         @endauth
 

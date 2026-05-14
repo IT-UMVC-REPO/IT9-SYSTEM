@@ -35,6 +35,8 @@ test('authenticated customers can view the storefront', function () {
     $response->assertOk()
         ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false)
         ->assertSee('A brighter market floor for your next market run.')
+        ->assertSee('imgs/sukimarket.webp')
+        ->assertDontSee('imgs/SukiMarket.webp')
         ->assertSee('wire:model.live.debounce.250ms="search"', false)
         ->assertDontSee('class="brand-button-primary w-full">Search', false)
         ->assertSee(route('shop.vendors'), false)

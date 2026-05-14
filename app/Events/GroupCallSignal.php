@@ -37,7 +37,7 @@ class GroupCallSignal implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('group.'.$this->videoCall->group_id),
+            new PrivateChannel('call.'.$this->videoCall->getKey()),
         ];
     }
 

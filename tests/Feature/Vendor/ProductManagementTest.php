@@ -101,7 +101,10 @@ test('vendors can create products with an uploaded image', function () {
 
     Livewire::actingAs($vendorUser)
         ->test('pages::vendor.product-create')
+        ->assertSee('Product builder')
+        ->assertSee('Square, well-lit photos look best in the storefront.')
         ->assertSee('Unit conversion')
+        ->assertSee('Price is per selected selling unit. Stock is the number of those units available.')
         ->assertSee('Hidden from storefront. Only you can see it.')
         ->assertSee('Visible to shoppers on the storefront.')
         ->set('name', 'Pechay Bundle')

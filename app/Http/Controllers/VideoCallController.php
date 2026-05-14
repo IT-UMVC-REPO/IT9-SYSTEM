@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -78,7 +79,7 @@ class VideoCallController extends Controller
 
         $userId = $request->user()->getKey();
 
-        abort_if(! $this->isParticipant($call, $userId), 403);
+        Gate::authorize('signal', $call);
 
         $broadcasted = $this->dispatchBroadcastSafely(
             new VideoCallSignal($call, $userId, $validated['signal_data']),
@@ -91,7 +92,7 @@ class VideoCallController extends Controller
     public function answer(Request $request, VideoCall $call): JsonResponse
     {
         abort_if($call->is_group_call, 404);
-        abort_if($call->receiver_id !== $request->user()->getKey(), 403);
+        Gate::authorize('answer', $call);
 
         $call->forceFill([
             'status' => VideoCallStatus::Active,
@@ -111,7 +112,7 @@ class VideoCallController extends Controller
     public function decline(Request $request, VideoCall $call): JsonResponse
     {
         abort_if($call->is_group_call, 404);
-        abort_if($call->receiver_id !== $request->user()->getKey(), 403);
+        Gate::authorize('decline', $call);
 
         $call->forceFill([
             'status' => VideoCallStatus::Declined,
@@ -131,7 +132,7 @@ class VideoCallController extends Controller
     public function end(Request $request, VideoCall $call): JsonResponse
     {
         abort_if($call->is_group_call, 404);
-        abort_if(! $this->isParticipant($call, $request->user()->getKey()), 403);
+        Gate::authorize('end', $call);
 
         $call->forceFill([
             'status' => VideoCallStatus::Ended,
@@ -207,7 +208,7 @@ class VideoCallController extends Controller
 
         $userId = $request->user()->getKey();
 
-        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+        Gate::authorize('signal', $call);
 
         $recipientId = isset($validated['recipient_id']) ? (int) $validated['recipient_id'] : null;
 
@@ -229,7 +230,7 @@ class VideoCallController extends Controller
 
         $userId = $request->user()->getKey();
 
-        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+        Gate::authorize('answer', $call);
 
         $this->expireStaleGroupCalls((int) $call->group_id);
         $call->refresh();
@@ -293,7 +294,7 @@ class VideoCallController extends Controller
 
         $userId = $request->user()->getKey();
 
-        abort_unless($this->isGroupMember($call->group_id, $userId), 403);
+        Gate::authorize('end', $call);
 
         $leftParticipantCount = 0;
         $shouldDispatchCallEnded = false;
@@ -369,11 +370,6 @@ class VideoCallController extends Controller
             'realtime_available' => $broadcasted,
             'message' => $broadcasted ? null : __('Group video call service is unavailable right now.'),
         ], $broadcasted ? 200 : 503);
-    }
-
-    private function isParticipant(VideoCall $call, int $userId): bool
-    {
-        return in_array($userId, [$call->caller_id, $call->receiver_id], true);
     }
 
     private function isGroupMember(int $groupId, int $userId): bool
