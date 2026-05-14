@@ -10,7 +10,9 @@ use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
 use App\Models\RiderEarning;
 use App\Models\RiderProfile;
+use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\RiderDispatchService;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +101,12 @@ new #[Title('Rider Dashboard')] class extends Component
         return $this->myActiveDeliveries->first()?->getKey();
     }
 
+    #[Computed]
+    public function canClaimMoreDeliveries(): bool
+    {
+        return $this->myActiveDeliveries->count() < (int) config('rider.max_concurrent_deliveries', 3);
+    }
+
     public function toggleAvailability(): void
     {
         $profile = $this->profile;
@@ -138,6 +146,19 @@ new #[Title('Rider Dashboard')] class extends Component
             variant: 'success',
             text: $isStarting ? __('Session started.') : __('Session ended.'),
         );
+    }
+
+    public function claimDelivery(int $orderId): void
+    {
+        $rider = auth()->user();
+
+        abort_unless($rider instanceof User, 403);
+
+        app(RiderDispatchService::class)->claimReadyOrder($orderId, $rider);
+
+        $this->clearDeliveryComputeds();
+
+        Flux::toast(variant: 'success', text: __('Delivery claimed. It is now in your active deliveries.'));
     }
 
     public function markOutForDelivery(int $orderId): void
@@ -257,7 +278,7 @@ new #[Title('Rider Dashboard')] class extends Component
 
     private function clearDeliveryComputeds(): void
     {
-        unset($this->availableOrders, $this->myActiveDeliveries, $this->completedToday, $this->todayEarnings, $this->sevenDayEarnings, $this->activeOrderId);
+        unset($this->availableOrders, $this->myActiveDeliveries, $this->completedToday, $this->todayEarnings, $this->sevenDayEarnings, $this->activeOrderId, $this->canClaimMoreDeliveries);
     }
 }; ?>
 
@@ -656,6 +677,20 @@ new #[Title('Rider Dashboard')] class extends Component
                         <span>{{ $this->distanceLabel($order) }}</span>
                         <span>{{ $order->updated_at->diffForHumans() }}</span>
                     </div>
+
+                    <button
+                        type="button"
+                        wire:click="claimDelivery({{ $order->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="claimDelivery({{ $order->id }})"
+                        @disabled(! $this->canClaimMoreDeliveries)
+                        class="brand-button-primary mt-5 w-full transition-all duration-150 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="claimDelivery({{ $order->id }})">
+                            {{ $this->canClaimMoreDeliveries ? __('Claim delivery') : __('Delivery limit reached') }}
+                        </span>
+                        <span wire:loading wire:target="claimDelivery({{ $order->id }})">{{ __('Claiming...') }}</span>
+                    </button>
                 </article>
             @empty
                 <div class="brand-panel px-6 py-12 text-center">

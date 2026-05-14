@@ -111,6 +111,8 @@ class RiderDispatchService
             abort_unless($lockedOffer->status === RiderOfferStatus::Pending, 409);
             abort_if($lockedOffer->expires_at->isPast(), 409);
             abort_if($lockedOrder->rider_id !== null, 409);
+            abort_unless($lockedOrder->order_status === OrderStatus::Ready, 409);
+            abort_if($lockedOrder->is_self_pickup, 409);
 
             $lockedOffer->forceFill([
                 'status' => RiderOfferStatus::Accepted,
@@ -143,14 +145,79 @@ class RiderDispatchService
             return $lockedOrder->fresh(['customer:id,name', 'vendor:id,store_name']);
         });
 
-        SendOrderNotificationJob::dispatch(
-            orderId: $order->getKey(),
-            userId: $order->customer_id,
-            title: 'Rider assigned',
-            message: "A rider has picked up your order #{$order->id} and is heading to you.",
-            type: NotificationType::OrderUpdate,
-            broadcastOrderStatus: true,
-        );
+        $this->notifyCustomerRiderAssigned($order);
+
+        return $order;
+    }
+
+    public function claimReadyOrder(int $orderId, User $rider): Order
+    {
+        $order = DB::transaction(function () use ($orderId, $rider): Order {
+            $profile = RiderProfile::query()
+                ->where('user_id', $rider->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            abort_if($profile === null || $profile->status !== 'approved', 403);
+
+            $activeDeliveries = Order::query()
+                ->where('rider_id', $rider->getKey())
+                ->whereIn('order_status', [OrderStatus::PickedUp, OrderStatus::OutForDelivery])
+                ->count();
+
+            abort_if($activeDeliveries >= (int) config('rider.max_concurrent_deliveries', 3), 409);
+
+            $lockedOrder = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($orderId);
+
+            abort_unless($lockedOrder->order_status === OrderStatus::Ready, 409);
+            abort_if($lockedOrder->is_self_pickup, 409);
+            abort_if($lockedOrder->rider_id !== null, 409);
+
+            $acceptedOffer = RiderDeliveryOffer::query()
+                ->forOrder($lockedOrder->getKey())
+                ->pending()
+                ->where('rider_id', $rider->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if ($acceptedOffer !== null) {
+                $acceptedOffer->forceFill([
+                    'status' => RiderOfferStatus::Accepted,
+                    'responded_at' => now(),
+                ])->save();
+            }
+
+            RiderDeliveryOffer::query()
+                ->forOrder($lockedOrder->getKey())
+                ->pending()
+                ->when($acceptedOffer !== null, fn ($query) => $query->where('id', '!=', $acceptedOffer->getKey()))
+                ->update([
+                    'status' => RiderOfferStatus::Expired->value,
+                    'responded_at' => now(),
+                ]);
+
+            $lockedOrder->forceFill([
+                'rider_id' => $rider->getKey(),
+                'order_status' => OrderStatus::PickedUp,
+                'picked_up_at' => now(),
+            ])->save();
+
+            $profile->forceFill(['last_seen_at' => now()])->save();
+            $profile->recalculateStats();
+
+            AuditLogger::log(
+                AuditEvent::OrderPickedUp,
+                "Order #{$lockedOrder->id} picked up by rider.",
+                $lockedOrder,
+                $rider->getKey(),
+            );
+
+            return $lockedOrder->fresh(['customer:id,name', 'vendor:id,store_name']);
+        });
+
+        $this->notifyCustomerRiderAssigned($order);
 
         return $order;
     }
@@ -263,5 +330,17 @@ class RiderDispatchService
             + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($deltaLng / 2) ** 2;
 
         return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
+    private function notifyCustomerRiderAssigned(Order $order): void
+    {
+        SendOrderNotificationJob::dispatch(
+            orderId: $order->getKey(),
+            userId: $order->customer_id,
+            title: 'Rider assigned',
+            message: "A rider has picked up your order #{$order->id} and is heading to you.",
+            type: NotificationType::OrderUpdate,
+            broadcastOrderStatus: true,
+        );
     }
 }
