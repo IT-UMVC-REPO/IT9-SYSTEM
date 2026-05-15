@@ -4,11 +4,12 @@
 @php
     $sukiTitle = filled($title ?? null) ? "{$title} - SukiMarket" : __('SukiMarket - Your Local Market, Delivered');
     $sukiText = $metaDescription ?? __('Order fresh produce, seafood, meat, and daily goods from verified local vendors on SukiMarket.');
-    $sukiHeader = asset('imgs/sukiheader.webp');
+    $sukiHeader = secure_asset('imgs/sukiheader.webp');
+    $sukiUrl = secure_url(request()->path());
 @endphp
 <meta name="description" content="{{ $sukiText }}" />
 <meta property="og:site_name" content="SukiMarket" />
-<meta property="og:url" content="{{ url()->current() }}" />
+<meta property="og:url" content="{{ $sukiUrl }}" />
 <meta property="og:title" content="{{ $sukiTitle }}" />
 <meta property="og:description" content="{{ $sukiText }}" />
 <meta property="og:type" content="website" />
