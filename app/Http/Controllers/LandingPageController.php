@@ -16,7 +16,8 @@ class LandingPageController extends Controller
         if ($this->isSocialPreviewCrawler($request)) {
             return response()
                 ->view('social-preview')
-                ->header('Cache-Control', 'public, max-age=300');
+                ->header('Cache-Control', 'public, max-age=300')
+                ->header('X-Suki-Social-Preview', '1');
         }
 
         $featuredVendor = VendorProfile::query()

@@ -17,6 +17,7 @@ test('facebook preview crawler receives public social metadata', function () {
         ->get(route('home'))
         ->assertOk()
         ->assertHeader('Cache-Control', 'max-age=300, public')
+        ->assertHeader('X-Suki-Social-Preview', '1')
         ->assertSee('property="og:title" content="Fresh from the Palengke - SukiMarket"', false)
         ->assertSee('property="og:image" content="https://sukimarket.test/imgs/sukiheader.webp"', false)
         ->assertSee('name="twitter:card" content="summary_large_image"', false);
