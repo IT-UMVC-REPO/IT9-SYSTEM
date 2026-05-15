@@ -9,7 +9,11 @@
     x-data="{
         pollTimer: null,
         pollInFlight: false,
+        pendingDirectMessages: [],
         fallbackPolling: @js(! $realtimeEnabled),
+        pendingMessageTime() {
+            return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date());
+        },
         initPolling() {
             if (! this.fallbackPolling) {
                 return;
@@ -39,6 +43,9 @@
     }"
     x-init="initPolling()"
     x-on:destroy="destroy()"
+    x-on:direct-message-pending.window="pendingDirectMessages.push($event.detail)"
+    x-on:direct-message-pending-remove.window="pendingDirectMessages = pendingDirectMessages.filter((message) => message.id !== $event.detail.id)"
+    x-on:message-sent.window="pendingDirectMessages = []"
     class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
 >
     <div wire:key="conversation-video-call-{{ $otherUserId }}" wire:ignore.self data-conversation-video-call
@@ -404,7 +411,8 @@
 
                 <section class="flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-neutral-950">
                     <div class="scrollbar-none min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" x-data="sukiMessageScroller()"
-                        x-on:message-sent.window="scrollToBottom()">
+                        x-on:message-sent.window="scrollToBottom()"
+                        x-on:direct-message-pending.window="scrollToBottom()">
                         @php($previousMessage = null)
                         @php($latestOwnMessageId = $this->latestOwnMessageId())
                         @forelse ($messages as $message)
@@ -537,6 +545,7 @@
                             @php($previousMessage = $message)
                         @empty
                             <div
+                                x-show="pendingDirectMessages.length === 0"
                                 class="flex h-full min-h-80 items-center justify-center rounded-[1.75rem] border border-dashed border-stone-200 px-6 py-12 text-center dark:border-white/10">
                                 <div>
                                     <span class="brand-kicker">{{ __('No messages yet') }}</span>
@@ -546,6 +555,21 @@
                                 </div>
                             </div>
                         @endforelse
+
+                        <template x-for="pendingMessage in pendingDirectMessages" :key="pendingMessage.id">
+                            <div class="group flex justify-end mt-4">
+                                <div class="flex max-w-[75%] flex-col items-end gap-1">
+                                    <div class="min-w-0 w-fit max-w-full overflow-hidden rounded-2xl rounded-br-sm bg-[var(--brand-600)] px-4 py-2 text-left text-sm leading-relaxed text-white opacity-80 break-words">
+                                        <p class="break-words [overflow-wrap:anywhere]" x-text="pendingMessage.content"></p>
+                                    </div>
+                                    <p class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+                                        <span x-text="pendingMessage.time"></span>
+                                        <span>&middot;</span>
+                                        {{ __('Sending') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     <form
@@ -555,27 +579,74 @@
                                 authUserId: @js((int) auth()->id()),
                                 otherUserName: @js($this->otherUser->name),
                             }),
-                        messageLength() {
-                            return ($wire.newMessage || '').length;
-                        },
-                        handlePaste(event) {
-                            const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
-                    
-                            if (imageFiles.length === 0) {
-                                return;
-                            }
-                    
-                            event.preventDefault();
-                            const transfer = new DataTransfer();
-                            Array.from(this.$refs.attachments.files ?? []).forEach((file) => transfer.items.add(file));
-                            imageFiles.forEach((file) => transfer.items.add(file));
-                            this.$refs.attachments.files = transfer.files;
-                            this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
-                        },
-                    }"
-                        x-init="init()"
+                            draftMessage: @js($newMessage),
+                            messageLength() {
+                                return this.draftMessage.length;
+                            },
+                            hasDraft() {
+                                return this.draftMessage.trim().length > 0 || ($wire.attachmentUploads || []).length > 0;
+                            },
+                            resizeMessageInput() {
+                                this.$nextTick(() => {
+                                    const input = this.$refs.messageInput;
+
+                                    if (! input) {
+                                        return;
+                                    }
+
+                                    input.style.height = 'auto';
+                                    input.style.height = `${input.scrollHeight}px`;
+                                });
+                            },
+                            sendNow() {
+                                if (! this.hasDraft()) {
+                                    return;
+                                }
+
+                                const content = this.draftMessage;
+                                const hasAttachments = ($wire.attachmentUploads || []).length > 0;
+                                const pendingId = ! hasAttachments && content.trim() !== ''
+                                    ? `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`
+                                    : null;
+
+                                if (pendingId) {
+                                    this.$dispatch('direct-message-pending', {
+                                        id: pendingId,
+                                        content: content.trim(),
+                                        time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date()),
+                                    });
+                                }
+
+                                this.draftMessage = '';
+                                this.resizeMessageInput();
+
+                                $wire.send(content).catch(() => {
+                                    if (pendingId) {
+                                        this.$dispatch('direct-message-pending-remove', { id: pendingId });
+                                    }
+
+                                    this.draftMessage = content;
+                                    this.resizeMessageInput();
+                                });
+                            },
+                            handlePaste(event) {
+                                const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
+
+                                if (imageFiles.length === 0) {
+                                    return;
+                                }
+
+                                event.preventDefault();
+                                const transfer = new DataTransfer();
+                                Array.from(this.$refs.attachments.files ?? []).forEach((file) => transfer.items.add(file));
+                                imageFiles.forEach((file) => transfer.items.add(file));
+                                this.$refs.attachments.files = transfer.files;
+                                this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
+                            },
+                        }"
+                        x-init="init(); resizeMessageInput()"
                         x-on:destroy="destroy()"
-                        x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
+                        x-on:submit.prevent="sendNow()"
                         class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-3 dark:border-neutral-800 dark:bg-neutral-900">
                         <div
                             x-cloak
@@ -597,7 +668,7 @@
                             </button>
 
                             <div x-cloak x-show="showEmoji" x-on:click.away="showEmoji = false" class="absolute bottom-12 left-0 z-50">
-                                <emoji-picker class="dark" x-on:emoji-click="$wire.newMessage = ($wire.newMessage || '') + $event.detail.unicode; showEmoji = false;"></emoji-picker>
+                                <emoji-picker class="dark" x-on:emoji-click="draftMessage = draftMessage + $event.detail.unicode; showEmoji = false; resizeMessageInput();"></emoji-picker>
                             </div>
 
                             <label for="conversation-attachment"
@@ -609,23 +680,18 @@
                                 wire:model="attachmentUploads" class="sr-only">
 
                             <div class="min-w-0 flex-1">
-                                <flux:textarea wire:model="newMessage" rows="1" aria-label="{{ __('Reply') }}"
-                                    :placeholder="__('Write a message...')" x-data="{
-                                        resize() {
-                                            $el.style.height = 'auto';
-                                            $el.style.height = $el.scrollHeight + 'px'
-                                        }
-                                    }"
-                                    x-init="resize()" x-on:input="resize()" x-on:paste="handlePaste($event)"
+                                <flux:textarea x-ref="messageInput" x-model="draftMessage" rows="1" aria-label="{{ __('Reply') }}"
+                                    :placeholder="__('Write a message...')"
+                                    x-on:input="resizeMessageInput()" x-on:paste="handlePaste($event)"
                                     x-on:keydown="onKeydown()"
-                                    x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
+                                    x-on:keydown.enter.prevent="sendNow()"
                                     class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-white"
                                     style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
                             </div>
 
                             <button type="submit"
-                                x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length"
-                                x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'"
+                                x-bind:disabled="! hasDraft()"
+                                x-bind:class="hasDraft() ? 'bg-[var(--brand-600)] text-white hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'"
                                 wire:loading.attr="disabled" wire:target="send,attachmentUploads"
                                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed">
                                 <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>

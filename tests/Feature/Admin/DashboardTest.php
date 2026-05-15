@@ -62,6 +62,7 @@ test('admins can view the operational dashboard', function () {
         ->assertSee('Pending approvals')
         ->assertSee('Recent orders')
         ->assertSee('Platform health')
+        ->assertSeeInOrder(['Recent orders', 'Marketplace pulse'])
         ->assertSee('mr-1 gap-0.5', false)
         ->assertSee('brand-panel-muted flex min-w-0 flex-col gap-3 p-4', false)
         ->assertSee('fa-solid fa-wallet', false)

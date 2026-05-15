@@ -112,17 +112,33 @@ new class extends Component
 
     private function groupThreads(): Collection
     {
-        return ConversationGroupMember::query()
+        $userId = (int) auth()->id();
+        $memberships = ConversationGroupMember::query()
             ->where('user_id', auth()->id())
             ->with([
                 'group.memberUsers:id,name,profile_image',
                 'group.latestMessage.sender:id,name',
             ])
-            ->get()
-            ->map(function (ConversationGroupMember $membership): array {
+            ->get();
+
+        $unreadCounts = GroupMessage::query()
+            ->select('group_messages.group_id')
+            ->selectRaw('count(*) as aggregate')
+            ->join('conversation_group_members as membership', 'membership.group_id', '=', 'group_messages.group_id')
+            ->where('membership.user_id', $userId)
+            ->where('group_messages.sender_id', '!=', $userId)
+            ->where(function ($query): void {
+                $query
+                    ->whereNull('membership.last_read_at')
+                    ->orWhereColumn('group_messages.created_at', '>', 'membership.last_read_at');
+            })
+            ->groupBy('group_messages.group_id')
+            ->pluck('aggregate', 'group_messages.group_id');
+
+        return $memberships
+            ->map(function (ConversationGroupMember $membership) use ($unreadCounts): array {
                 $group = $membership->group;
                 $latestMessage = $group?->latestMessage;
-                $unreadCount = $this->groupUnreadCount($membership);
                 $preview = __('No messages yet');
 
                 if ($latestMessage instanceof GroupMessage) {
@@ -137,24 +153,12 @@ new class extends Component
                     'preview' => $preview,
                     'latest_at' => $latestMessage?->created_at ?? $membership->joined_at,
                     'time' => $latestMessage?->timeAgo() ?? $membership->joined_at?->diffForHumans(),
-                    'unread_count' => $unreadCount,
+                    'unread_count' => (int) ($unreadCounts[$membership->group_id] ?? 0),
                     'group' => $group,
                 ];
             })
             ->filter(fn (array $thread): bool => $thread['id'] !== null)
             ->values();
-    }
-
-    private function groupUnreadCount(ConversationGroupMember $membership): int
-    {
-        return GroupMessage::query()
-            ->where('group_id', $membership->group_id)
-            ->where('sender_id', '!=', auth()->id())
-            ->when(
-                $membership->last_read_at !== null,
-                fn ($query) => $query->where('created_at', '>', $membership->last_read_at),
-            )
-            ->count();
     }
 };
 ?>

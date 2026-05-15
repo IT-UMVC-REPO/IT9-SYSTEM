@@ -44,6 +44,7 @@
         },
         pollTimer: null,
         pollInFlight: false,
+        pendingGroupMessages: [],
         fallbackPolling: @js(! $realtimeEnabled),
         initPolling() {
             if (! this.fallbackPolling) {
@@ -74,6 +75,9 @@
     }"
     x-init="init(); initInfoPanel(); initPolling()"
     x-on:destroy="destroy()"
+    x-on:group-message-pending.window="pendingGroupMessages.push($event.detail)"
+    x-on:group-message-pending-remove.window="pendingGroupMessages = pendingGroupMessages.filter((message) => message.id !== $event.detail.id)"
+    x-on:group-message-sent.window="pendingGroupMessages = []"
     class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
 >
     <div
@@ -558,7 +562,7 @@
                         </div>
                     @endif
 
-                    <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data="sukiMessageScroller()" x-on:group-message-sent.window="scrollToBottom()">
+                    <div class="scrollbar-none min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5" x-data="sukiMessageScroller()" x-on:group-message-sent.window="scrollToBottom()" x-on:group-message-pending.window="scrollToBottom()">
                         @forelse ($messages as $message)
                             @php
                                 $isOwnMessage = $message['sender_id'] === auth()->id();
@@ -734,13 +738,34 @@
                                 </div>
                             @endif
                         @empty
-                            <div class="flex h-full min-h-80 items-center justify-center rounded-2xl border border-dashed border-neutral-200 px-6 py-12 text-center dark:border-neutral-800">
+                            <div x-show="pendingGroupMessages.length === 0" class="flex h-full min-h-80 items-center justify-center rounded-2xl border border-dashed border-neutral-200 px-6 py-12 text-center dark:border-neutral-800">
                                 <div>
                                     <span class="brand-kicker">{{ __('No messages yet') }}</span>
                                     <p class="mt-4 max-w-md text-sm leading-7 text-neutral-500 dark:text-neutral-400">{{ __('Start the group conversation here.') }}</p>
                                 </div>
                             </div>
                         @endforelse
+
+                        <template x-for="pendingMessage in pendingGroupMessages" :key="pendingMessage.id">
+                            <div class="relative mb-1 mt-4 flex justify-end">
+                                <div class="flex max-w-[75%] flex-row-reverse items-end gap-2">
+                                    <div class="relative flex min-w-0 flex-col items-end">
+                                        <div class="relative inline-block max-w-full">
+                                            <div class="w-fit max-w-full overflow-hidden rounded-2xl rounded-br-sm bg-[var(--brand-600)] px-4 py-2 text-left text-sm leading-relaxed text-white opacity-80 break-words">
+                                                <p class="break-words [overflow-wrap:anywhere]" x-text="pendingMessage.content"></p>
+                                            </div>
+                                            <div class="absolute -bottom-4 right-0 whitespace-nowrap">
+                                                <p class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+                                                    <span x-text="pendingMessage.time"></span>
+                                                    <span>&middot;</span>
+                                                    {{ __('Sending') }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     @if ($replyingToId)
@@ -762,6 +787,7 @@
                                 authUserId: @js((int) auth()->id()),
                                 participantSummaries: @js($this->groupParticipantSummaries()),
                             }),
+                            draftMessage: @js($newMessage),
                             handlePaste(event) {
                                 const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
 
@@ -777,12 +803,58 @@
                                 this.$refs.attachments.dispatchEvent(new Event('change', { bubbles: true }));
                             },
                             messageLength() {
-                                return ($wire.newMessage || '').length;
+                                return this.draftMessage.length;
+                            },
+                            hasDraft() {
+                                return this.draftMessage.trim().length > 0 || ($wire.attachmentUploads || []).length > 0;
+                            },
+                            resizeMessageInput() {
+                                this.$nextTick(() => {
+                                    const input = this.$refs.messageInput;
+
+                                    if (! input) {
+                                        return;
+                                    }
+
+                                    input.style.height = 'auto';
+                                    input.style.height = `${input.scrollHeight}px`;
+                                });
+                            },
+                            sendNow() {
+                                if (! this.hasDraft()) {
+                                    return;
+                                }
+
+                                const content = this.draftMessage;
+                                const hasAttachments = ($wire.attachmentUploads || []).length > 0;
+                                const pendingId = ! hasAttachments && content.trim() !== ''
+                                    ? `pending-${Date.now()}-${Math.random().toString(16).slice(2)}`
+                                    : null;
+
+                                if (pendingId) {
+                                    this.$dispatch('group-message-pending', {
+                                        id: pendingId,
+                                        content: content.trim(),
+                                        time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date()),
+                                    });
+                                }
+
+                                this.draftMessage = '';
+                                this.resizeMessageInput();
+
+                                $wire.send(content).catch(() => {
+                                    if (pendingId) {
+                                        this.$dispatch('group-message-pending-remove', { id: pendingId });
+                                    }
+
+                                    this.draftMessage = content;
+                                    this.resizeMessageInput();
+                                });
                             },
                         }"
-                        x-init="init()"
+                        x-init="init(); resizeMessageInput()"
                         x-on:destroy="destroy()"
-                        x-on:submit.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()"
+                        x-on:submit.prevent="sendNow()"
                         class="shrink-0 overflow-visible border-t border-neutral-200 bg-white px-3 py-2 pb-2 dark:border-neutral-800 dark:bg-neutral-900"
                     >
                         <div
@@ -805,7 +877,7 @@
                             </button>
 
                             <div x-cloak x-show="showEmoji" x-on:click.away="showEmoji = false" class="absolute bottom-12 left-0 z-50">
-                                <emoji-picker class="dark" x-on:emoji-click="$wire.newMessage = ($wire.newMessage || '') + $event.detail.unicode; showEmoji = false;"></emoji-picker>
+                                <emoji-picker class="dark" x-on:emoji-click="draftMessage = draftMessage + $event.detail.unicode; showEmoji = false; resizeMessageInput();"></emoji-picker>
                             </div>
 
                             <label for="group-attachment" class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Attach file') }}">
@@ -814,10 +886,10 @@
                             <input id="group-attachment" x-ref="attachments" type="file" multiple wire:model="attachmentUploads" class="sr-only">
 
                             <div class="min-w-0 flex-1">
-                                <flux:textarea wire:model="newMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:paste="handlePaste($event)" x-on:keydown="onKeydown()" x-on:keydown.enter.prevent="if (($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) $wire.send()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
+                                <flux:textarea x-ref="messageInput" x-model="draftMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:input="resizeMessageInput()" x-on:paste="handlePaste($event)" x-on:keydown="onKeydown()" x-on:keydown.enter.prevent="sendNow()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
                             </div>
 
-                            <button type="submit" x-bind:disabled="!($wire.newMessage || '').trim() && !($wire.attachmentUploads || []).length" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="(($wire.newMessage || '').trim() || ($wire.attachmentUploads || []).length) ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
+                            <button type="submit" x-bind:disabled="! hasDraft()" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="hasDraft() ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
                                 <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>
                                 <span wire:loading wire:target="send" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
                             </button>

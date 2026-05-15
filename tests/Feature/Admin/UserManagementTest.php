@@ -28,6 +28,9 @@ test('admins see the user management page and all users', function () {
         ->get(route('admin.users'))
         ->assertOk()
         ->assertSee('User management')
+        ->assertSee('User management sections')
+        ->assertSee(route('admin.reports'), false)
+        ->assertDontSee(route('admin.orders'), false)
         ->assertSee($customer->name)
         ->assertSee($vendorUser->name)
         ->assertSee('Vicky Greens');

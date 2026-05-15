@@ -6,6 +6,7 @@ use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Models\RiderProfile;
+use App\Models\Report;
 use App\Models\User;
 use App\Models\VendorProfile;
 use App\Services\AuditLogger;
@@ -110,6 +111,7 @@ new #[Title('User management')] class extends Component {
             'total_vendors' => VendorProfile::query()->where('status', VendorStatus::Approved)->count(),
             'total_riders' => RiderProfile::query()->where('status', 'approved')->count(),
             'total_admins' => User::query()->where('role', UserRole::Admin)->count(),
+            'open_reports' => Report::query()->where('status', ReportStatus::Open)->count(),
         ];
     }
 
@@ -147,6 +149,8 @@ new #[Title('User management')] class extends Component {
     </section>
 
     <livewire:pages::admin.create-admin-modal />
+
+    <x-admin-user-tabs :open-reports-count="$this->stats['open_reports']" />
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         @foreach ([['label' => __('Total users'), 'value' => $this->stats['total_users']], ['label' => __('Total customers'), 'value' => $this->stats['total_customers']], ['label' => __('Approved vendors'), 'value' => $this->stats['total_vendors']], ['label' => __('Approved riders'), 'value' => $this->stats['total_riders']], ['label' => __('Total admins'), 'value' => $this->stats['total_admins']]] as $stat)

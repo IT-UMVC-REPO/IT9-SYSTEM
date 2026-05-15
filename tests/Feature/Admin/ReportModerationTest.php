@@ -164,6 +164,8 @@ test('admin can see all reports on the reports page', function () {
     $this->actingAs($admin)
         ->get(route('admin.reports', ['status' => 'all']))
         ->assertOk()
+        ->assertSee('User management sections')
+        ->assertSee(route('admin.users'), false)
         ->assertSee($firstScenario['customer']->name)
         ->assertSee($firstScenario['vendorUser']->name)
         ->assertSee($secondScenario['vendorUser']->name)

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
 use App\Models\Message;
 use Livewire\Attributes\Computed;
@@ -36,19 +35,16 @@ new class extends Component
             ->where('is_read', false)
             ->count();
 
-        $groupUnread = ConversationGroupMember::query()
-            ->where('user_id', auth()->id())
-            ->get(['group_id', 'last_read_at'])
-            ->sum(function (ConversationGroupMember $member): int {
-                return GroupMessage::query()
-                    ->where('group_id', $member->group_id)
-                    ->where('sender_id', '!=', auth()->id())
-                    ->when(
-                        $member->last_read_at !== null,
-                        fn ($query) => $query->where('created_at', '>', $member->last_read_at),
-                    )
-                    ->count();
-            });
+        $groupUnread = (int) GroupMessage::query()
+            ->join('conversation_group_members as membership', 'membership.group_id', '=', 'group_messages.group_id')
+            ->where('membership.user_id', auth()->id())
+            ->where('group_messages.sender_id', '!=', auth()->id())
+            ->where(function ($query): void {
+                $query
+                    ->whereNull('membership.last_read_at')
+                    ->orWhereColumn('group_messages.created_at', '>', 'membership.last_read_at');
+            })
+            ->count();
 
         return $directUnread + $groupUnread;
     }

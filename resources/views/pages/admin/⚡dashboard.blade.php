@@ -199,7 +199,7 @@
         </article>
     </section>
 
-    <section class="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+    <section class="grid gap-6">
         <article class="brand-panel suki-reveal p-6" style="transition-delay: 200ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
@@ -259,8 +259,9 @@
                 </div>
             </div>
         </article>
+    </section>
 
-        <article class="brand-panel suki-reveal p-6" style="transition-delay: 300ms">
+    <section class="brand-panel suki-reveal p-6" style="transition-delay: 300ms">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Recent orders') }}</p>
@@ -304,7 +305,6 @@
                     </div>
                 @endforelse
             </div>
-        </article>
     </section>
 
     <section class="brand-panel suki-reveal p-6" style="transition-delay: 360ms">

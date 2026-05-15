@@ -90,8 +90,12 @@ class GroupConversation extends Component
         $this->dispatch('group-message-sent');
     }
 
-    public function send(): void
+    public function send(?string $messageText = null): void
     {
+        if ($messageText !== null) {
+            $this->newMessage = $messageText;
+        }
+
         $this->validate();
         $this->validateAttachmentTotalSize();
 

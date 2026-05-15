@@ -124,6 +124,8 @@ new #[Title('User Reports')] class extends Component
         </p>
     </section>
 
+    <x-admin-user-tabs :open-reports-count="$this->counts[ReportStatus::Open->value]" />
+
     <section class="brand-panel p-6">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div class="flex flex-wrap gap-3">

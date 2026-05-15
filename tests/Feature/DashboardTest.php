@@ -143,6 +143,17 @@ test('admin header shows the messaging quick action', function () {
     expect(substr_count($response->getContent(), route('messages.inbox')))->toBe(2);
 });
 
+test('admin header keeps orders and reports out of primary navigation', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.users'));
+
+    $response->assertOk()
+        ->assertSee('Users')
+        ->assertSee(route('admin.reports'), false)
+        ->assertDontSee(route('admin.orders'), false);
+});
+
 test('rider header shows messaging and riders can open the inbox', function () {
     $rider = User::factory()->rider()->create();
     RiderProfile::factory()->for($rider, 'user')->approved()->create();

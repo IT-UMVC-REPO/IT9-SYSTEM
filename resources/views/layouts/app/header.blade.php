@@ -59,9 +59,7 @@
                     [
                         $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
                         $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
-                        $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
-                        $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
-                        $navItem('Reports', 'admin.reports', ['admin.reports'], 'fa-solid fa-flag'),
+                        $navItem('Users', 'admin.users', ['admin.users', 'admin.users.*', 'admin.reports', 'admin.reports.*'], 'fa-solid fa-users'),
                     ],
                     [
                         $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
@@ -133,9 +131,7 @@
                 \App\Enums\UserRole::Admin => [
                     $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
                     $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
-                    $navItem('Users', 'admin.users', ['admin.users'], 'fa-solid fa-users'),
-                    $navItem('Orders', 'admin.orders', ['admin.orders'], 'fa-solid fa-bag-shopping'),
-                    $navItem('Reports', 'admin.reports', ['admin.reports', 'admin.reports.*'], 'fa-solid fa-flag'),
+                    $navItem('Users', 'admin.users', ['admin.users', 'admin.users.*', 'admin.reports', 'admin.reports.*'], 'fa-solid fa-users'),
                 ],
                 \App\Enums\UserRole::Rider => [
                     $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
@@ -409,8 +405,9 @@
                 >
                     <div @class([
                         'mx-auto grid max-w-xl gap-1',
+                        'grid-cols-3' => count($mobileBottomNavigationItems) === 3,
                         'grid-cols-4' => count($mobileBottomNavigationItems) === 4,
-                        'grid-cols-5' => count($mobileBottomNavigationItems) !== 4,
+                        'grid-cols-5' => ! in_array(count($mobileBottomNavigationItems), [3, 4], true),
                     ])>
                         @foreach ($mobileBottomNavigationItems as $item)
                             <a
