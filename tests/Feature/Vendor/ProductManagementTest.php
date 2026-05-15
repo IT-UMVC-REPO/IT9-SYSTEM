@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\ProductStatus;
+use App\Enums\ProductUnit;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductUnitVariant;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Illuminate\Http\UploadedFile;
@@ -129,6 +131,73 @@ test('vendors can create products with an uploaded image', function () {
     Storage::disk('public')->assertExists($product->getRawOriginal('image'));
 });
 
+test('vendors can create a product with multiple unit variants and choose the default', function () {
+    Storage::fake('public');
+
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $category = Category::factory()->standalone()->create();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('name', 'Farm Eggs')
+        ->set('description', 'Fresh eggs sorted for market buyers.')
+        ->set('price', '10.00')
+        ->set('stock_quantity', '120')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Piece->value)
+        ->set('status', ProductStatus::Active->value)
+        ->set('productImageUpload', UploadedFile::fake()->createWithContent('eggs.png', productManagementPngFixture()))
+        ->call('addVariant')
+        ->set('additionalVariants.0.unit', ProductUnit::Dozen->value)
+        ->set('additionalVariants.0.price', '100.00')
+        ->set('additionalVariants.0.stock_quantity', '8')
+        ->set('additionalVariants.0.conversion_unit', ProductUnit::Piece->value)
+        ->set('additionalVariants.0.conversion_unit_quantity', '12')
+        ->call('setDefaultVariant', 'variant-0')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('vendor.products'));
+
+    $product = Product::query()
+        ->where('vendor_id', $vendorProfile->getKey())
+        ->where('name', 'Farm Eggs')
+        ->with('unitVariants')
+        ->sole();
+
+    expect($product->unit)->toBe(ProductUnit::Dozen)
+        ->and((float) $product->price)->toBe(100.0)
+        ->and($product->stock_quantity)->toBe(8)
+        ->and($product->unitVariants)->toHaveCount(2)
+        ->and($product->unitVariants->firstWhere('unit', ProductUnit::Dozen)->is_default)->toBeTrue()
+        ->and($product->unitVariants->firstWhere('unit', ProductUnit::Piece)->is_default)->toBeFalse();
+});
+
+test('vendor product variants must use unique units', function () {
+    Storage::fake('public');
+
+    $vendorUser = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $category = Category::factory()->standalone()->create();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('name', 'Duplicate Eggs')
+        ->set('description', 'Fresh eggs sorted for market buyers.')
+        ->set('price', '10.00')
+        ->set('stock_quantity', '120')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Piece->value)
+        ->set('status', ProductStatus::Active->value)
+        ->set('productImageUpload', UploadedFile::fake()->createWithContent('eggs.png', productManagementPngFixture()))
+        ->call('addVariant')
+        ->set('additionalVariants.0.unit', ProductUnit::Piece->value)
+        ->set('additionalVariants.0.price', '100.00')
+        ->set('additionalVariants.0.stock_quantity', '8')
+        ->call('save')
+        ->assertHasErrors('additionalVariants.0.unit');
+});
+
 test('edit form pre-populates and updates a product', function () {
     Storage::fake('public');
 
@@ -182,6 +251,47 @@ test('edit form pre-populates and updates a product', function () {
 
     Storage::disk('public')->assertMissing('product-images/old.png');
     Storage::disk('public')->assertExists($product->getRawOriginal('image'));
+});
+
+test('vendors can add variants while editing and make a new variant the default', function () {
+    Storage::fake('public');
+
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $category = Category::factory()->standalone()->create();
+
+    $product = Product::factory()->for($vendorProfile, 'vendor')->for($category)->active()->create([
+        'name' => 'Bangus',
+        'unit' => ProductUnit::Piece,
+        'price' => 120,
+        'stock_quantity' => 10,
+    ]);
+
+    ProductUnitVariant::factory()->default()->for($product)->create([
+        'unit' => ProductUnit::Piece,
+        'price' => 120,
+        'stock_quantity' => 10,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-edit', ['product' => $product])
+        ->call('addVariant')
+        ->set('additionalVariants.0.unit', ProductUnit::Kilogram->value)
+        ->set('additionalVariants.0.price', '220.00')
+        ->set('additionalVariants.0.stock_quantity', '6')
+        ->call('setDefaultVariant', 'variant-0')
+        ->call('update')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('vendor.products'));
+
+    $product->refresh()->load('unitVariants');
+
+    expect($product->unit)->toBe(ProductUnit::Kilogram)
+        ->and((float) $product->price)->toBe(220.0)
+        ->and($product->stock_quantity)->toBe(6)
+        ->and($product->unitVariants)->toHaveCount(2)
+        ->and($product->unitVariants->firstWhere('unit', ProductUnit::Kilogram)->is_default)->toBeTrue()
+        ->and($product->unitVariants->firstWhere('unit', ProductUnit::Piece)->is_default)->toBeFalse();
 });
 
 test('vendors can delete a product', function () {

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Concerns\HasStorageImage;
 use App\Enums\ProductStatus;
 use App\Enums\ProductUnit;
+use App\Support\UnitConversionResult;
+use App\Support\UnitFormatter;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,8 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'unit', 'base_unit', 'base_unit_quantity', 'image', 'status'])]
+#[Fillable(['vendor_id', 'category_id', 'name', 'description', 'price', 'stock_quantity', 'canonical_stock_unit', 'canonical_stock_quantity', 'unit', 'conversion_unit', 'conversion_unit_quantity', 'image', 'status'])]
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
@@ -41,52 +44,102 @@ class Product extends Model
     {
         return [
             'price' => 'decimal:2',
+            'stock_quantity' => 'int',
+            'canonical_stock_unit' => ProductUnit::class,
+            'canonical_stock_quantity' => 'float',
             'unit' => ProductUnit::class,
-            'base_unit_quantity' => 'float',
+            'conversion_unit' => ProductUnit::class,
+            'conversion_unit_quantity' => 'float',
             'status' => ProductStatus::class,
         ];
     }
 
     public function unitLabel(): string
     {
-        return $this->unit->stockLabel($this->stock_quantity);
+        return UnitFormatter::format($this->saleUnit(), $this->saleStockQuantity());
     }
 
     public function priceWithUnit(): string
     {
-        return $this->unit->priceLabel($this->price);
+        return UnitFormatter::pricePerUnit($this->saleUnit(), $this->salePrice());
     }
 
-    public function conversionDisplayString(?string $baseUnit = null, ?float $baseQty = null): ?string
+    public function conversionFor(float $quantity): ?UnitConversionResult
     {
-        $baseUnit ??= $this->base_unit;
-        $baseQty ??= $this->base_unit_quantity === null ? null : (float) $this->base_unit_quantity;
+        $variant = $this->purchasableVariant();
 
-        if (blank($baseUnit) || $baseQty === null) {
+        if ($variant !== null) {
+            return $variant->conversionFor($quantity);
+        }
+
+        if (! $this->hasConversion()) {
             return null;
         }
 
-        return $this->unit->conversionLabel($baseQty, $baseUnit);
+        return new UnitConversionResult(
+            fromUnit: $this->unit,
+            fromQuantity: $quantity,
+            toUnit: $this->conversion_unit,
+            toQuantity: $quantity * (float) $this->conversion_unit_quantity,
+            fromUnitPrice: (float) $this->price,
+        );
     }
 
-    public function pricePerBaseUnit(): ?string
+    public function hasConversion(): bool
     {
-        if (blank($this->base_unit) || $this->base_unit_quantity === null || (float) $this->base_unit_quantity <= 0) {
-            return null;
-        }
-
-        return '₱'.number_format((float) $this->price / (float) $this->base_unit_quantity, 2).' per '.$this->base_unit;
+        return $this->conversion_unit instanceof ProductUnit
+            && $this->conversion_unit_quantity !== null
+            && (float) $this->conversion_unit_quantity > 0;
     }
 
-    public function convertedQuantityLabel(int|float $quantity): ?string
+    public function canAutoConvert(): bool
     {
-        if (blank($this->base_unit) || $this->base_unit_quantity === null) {
-            return null;
+        return $this->conversion_unit instanceof ProductUnit
+            && $this->unit->isConvertibleTo($this->conversion_unit);
+    }
+
+    public function hasVariants(): bool
+    {
+        if ($this->relationLoaded('unitVariants')) {
+            return $this->unitVariants->isNotEmpty();
         }
 
-        $total = (float) $quantity * (float) $this->base_unit_quantity;
+        return $this->unitVariants()->exists();
+    }
 
-        return rtrim(rtrim(number_format($total, 4, '.', ''), '0'), '.').' '.$this->base_unit;
+    public function purchasableVariant(): ?ProductUnitVariant
+    {
+        if ($this->relationLoaded('defaultVariant') && $this->defaultVariant !== null) {
+            return $this->defaultVariant;
+        }
+
+        if ($this->relationLoaded('unitVariants')) {
+            return $this->unitVariants
+                ->sortBy([
+                    ['is_default', 'desc'],
+                    ['sort_order', 'asc'],
+                    ['id', 'asc'],
+                ])
+                ->first();
+        }
+
+        return $this->defaultVariant()->first()
+            ?? $this->unitVariants()->orderBy('sort_order')->orderBy('id')->first();
+    }
+
+    public function saleUnit(): ProductUnit
+    {
+        return $this->purchasableVariant()?->unit ?? $this->unit;
+    }
+
+    public function salePrice(): float
+    {
+        return (float) ($this->purchasableVariant()?->price ?? $this->price);
+    }
+
+    public function saleStockQuantity(): int
+    {
+        return (int) ($this->purchasableVariant()?->stock_quantity ?? $this->stock_quantity);
     }
 
     public function vendor(): BelongsTo
@@ -109,16 +162,26 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function unitVariants(): HasMany
+    {
+        return $this->hasMany(ProductUnitVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function defaultVariant(): HasOne
+    {
+        return $this->hasOne(ProductUnitVariant::class)->where('is_default', true)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function carts(): BelongsToMany
     {
         return $this->belongsToMany(Cart::class, 'cart_items')
-            ->withPivot('quantity');
+            ->withPivot('quantity', 'product_unit_variant_id');
     }
 
     public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'order_items')
-            ->withPivot(['quantity', 'unit_price', 'unit']);
+            ->withPivot(['quantity', 'unit_price', 'unit', 'product_unit_variant_id']);
     }
 
     public function scopeActive(Builder $query): Builder
@@ -152,7 +215,11 @@ class Product extends Model
             return $query;
         }
 
-        return $query->where('price', '<=', $maxPrice);
+        return $query->where(function (Builder $builder) use ($maxPrice): void {
+            $builder
+                ->where('price', '<=', $maxPrice)
+                ->orWhereHas('defaultVariant', fn (Builder $variantQuery): Builder => $variantQuery->where('price', '<=', $maxPrice));
+        });
     }
 
     public function scopeSortForStorefront(Builder $query, ?string $sort): Builder
@@ -170,7 +237,12 @@ class Product extends Model
         return $query
             ->active()
             ->whereHas('vendor', fn (Builder $builder): Builder => $builder->approved())
-            ->with(['vendor.user', 'category.parent']);
+            ->with(['vendor.user', 'category.parent', 'defaultVariant']);
+    }
+
+    public function scopeWithDefaultVariant(Builder $query): Builder
+    {
+        return $query->with('defaultVariant');
     }
 
     protected function imageUrl(): Attribute

@@ -87,37 +87,37 @@ class ProductFactory extends Factory
     }
 
     /**
-     * @return array{base_unit: string|null, base_unit_quantity: float|null}
+     * @return array{conversion_unit: string|null, conversion_unit_quantity: float|null}
      */
     private function conversionAttributes(string $unit): array
     {
         if (! fake()->boolean(30)) {
             return [
-                'base_unit' => null,
-                'base_unit_quantity' => null,
+                'conversion_unit' => null,
+                'conversion_unit_quantity' => null,
             ];
         }
 
         return match (ProductUnit::tryFrom($unit)) {
             ProductUnit::Sack => [
-                'base_unit' => 'kg',
-                'base_unit_quantity' => fake()->randomFloat(4, 25, 50),
+                'conversion_unit' => ProductUnit::Kilogram->value,
+                'conversion_unit_quantity' => fake()->randomFloat(4, 25, 50),
             ],
             ProductUnit::Bottle => [
-                'base_unit' => 'ml',
-                'base_unit_quantity' => fake()->randomFloat(4, 250, 1000),
+                'conversion_unit' => ProductUnit::Milliliter->value,
+                'conversion_unit_quantity' => fake()->randomFloat(4, 250, 1000),
             ],
             ProductUnit::Tray => [
-                'base_unit' => 'g',
-                'base_unit_quantity' => fake()->randomFloat(4, 600, 1200),
+                'conversion_unit' => ProductUnit::Gram->value,
+                'conversion_unit_quantity' => fake()->randomFloat(4, 600, 1200),
             ],
             ProductUnit::Box, ProductUnit::Pack, ProductUnit::Bundle => [
-                'base_unit' => 'g',
-                'base_unit_quantity' => fake()->randomFloat(4, 200, 5000),
+                'conversion_unit' => ProductUnit::Gram->value,
+                'conversion_unit_quantity' => fake()->randomFloat(4, 200, 5000),
             ],
             default => [
-                'base_unit' => null,
-                'base_unit_quantity' => null,
+                'conversion_unit' => null,
+                'conversion_unit_quantity' => null,
             ],
         };
     }

@@ -14,7 +14,7 @@ new class extends Component
 <div
     x-data
     x-cloak
-    x-show="$store.pipManager?.active && $store.pipManager?.mode === 'overlay'"
+    x-show="$store.pipManager?.shouldShowOverlay()"
     x-transition.opacity
     x-on:mousemove.window="$store.pipManager?.moveDrag($event, $el)"
     x-on:mouseup.window="$store.pipManager?.endDrag($el)"
@@ -29,6 +29,7 @@ new class extends Component
         $store.pipManager?.reducedMotion ? '!transition-none' : 'transition-all duration-200 ease-out',
     ]"
     class="fixed z-[1000] overflow-hidden text-white"
+    style="display: none;"
     role="dialog"
     aria-label="{{ __('Active call') }}"
 >

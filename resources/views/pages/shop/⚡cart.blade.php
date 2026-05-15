@@ -2,6 +2,8 @@
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Services\StockManager;
+use App\Support\UnitFormatter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -30,7 +32,7 @@ new #[Title('Cart')] class extends Component {
             return;
         }
 
-        $availableStock = $cartItem->product->stock_quantity;
+        $availableStock = $this->availableStockFor($cartItem);
 
         if ($availableStock < 1) {
             $cartItem->delete();
@@ -69,7 +71,7 @@ new #[Title('Cart')] class extends Component {
     {
         $cartItem = $this->resolveCartItem($itemId);
 
-        $this->updateQuantity($itemId, min(max(1, $cartItem->product->stock_quantity), $cartItem->quantity + 1));
+        $this->updateQuantity($itemId, min(max(1, $this->availableStockFor($cartItem)), $cartItem->quantity + 1));
     }
 
     public function removeItem(int $itemId): void
@@ -91,6 +93,7 @@ new #[Title('Cart')] class extends Component {
                     ->with([
                         'product.vendor.user',
                         'product.category',
+                        'unitVariant',
                     ])
                     ->orderBy('product_id'),
             ])
@@ -116,7 +119,7 @@ new #[Title('Cart')] class extends Component {
     {
         return $this->groupedCartItems->map(
             fn (Collection $items): float => (float) $items->sum(
-                fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+                fn (CartItem $item): float => $item->lineTotal(),
             ),
         );
     }
@@ -125,7 +128,7 @@ new #[Title('Cart')] class extends Component {
     public function subtotal(): float
     {
         return (float) $this->cartItems->sum(
-            fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+            fn (CartItem $item): float => $item->lineTotal(),
         );
     }
 
@@ -134,8 +137,35 @@ new #[Title('Cart')] class extends Component {
         return CartItem::query()
             ->whereKey($itemId)
             ->whereHas('cart', fn (Builder $builder): Builder => $builder->where('customer_id', auth()->id()))
-            ->with(['product.vendor.user', 'product.category'])
+            ->with(['product.vendor.user', 'product.category', 'unitVariant'])
             ->firstOrFail();
+    }
+
+    public function availableStockFor(CartItem $item): int
+    {
+        if ($item->unitVariant !== null) {
+            return app(StockManager::class)->availableQuantityFor($item->unitVariant);
+        }
+
+        return (int) $item->product->stock_quantity;
+    }
+
+    public function priceWithUnit(CartItem $item): string
+    {
+        return $item->unitVariant?->priceWithUnit() ?? $item->product->priceWithUnit();
+    }
+
+    public function quantitySummary(CartItem $item): string
+    {
+        $unit = $item->unitVariant?->unit ?? $item->product->unit;
+
+        return UnitFormatter::format($unit, $item->quantity);
+    }
+
+    public function convertedQuantityLabel(CartItem $item): ?string
+    {
+        return ($item->unitVariant?->conversionFor($item->quantity) ?? $item->product->conversionFor($item->quantity))
+            ?->convertedQuantityLabel();
     }
 }; ?>
 
@@ -222,7 +252,7 @@ new #[Title('Cart')] class extends Component {
 
                                     <div class="grid gap-4 md:min-w-[15rem] md:justify-items-end">
                                         <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                            {{ $item->product->priceWithUnit() }}
+                                            {{ $this->priceWithUnit($item) }}
                                         </p>
 
                                         <div class="flex items-center gap-3">
@@ -245,7 +275,7 @@ new #[Title('Cart')] class extends Component {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                max="{{ max(1, $item->product->stock_quantity) }}"
+                                                max="{{ max(1, $this->availableStockFor($item)) }}"
                                                 value="{{ $item->quantity }}"
                                                 wire:change="updateQuantity({{ $item->id }}, $event.target.value)"
                                                 class="brand-stepper-input"
@@ -262,26 +292,25 @@ new #[Title('Cart')] class extends Component {
                                                 x-on:touchend.window="stop"
                                                 x-on:touchcancel.window="stop"
                                                 class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                                                @disabled($item->quantity >= $item->product->stock_quantity)
+                                                @disabled($item->quantity >= $this->availableStockFor($item))
                                                 aria-label="{{ __('Increase quantity') }}"
                                             >
                                                 <span aria-hidden="true">+</span>
                                             </button>
                                         </div>
 
-                                        @if ($item->product->convertedQuantityLabel($item->quantity))
+                                        @if ($this->convertedQuantityLabel($item))
                                             <p class="text-xs font-medium text-neutral-400 dark:text-zinc-500">
-                                                {{ __(':quantity :unit (:converted total)', [
-                                                    'quantity' => $item->quantity,
-                                                    'unit' => $item->product->unit->abbreviation(),
-                                                    'converted' => $item->product->convertedQuantityLabel($item->quantity),
+                                                {{ __(':quantity (:converted total)', [
+                                                    'quantity' => $this->quantitySummary($item),
+                                                    'converted' => $this->convertedQuantityLabel($item),
                                                 ]) }}
                                             </p>
                                         @endif
 
                                         <div class="flex items-center gap-4">
                                             <p class="text-base font-semibold text-neutral-900 dark:text-zinc-100">
-                                                {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                                {{ \App\Support\UnitFormatter::currency($item->lineTotal()) }}
                                             </p>
 
                                             <button
@@ -348,15 +377,15 @@ new #[Title('Cart')] class extends Component {
                                         <div class="min-w-0">
                                             <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
                                             <p class="text-neutral-500 dark:text-zinc-400">
-                                                {{ $item->quantity }} {{ $item->product->unit->abbreviation() }}
-                                                @if ($item->product->convertedQuantityLabel($item->quantity))
-                                                    ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                                {{ $this->quantitySummary($item) }}
+                                                @if ($this->convertedQuantityLabel($item))
+                                                    ({{ __(':converted total', ['converted' => $this->convertedQuantityLabel($item)]) }})
                                                 @endif
-                                                × ₱{{ number_format((float) $item->product->price, 2) }}
+                                                × {{ \App\Support\UnitFormatter::currency($item->unitPrice()) }}
                                             </p>
                                         </div>
                                         <p class="shrink-0 font-semibold text-neutral-900 dark:text-zinc-100">
-                                            {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                            {{ \App\Support\UnitFormatter::currency($item->lineTotal()) }}
                                         </p>
                                     </div>
                                 @endforeach

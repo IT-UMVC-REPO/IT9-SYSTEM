@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\AuditLogger;
+use App\Services\StockManager;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -64,9 +65,13 @@ new #[Title('Order Detail')] class extends Component {
 
                 $order->save();
 
-                $order->orderItems()->with('product')->get()->each(function (OrderItem $item): void {
-                    if ($item->product !== null) {
-                        $item->product->increment('stock_quantity', $item->quantity);
+                $stockManager = app(StockManager::class);
+
+                $order->orderItems()->with(['product', 'unitVariant'])->get()->each(function (OrderItem $item) use ($stockManager): void {
+                    if ($item->unitVariant !== null) {
+                        $stockManager->incrementStock($item->unitVariant, $item->quantity);
+                    } elseif ($item->product !== null) {
+                        $stockManager->incrementProductStock($item->product, $item->quantity);
                     }
                 });
 
@@ -107,6 +112,7 @@ new #[Title('Order Detail')] class extends Component {
         return Order::query()
             ->with([
                 'orderItems.product.category',
+                'orderItems.unitVariant',
                 'orderItems.product.vendor',
                 'payment',
                 'customer:id,name,address,lat,lng',
@@ -311,12 +317,12 @@ new #[Title('Order Detail')] class extends Component {
 
                             <div class="flex flex-wrap items-center gap-5 text-sm text-neutral-500 dark:text-zinc-400">
                                 <span>
-                                    {{ $item->quantity }} {{ $item->unit->abbreviation() }}
-                                    @if ($item->product?->convertedQuantityLabel($item->quantity))
-                                        ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                    {{ $item->quantityLabel() }}
+                                    @if (($conversion = ($item->unitVariant?->conversionFor($item->quantity) ?? $item->product?->conversionFor($item->quantity))))
+                                        ({{ __(':converted total', ['converted' => $conversion->convertedQuantityLabel()]) }})
                                     @endif
                                 </span>
-                                <span>{{ $item->unit->priceLabel($item->unit_price) }}</span>
+                                <span>{{ \App\Support\UnitFormatter::pricePerUnit($item->unit, $item->unit_price) }}</span>
                                 <span class="font-semibold text-neutral-900 dark:text-zinc-100">
                                     {{ $item->lineTotal() }}
                                 </span>

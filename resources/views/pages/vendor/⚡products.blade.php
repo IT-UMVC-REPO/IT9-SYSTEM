@@ -6,6 +6,7 @@ use App\Enums\ProductStatus;
 use App\Models\Category;
 use App\Models\Product;
 use App\Services\AuditLogger;
+use App\Services\StockManager;
 use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -115,10 +116,16 @@ new #[Title('My products')] class extends Component {
         ]);
 
         $product = Product::query()
+            ->with('defaultVariant')
             ->forVendor($this->approvedVendorProfile()->getKey())
             ->findOrFail($this->restockProductId);
 
-        $product->increment('stock_quantity', (int) $this->restockQuantity);
+        if ($product->defaultVariant !== null) {
+            app(StockManager::class)->incrementStock($product->defaultVariant, (int) $this->restockQuantity);
+        } else {
+            app(StockManager::class)->incrementProductStock($product, (int) $this->restockQuantity);
+        }
+
         $product->refresh();
 
         AuditLogger::log(AuditEvent::ProductRestocked, "Vendor restocked '{$product->name}' by {$this->restockQuantity} {$product->unit->abbreviation()}. New total: {$product->unitLabel()}.", $product);
@@ -450,7 +457,7 @@ new #[Title('My products')] class extends Component {
                 @if ($restockProduct && filled($restockQuantity) && is_numeric($restockQuantity) && (int) $restockQuantity > 0)
                     <p class="mt-3 text-sm font-semibold text-neutral-900 dark:text-zinc-100">
                         {{ __('New total: :total', [
-                            'total' => $restockProduct->unit->stockLabel($restockProduct->stock_quantity + (int) $restockQuantity),
+                            'total' => \App\Support\UnitFormatter::format($restockProduct->unit, $restockProduct->stock_quantity + (int) $restockQuantity),
                         ]) }}
                     </p>
                 @endif

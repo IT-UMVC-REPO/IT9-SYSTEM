@@ -3,6 +3,7 @@
 use App\Enums\ProductStatus;
 use App\Enums\ProductUnit;
 use App\Models\Product;
+use App\Models\ProductUnitVariant;
 use App\Models\User;
 use App\Models\VendorProfile;
 use Livewire\Livewire;
@@ -116,6 +117,39 @@ test('inline edit set mode saves the correct stock quantity', function () {
         ->assertHasNoErrors();
 
     expect($product->fresh()->stock_quantity)->toBe(12);
+});
+
+test('inline editing a variant updates that variant stock only for count based products', function () {
+    [$vendorUser, $vendorProfile] = stocksPageVendor();
+    $product = stocksPageProduct($vendorProfile, [
+        'unit' => ProductUnit::Piece,
+        'stock_quantity' => 30,
+        'canonical_stock_unit' => null,
+        'canonical_stock_quantity' => null,
+    ]);
+
+    $piece = ProductUnitVariant::factory()->default()->for($product)->create([
+        'unit' => ProductUnit::Piece,
+        'stock_quantity' => 30,
+    ]);
+    $dozen = ProductUnitVariant::factory()->for($product)->create([
+        'unit' => ProductUnit::Dozen,
+        'stock_quantity' => 5,
+        'sort_order' => 1,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.stocks')
+        ->assertSee('Variant stock')
+        ->call('startVariantInlineEdit', $dozen->getKey())
+        ->set("variantInlineEdits.{$dozen->id}.mode", 'subtract')
+        ->set("variantInlineEdits.{$dozen->id}.quantity", '2')
+        ->call('saveVariantInlineEdit', $dozen->getKey())
+        ->assertHasNoErrors();
+
+    expect($dozen->fresh()->stock_quantity)->toBe(3)
+        ->and($piece->fresh()->stock_quantity)->toBe(30)
+        ->and($product->fresh()->stock_quantity)->toBe(30);
 });
 
 test('inline edit add mode increments correctly', function () {

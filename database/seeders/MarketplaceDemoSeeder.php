@@ -20,6 +20,7 @@ use App\Models\Category;
 use App\Models\RiderProfile;
 use App\Models\User;
 use App\Models\VendorProfile;
+use App\Support\CategoryUnitSuggestion;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -527,7 +528,7 @@ class MarketplaceDemoSeeder extends Seeder
         $market = fake()->randomElement(self::marketReferences());
         $barangay = fake()->randomElement(self::barangays());
         $vendorName = fake()->randomElement(self::femaleFirstNames());
-        $unit = ProductUnit::suggestionsForCategory($categorySlug)[0] ?? ProductUnit::Piece;
+        $unit = CategoryUnitSuggestion::forCategory($categorySlug)[0] ?? ProductUnit::Piece;
         $price = fake()->numberBetween($catalog['price'][0] * 100, $catalog['price'][1] * 100) / 100;
         $name = strtr($template, [
             '{item}' => Str::headline($item),

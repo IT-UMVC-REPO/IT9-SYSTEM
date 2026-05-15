@@ -357,6 +357,8 @@ class Registration extends Component
             $productId = isset($validatedProduct['productId']) ? (int) $validatedProduct['productId'] : null;
             $product = $productId !== null ? $existingProducts->get($productId) : null;
             $product ??= new Product;
+            $unit = ProductUnit::from($validatedProduct['unit'] ?? ProductUnit::Piece->value);
+            $stockQuantity = (int) $validatedProduct['stock_quantity'];
 
             $attributes = [
                 'vendor_id' => $vendorProfile->getKey(),
@@ -364,8 +366,10 @@ class Registration extends Component
                 'name' => $validatedProduct['name'],
                 'description' => $validatedProduct['description'],
                 'price' => $validatedProduct['price'],
-                'stock_quantity' => (int) $validatedProduct['stock_quantity'],
-                'unit' => $validatedProduct['unit'] ?? ProductUnit::Piece->value,
+                'stock_quantity' => $stockQuantity,
+                'canonical_stock_unit' => $unit->baseUnit()?->value,
+                'canonical_stock_quantity' => $unit->conversionFactor() === null ? null : $stockQuantity * $unit->conversionFactor(),
+                'unit' => $unit->value,
                 'status' => ProductStatus::Inactive,
             ];
 
@@ -380,6 +384,17 @@ class Registration extends Component
             }
 
             $product->forceFill($attributes)->save();
+            $product->unitVariants()->updateOrCreate(
+                ['is_default' => true],
+                [
+                    'unit' => $unit->value,
+                    'price' => $validatedProduct['price'],
+                    'stock_quantity' => $stockQuantity,
+                    'conversion_unit' => null,
+                    'conversion_unit_quantity' => null,
+                    'sort_order' => 0,
+                ],
+            );
             $retainedProductIds[] = $product->getKey();
         }
 

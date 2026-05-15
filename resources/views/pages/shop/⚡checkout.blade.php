@@ -305,16 +305,16 @@
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate font-semibold text-neutral-900 dark:text-zinc-100">{{ $item->product->name }}</p>
                                         <p class="text-xs text-neutral-400 dark:text-zinc-500">
-                                            {{ $item->quantity }} {{ $item->product->unit->abbreviation() }}
-                                            @if ($item->product->convertedQuantityLabel($item->quantity))
-                                                ({{ __(':converted total', ['converted' => $item->product->convertedQuantityLabel($item->quantity)]) }})
+                                            {{ \App\Support\UnitFormatter::format($item->unitVariant?->unit ?? $item->product->unit, $item->quantity) }}
+                                            @if (($conversion = ($item->unitVariant?->conversionFor($item->quantity) ?? $item->product->conversionFor($item->quantity))))
+                                                ({{ __(':converted total', ['converted' => $conversion->convertedQuantityLabel()]) }})
                                             @endif
-                                            × ₱{{ number_format((float) $item->product->price, 2) }}
+                                            × {{ \App\Support\UnitFormatter::currency($item->unitPrice()) }}
                                         </p>
                                     </div>
 
                                     <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                                        {{ __('₱:amount', ['amount' => number_format((float) $item->product->price * $item->quantity, 2)]) }}
+                                        {{ \App\Support\UnitFormatter::currency($item->lineTotal()) }}
                                     </p>
                                 </div>
                             @endforeach

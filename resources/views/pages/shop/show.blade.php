@@ -1,8 +1,9 @@
 <x-layouts::app :title="$product->name">
     @php
         $canPurchaseProduct = auth()->user()?->effectiveMarketplaceRole()->value !== 'admin' && ! ($isOwnProduct ?? false);
-        $conversionString = $product->conversionDisplayString();
-        $pricePerBaseUnit = $product->pricePerBaseUnit();
+        $conversion = $product->conversionFor(1);
+        $conversionString = $conversion?->displayString;
+        $pricePerConversionUnit = $conversion?->pricePerConversionUnitLabel();
 
         $availabilityClasses = $product->stock_quantity > 0
             ? 'brand-soft-surface border'
@@ -53,9 +54,9 @@
                 <div class="suki-reveal rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-sm" style="transition-delay: 160ms">
                     <p class="brand-hero-note text-[11px] font-semibold uppercase tracking-[0.22em]">{{ __('Market price') }}</p>
                     <p class="mt-3 text-4xl font-semibold text-white">{{ $product->priceWithUnit() }}</p>
-                    @if ($conversionString && $pricePerBaseUnit)
+                    @if ($conversionString && $pricePerConversionUnit)
                         <p class="mt-2 text-sm font-medium text-white/80">
-                            {{ __('(≈ :price · :conversion)', ['price' => $pricePerBaseUnit, 'conversion' => $conversionString]) }}
+                            {{ __('(:price - :conversion)', ['price' => $pricePerConversionUnit, 'conversion' => $conversionString]) }}
                         </p>
                     @endif
 

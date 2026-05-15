@@ -6,12 +6,18 @@ use App\Enums\VendorStatus;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\ProductUnitVariant;
+use App\Services\StockManager;
+use App\Support\UnitFormatter;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component {
     public Product $product;
+
+    public ?int $selectedVariantId = null;
 
     public string $quantity = '1';
 
@@ -22,19 +28,29 @@ new class extends Component {
 
         $this->product = Product::query()
             ->visibleToCustomers()
+            ->with('unitVariants')
             ->findOrFail($product->getKey());
 
-        $this->quantity = $this->product->stock_quantity > 0 ? '1' : '0';
+        $this->selectedVariantId = $this->product->purchasableVariant()?->getKey();
+        $this->quantity = $this->availableStock > 0 ? '1' : '0';
+    }
+
+    public function updatedSelectedVariantId(): void
+    {
+        $this->clearComputedUnitState();
+        $this->selectedVariantId = $this->selectedVariant?->getKey();
+        $this->quantity = (string) $this->normalizedRequestedQuantity($this->quantity, $this->availableStock);
     }
 
     public function updatedQuantity(mixed $value): void
     {
-        $this->quantity = (string) $this->normalizedRequestedQuantity($value, $this->product->stock_quantity);
+        $this->clearComputedUnitState();
+        $this->quantity = (string) $this->normalizedRequestedQuantity($value, $this->availableStock);
     }
 
     public function decrementQuantity(): void
     {
-        $currentQuantity = $this->normalizedRequestedQuantity($this->quantity, $this->product->stock_quantity);
+        $currentQuantity = $this->normalizedRequestedQuantity($this->quantity, $this->availableStock);
 
         if ($currentQuantity <= 1) {
             $this->quantity = (string) max(1, $currentQuantity);
@@ -47,15 +63,15 @@ new class extends Component {
 
     public function incrementQuantity(): void
     {
-        $currentQuantity = $this->normalizedRequestedQuantity($this->quantity, $this->product->stock_quantity);
+        $currentQuantity = $this->normalizedRequestedQuantity($this->quantity, $this->availableStock);
 
-        if ($this->product->stock_quantity < 1) {
+        if ($this->availableStock < 1) {
             $this->quantity = '0';
 
             return;
         }
 
-        $this->quantity = (string) min($this->product->stock_quantity, $currentQuantity + 1);
+        $this->quantity = (string) min($this->availableStock, $currentQuantity + 1);
     }
 
     public function addToCart(): void
@@ -88,6 +104,51 @@ new class extends Component {
         $this->redirectRoute('shop.cart', navigate: true);
     }
 
+    #[Computed]
+    public function selectedVariant(): ?ProductUnitVariant
+    {
+        if ($this->selectedVariantId === null) {
+            return $this->product->purchasableVariant();
+        }
+
+        return $this->product->unitVariants->firstWhere('id', $this->selectedVariantId)
+            ?? $this->product->purchasableVariant();
+    }
+
+    #[Computed]
+    public function availableStock(): int
+    {
+        if ($this->selectedVariant instanceof ProductUnitVariant) {
+            return app(StockManager::class)->availableQuantityFor($this->selectedVariant);
+        }
+
+        return (int) $this->product->stock_quantity;
+    }
+
+    #[Computed]
+    public function conversionPreview(): ?string
+    {
+        return ($this->selectedVariant?->conversionFor(1) ?? $this->product->conversionFor(1))?->displayString;
+    }
+
+    #[Computed]
+    public function pricePerConversionUnit(): ?string
+    {
+        return ($this->selectedVariant?->conversionFor(1) ?? $this->product->conversionFor(1))?->pricePerConversionUnitLabel();
+    }
+
+    #[Computed]
+    public function selectedPriceWithUnit(): string
+    {
+        return $this->selectedVariant?->priceWithUnit() ?? $this->product->priceWithUnit();
+    }
+
+    #[Computed]
+    public function selectedStockLabel(): string
+    {
+        return UnitFormatter::format($this->selectedVariant?->unit ?? $this->product->unit, $this->availableStock);
+    }
+
     private function attemptCartMutation(): string
     {
         $customer = Auth::user();
@@ -102,7 +163,7 @@ new class extends Component {
             ['created_at' => now()],
         );
 
-        $requestedQuantity = $this->normalizedRequestedQuantity($this->quantity, $product->stock_quantity);
+        $requestedQuantity = $this->normalizedRequestedQuantity($this->quantity, $this->availableStock);
         $wasCapped = $this->storeCartItem($cart, $product, $requestedQuantity);
 
         $this->product = $product;
@@ -113,15 +174,17 @@ new class extends Component {
     private function freshPurchasableProduct(): ?Product
     {
         $product = Product::query()
-            ->with(['vendor.user', 'category.parent'])
+            ->with(['vendor.user', 'category.parent', 'unitVariants'])
             ->findOrFail($this->product->getKey());
 
         $this->product = $product;
+        $this->clearComputedUnitState();
+        $this->selectedVariantId = $this->selectedVariant?->getKey();
 
         if (
             $product->status !== ProductStatus::Active
             || $product->vendor->status !== VendorStatus::Approved
-            || $product->stock_quantity < 1
+            || $this->availableStock < 1
         ) {
             $this->quantity = '0';
 
@@ -155,15 +218,28 @@ new class extends Component {
         $cartItem = CartItem::query()->firstOrNew([
             'cart_id' => $cart->getKey(),
             'product_id' => $product->getKey(),
+            'product_unit_variant_id' => $this->selectedVariant?->getKey(),
         ]);
 
         $existingQuantity = $cartItem->exists ? $cartItem->quantity : 0;
-        $targetQuantity = min($product->stock_quantity, $existingQuantity + $requestedQuantity);
+        $targetQuantity = min($this->availableStock, $existingQuantity + $requestedQuantity);
 
         $cartItem->quantity = $targetQuantity;
         $cartItem->save();
 
         return $targetQuantity < ($existingQuantity + $requestedQuantity);
+    }
+
+    private function clearComputedUnitState(): void
+    {
+        unset(
+            $this->selectedVariant,
+            $this->availableStock,
+            $this->conversionPreview,
+            $this->pricePerConversionUnit,
+            $this->selectedPriceWithUnit,
+            $this->selectedStockLabel,
+        );
     }
 }; ?>
 
@@ -171,28 +247,51 @@ new class extends Component {
     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-400">{{ __('Purchase panel') }}</p>
     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Bring this stall to your cart') }}</h2>
     <p class="mt-3 text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-        {{ __('Choose how many :units you need, then add the item to your cart or head straight to checkout.', ['units' => $product->unit->label()]) }}
+        {{ __('Choose the unit and quantity you need, then add the item to your cart or head straight to checkout.') }}
     </p>
+
+    @if ($product->unitVariants->count() > 1)
+        <div class="mt-5 space-y-3">
+            <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Selling unit') }}</p>
+            <div class="grid gap-2">
+                @foreach ($product->unitVariants as $variant)
+                    <button
+                        type="button"
+                        wire:key="purchase-variant-{{ $variant->id }}"
+                        wire:click="$set('selectedVariantId', {{ $variant->id }})"
+                        class="flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition"
+                        @class([
+                            'border-[var(--brand-600)] bg-[var(--brand-50)] text-[var(--brand-900)] dark:bg-[var(--brand-900)]/30 dark:text-[var(--brand-100)]' => $this->selectedVariant?->is($variant),
+                            'border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200' => ! $this->selectedVariant?->is($variant),
+                        ])
+                    >
+                        <span class="font-semibold">{{ __('Per :unit', ['unit' => strtolower($variant->unit->label())]) }}</span>
+                        <span>{{ $variant->priceWithUnit() }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     <div class="mt-5 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-800">
         <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-400 dark:text-zinc-500">{{ __('Price') }}</p>
-        <p class="mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $product->priceWithUnit() }}</p>
-        @if ($product->conversionDisplayString() && $product->pricePerBaseUnit())
+        <p class="mt-2 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->selectedPriceWithUnit }}</p>
+        @if ($this->conversionPreview && $this->pricePerConversionUnit)
             <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">
-                {{ __('(≈ :price · :conversion)', [
-                    'price' => $product->pricePerBaseUnit(),
-                    'conversion' => $product->conversionDisplayString(),
+                {{ __('(:price - :conversion)', [
+                    'price' => $this->pricePerConversionUnit,
+                    'conversion' => $this->conversionPreview,
                 ]) }}
             </p>
         @endif
     </div>
 
-    @if ($product->stock_quantity > 0)
+    @if ($this->availableStock > 0)
         <div wire:transition class="mt-6 space-y-5">
             <div class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
                     <label for="purchase-quantity" class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Quantity') }}</label>
-                    <span class="text-xs font-medium text-neutral-400 dark:text-zinc-400">{{ __('Up to :amount available', ['amount' => $product->unitLabel()]) }}</span>
+                    <span class="text-xs font-medium text-neutral-400 dark:text-zinc-400">{{ __('Up to :amount available', ['amount' => $this->selectedStockLabel]) }}</span>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -216,7 +315,7 @@ new class extends Component {
                         id="purchase-quantity"
                         type="number"
                         min="1"
-                        max="{{ $product->stock_quantity }}"
+                        max="{{ $this->availableStock }}"
                         wire:model.live="quantity"
                         class="brand-stepper-input transition-colors duration-150"
                     >
@@ -231,7 +330,7 @@ new class extends Component {
                         x-on:touchend.window="stop"
                         x-on:touchcancel.window="stop"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                        @disabled((int) $quantity >= $product->stock_quantity)
+                        @disabled((int) $quantity >= $this->availableStock)
                         aria-label="{{ __('Increase quantity') }}"
                     >
                         <span aria-hidden="true">+</span>

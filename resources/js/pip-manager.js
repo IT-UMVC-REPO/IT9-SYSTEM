@@ -70,7 +70,14 @@ export const createPipManager = () => ({
             }
         });
 
-        window.addEventListener('resize', () => this.clampPosition());
+        window.addEventListener('resize', () => {
+            if (!this.isLiveCall()) {
+                this.hide();
+                return;
+            }
+
+            this.clampPosition();
+        });
     },
 
     supportsVideoCalling() {
@@ -95,6 +102,11 @@ export const createPipManager = () => ({
 
     async enter(call, options = {}) {
         this.attachCall(call, options);
+
+        if (!this.isLiveCall(call)) {
+            this.hide();
+            return;
+        }
 
         if (!this.supportsVideoCalling()) {
             call.statusMessage = 'Your browser doesn\'t support video calls.';
@@ -249,7 +261,9 @@ export const createPipManager = () => ({
                 return;
             }
 
-            this.enterOverlay(closedCall, { forceOverlay: true });
+            if (this.isLiveCall(closedCall)) {
+                this.enterOverlay(closedCall, { forceOverlay: true });
+            }
         }, { once: true });
     },
 
@@ -416,6 +430,10 @@ export const createPipManager = () => ({
     },
 
     overlayEntries() {
+        if (!this.isLiveCall()) {
+            return [];
+        }
+
         if (this.remoteEntries.length > 0) {
             return this.visibleEntries();
         }
@@ -446,10 +464,19 @@ export const createPipManager = () => ({
     },
 
     switchToOverlay() {
+        if (!this.isLiveCall()) {
+            this.hide();
+            return;
+        }
+
         this.active = true;
         this.mode = 'overlay';
         this.minimized = true;
         this.clampPosition();
+    },
+
+    shouldShowOverlay() {
+        return this.active && this.mode === 'overlay' && this.isLiveCall();
     },
 
     expand() {
@@ -468,12 +495,51 @@ export const createPipManager = () => ({
 
         this.active = false;
         this.minimized = true;
+        this.forgetCallState();
 
         if (this.pipWindow && !this.pipWindow.closed) {
             this.pipWindow.close();
         }
 
         this.pipWindow = null;
+    },
+
+    forgetCallState() {
+        this.activeCall = null;
+        this.localStream = null;
+        this.remoteStreams = {};
+        this.remoteEntries = [];
+        this.participants = [];
+        this.callKind = 'direct';
+        this.title = 'Call';
+    },
+
+    isLiveCall(call = this.activeCall) {
+        if (!call || typeof call !== 'object') {
+            return false;
+        }
+
+        if (['ringing', 'connecting', 'active'].includes(call.callStatus)) {
+            return true;
+        }
+
+        if (call.callId !== null && call.callId !== undefined && !['idle', 'ended'].includes(call.callStatus)) {
+            return true;
+        }
+
+        if (hasLiveTracks(call.localStream) || hasLiveTracks(call.persistentRemoteStream)) {
+            return true;
+        }
+
+        if (call.remoteStreams instanceof Map && streamEntriesFrom(call.remoteStreams).some(([, stream]) => hasLiveTracks(stream))) {
+            return true;
+        }
+
+        if (call.peerConnections instanceof Map && call.peerConnections.size > 0) {
+            return true;
+        }
+
+        return Boolean(call.peer && !['closed', 'failed'].includes(call.peer.connectionState));
     },
 
     async closePipWindow() {

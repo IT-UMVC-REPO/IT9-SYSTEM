@@ -8,10 +8,16 @@ use App\Enums\ProductUnit;
 use App\Models\Category;
 use App\Models\Product;
 use App\Services\AuditLogger;
+use App\Services\StockManager;
+use App\Support\CategoryUnitSuggestion;
+use App\Support\UnitConversionResult;
+use App\Support\UnitFormatter;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
@@ -39,11 +45,20 @@ new #[Title('Edit product')] class extends Component {
 
     public string $unit = '';
 
-    public string $base_unit = '';
+    public string $conversion_unit = '';
 
-    public string $base_unit_quantity = '';
+    public string $conversion_unit_quantity = '';
 
     public bool $showUnitConversion = false;
+
+    public ?int $primaryVariantId = null;
+
+    /**
+     * @var array<int, array{id: int|null, unit: string, price: string, stock_quantity: string, conversion_unit: string, conversion_unit_quantity: string}>
+     */
+    public array $additionalVariants = [];
+
+    public string $defaultVariantKey = 'primary';
 
     public $productImageUpload = null;
 
@@ -67,10 +82,12 @@ new #[Title('Edit product')] class extends Component {
         $this->categoryId = (string) $product->category_id;
         $this->status = $product->status->value;
         $this->unit = $product->unit->value;
-        $this->base_unit = $product->base_unit ?? '';
-        $this->base_unit_quantity = $product->base_unit_quantity === null ? '' : (string) $product->base_unit_quantity;
-        $this->showUnitConversion = filled($product->base_unit) && $product->base_unit_quantity !== null;
+        $this->conversion_unit = $product->conversion_unit?->value ?? '';
+        $this->conversion_unit_quantity = $product->conversion_unit_quantity === null ? '' : (string) $product->conversion_unit_quantity;
+        $this->showUnitConversion = filled($product->conversion_unit) && $product->conversion_unit_quantity !== null;
         $this->currentImage = $product->getRawOriginal('image');
+
+        $this->mountVariantRows($product);
     }
 
     public function update(): void
@@ -84,16 +101,21 @@ new #[Title('Edit product')] class extends Component {
             ->findOrFail($this->productId);
 
         $validated = $this->validate($this->vendorProductRules(requireImage: false), $this->vendorProductValidationMessages());
+        $variantRows = $this->validatedVariantRows($validated);
+        $defaultVariant = collect($variantRows)->firstWhere('is_default', true) ?? $variantRows[0];
+        $canonicalStock = $this->canonicalStockAttributes($defaultVariant, $variantRows);
 
         $attributes = [
             'category_id' => (int) $validated['categoryId'],
             'name' => $validated['name'],
             'description' => $validated['description'],
-            'price' => $validated['price'],
-            'stock_quantity' => (int) $validated['stock_quantity'],
-            'unit' => $validated['unit'],
-            'base_unit' => blank($validated['base_unit'] ?? null) ? null : $validated['base_unit'],
-            'base_unit_quantity' => blank($validated['base_unit_quantity'] ?? null) ? null : (float) $validated['base_unit_quantity'],
+            'price' => $defaultVariant['price'],
+            'stock_quantity' => $defaultVariant['stock_quantity'],
+            'canonical_stock_unit' => $canonicalStock['unit'],
+            'canonical_stock_quantity' => $canonicalStock['quantity'],
+            'unit' => $defaultVariant['unit'],
+            'conversion_unit' => $defaultVariant['conversion_unit'],
+            'conversion_unit_quantity' => $defaultVariant['conversion_unit_quantity'],
             'status' => $validated['status'],
         ];
 
@@ -114,6 +136,7 @@ new #[Title('Edit product')] class extends Component {
         }
 
         $product->update($attributes);
+        $this->syncVariants($product, $variantRows);
 
         AuditLogger::log(AuditEvent::ProductUpdated, "Vendor updated product '{$product->name}' (ID:{$product->id}).", $product);
 
@@ -160,7 +183,7 @@ new #[Title('Edit product')] class extends Component {
 
     public function updatedUnit(): void
     {
-        unset($this->selectedUnit, $this->suggestedBaseUnits, $this->pricePreview, $this->unitFormulaPreview);
+        unset($this->selectedUnit, $this->conversionUnitOptions, $this->pricePreview, $this->unitFormulaPreview);
 
         $this->clearUnitConversion();
     }
@@ -173,8 +196,31 @@ new #[Title('Edit product')] class extends Component {
             return;
         }
 
-        if (blank($this->base_unit) && $this->suggestedBaseUnits !== []) {
-            $this->base_unit = $this->suggestedBaseUnits[0]['value'];
+        if (blank($this->conversion_unit) && $this->conversionUnitOptions !== []) {
+            $this->conversion_unit = $this->conversionUnitOptions[0]['value'];
+        }
+    }
+
+    public function addVariant(): void
+    {
+        $this->additionalVariants[] = $this->blankVariantRow();
+    }
+
+    public function removeVariant(int $index): void
+    {
+        if ($this->defaultVariantKey === 'variant-'.$index) {
+            Flux::toast(variant: 'warning', text: __('Choose another default variant before deleting this one.'));
+
+            return;
+        }
+
+        unset($this->additionalVariants[$index]);
+    }
+
+    public function setDefaultVariant(string $variantKey): void
+    {
+        if ($variantKey === 'primary' || str_starts_with($variantKey, 'variant-')) {
+            $this->defaultVariantKey = $variantKey;
         }
     }
 
@@ -231,7 +277,7 @@ new #[Title('Edit product')] class extends Component {
     #[Computed]
     public function suggestedUnitOptions(): array
     {
-        return ProductUnit::suggestionsForCategory($this->selectedCategory?->slug ?? '');
+        return CategoryUnitSuggestion::forCategory($this->selectedCategory?->slug ?? '');
     }
 
     /**
@@ -256,9 +302,27 @@ new #[Title('Edit product')] class extends Component {
      * @return list<array{value: string, label: string}>
      */
     #[Computed]
-    public function suggestedBaseUnits(): array
+    public function conversionUnitOptions(): array
     {
-        return $this->selectedUnit?->suggestedBaseUnits() ?? [];
+        if ($this->selectedUnit === null) {
+            return [];
+        }
+
+        return array_map(
+            fn (ProductUnit $unit): array => [
+                'value' => $unit->value,
+                'label' => $unit->label().' ('.$unit->symbol().')',
+            ],
+            array_values(array_filter(
+                ProductUnit::cases(),
+                fn (ProductUnit $unit): bool => $unit !== $this->selectedUnit
+                    && (
+                        $this->selectedUnit->isCountBased()
+                            ? true
+                            : $this->selectedUnit->type() === $unit->type()
+                    ),
+            )),
+        );
     }
 
     #[Computed]
@@ -268,7 +332,7 @@ new #[Title('Edit product')] class extends Component {
             return null;
         }
 
-        return $this->selectedUnit->priceLabel((float) $this->price);
+        return UnitFormatter::pricePerUnit($this->selectedUnit, (float) $this->price);
     }
 
     #[Computed]
@@ -279,10 +343,10 @@ new #[Title('Edit product')] class extends Component {
         }
 
         $price = is_numeric($this->price)
-            ? '₱'.number_format((float) $this->price, 2)
-            : '₱0.00';
+            ? UnitFormatter::currency((float) $this->price)
+            : UnitFormatter::currency(0);
 
-        return __('1 :label = 1 :abbr · :price per :abbr2', [
+        return __('1 :label = 1 :abbr - :price per :abbr2', [
             'label' => strtolower($this->selectedUnit->label()),
             'abbr' => $this->selectedUnit->abbreviation(),
             'price' => $price,
@@ -291,78 +355,219 @@ new #[Title('Edit product')] class extends Component {
     }
 
     #[Computed]
-    public function unitConversionPreview(): ?string
+    public function unitConversionResult(): ?UnitConversionResult
     {
-        if (! $this->showUnitConversion || blank($this->base_unit) || blank($this->base_unit_quantity)) {
-            return null;
-        }
+        $conversionUnit = ProductUnit::tryFrom($this->conversion_unit);
 
-        if ($this->unitConversionPreviewTooLarge) {
-            return __('Value is too large - please enter a realistic quantity.');
-        }
-
-        return $this->selectedUnit?->conversionLabel((float) $this->base_unit_quantity, $this->base_unit);
-    }
-
-    #[Computed]
-    public function unitConversionPreviewTooLarge(): bool
-    {
-        if (! is_numeric($this->base_unit_quantity)) {
-            return false;
-        }
-
-        $quantityValue = (float) $this->base_unit_quantity;
-
-        if (! is_finite($quantityValue)) {
-            return true;
-        }
-
-        $quantity = rtrim(rtrim(number_format($quantityValue, 4, '.', ''), '0'), '.');
-
-        return mb_strlen(str_replace('.', '', $quantity)) > 20 || $quantityValue > 99999;
-    }
-
-    #[Computed]
-    public function pricePerBaseUnit(): ?string
-    {
         if (
             ! $this->showUnitConversion
-            || blank($this->base_unit)
-            || blank($this->base_unit_quantity)
-            || blank($this->price)
-            || ! is_numeric($this->price)
-            || (float) $this->base_unit_quantity <= 0
+            || $this->selectedUnit === null
+            || $conversionUnit === null
+            || blank($this->conversion_unit_quantity)
+            || ! is_numeric($this->conversion_unit_quantity)
         ) {
             return null;
         }
 
-        return '₱'.number_format((float) $this->price / (float) $this->base_unit_quantity, 2).' per '.$this->base_unit;
-    }
-
-    #[Computed]
-    public function customerConversionSummary(): ?string
-    {
-        if ($this->selectedUnit === null || blank($this->base_unit) || blank($this->base_unit_quantity) || ! is_numeric($this->price)) {
+        if ((float) $this->conversion_unit_quantity <= 0 || (float) $this->conversion_unit_quantity > 99999) {
             return null;
         }
 
-        $quantity = rtrim(rtrim(number_format((float) $this->base_unit_quantity, 4, '.', ''), '0'), '.');
+        return new UnitConversionResult(
+            fromUnit: $this->selectedUnit,
+            fromQuantity: 1,
+            toUnit: $conversionUnit,
+            toQuantity: (float) $this->conversion_unit_quantity,
+            fromUnitPrice: is_numeric($this->price) ? (float) $this->price : null,
+        );
+    }
 
-        return __('1 :unit (:quantity :base) - ₱:price', [
-            'unit' => strtolower($this->selectedUnit->label()),
-            'quantity' => $quantity,
-            'base' => $this->base_unit,
-            'price' => number_format((float) $this->price, 2),
+    private function mountVariantRows(Product $product): void
+    {
+        $product->loadMissing('unitVariants');
+        $defaultVariant = $product->unitVariants->firstWhere('is_default', true);
+
+        if ($defaultVariant !== null) {
+            $this->primaryVariantId = $defaultVariant->getKey();
+            $this->unit = $defaultVariant->unit->value;
+            $this->price = (string) $defaultVariant->price;
+            $this->stock_quantity = (string) $defaultVariant->stock_quantity;
+            $this->conversion_unit = $defaultVariant->conversion_unit?->value ?? '';
+            $this->conversion_unit_quantity = $defaultVariant->conversion_unit_quantity === null ? '' : (string) $defaultVariant->conversion_unit_quantity;
+            $this->showUnitConversion = filled($defaultVariant->conversion_unit) && $defaultVariant->conversion_unit_quantity !== null;
+        }
+
+        $this->additionalVariants = $product->unitVariants
+            ->reject(fn ($variant): bool => $defaultVariant !== null && $variant->is($defaultVariant))
+            ->values()
+            ->map(fn ($variant): array => [
+                'id' => $variant->getKey(),
+                'unit' => $variant->unit->value,
+                'price' => (string) $variant->price,
+                'stock_quantity' => (string) $variant->stock_quantity,
+                'conversion_unit' => $variant->conversion_unit?->value ?? '',
+                'conversion_unit_quantity' => $variant->conversion_unit_quantity === null ? '' : (string) $variant->conversion_unit_quantity,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array{id: int|null, unit: string, price: string, stock_quantity: string, conversion_unit: string, conversion_unit_quantity: string}
+     */
+    private function blankVariantRow(): array
+    {
+        return [
+            'id' => null,
+            'unit' => ProductUnit::Piece->value,
+            'price' => '',
+            'stock_quantity' => '0',
+            'conversion_unit' => '',
+            'conversion_unit_quantity' => '',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return list<array{id: int|null, key: string, unit: string, price: float, stock_quantity: int, conversion_unit: string|null, conversion_unit_quantity: float|null, is_default: bool}>
+     */
+    private function validatedVariantRows(array $validated): array
+    {
+        $validator = Validator::make([
+            'additionalVariants' => $this->additionalVariants,
+            'defaultVariantKey' => $this->defaultVariantKey,
+        ], [
+            'additionalVariants' => ['array'],
+            'additionalVariants.*.id' => ['nullable', 'integer'],
+            'additionalVariants.*.unit' => ['required', Rule::enum(ProductUnit::class)],
+            'additionalVariants.*.price' => ['required', 'numeric', 'min:0.01'],
+            'additionalVariants.*.stock_quantity' => ['required', 'integer', 'min:0'],
+            'additionalVariants.*.conversion_unit' => ['nullable', Rule::enum(ProductUnit::class)],
+            'additionalVariants.*.conversion_unit_quantity' => ['nullable', 'numeric', 'min:0.001', 'max:99999', 'required_with:additionalVariants.*.conversion_unit'],
+            'defaultVariantKey' => ['required', 'string'],
+        ], [
+            'additionalVariants.*.conversion_unit_quantity.max' => __('Conversion quantity cannot exceed 99,999.'),
         ]);
+
+        $validator->after(function ($validator) use ($validated): void {
+            $seenUnits = [$validated['unit'] => 'unit'];
+            $defaultExists = $this->defaultVariantKey === 'primary';
+
+            foreach ($this->additionalVariants as $index => $variant) {
+                $unit = $variant['unit'] ?? null;
+
+                if ($unit !== null && isset($seenUnits[$unit])) {
+                    $validator->errors()->add("additionalVariants.{$index}.unit", __('Each variant must use a different unit.'));
+                }
+
+                if ($unit !== null) {
+                    $seenUnits[$unit] = "additionalVariants.{$index}.unit";
+                }
+
+                if ($this->defaultVariantKey === 'variant-'.$index) {
+                    $defaultExists = true;
+                }
+            }
+
+            if (! $defaultExists) {
+                $validator->errors()->add('defaultVariantKey', __('Choose a default selling variant.'));
+            }
+        });
+
+        $validatedVariants = $validator->validate();
+        $rows = [
+            [
+                'id' => $this->primaryVariantId,
+                'key' => 'primary',
+                'unit' => $validated['unit'],
+                'price' => (float) $validated['price'],
+                'stock_quantity' => (int) $validated['stock_quantity'],
+                'conversion_unit' => blank($validated['conversion_unit'] ?? null) ? null : $validated['conversion_unit'],
+                'conversion_unit_quantity' => blank($validated['conversion_unit_quantity'] ?? null) ? null : (float) $validated['conversion_unit_quantity'],
+                'is_default' => $this->defaultVariantKey === 'primary',
+            ],
+        ];
+
+        foreach (($validatedVariants['additionalVariants'] ?? []) as $index => $variant) {
+            $rows[] = [
+                'id' => blank($variant['id'] ?? null) ? null : (int) $variant['id'],
+                'key' => 'variant-'.$index,
+                'unit' => $variant['unit'],
+                'price' => (float) $variant['price'],
+                'stock_quantity' => (int) $variant['stock_quantity'],
+                'conversion_unit' => blank($variant['conversion_unit'] ?? null) ? null : $variant['conversion_unit'],
+                'conversion_unit_quantity' => blank($variant['conversion_unit_quantity'] ?? null) ? null : (float) $variant['conversion_unit_quantity'],
+                'is_default' => $this->defaultVariantKey === 'variant-'.$index,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array{unit: string, stock_quantity: int}  $defaultVariant
+     * @param  list<array{unit: string}>  $variantRows
+     * @return array{unit: string|null, quantity: float|null}
+     */
+    private function canonicalStockAttributes(array $defaultVariant, array $variantRows): array
+    {
+        $defaultUnit = ProductUnit::from($defaultVariant['unit']);
+        $canUseCanonical = $defaultUnit->conversionFactor() !== null
+            && collect($variantRows)->every(fn (array $row): bool => ProductUnit::from($row['unit'])->isConvertibleTo($defaultUnit));
+
+        return [
+            'unit' => $canUseCanonical ? $defaultUnit->baseUnit()?->value : null,
+            'quantity' => $canUseCanonical ? $defaultVariant['stock_quantity'] * $defaultUnit->conversionFactor() : null,
+        ];
+    }
+
+    /**
+     * @param  list<array{id: int|null, unit: string, price: float, stock_quantity: int, conversion_unit: string|null, conversion_unit_quantity: float|null, is_default: bool}>  $variantRows
+     */
+    private function syncVariants(Product $product, array $variantRows): void
+    {
+        $submittedIds = [];
+        $defaultVariant = null;
+
+        foreach ($variantRows as $sortOrder => $variant) {
+            $unitVariant = $variant['id'] !== null
+                ? $product->unitVariants()->whereKey($variant['id'])->first()
+                : $product->unitVariants()->where('unit', $variant['unit'])->first();
+
+            $unitVariant ??= $product->unitVariants()->make();
+            $unitVariant->fill([
+                'unit' => $variant['unit'],
+                'price' => $variant['price'],
+                'stock_quantity' => $variant['stock_quantity'],
+                'conversion_unit' => $variant['conversion_unit'],
+                'conversion_unit_quantity' => $variant['conversion_unit_quantity'],
+                'is_default' => $variant['is_default'],
+                'sort_order' => $sortOrder,
+            ]);
+            $unitVariant->save();
+
+            $submittedIds[] = $unitVariant->getKey();
+
+            if ($variant['is_default']) {
+                $defaultVariant = $unitVariant;
+            }
+        }
+
+        $product->unitVariants()
+            ->when($submittedIds !== [], fn ($query) => $query->whereNotIn('id', $submittedIds))
+            ->delete();
+
+        if ($defaultVariant !== null && $product->canonical_stock_unit !== null) {
+            app(StockManager::class)->setStock($defaultVariant, (int) $defaultVariant->stock_quantity);
+        }
     }
 
     private function clearUnitConversion(): void
     {
         $this->showUnitConversion = false;
-        $this->base_unit = '';
-        $this->base_unit_quantity = '';
+        $this->conversion_unit = '';
+        $this->conversion_unit_quantity = '';
 
-        unset($this->suggestedBaseUnits, $this->unitConversionPreview, $this->unitConversionPreviewTooLarge, $this->pricePerBaseUnit, $this->customerConversionSummary);
+        unset($this->conversionUnitOptions, $this->unitConversionResult);
     }
 
 }; ?>
@@ -695,86 +900,192 @@ new #[Title('Edit product')] class extends Component {
                             </flux:callout.text>
                         </flux:callout>
 
-                        @if ($this->suggestedBaseUnits === [])
+                        @if ($this->conversionUnitOptions === [])
                             <flux:callout icon="information-circle" variant="secondary">
-                                <flux:callout.text>{{ __("Conversion is not needed - you're already selling by a base unit.") }}</flux:callout.text>
+                                <flux:callout.text>{{ __("Conversion is not needed - you're already selling by a conversion unit.") }}</flux:callout.text>
                             </flux:callout>
                         @else
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <flux:field>
-                                    <flux:label>{{ __('Base unit') }}</flux:label>
+                                    <flux:label>{{ __('Conversion unit') }}</flux:label>
                                     <div class="flex flex-wrap gap-2">
-                                        @foreach ($this->suggestedBaseUnits as $baseUnitOption)
+                                        @foreach ($this->conversionUnitOptions as $baseUnitOption)
                                             <button
                                                 type="button"
-                                                wire:click="$set('base_unit', '{{ $baseUnitOption['value'] }}')"
+                                                wire:click="$set('conversion_unit', '{{ $baseUnitOption['value'] }}')"
                                                 @class([
                                                     'rounded-xl border px-4 py-2 text-sm font-bold transition-all duration-150 active:scale-[0.97]',
-                                                    'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $base_unit === $baseUnitOption['value'],
-                                                    'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $base_unit !== $baseUnitOption['value'],
+                                                    'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' => $conversion_unit === $baseUnitOption['value'],
+                                                    'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $conversion_unit !== $baseUnitOption['value'],
                                                 ])
                                             >
                                                 {{ $baseUnitOption['value'] }}
                                             </button>
                                         @endforeach
                                     </div>
-                                    <flux:error name="base_unit" />
+                                    <flux:error name="conversion_unit" />
                                 </flux:field>
 
                                 <flux:field>
-                                    @php($usesCountBaseUnit = in_array($base_unit, ['piece', 'dozen', 'each', 'pair'], true))
+                                    @php($usesCountBaseUnit = in_array($conversion_unit, ['piece', 'dozen', 'each', 'pair'], true))
                                     <flux:label>
                                         @if ($usesCountBaseUnit)
                                             {{ __('How many :base per 1 :unit?', [
-                                                'base' => $base_unit === 'pair' ? __('pairs') : __('pieces'),
+                                                'base' => $conversion_unit === 'pair' ? __('pairs') : __('pieces'),
                                                 'unit' => $selectedUnit ? strtolower($selectedUnit->label()) : __('unit'),
                                             ]) }}
                                         @else
                                             {{ __('How many :base per 1 :unit?', [
-                                                'base' => $base_unit ?: __('base units'),
+                                                'base' => $conversion_unit ?: __('conversion units'),
                                                 'unit' => $selectedUnit ? strtolower($selectedUnit->label()) : __('unit'),
                                             ]) }}
                                         @endif
                                     </flux:label>
                                     <div class="relative">
-                                        <flux:input type="number" wire:model.live.debounce.250ms="base_unit_quantity" step="0.001" min="0.001" max="99999" x-on:input="if (parseFloat($el.value) > 99999) { $el.value = 99999; $wire.$set('base_unit_quantity', '99999'); }" :placeholder="__('e.g. 25')" class="pr-16" />
-                                        @if (filled($base_unit))
-                                            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-neutral-500 dark:bg-zinc-800 dark:text-zinc-300">{{ $base_unit }}</span>
+                                        <flux:input type="number" wire:model.live.debounce.250ms="conversion_unit_quantity" step="0.001" min="0.001" max="99999" x-on:input="if (parseFloat($el.value) > 99999) { $el.value = 99999; $wire.$set('conversion_unit_quantity', '99999'); }" :placeholder="__('e.g. 25')" class="pr-16" />
+                                        @if (filled($conversion_unit))
+                                            <span class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-neutral-500 dark:bg-zinc-800 dark:text-zinc-300">{{ $conversion_unit }}</span>
                                         @endif
                                     </div>
-                                    <flux:error name="base_unit_quantity" />
+                                    <flux:error name="conversion_unit_quantity" />
                                 </flux:field>
                             </div>
 
-                            @if ($this->unitConversionPreview)
+                            @if ($this->unitConversionResult)
                                 <div class="rounded-2xl border-2 border-[var(--brand-500)] bg-[color:color-mix(in_oklab,var(--brand-50),white_20%)] p-5 transition-all duration-300 ease-out dark:bg-zinc-800/60">
                                     <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">
                                         <i class="fa-solid fa-box mr-2 text-[var(--brand-600)]"></i>
                                         {{ __('Conversion summary') }}
                                     </p>
                                     <div class="mt-4 space-y-2">
-                                        @if ($this->unitConversionPreviewTooLarge)
-                                            <p class="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                                                {{ __('Value is too large - please enter a realistic quantity.') }}
-                                            </p>
-                                        @else
-                                        <p class="text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->unitConversionPreview }}</p>
-                                        @if ($this->pricePerBaseUnit)
+                                        <p class="text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ $this->unitConversionResult->displayString }}</p>
+                                        @if ($this->unitConversionResult->pricePerConversionUnitLabel())
                                             <p class="text-sm font-semibold text-neutral-500 dark:text-zinc-400">
-                                                {{ $this->pricePreview }} <span class="mx-2">→</span> {{ $this->pricePerBaseUnit }}
+                                                {{ $this->pricePreview }} <span class="mx-2">→</span> {{ $this->unitConversionResult->pricePerConversionUnitLabel() }}
                                             </p>
                                         @endif
-                                        @if ($this->customerConversionSummary)
-                                            <p class="text-sm text-neutral-500 dark:text-zinc-400">
-                                                {{ __('Customers will see: ":summary"', ['summary' => $this->customerConversionSummary]) }}
-                                            </p>
-                                        @endif
-                                        @endif
+                                        <p class="text-sm text-neutral-500 dark:text-zinc-400">
+                                            {{ __('Customers will see: ":summary"', ['summary' => $this->unitConversionResult->displayString]) }}
+                                        </p>
                                     </div>
                                 </div>
-                            @endif
-                        @endif
+                            @endif                        @endif
                     </div>
+                </section>
+
+                <section class="space-y-5 border-b border-stone-200 pb-8 dark:border-white/10">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-boxes-stacked text-[var(--brand-600)]"></i>
+                            <div>
+                                <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Selling variants') }}</h2>
+                                <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">{{ __('Offer this listing in multiple unit configurations while keeping one catalog product.') }}</p>
+                            </div>
+                        </div>
+
+                        <flux:button type="button" variant="filled" icon="plus" wire:click="addVariant">
+                            {{ __('Add variant') }}
+                        </flux:button>
+                    </div>
+
+                    <div class="grid gap-4">
+                        <div @class([
+                            'rounded-2xl border p-4',
+                            'border-[var(--brand-500)] bg-[var(--brand-50)] dark:border-[var(--brand-500)]/40 dark:bg-[var(--brand-500)]/10' => $defaultVariantKey === 'primary',
+                            'border-stone-200 bg-stone-50 dark:border-white/10 dark:bg-zinc-900' => $defaultVariantKey !== 'primary',
+                        ])>
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Primary variant') }}</p>
+                                    <p class="mt-1 text-sm text-neutral-500 dark:text-zinc-400">
+                                        {{ $this->pricePreview ?? __('Set a price') }} <span aria-hidden="true">&middot;</span> {{ $selectedUnit ? __($selectedUnit->label()) : __('Selling unit') }} <span aria-hidden="true">&middot;</span> {{ __(':stock in stock', ['stock' => $stock_quantity ?: 0]) }}
+                                    </p>
+                                    @if ($this->unitConversionResult)
+                                        <p class="mt-2 text-xs font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->unitConversionResult->displayString }}</p>
+                                    @endif
+                                </div>
+                                <button type="button" wire:click="setDefaultVariant('primary')" class="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold transition {{ $defaultVariantKey === 'primary' ? 'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' : 'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-300' }}">
+                                    {{ $defaultVariantKey === 'primary' ? __('Default') : __('Make default') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        @foreach ($additionalVariants as $index => $variant)
+                            @php($variantUnit = ProductUnit::tryFrom($variant['unit'] ?? ''))
+                            <div wire:key="edit-additional-variant-{{ $index }}-{{ $variant['id'] ?? 'new' }}" class="rounded-2xl border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-950">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Variant :number', ['number' => $loop->iteration + 1]) }}</p>
+                                        <p class="mt-1 text-xs text-neutral-500 dark:text-zinc-400">{{ __('Each variant has its own price, stock, and optional conversion note.') }}</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" wire:click="setDefaultVariant('variant-{{ $index }}')" class="inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold transition {{ $defaultVariantKey === 'variant-'.$index ? 'border-[var(--brand-600)] bg-[var(--brand-600)] text-white' : 'border-stone-200 bg-white text-neutral-600 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' }}">
+                                            {{ $defaultVariantKey === 'variant-'.$index ? __('Default') : __('Make default') }}
+                                        </button>
+                                        <button type="button" wire:click="removeVariant({{ $index }})" wire:confirm="{{ __('Delete this variant?') }}" @disabled($defaultVariantKey === 'variant-'.$index) class="inline-flex items-center justify-center rounded-full border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-rose-500/30 dark:text-rose-300 dark:hover:bg-rose-500/10">
+                                            {{ __('Delete') }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 grid gap-4 md:grid-cols-3">
+                                    <flux:field>
+                                        <flux:label>{{ __('Unit') }}</flux:label>
+                                        <flux:select wire:model.live="additionalVariants.{{ $index }}.unit">
+                                            @foreach (ProductUnit::cases() as $variantUnitOption)
+                                                <flux:select.option :value="$variantUnitOption->value" :label="$variantUnitOption->label().' ('.$variantUnitOption->symbol().')'" />
+                                            @endforeach
+                                        </flux:select>
+                                        <flux:error name="additionalVariants.{{ $index }}.unit" />
+                                    </flux:field>
+
+                                    <flux:field>
+                                        <flux:label>{{ __('Price') }}</flux:label>
+                                        <flux:input.group>
+                                            <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
+                                            <flux:input wire:model.live.debounce.250ms="additionalVariants.{{ $index }}.price" type="number" step="0.01" min="0.01" />
+                                        </flux:input.group>
+                                        <flux:error name="additionalVariants.{{ $index }}.price" />
+                                    </flux:field>
+
+                                    <flux:field>
+                                        <flux:label>{{ __('Stock') }}</flux:label>
+                                        <flux:input.group>
+                                            <flux:input wire:model.live.debounce.250ms="additionalVariants.{{ $index }}.stock_quantity" type="number" min="0" step="1" />
+                                            @if ($variantUnit)
+                                                <flux:input.group.suffix>{{ $variantUnit->symbol() }}</flux:input.group.suffix>
+                                            @endif
+                                        </flux:input.group>
+                                        <flux:error name="additionalVariants.{{ $index }}.stock_quantity" />
+                                    </flux:field>
+                                </div>
+
+                                <details class="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-white/10 dark:bg-zinc-900">
+                                    <summary class="cursor-pointer text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Optional conversion note') }}</summary>
+                                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                        <flux:field>
+                                            <flux:label>{{ __('Conversion unit') }}</flux:label>
+                                            <flux:select wire:model.live="additionalVariants.{{ $index }}.conversion_unit" placeholder="{{ __('None') }}">
+                                                <flux:select.option value="" :label="__('None')" />
+                                                @foreach (ProductUnit::cases() as $conversionUnitOption)
+                                                    <flux:select.option :value="$conversionUnitOption->value" :label="$conversionUnitOption->label().' ('.$conversionUnitOption->symbol().')'" />
+                                                @endforeach
+                                            </flux:select>
+                                            <flux:error name="additionalVariants.{{ $index }}.conversion_unit" />
+                                        </flux:field>
+
+                                        <flux:field>
+                                            <flux:label>{{ __('Quantity per variant') }}</flux:label>
+                                            <flux:input wire:model.live.debounce.250ms="additionalVariants.{{ $index }}.conversion_unit_quantity" type="number" min="0.001" max="99999" step="0.001" />
+                                            <flux:error name="additionalVariants.{{ $index }}.conversion_unit_quantity" />
+                                        </flux:field>
+                                    </div>
+                                </details>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <flux:error name="defaultVariantKey" />
                 </section>
 
                 <section class="space-y-5">

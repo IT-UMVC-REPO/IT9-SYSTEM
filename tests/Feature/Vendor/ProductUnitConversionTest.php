@@ -55,8 +55,8 @@ test('product can be saved with unit conversion fields set', function () {
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Sack->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'kg')
-        ->set('base_unit_quantity', '25')
+        ->set('conversion_unit', 'kg')
+        ->set('conversion_unit_quantity', '25')
         ->set('status', ProductStatus::Active->value)
         ->set('productImageUpload', UploadedFile::fake()->createWithContent('rice.png', productUnitConversionPngFixture()))
         ->call('save')
@@ -68,9 +68,9 @@ test('product can be saved with unit conversion fields set', function () {
         ->where('name', 'Dinorado Sack')
         ->firstOrFail();
 
-    expect($product->base_unit)->toBe('kg');
-    expect((float) $product->base_unit_quantity)->toBe(25.0);
-    expect($product->conversionDisplayString())->toBe('1 sack = 25 kg');
+    expect($product->conversion_unit)->toBe(ProductUnit::Kilogram);
+    expect((float) $product->conversion_unit_quantity)->toBe(25.0);
+    expect($product->conversionFor(1)?->displayString)->toBe('1 sack = 25 kg');
 });
 
 test('product can be saved with unit conversion fields left null', function () {
@@ -98,9 +98,9 @@ test('product can be saved with unit conversion fields left null', function () {
         ->where('name', 'Loose Rice')
         ->firstOrFail();
 
-    expect($product->base_unit)->toBeNull();
-    expect($product->base_unit_quantity)->toBeNull();
-    expect($product->conversionDisplayString())->toBeNull();
+    expect($product->conversion_unit)->toBeNull();
+    expect($product->conversion_unit_quantity)->toBeNull();
+    expect($product->conversionFor(1))->toBeNull();
 });
 
 test('product can be saved with count based unit conversion', function () {
@@ -118,8 +118,8 @@ test('product can be saved with count based unit conversion', function () {
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Dozen->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'piece')
-        ->set('base_unit_quantity', '12')
+        ->set('conversion_unit', 'piece')
+        ->set('conversion_unit_quantity', '12')
         ->set('status', ProductStatus::Active->value)
         ->set('productImageUpload', UploadedFile::fake()->createWithContent('eggs.png', productUnitConversionPngFixture()))
         ->call('save')
@@ -131,12 +131,12 @@ test('product can be saved with count based unit conversion', function () {
         ->where('name', 'Egg Dozen')
         ->firstOrFail();
 
-    expect($product->base_unit)->toBe('piece');
-    expect((float) $product->base_unit_quantity)->toBe(12.0);
-    expect($product->conversionDisplayString())->toBe('1 dozen = 12 pieces');
+    expect($product->conversion_unit)->toBe(ProductUnit::Piece);
+    expect((float) $product->conversion_unit_quantity)->toBe(12.0);
+    expect($product->conversionFor(1)?->displayString)->toBe('1 dozen = 12 pieces');
 });
 
-test('base unit quantity is required when base unit is present', function () {
+test('conversion quantity is required when conversion unit is present', function () {
     Storage::fake('public');
 
     [$vendorUser] = productUnitConversionVendor();
@@ -151,15 +151,15 @@ test('base unit quantity is required when base unit is present', function () {
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Sack->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'kg')
-        ->set('base_unit_quantity', '')
+        ->set('conversion_unit', 'kg')
+        ->set('conversion_unit_quantity', '')
         ->set('status', ProductStatus::Active->value)
         ->set('productImageUpload', UploadedFile::fake()->createWithContent('rice.png', productUnitConversionPngFixture()))
         ->call('save')
-        ->assertHasErrors(['base_unit_quantity' => 'required_with']);
+        ->assertHasErrors(['conversion_unit_quantity' => 'required_with']);
 });
 
-test('base unit must be one of the allowed values', function () {
+test('conversion unit must be one of the allowed values', function () {
     Storage::fake('public');
 
     [$vendorUser] = productUnitConversionVendor();
@@ -174,15 +174,15 @@ test('base unit must be one of the allowed values', function () {
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Sack->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'oz')
-        ->set('base_unit_quantity', '25')
+        ->set('conversion_unit', 'crate')
+        ->set('conversion_unit_quantity', '25')
         ->set('status', ProductStatus::Active->value)
         ->set('productImageUpload', UploadedFile::fake()->createWithContent('rice.png', productUnitConversionPngFixture()))
         ->call('save')
-        ->assertHasErrors(['base_unit' => 'in']);
+        ->assertHasErrors('conversion_unit');
 });
 
-test('base unit quantity cannot exceed the realistic maximum', function () {
+test('conversion quantity cannot exceed the realistic maximum', function () {
     Storage::fake('public');
 
     [$vendorUser] = productUnitConversionVendor();
@@ -197,16 +197,16 @@ test('base unit quantity cannot exceed the realistic maximum', function () {
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Sack->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'kg')
-        ->set('base_unit_quantity', '100000')
+        ->set('conversion_unit', 'kg')
+        ->set('conversion_unit_quantity', '100000')
         ->set('status', ProductStatus::Active->value)
         ->set('productImageUpload', UploadedFile::fake()->createWithContent('rice.png', productUnitConversionPngFixture()))
         ->call('save')
-        ->assertHasErrors(['base_unit_quantity' => 'max'])
-        ->assertSee('Base unit quantity cannot exceed 99,999.');
+        ->assertHasErrors(['conversion_unit_quantity' => 'max'])
+        ->assertSee('Conversion quantity cannot exceed 99,999.');
 });
 
-test('large conversion preview is replaced with a realistic quantity warning', function () {
+test('large conversion preview stays hidden until the quantity is realistic', function () {
     [$vendorUser] = productUnitConversionVendor();
     $category = productUnitConversionCategory();
 
@@ -215,9 +215,9 @@ test('large conversion preview is replaced with a realistic quantity warning', f
         ->set('categoryId', (string) $category->getKey())
         ->set('unit', ProductUnit::Sack->value)
         ->set('showUnitConversion', true)
-        ->set('base_unit', 'kg')
-        ->set('base_unit_quantity', '100000000000000000000')
-        ->assertSee('Value is too large - please enter a realistic quantity.');
+        ->set('conversion_unit', 'kg')
+        ->set('conversion_unit_quantity', '100000000000000000000')
+        ->assertSee('Choose a conversion unit and quantity to preview the shopper-facing conversion.');
 });
 
 test('storefront product detail shows conversion string when set', function () {
@@ -229,15 +229,15 @@ test('storefront product detail shows conversion string when set', function () {
         'name' => 'Dinorado Sack',
         'price' => 850,
         'unit' => ProductUnit::Sack,
-        'base_unit' => 'kg',
-        'base_unit_quantity' => 25,
+        'conversion_unit' => 'kg',
+        'conversion_unit_quantity' => 25,
     ]);
 
     $this->actingAs($customer)
         ->get(route('shop.products.show', $product))
         ->assertOk()
         ->assertSee('1 sack = 25 kg')
-        ->assertSee('₱34.00 per kg');
+        ->assertSee('₱34.00 / kg');
 });
 
 test('storefront product detail does not show conversion string when null', function () {
@@ -249,8 +249,8 @@ test('storefront product detail does not show conversion string when null', func
         'name' => 'Loose Rice',
         'price' => 65,
         'unit' => ProductUnit::Kilogram,
-        'base_unit' => null,
-        'base_unit_quantity' => null,
+        'conversion_unit' => null,
+        'conversion_unit_quantity' => null,
     ]);
 
     $this->actingAs($customer)

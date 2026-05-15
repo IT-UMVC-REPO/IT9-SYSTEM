@@ -29,13 +29,13 @@ trait VendorProductValidationRules
             ],
             $qualifiedKey('status') => ['required', Rule::enum(ProductStatus::class)],
             $qualifiedKey('unit') => ['required', Rule::enum(ProductUnit::class)],
-            $qualifiedKey('base_unit') => ['nullable', 'string', Rule::in(['kg', 'g', 'L', 'ml', 'piece', 'dozen', 'each', 'pair', ''])],
-            $qualifiedKey('base_unit_quantity') => [
+            $qualifiedKey('conversion_unit') => ['nullable', Rule::enum(ProductUnit::class)],
+            $qualifiedKey('conversion_unit_quantity') => [
                 'nullable',
                 'numeric',
                 'min:0.001',
                 'max:99999',
-                'required_with:'.$qualifiedKey('base_unit'),
+                'required_with:'.$qualifiedKey('conversion_unit'),
             ],
             $imageField => array_values(array_filter([
                 $requireImage ? 'required' : 'nullable',
@@ -53,7 +53,7 @@ trait VendorProductValidationRules
         $qualifiedKey = static fn (string $key): string => $prefix !== '' ? $prefix.'.'.$key : $key;
 
         return [
-            $qualifiedKey('base_unit_quantity').'.max' => __('Base unit quantity cannot exceed 99,999.'),
+            $qualifiedKey('conversion_unit_quantity').'.max' => __('Conversion quantity cannot exceed 99,999.'),
             $imageField.'.required' => __('Upload a product photo before saving.'),
             $imageField.'.image' => __('Use a valid image file for the product photo.'),
             $imageField.'.max' => __('Product photos must be 3 MB or smaller.'),

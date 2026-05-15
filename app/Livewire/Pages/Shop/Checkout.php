@@ -16,7 +16,10 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\ProductUnitVariant;
 use App\Services\AuditLogger;
+use App\Services\StockManager;
+use App\Support\UnitFormatter;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -89,6 +92,7 @@ class Checkout extends Component
 
                 $cartItems = CartItem::query()
                     ->where('cart_id', $cart->getKey())
+                    ->with('unitVariant')
                     ->orderBy('product_id')
                     ->lockForUpdate()
                     ->get();
@@ -98,17 +102,28 @@ class Checkout extends Component
                 }
 
                 $products = Product::query()
-                    ->with(['vendor'])
+                    ->with(['vendor', 'unitVariants'])
                     ->whereIn('id', $cartItems->pluck('product_id'))
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                $variants = ProductUnitVariant::query()
+                    ->whereIn('id', $cartItems->pluck('product_unit_variant_id')->filter()->all())
+                    ->with('product')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
 
                 $validationMessages = [];
                 $resolvedItems = collect();
+                $stockManager = app(StockManager::class);
 
                 foreach ($cartItems as $cartItem) {
                     $product = $products->get($cartItem->product_id);
+                    $variant = $cartItem->product_unit_variant_id !== null
+                        ? $variants->get($cartItem->product_unit_variant_id)
+                        : $product?->purchasableVariant();
 
                     if ($product === null) {
                         $validationMessages["cart.{$cartItem->getKey()}"] = __('One of your cart items is no longer available.');
@@ -132,9 +147,21 @@ class Checkout extends Component
                         continue;
                     }
 
-                    if ($product->stock_quantity < $cartItem->quantity) {
+                    if ($variant !== null && (int) $variant->product_id !== (int) $product->getKey()) {
+                        $validationMessages["cart.{$cartItem->getKey()}"] = __('One of your cart items is no longer available.');
+
+                        continue;
+                    }
+
+                    $availableQuantity = $variant !== null
+                        ? $stockManager->availableQuantityFor($variant)
+                        : (int) $product->stock_quantity;
+                    $unit = $variant?->unit ?? $product->unit;
+                    $unitPrice = (float) ($variant?->price ?? $product->price);
+
+                    if ($availableQuantity < $cartItem->quantity) {
                         $validationMessages["cart.{$cartItem->getKey()}"] = __('Only :amount of :product remain in stock.', [
-                            'amount' => $product->unitLabel(),
+                            'amount' => UnitFormatter::format($unit, $availableQuantity),
                             'product' => $product->name,
                         ]);
 
@@ -144,9 +171,11 @@ class Checkout extends Component
                     $resolvedItems->push([
                         'cart_item' => $cartItem,
                         'product' => $product,
+                        'variant' => $variant,
                         'quantity' => $cartItem->quantity,
-                        'unit_price' => (float) $product->price,
-                        'line_total' => (float) $product->price * $cartItem->quantity,
+                        'unit' => $unit,
+                        'unit_price' => $unitPrice,
+                        'line_total' => $unitPrice * $cartItem->quantity,
                     ]);
                 }
 
@@ -184,12 +213,17 @@ class Checkout extends Component
                         OrderItem::query()->create([
                             'order_id' => $order->getKey(),
                             'product_id' => $resolvedItem['product']->getKey(),
+                            'product_unit_variant_id' => $resolvedItem['variant']?->getKey(),
                             'quantity' => $resolvedItem['quantity'],
                             'unit_price' => $resolvedItem['unit_price'],
-                            'unit' => $resolvedItem['product']->unit->value,
+                            'unit' => $resolvedItem['unit']->value,
                         ]);
 
-                        $resolvedItem['product']->decrement('stock_quantity', $resolvedItem['quantity']);
+                        if ($resolvedItem['variant'] instanceof ProductUnitVariant) {
+                            $stockManager->decrementStock($resolvedItem['variant'], $resolvedItem['quantity']);
+                        } else {
+                            $stockManager->decrementProductStock($resolvedItem['product'], $resolvedItem['quantity']);
+                        }
                     }
 
                     Payment::query()->create([
@@ -255,6 +289,7 @@ class Checkout extends Component
                     ->with([
                         'product.vendor.user',
                         'product.category',
+                        'unitVariant',
                     ])
                     ->orderBy('product_id'),
             ])
@@ -280,7 +315,7 @@ class Checkout extends Component
     {
         return $this->groupedCartItems->map(
             fn (Collection $items): float => (float) $items->sum(
-                fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+                fn (CartItem $item): float => $item->lineTotal(),
             ),
         );
     }
@@ -297,7 +332,7 @@ class Checkout extends Component
     public function orderTotal(): float
     {
         return (float) $this->cartItems->sum(
-            fn (CartItem $item): float => (float) $item->product->price * $item->quantity,
+            fn (CartItem $item): float => $item->lineTotal(),
         );
     }
 

@@ -5,8 +5,11 @@ use App\Concerns\HasVendorGuard;
 use App\Enums\AuditEvent;
 use App\Enums\ProductStatus;
 use App\Models\Product;
+use App\Models\ProductUnitVariant;
 use App\Models\VendorProfile;
 use App\Services\AuditLogger;
+use App\Services\StockManager;
+use App\Support\UnitFormatter;
 use Flux\Flux;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -38,6 +41,11 @@ new #[Title('Stock Management')] class extends Component {
      * @var array<int, array{quantity: string, mode: string}>
      */
     public array $inlineEdits = [];
+
+    /**
+     * @var array<int, array{quantity: string, mode: string}>
+     */
+    public array $variantInlineEdits = [];
 
     /**
      * @var array<int, int|string>
@@ -94,7 +102,7 @@ new #[Title('Stock Management')] class extends Component {
     {
         return Product::query()
             ->where('vendor_id', $this->vendorProfile->getKey())
-            ->with('category:id,name,parent_id,slug')
+            ->with(['category:id,name,parent_id,slug', 'unitVariants'])
             ->when(filled($this->search), fn ($query) => $query->search($this->search))
             ->when($this->statusFilter === 'active', fn ($query) => $query->where('status', ProductStatus::Active))
             ->when($this->statusFilter === 'inactive', fn ($query) => $query->where('status', ProductStatus::Inactive))
@@ -188,13 +196,22 @@ new #[Title('Stock Management')] class extends Component {
         $oldQty = $product->stock_quantity;
         $input = (int) round((float) $edit['quantity']);
 
-        $newQty = match ($edit['mode']) {
-            'add' => max(0, $oldQty + $input),
-            'subtract' => max(0, $oldQty - $input),
-            default => max(0, $input),
+        $stockManager = app(StockManager::class);
+
+        match ($edit['mode']) {
+            'add' => $product->defaultVariant !== null
+                ? $stockManager->incrementStock($product->defaultVariant, $input)
+                : $stockManager->incrementProductStock($product, $input),
+            'subtract' => $product->defaultVariant !== null
+                ? $stockManager->decrementStock($product->defaultVariant, min($oldQty, $input))
+                : $stockManager->decrementProductStock($product, min($oldQty, $input)),
+            default => $product->defaultVariant !== null
+                ? $stockManager->setStock($product->defaultVariant, max(0, $input))
+                : $stockManager->setProductStock($product, max(0, $input)),
         };
 
-        $product->update(['stock_quantity' => $newQty]);
+        $product->refresh();
+        $newQty = $product->stock_quantity;
 
         unset($this->products, $this->stockSummary);
 
@@ -216,11 +233,75 @@ new #[Title('Stock Management')] class extends Component {
     {
         $product = $this->findOwnedProduct($productId);
         $oldQty = $product->stock_quantity;
-        $newQty = $direction === 'up' ? $oldQty + 1 : max(0, $oldQty - 1);
+        $stockManager = app(StockManager::class);
 
-        $product->update(['stock_quantity' => $newQty]);
+        if ($direction === 'up') {
+            $product->defaultVariant !== null
+                ? $stockManager->incrementStock($product->defaultVariant, 1)
+                : $stockManager->incrementProductStock($product, 1);
+        } elseif ($oldQty > 0) {
+            $product->defaultVariant !== null
+                ? $stockManager->decrementStock($product->defaultVariant, 1)
+                : $stockManager->decrementProductStock($product, 1);
+        }
 
         unset($this->products, $this->stockSummary);
+    }
+
+    public function startVariantInlineEdit(int $variantId): void
+    {
+        $variant = $this->findOwnedVariant($variantId);
+
+        $this->variantInlineEdits[$variantId] = [
+            'quantity' => (string) $variant->stock_quantity,
+            'mode' => 'set',
+        ];
+    }
+
+    public function cancelVariantInlineEdit(int $variantId): void
+    {
+        unset($this->variantInlineEdits[$variantId]);
+    }
+
+    public function saveVariantInlineEdit(int $variantId): void
+    {
+        $edit = $this->variantInlineEdits[$variantId] ?? null;
+
+        if ($edit === null) {
+            return;
+        }
+
+        $this->validateOnly("variantInlineEdits.{$variantId}.quantity", [
+            "variantInlineEdits.{$variantId}.quantity" => ['required', 'numeric', 'min:0', 'max:999999'],
+        ], [
+            "variantInlineEdits.{$variantId}.quantity.min" => __('Quantity cannot go below zero.'),
+            "variantInlineEdits.{$variantId}.quantity.max" => __('Quantity cannot exceed 999,999 units.'),
+            "variantInlineEdits.{$variantId}.quantity.required" => __('Please enter a quantity.'),
+            "variantInlineEdits.{$variantId}.quantity.numeric" => __('Quantity must be a number.'),
+        ]);
+
+        $variant = $this->findOwnedVariant($variantId);
+        $stockManager = app(StockManager::class);
+        $oldQty = $stockManager->availableQuantityFor($variant);
+        $input = (int) round((float) $edit['quantity']);
+
+        match ($edit['mode']) {
+            'add' => $stockManager->incrementStock($variant, $input),
+            'subtract' => $stockManager->decrementStock($variant, min($oldQty, $input)),
+            default => $stockManager->setStock($variant, max(0, $input)),
+        };
+
+        $variant->refresh();
+
+        unset($this->products, $this->stockSummary, $this->variantInlineEdits[$variantId]);
+
+        AuditLogger::log(
+            AuditEvent::ProductRestocked,
+            "Vendor updated stock of '{$variant->product->name}' {$variant->unit->value} variant: {$oldQty} -> {$variant->stock_quantity}.",
+            $variant->product,
+        );
+
+        Flux::toast(variant: 'success', text: __('Variant stock updated for :name.', ['name' => $variant->product->name]));
     }
 
     public function setStock(int $productId, int $quantity): void
@@ -229,7 +310,13 @@ new #[Title('Stock Management')] class extends Component {
         $oldQty = $product->stock_quantity;
         $newQty = max(0, $quantity);
 
-        $product->update(['stock_quantity' => $newQty]);
+        if ($product->defaultVariant !== null) {
+            app(StockManager::class)->setStock($product->defaultVariant, $newQty);
+        } else {
+            app(StockManager::class)->setProductStock($product, $newQty);
+        }
+
+        $product->refresh();
 
         unset($this->products, $this->stockSummary);
 
@@ -296,19 +383,27 @@ new #[Title('Stock Management')] class extends Component {
         }
 
         $products = Product::query()
+            ->with('defaultVariant')
             ->where('vendor_id', $this->vendorProfile->getKey())
             ->whereIn('id', $this->selectedIds)
             ->get();
 
         $qty = $needsQty ? (int) round((float) $this->bulkQuantity) : 0;
+        $stockManager = app(StockManager::class);
 
         foreach ($products as $product) {
             $oldQty = $product->stock_quantity;
 
             match ($this->bulkAction) {
-                'add' => $product->update(['stock_quantity' => $oldQty + $qty]),
-                'subtract' => $product->update(['stock_quantity' => max(0, $oldQty - $qty)]),
-                'set' => $product->update(['stock_quantity' => max(0, $qty)]),
+                'add' => $product->defaultVariant !== null
+                    ? $stockManager->incrementStock($product->defaultVariant, $qty)
+                    : $stockManager->incrementProductStock($product, $qty),
+                'subtract' => $product->defaultVariant !== null
+                    ? $stockManager->decrementStock($product->defaultVariant, min($oldQty, $qty))
+                    : $stockManager->decrementProductStock($product, min($oldQty, $qty)),
+                'set' => $product->defaultVariant !== null
+                    ? $stockManager->setStock($product->defaultVariant, max(0, $qty))
+                    : $stockManager->setProductStock($product, max(0, $qty)),
                 'activate' => $product->update(['status' => ProductStatus::Active]),
                 'deactivate' => $product->update(['status' => ProductStatus::Inactive]),
                 default => null,
@@ -350,11 +445,24 @@ new #[Title('Stock Management')] class extends Component {
 
     private function findOwnedProduct(int $productId): Product
     {
-        $product = Product::query()->findOrFail($productId);
+        $product = Product::query()
+            ->with('defaultVariant')
+            ->findOrFail($productId);
 
         abort_if($product->vendor_id !== $this->vendorProfile->getKey(), 403);
 
         return $product;
+    }
+
+    private function findOwnedVariant(int $variantId): ProductUnitVariant
+    {
+        $variant = ProductUnitVariant::query()
+            ->with('product')
+            ->findOrFail($variantId);
+
+        abort_if($variant->product->vendor_id !== $this->vendorProfile->getKey(), 403);
+
+        return $variant;
     }
 
 };
@@ -570,9 +678,9 @@ new #[Title('Stock Management')] class extends Component {
                                 <td class="px-4 py-5 align-top">
                                     <p class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __($product->unit->label()) }}</p>
                                     <p class="text-xs text-neutral-400 dark:text-zinc-500">{{ __('per :unit', ['unit' => $product->unit->abbreviation()]) }}</p>
-                                    @if ($product->convertedQuantityLabel(1))
+                                    @if ($product->conversionFor(1))
                                         <span class="mt-2 inline-flex rounded-full bg-[var(--brand-50)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-700)] dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">
-                                            = {{ $product->convertedQuantityLabel(1) }}
+                                            = {{ $product->conversionFor(1)->convertedQuantityLabel() }}
                                         </span>
                                     @endif
                                 </td>
@@ -656,6 +764,79 @@ new #[Title('Stock Management')] class extends Component {
                                                     <flux:badge color="amber" size="sm">{{ __('Low stock') }}</flux:badge>
                                                 @endif
                                             </div>
+                                            @if ($product->unitVariants->count() > 1)
+                                                <div class="mt-3 space-y-2 rounded-xl border border-stone-200 bg-white p-3 dark:border-white/10 dark:bg-zinc-950">
+                                                    <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ __('Variant stock') }}</p>
+                                                    @foreach ($product->unitVariants as $variant)
+                                                        <div wire:key="stock-variant-{{ $variant->id }}" class="rounded-lg border border-stone-100 bg-stone-50 p-2 dark:border-white/10 dark:bg-zinc-900">
+                                                            @if (isset($variantInlineEdits[$variant->id]))
+                                                                @php
+                                                                    $variantEdit = $variantInlineEdits[$variant->id];
+                                                                    $variantInputQty = (int) round((float) ($variantEdit['quantity'] ?? 0));
+                                                                    $variantPreview = match ($variantEdit['mode']) {
+                                                                        'add' => max(0, $variant->stock_quantity + $variantInputQty),
+                                                                        'subtract' => max(0, $variant->stock_quantity - $variantInputQty),
+                                                                        default => max(0, $variantInputQty),
+                                                                    };
+                                                                @endphp
+
+                                                                <div class="space-y-2">
+                                                                    <div class="flex overflow-hidden rounded-lg border border-stone-200 text-xs font-semibold dark:border-zinc-700">
+                                                                        @foreach (['set' => __('Set to'), 'add' => __('+ Add'), 'subtract' => __('- Remove')] as $mode => $label)
+                                                                            <button
+                                                                                type="button"
+                                                                                wire:click="$set('variantInlineEdits.{{ $variant->id }}.mode', '{{ $mode }}')"
+                                                                                @class([
+                                                                                    'flex-1 px-2 py-1.5 transition',
+                                                                                    'bg-[var(--brand-600)] text-white' => $variantEdit['mode'] === $mode,
+                                                                                    'bg-white text-neutral-600 hover:bg-stone-50 dark:bg-zinc-800 dark:text-zinc-300' => $variantEdit['mode'] !== $mode,
+                                                                                ])
+                                                                            >
+                                                                                {{ $label }}
+                                                                            </button>
+                                                                        @endforeach
+                                                                    </div>
+
+                                                                    <p class="text-xs text-neutral-400 dark:text-zinc-500">
+                                                                        {{ __('Result: :current -> :preview :unit', [
+                                                                            'current' => $variant->stock_quantity,
+                                                                            'preview' => $variantPreview,
+                                                                            'unit' => $variant->unit->symbol(),
+                                                                        ]) }}
+                                                                    </p>
+
+                                                                    <div class="flex flex-wrap items-center gap-2">
+                                                                        <flux:input type="number" wire:model.live="variantInlineEdits.{{ $variant->id }}.quantity" min="0" max="999999" size="sm" class="w-28 tabular-nums" />
+                                                                        <flux:button size="sm" variant="primary" wire:click="saveVariantInlineEdit({{ $variant->id }})">{{ __('Save') }}</flux:button>
+                                                                        <flux:button size="sm" variant="ghost" wire:click="cancelVariantInlineEdit({{ $variant->id }})">{{ __('Cancel') }}</flux:button>
+                                                                    </div>
+
+                                                                    @error("variantInlineEdits.{$variant->id}.quantity")
+                                                                        <p class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                                                                    @enderror
+                                                                </div>
+                                                            @else
+                                                                <div class="flex items-center justify-between gap-2">
+                                                                    <div class="min-w-0">
+                                                                        <p class="truncate text-xs font-bold text-neutral-700 dark:text-zinc-200">
+                                                                            {{ __('Per :unit', ['unit' => strtolower($variant->unit->label())]) }}
+                                                                            @if ($variant->is_default)
+                                                                                <span class="ml-1 rounded-full bg-[var(--brand-100)] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[var(--brand-700)] dark:bg-[var(--brand-500)]/10 dark:text-[var(--brand-300)]">{{ __('Default') }}</span>
+                                                                            @endif
+                                                                        </p>
+                                                                        <p class="text-xs text-neutral-500 dark:text-zinc-400">
+                                                                            {{ UnitFormatter::format($variant->unit, $variant->stock_quantity) }} <span aria-hidden="true">&middot;</span> {{ UnitFormatter::pricePerUnit($variant->unit, (float) $variant->price) }}
+                                                                        </p>
+                                                                    </div>
+                                                                    <button type="button" wire:click="startVariantInlineEdit({{ $variant->id }})" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-stone-200 text-neutral-500 transition hover:bg-stone-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('Edit variant stock') }}">
+                                                                        <i class="fa-solid fa-pencil text-xs"></i>
+                                                                    </button>
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </div>
                                     @endif
                                 </td>

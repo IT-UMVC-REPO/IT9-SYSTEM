@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['cart_id', 'product_id', 'quantity'])]
+#[Fillable(['cart_id', 'product_id', 'product_unit_variant_id', 'quantity'])]
 class CartItem extends Model
 {
     public $timestamps = false;
@@ -19,6 +19,7 @@ class CartItem extends Model
     protected function casts(): array
     {
         return [
+            'product_unit_variant_id' => 'int',
             'quantity' => 'int',
         ];
     }
@@ -31,5 +32,20 @@ class CartItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unitVariant(): BelongsTo
+    {
+        return $this->belongsTo(ProductUnitVariant::class, 'product_unit_variant_id');
+    }
+
+    public function unitPrice(): float
+    {
+        return (float) ($this->unitVariant?->price ?? $this->product->price);
+    }
+
+    public function lineTotal(): float
+    {
+        return $this->unitPrice() * $this->quantity;
     }
 }
