@@ -71,3 +71,28 @@ test('customer order detail includes rider rating component after delivery', fun
         ->assertOk()
         ->assertSee('Rate your rider');
 });
+
+test('delivered rider order detail renders when payment record is missing', function () {
+    $customer = User::factory()->create();
+    $rider = User::factory()->rider()->create();
+    RiderProfile::factory()->for($rider, 'user')->approved()->create();
+    $vendorUser = User::factory()->vendor()->create();
+    $vendor = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create([
+        'store_name' => 'Rating Stall',
+    ]);
+    $order = Order::factory()
+        ->for($customer, 'customer')
+        ->for($vendor, 'vendor')
+        ->create([
+            'rider_id' => $rider->getKey(),
+            'order_status' => OrderStatus::Delivered,
+            'payment_status' => PaymentStatus::Paid,
+        ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.orders.show', ['orderReference' => $order->getKey()]))
+        ->assertOk()
+        ->assertSee('Payment details')
+        ->assertSee('Cod')
+        ->assertSee('Rate your rider');
+});

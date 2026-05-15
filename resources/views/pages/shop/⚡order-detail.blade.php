@@ -520,6 +520,13 @@ new #[Title('Order Detail')] class extends Component {
             </section>
 
             <section class="brand-panel space-y-5 p-6">
+                @php
+                    $payment = $this->order->payment;
+                    $paymentMethod = $payment?->method ?? $this->order->payment_method;
+                    $maskedPaymentReference = $this->maskedReference($payment?->reference_number);
+                    $paidAt = $payment?->paid_at;
+                @endphp
+
                 <div>
                     <p class="brand-kicker !mb-0">{{ __('Payment') }}</p>
                     <h2 class="brand-serif mt-3 text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Payment details') }}</h2>
@@ -528,22 +535,22 @@ new #[Title('Order Detail')] class extends Component {
                 <div class="space-y-3 text-sm">
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-neutral-500 dark:text-zinc-400">{{ __('Method') }}</span>
-                        <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ Str::headline($this->order->payment->method->value) }}</span>
+                        <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ Str::headline($paymentMethod->value) }}</span>
                     </div>
                     <div class="flex items-center justify-between gap-4">
                         <span class="text-neutral-500 dark:text-zinc-400">{{ __('Status') }}</span>
                         <x-payment-status-badge :status="$this->order->payment_status" />
                     </div>
-                    @if ($this->maskedReference($this->order->payment->reference_number))
+                    @if ($maskedPaymentReference)
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-neutral-500 dark:text-zinc-400">{{ __('Reference') }}</span>
-                            <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->maskedReference($this->order->payment->reference_number) }}</span>
+                            <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $maskedPaymentReference }}</span>
                         </div>
                     @endif
-                    @if ($this->order->payment->paid_at)
+                    @if ($paidAt)
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-neutral-500 dark:text-zinc-400">{{ __('Paid at') }}</span>
-                            <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->order->payment->paid_at->format('M j, Y g:i A') }}</span>
+                            <span class="font-semibold text-neutral-900 dark:text-zinc-100">{{ $paidAt->format('M j, Y g:i A') }}</span>
                         </div>
                     @endif
                 </div>

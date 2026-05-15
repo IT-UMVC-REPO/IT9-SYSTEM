@@ -147,6 +147,26 @@ test('profile map and audit date picker use shared javascript helpers', function
         ->toContain('.flatpickr-day.selected');
 });
 
+test('shared head exposes branded social preview metadata', function () {
+    $head = uiPolishBlade('views/partials/head.blade.php');
+
+    expect($head)
+        ->toContain('$sukiTitle')
+        ->toContain('$sukiText')
+        ->toContain('$sukiHeader = asset(\'imgs/sukiheader.webp\')')
+        ->toContain('<meta property="og:site_name" content="SukiMarket" />')
+        ->toContain('<meta property="og:url" content="{{ url()->current() }}" />')
+        ->toContain('<meta property="og:title" content="{{ $sukiTitle }}" />')
+        ->toContain('<meta property="og:description" content="{{ $sukiText }}" />')
+        ->toContain('<meta property="og:image" content="{{ $sukiHeader }}" />')
+        ->toContain('<meta property="og:image:secure_url" content="{{ $sukiHeader }}" />')
+        ->toContain('<meta property="og:image:alt" content="{{ __(\'SukiMarket local market stalls with fresh produce\') }}" />')
+        ->toContain('<meta name="twitter:card" content="summary_large_image" />')
+        ->toContain('<meta name="twitter:title" content="{{ $sukiTitle }}" />')
+        ->toContain('<meta name="twitter:description" content="{{ $sukiText }}" />')
+        ->toContain('<meta name="twitter:image" content="{{ $sukiHeader }}" />');
+});
+
 test('group message reactions escape clipping and overlap bubble corners', function () {
     $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
 

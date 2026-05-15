@@ -1,16 +1,31 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="csrf-token" content="{{ csrf_token() }}" />
-<meta name="description" content="{{ $metaDescription ?? __('SukiMarket - Your Local Market, Delivered. Order fresh produce, seafood, meat, and daily goods from verified local vendors.') }}" />
-<meta property="og:image" content="{{ asset('imgs/sukiheader.webp') }}" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:title" content="{{ filled($title ?? null) ? $title.' - SukiMarket' : 'SukiMarket - Your Local Market, Delivered' }}" />
-<meta property="og:description" content="{{ $metaDescription ?? __('Your Local Market, Delivered. Browse fresh goods from verified local vendors on SukiMarket.') }}" />
+@php
+    $sukiTitle = filled($title ?? null) ? "{$title} - SukiMarket" : __('SukiMarket - Your Local Market, Delivered');
+    $sukiText = $metaDescription ?? __('Order fresh produce, seafood, meat, and daily goods from verified local vendors on SukiMarket.');
+    $sukiHeader = asset('imgs/sukiheader.webp');
+@endphp
+<meta name="description" content="{{ $sukiText }}" />
+<meta property="og:site_name" content="SukiMarket" />
+<meta property="og:url" content="{{ url()->current() }}" />
+<meta property="og:title" content="{{ $sukiTitle }}" />
+<meta property="og:description" content="{{ $sukiText }}" />
 <meta property="og:type" content="website" />
+<meta property="og:image" content="{{ $sukiHeader }}" />
+<meta property="og:image:secure_url" content="{{ $sukiHeader }}" />
+<meta property="og:image:type" content="image/webp" />
+<meta property="og:image:width" content="536" />
+<meta property="og:image:height" content="357" />
+<meta property="og:image:alt" content="{{ __('SukiMarket local market stalls with fresh produce') }}" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ $sukiTitle }}" />
+<meta name="twitter:description" content="{{ $sukiText }}" />
+<meta name="twitter:image" content="{{ $sukiHeader }}" />
+<meta name="twitter:image:alt" content="{{ __('SukiMarket local market stalls with fresh produce') }}" />
 
 <title>
-    {{ filled($title ?? null) ? $title.' - '.'SukiMarket' : 'SukiMarket' }}
+    {{ $sukiTitle }}
 </title>
 
 <link rel="icon" type="image/png" href="{{ asset('imgs/sukilogo.png') }}">
