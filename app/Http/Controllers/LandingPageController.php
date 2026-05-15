@@ -11,6 +11,21 @@ use Illuminate\Support\Str;
 
 class LandingPageController extends Controller
 {
+    private const ROBOTS_TXT = <<<'ROBOTS'
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Facebot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: *
+Allow: /
+Disallow:
+ROBOTS;
+
     public function index(Request $request): View|Response
     {
         if ($this->isSocialPreviewCrawler($request)) {
@@ -42,6 +57,15 @@ class LandingPageController extends Controller
         return view('welcome', [
             'featuredVendor' => $featuredVendor,
             'featuredProducts' => $featuredProducts,
+        ]);
+    }
+
+    public function robots(): Response
+    {
+        return response(self::ROBOTS_TXT, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Cache-Control' => 'public, max-age=300',
+            'X-Suki-Robots' => '1',
         ]);
     }
 

@@ -23,6 +23,17 @@ test('facebook preview crawler receives public social metadata', function () {
         ->assertSee('name="twitter:card" content="summary_large_image"', false);
 });
 
+test('robots allows facebook preview crawlers', function () {
+    $this->withHeader('User-Agent', 'facebookexternalhit/1.1')
+        ->get('/robots.txt')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+        ->assertHeader('Cache-Control', 'max-age=300, public')
+        ->assertHeader('X-Suki-Robots', '1')
+        ->assertSee("User-agent: facebookexternalhit\nAllow: /", false)
+        ->assertSee("User-agent: *\nAllow: /\nDisallow:", false);
+});
+
 test('landing page shows a real approved vendor showcase when active listings exist', function () {
     $vendor = VendorProfile::factory()->approved()->create([
         'store_name' => 'Nanay Pilar Produce',

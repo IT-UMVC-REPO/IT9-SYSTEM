@@ -1,8 +1,12 @@
 User-agent: facebookexternalhit
-Disallow:
+Allow: /
 
 User-agent: Facebot
-Disallow:
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
 
 User-agent: *
-Disallow: /
+Allow: /
+Disallow:

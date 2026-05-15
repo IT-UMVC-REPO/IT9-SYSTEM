@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Route;
 
 $verificationThrottle = 'throttle:'.config('fortify.limiters.verification', '6,1');
 
+Route::get('/robots.txt', [LandingPageController::class, 'robots'])->name('robots');
+
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
 
 Route::get('/logout', function () {
