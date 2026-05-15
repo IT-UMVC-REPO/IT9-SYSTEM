@@ -11,6 +11,14 @@ function uiPolishBlade(string $pattern, ?string $exclude = null): string
     throw new RuntimeException("No Blade file matched {$pattern}.");
 }
 
+test('shared app logo uses the current marketplace tagline', function () {
+    $appLogo = uiPolishBlade('views/components/app-logo.blade.php');
+
+    expect($appLogo)
+        ->toContain("{{ __('Your Local Market, Delivered') }}")
+        ->not->toContain('Videre Est Scire');
+});
+
 test('vendor registration sample products use single column image first layout', function () {
     $registration = uiPolishBlade('views/pages/vendor/*registration.blade.php');
 

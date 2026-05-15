@@ -31,7 +31,7 @@
 <tr>
 <td align="center" style="padding:32px 24px 28px; background-color:#0a0a0a;">
 <div style="margin:0; font-family:'Playfair Display', Georgia, serif; font-size:32px; line-height:1.1; font-weight:700; color:#ffffff;">SukiMarket</div>
-<div style="margin-top:8px; font-family:'DM Sans', -apple-system, Arial, sans-serif; font-size:12px; line-height:1.5; letter-spacing:0.12em; text-transform:uppercase; color:#a1a1aa;">Videre Est Scire</div>
+<div style="margin-top:8px; font-family:'DM Sans', -apple-system, Arial, sans-serif; font-size:12px; line-height:1.5; letter-spacing:0.12em; text-transform:uppercase; color:#a1a1aa;">Your Local Market, Delivered</div>
 </td>
 </tr>
 <tr>
@@ -54,7 +54,7 @@
 </tr>
 <tr>
 <td align="center" style="padding:20px 24px 0; background-color:#fbf7f2; font-family:'DM Sans', -apple-system, Arial, sans-serif; font-size:12px; line-height:1.5; color:#9ca3af;">
-&copy; 2025 SukiMarket &middot; Videre Est Scire &middot; Philippines
+&copy; 2025 SukiMarket &middot; Your Local Market, Delivered &middot; Philippines
 </td>
 </tr>
 </table>
