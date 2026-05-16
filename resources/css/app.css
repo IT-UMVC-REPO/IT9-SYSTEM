@@ -235,8 +235,8 @@
         pointer-events: none;
     }
 
-    button[data-loading]::after,
-    [role='button'][data-loading]::after,
+    button[data-loading]:not([data-flux-button])::after,
+    [role='button'][data-loading]:not([data-flux-button])::after,
     .brand-button-primary[data-loading]::after,
     .brand-button-secondary[data-loading]::after {
         content: '';

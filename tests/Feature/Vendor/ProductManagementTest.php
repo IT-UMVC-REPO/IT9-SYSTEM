@@ -396,6 +396,7 @@ test('livewire loading buttons have a visible global in-flight state', function 
 
     expect($css)
         ->toContain('button[data-loading]')
+        ->toContain('button[data-loading]:not([data-flux-button])::after')
         ->toContain('cursor: progress')
         ->toContain("content: ''")
         ->toContain('animation: spin 0.7s linear infinite');
