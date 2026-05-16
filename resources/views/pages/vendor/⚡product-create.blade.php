@@ -538,7 +538,7 @@ new #[Title('Create product')] class extends Component {
                                     </button>
                                 </div>
                             @else
-                                <label for="product-image-upload" class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10 rounded-lg">
+                                <label for="product-image-upload" class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10 rounded-xl">
                                     <span class="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--brand-600)] text-white shadow-sm">
                                         <i class="fa-solid fa-camera text-xl"></i>
                                     </span>
@@ -641,11 +641,10 @@ new #[Title('Create product')] class extends Component {
                                         <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class:input="h-11" required />
                                     </flux:input.group>
                                     <flux:error name="price" />
+                                </flux:field>
                                     @if ($this->pricePreview)
                                         <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->pricePreview }}</p>
                                     @endif
-                                </flux:field>
-
                                 <flux:field>
                                     <flux:label>{{ __('Stock quantity') }}</flux:label>
                                     <flux:input.group>
