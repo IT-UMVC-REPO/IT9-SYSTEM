@@ -87,9 +87,15 @@ test('railway deploy command refreshes the storage link fallback', function () {
         ->toContain('php artisan storage:link --force');
 });
 
-test('railway web process starts a queue worker for queued verification mail', function () {
+test('railway web process only serves http traffic', function () {
     expect(file_get_contents(base_path('railway.toml')))
-        ->toContain('php artisan queue:work --tries=3 --sleep=1 --timeout=90');
+        ->toContain('php artisan serve --host=0.0.0.0 --port=${PORT}')
+        ->not->toContain('queue:work');
+});
+
+test('railway worker process handles queued verification mail', function () {
+    expect(file_get_contents(base_path('railway-worker.toml')))
+        ->toContain('php artisan queue:work ${QUEUE_CONNECTION:-redis} --tries=3 --sleep=1 --timeout=90');
 });
 
 /**
