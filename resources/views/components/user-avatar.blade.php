@@ -3,21 +3,8 @@
 @php
     $isArrayUser = is_array($user);
     $userName = $isArrayUser ? ($user['name'] ?? null) : $user?->name;
-    $profileImage = $isArrayUser ? ($user['profile_image'] ?? null) : $user?->profile_image;
-    $profileImageUrl = null;
+    $profileImageUrl = $isArrayUser ? ($user['profile_image_url'] ?? null) : $user?->profile_image_url;
     $initials = $isArrayUser ? ($user['initials'] ?? null) : $user?->initials();
-
-    if (filled($profileImage)) {
-        $profileImage = (string) $profileImage;
-        $isAbsoluteProfileImage = \Illuminate\Support\Str::startsWith($profileImage, ['http://', 'https://', '/']);
-        $usesLocalPublicDisk = config('filesystems.disks.public.driver') === 'local';
-
-        if ($isAbsoluteProfileImage) {
-            $profileImageUrl = $profileImage;
-        } elseif (! $usesLocalPublicDisk || \Illuminate\Support\Facades\Storage::disk('public')->exists($profileImage)) {
-            $profileImageUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($profileImage);
-        }
-    }
 
     if (! filled($initials)) {
         $initials = collect(explode(' ', (string) $userName))

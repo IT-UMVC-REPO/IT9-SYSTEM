@@ -23,7 +23,7 @@ test('email verification mailable renders with SukiMarket branding', function ()
         ->assertSeeInHtml('Welcome to SukiMarket, Aling Rosa!')
         ->assertSeeInHtml('Verify my email')
         ->assertSeeInHtml('123456')
-        ->assertSeeInHtml('2025 SukiMarket')
+        ->assertSeeInHtml(now()->year.' SukiMarket')
         ->assertSeeInHtml('Your Local Market, Delivered')
         ->assertSeeInText('Welcome to SukiMarket, Aling Rosa!');
 });
@@ -54,6 +54,6 @@ test('reset password notification renders the branded markdown template', functi
         ->and($mailMessage->markdown)->toBe('emails.auth.reset-password')
         ->and($html)->toContain('SukiMarket')
         ->and($html)->toContain('Reset my password')
-        ->and($html)->toContain('2025 SukiMarket')
+        ->and($html)->toContain(now()->year.' SukiMarket')
         ->and($html)->toContain('Your Local Market, Delivered');
 });

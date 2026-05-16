@@ -141,6 +141,15 @@ new #[Title('Profile settings')] class extends Component {
         $this->redirect(route('profile.edit'), navigate: true);
     }
 
+    public function currentProfileImageUrl(): ?string
+    {
+        if ($this->currentProfileImage === null) {
+            return null;
+        }
+
+        return Auth::user()->profileImageUrlFor($this->currentProfileImage);
+    }
+
     public function resendVerificationNotification(): void
     {
         $user = Auth::user();
@@ -226,9 +235,9 @@ new #[Title('Profile settings')] class extends Component {
                                 >
                             </template>
                             <template x-if="!previewUrl">
-                                @if ($currentProfileImage)
+                                @if ($currentProfileImageUrl = $this->currentProfileImageUrl())
                                     <img
-                                        src="{{ Storage::disk('public')->url($currentProfileImage) }}"
+                                        src="{{ $currentProfileImageUrl }}"
                                         alt="{{ $user->name }}"
                                         onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
                                         loading="lazy"
@@ -323,7 +332,7 @@ new #[Title('Profile settings')] class extends Component {
                         :label="__('Phone number')"
                         type="tel"
                         autocomplete="tel"
-                        placeholder="+63 9XX XXX XXXX"
+                        :placeholder="__('+63 9XX XXX XXXX')"
                     />
 
                     <flux:textarea

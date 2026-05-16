@@ -521,6 +521,7 @@ class GroupConversation extends Component
                 'name' => $message->sender?->name,
                 'initials' => $message->sender?->initials(),
                 'profile_image' => $message->sender?->profile_image,
+                'profile_image_url' => $message->sender?->profile_image_url,
             ],
             'sender_display_name' => $message->sender ? $this->memberDisplayName($message->sender) : __('Someone'),
             'reply_to' => $message->replyTo ? [

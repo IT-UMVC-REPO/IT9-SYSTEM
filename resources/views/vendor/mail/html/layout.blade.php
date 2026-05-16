@@ -54,7 +54,7 @@
 </tr>
 <tr>
 <td align="center" style="padding:20px 24px 0; background-color:#fbf7f2; font-family:'DM Sans', -apple-system, Arial, sans-serif; font-size:12px; line-height:1.5; color:#9ca3af;">
-&copy; 2025 SukiMarket &middot; Your Local Market, Delivered &middot; Philippines
+&copy; {{ date('Y') }} SukiMarket &middot; Your Local Market, Delivered &middot; Philippines
 </td>
 </tr>
 </table>

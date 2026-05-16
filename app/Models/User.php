@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasStorageImage;
 use App\Enums\UserRole;
 use App\Enums\VendorStatus;
 use App\Mail\EmailVerification;
@@ -10,6 +11,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,7 +29,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, HasStorageImage, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The model's default values for attributes.
@@ -60,6 +62,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasLocation(): bool
     {
         return $this->lat !== null && $this->lng !== null;
+    }
+
+    protected function profileImageUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->resolveNullablePublicImageUrl(
+            $this->profile_image,
+        ));
+    }
+
+    public function profileImageUrlFor(?string $path): ?string
+    {
+        return $this->resolveNullablePublicImageUrl($path);
     }
 
     public function sendEmailVerificationCode(): void

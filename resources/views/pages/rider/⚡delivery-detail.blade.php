@@ -10,6 +10,7 @@ use App\Jobs\SendOrderNotificationJob;
 use App\Models\Order;
 use App\Models\RiderEarning;
 use App\Services\AuditLogger;
+use App\Support\PublicDiskUrl;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -167,7 +168,7 @@ new #[Title('Delivery Detail')] class extends Component
 
     public function proofUrl(?string $path): ?string
     {
-        return $path === null ? null : Storage::disk('public')->url($path);
+        return PublicDiskUrl::nullable($path);
     }
 
     public function peso(float|int $value): string

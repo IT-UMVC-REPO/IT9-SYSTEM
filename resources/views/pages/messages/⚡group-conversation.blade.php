@@ -2,6 +2,7 @@
     $pusherBroadcastConfig = config('broadcasting.connections.pusher', []);
     $realtimeEnabled = filled($pusherBroadcastConfig['key'] ?? null) && filled($pusherBroadcastConfig['app_id'] ?? null);
     $authUser = auth()->user();
+    $authProfileImageUrl = $authUser?->profile_image_url;
     $groupDisplayName = $this->group->displayName((int) auth()->id());
 @endphp
 
@@ -256,8 +257,8 @@
                                 class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
                                 style="background-color: var(--brand-700);"
                             >
-                                @if ($authUser?->profile_image)
-                                    <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                @if ($authProfileImageUrl)
+                                    <img src="{{ $authProfileImageUrl }}"
                                         alt="{{ $authUser->name }}"
                                         class="h-16 w-16 rounded-full object-cover ring-2 ring-white/30">
                                 @else
@@ -333,8 +334,8 @@
                                         class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
                                         style="background-color: var(--brand-700);"
                                     >
-                                        @if ($authUser?->profile_image)
-                                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                                        @if ($authProfileImageUrl)
+                                            <img src="{{ $authProfileImageUrl }}"
                                                 alt="{{ $authUser->name }}"
                                                 class="h-10 w-10 rounded-full object-cover ring-2 ring-white/30">
                                         @else
@@ -378,8 +379,8 @@
                         class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-200"
                         style="background-color: var(--brand-700);"
                     >
-                        @if ($authUser?->profile_image)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($authUser->profile_image) }}"
+                        @if ($authProfileImageUrl)
+                            <img src="{{ $authProfileImageUrl }}"
                                 alt="{{ $authUser->name }}"
                                 class="h-12 w-12 rounded-full object-cover ring-2 ring-white/30">
                         @else

@@ -5,8 +5,8 @@ use App\Enums\ReportStatus;
 use App\Enums\UserRole;
 use App\Models\Report;
 use App\Services\AuditLogger;
+use App\Support\PublicDiskUrl;
 use Flux\Flux;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -150,9 +150,7 @@ new #[Title('Report detail')] class extends Component
 
     public function attachmentUrl(): ?string
     {
-        return $this->report->attachment_path !== null
-            ? Storage::disk('public')->url($this->report->attachment_path)
-            : null;
+        return PublicDiskUrl::nullable($this->report->attachment_path);
     }
 
     public function attachmentName(): ?string

@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\RiderProfile;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Support\PublicDiskUrl;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -143,7 +144,7 @@ new #[Title('Rider registration')] class extends Component
 
     public function profileImageUrl(?string $path): ?string
     {
-        return $path === null ? null : Storage::disk('public')->url($path);
+        return PublicDiskUrl::nullable($path);
     }
 }; ?>
 

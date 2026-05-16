@@ -22,7 +22,7 @@
                 type="email"
                 required
                 autocomplete="email"
-                placeholder="email@example.com"
+                :placeholder="__('email@example.com')"
             />
             <flux:input
                 name="phone"
@@ -31,7 +31,7 @@
                 :value="old('phone')"
                 type="tel"
                 autocomplete="tel"
-                placeholder="+63 9XX XXX XXXX"
+                :placeholder="__('+63 9XX XXX XXXX')"
             />
             <flux:input
                 name="address"

@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Services\AuditLogger;
 use App\Services\StockManager;
 use App\Support\CategoryUnitSuggestion;
+use App\Support\PublicDiskUrl;
 use App\Support\UnitConversionResult;
 use App\Support\UnitFormatter;
 use Flux\Flux;
@@ -273,9 +274,7 @@ new #[Title('Edit product')] class extends Component {
             return null;
         }
 
-        return Str::startsWith($this->currentImage, ['http://', 'https://', '//'])
-            ? $this->currentImage
-            : Storage::disk('public')->url($this->currentImage);
+        return PublicDiskUrl::nullable($this->currentImage);
     }
 
     /**

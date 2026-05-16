@@ -384,6 +384,7 @@ class Conversation extends Component
                 'name' => $message->sender?->name,
                 'initials' => $message->sender?->initials(),
                 'profile_image' => $message->sender?->profile_image,
+                'profile_image_url' => $message->sender?->profile_image_url,
             ],
             'order_id' => $message->order_id,
             'order_status' => $message->order?->order_status?->value,

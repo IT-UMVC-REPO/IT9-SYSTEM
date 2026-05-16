@@ -1,16 +1,20 @@
 # SukiMarket
 
-SukiMarket is a Laravel + Livewire marketplace prototype for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, a seeded customer storefront, and customer, vendor, rider, and admin experiences.
+SukiMarket is a Laravel 13 + Livewire 4 marketplace for Filipino wet-market shopping. The current build includes a public landing page, role-aware portal routing, full authentication, customer storefront, vendor tools, rider delivery workflows, admin oversight, messaging, notifications, cart, checkout, orders, and seeded marketplace data.
 
 ## Current Product Surface
 
 - Public landing page at `/`
 - Shared `/dashboard` entry point that redirects users to their role-specific home route
 - Customer storefront with search, category filtering, visible-product rules, and seeded vendor/product data
-- Featured vendor links on the storefront that now open the placeholder vendor directory and vendor detail pages
+- Vendor directory, vendor storefront pages, and persisted favorites follow/unfollow flows
 - Product detail page with a dedicated purchase block, vendor messaging call-to-action, and trust badges
-- Rider registration, admin approval, delivery claiming, rider location updates, and order tracking surfaces
-- Messaging, maps, order tracking, and marketplace management routes wired into the shared role-aware shell
+- Messaging inbox and live conversation threads between marketplace users
+- Cart, checkout, customer order history, and customer order detail tracking
+- Vendor registration, admin approval, dashboard, product management, order management, and sales reporting
+- Rider registration, admin approval, delivery claiming, rider location updates, and delivery history
+- Admin dashboard, user management, vendor approvals, reports, and marketplace-wide order oversight
+- Maps, notifications, and marketplace management routes wired into the shared role-aware shell
 
 ## Stack
 

@@ -16,6 +16,7 @@ use App\Models\Notification;
 use App\Models\Product;
 use App\Models\VendorProfile;
 use App\Services\AuditLogger;
+use App\Support\PublicDiskUrl;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -441,13 +442,7 @@ class Registration extends Component
 
     private function storageUrlFor(?string $path): ?string
     {
-        if (blank($path)) {
-            return null;
-        }
-
-        return Str::startsWith($path, ['http://', 'https://', '//'])
-            ? $path
-            : Storage::disk('public')->url($path);
+        return PublicDiskUrl::nullable($path);
     }
 
     private function deleteStoredPublicAsset(?string $path): void
