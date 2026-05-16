@@ -201,6 +201,13 @@ new #[Title('Edit product')] class extends Component {
         }
     }
 
+    public function updated(string $property): void
+    {
+        if (str_starts_with($property, 'additionalVariants.')) {
+            $this->resetValidation($property);
+        }
+    }
+
     public function addVariant(): void
     {
         $this->additionalVariants[] = $this->blankVariantRow();
@@ -446,7 +453,7 @@ new #[Title('Edit product')] class extends Component {
             'defaultVariantKey' => ['required', 'string'],
         ], [
             'additionalVariants.*.conversion_unit_quantity.max' => __('Conversion quantity cannot exceed 99,999.'),
-        ]);
+        ], $this->variantValidationAttributes());
 
         $validator->after(function ($validator) use ($validated): void {
             $seenUnits = [$validated['unit'] => 'unit'];
@@ -501,6 +508,21 @@ new #[Title('Edit product')] class extends Component {
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function variantValidationAttributes(): array
+    {
+        return [
+            'additionalVariants.*.unit' => __('variant unit'),
+            'additionalVariants.*.price' => __('variant price'),
+            'additionalVariants.*.stock_quantity' => __('variant stock'),
+            'additionalVariants.*.conversion_unit' => __('variant conversion unit'),
+            'additionalVariants.*.conversion_unit_quantity' => __('variant conversion quantity'),
+            'defaultVariantKey' => __('default selling variant'),
+        ];
     }
 
     /**
@@ -1028,7 +1050,7 @@ new #[Title('Edit product')] class extends Component {
                                     </div>
                                 </div>
 
-                                <div class="mt-4 grid gap-4 md:grid-cols-3">
+                                <div class="mt-4 grid gap-4 md:grid-cols-3 md:items-start">
                                     <flux:field>
                                         <flux:label>{{ __('Unit') }}</flux:label>
                                         <flux:select wire:model.live="additionalVariants.{{ $index }}.unit">

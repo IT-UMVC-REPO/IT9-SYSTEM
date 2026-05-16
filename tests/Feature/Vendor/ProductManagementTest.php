@@ -198,6 +198,34 @@ test('vendor product variants must use unique units', function () {
         ->assertHasErrors('additionalVariants.0.unit');
 });
 
+test('variant price validation uses a readable field name and clears after editing', function () {
+    Storage::fake('public');
+
+    $vendorUser = User::factory()->vendor()->create();
+    VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $category = Category::factory()->standalone()->create();
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->set('name', 'Variant Warning Eggs')
+        ->set('description', 'Fresh eggs sorted for market buyers.')
+        ->set('price', '10.00')
+        ->set('stock_quantity', '120')
+        ->set('categoryId', (string) $category->getKey())
+        ->set('unit', ProductUnit::Piece->value)
+        ->set('status', ProductStatus::Active->value)
+        ->set('productImageUpload', UploadedFile::fake()->createWithContent('eggs.png', productManagementPngFixture()))
+        ->call('addVariant')
+        ->set('additionalVariants.0.unit', ProductUnit::Dozen->value)
+        ->set('additionalVariants.0.stock_quantity', '8')
+        ->call('save')
+        ->assertHasErrors(['additionalVariants.0.price' => 'required'])
+        ->assertSee('The variant price field is required.')
+        ->assertDontSee('The additionalVariants.0.price field is required.')
+        ->set('additionalVariants.0.price', '100.00')
+        ->assertHasNoErrors('additionalVariants.0.price');
+});
+
 test('edit form pre-populates and updates a product', function () {
     Storage::fake('public');
 
