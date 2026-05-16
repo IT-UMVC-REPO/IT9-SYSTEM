@@ -635,11 +635,7 @@ new #[Title('Create product')] class extends Component {
 
                             <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(11rem,0.85fr)]">
                                 <flux:field>
-                                    <flux:label>{{ __('Price') }}                                     
-                                    @if ($this->pricePreview)
-                                        <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">{{ $this->pricePreview }}</p>
-                                    @endif
-                                    </flux:label>
+                                    <flux:label>{{ __('Price') }} </flux:label>
                                     <flux:input.group>
                                         <flux:input.group.prefix>&#8369;</flux:input.group.prefix>
                                         <flux:input wire:model.live.debounce.250ms="price" type="number" inputmode="decimal" step="0.01" min="0.01" class:input="h-11" required />
