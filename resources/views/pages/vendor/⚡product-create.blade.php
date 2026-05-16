@@ -640,7 +640,7 @@ new #[Title('Create product')] class extends Component {
                                 </flux:field>
 
                                 <flux:field>
-                                    <flux:lxabel>{{ __('Stock quantity') }}</flux:label>
+                                    <flux:label>{{ __('Stock quantity') }}</flux:label>
                                         <flux:input.group>
                                             <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number"
                                                 min="0" step="1" class:input="h-11" required />
