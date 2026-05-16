@@ -61,6 +61,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     screenSharing: false,
     screenTrack: null,
     cameraTrackBeforeShare: null,
+    endingCall: false,
 
     adoptConfig(nextConfig) {
         this.authUserId = nextConfig.authUserId;
@@ -173,7 +174,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         }
 
         if (event.status === 'ended') {
-            this.cleanupGroupCall('idle');
+            this.cleanupGroupCall(this.endingCall ? 'ended' : 'idle', this.endingCall ? 'Group call ended.' : '');
             return;
         }
 
@@ -326,7 +327,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         const totalTiles = Math.max(1, remoteCount + 1);
 
         if (totalTiles <= 1) {
-            return 'display: grid; grid-template-columns: 1fr; grid-auto-rows: 1fr;';
+            return 'display: grid; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr);';
         }
 
         const width = viewportWidth ?? window.innerWidth;
@@ -520,6 +521,12 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     },
 
     async leaveCall() {
+        if (this.endingCall || this.callStatus === 'idle' || this.callStatus === 'ended') {
+            return;
+        }
+
+        this.endingCall = true;
+
         if (this.callId !== null) {
             try {
                 await this.requestJson(this.callRoute('end'), null, { timeoutMs: 15000 });
@@ -1538,6 +1545,10 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     },
 
     cleanupGroupCall(nextStatus = 'idle', message = '') {
+        if (this.callStatus === 'ended' && nextStatus === 'ended') {
+            return;
+        }
+
         void this.exitPip();
         window.sukiRingtone?.stop();
         this.stopCallTimer();
@@ -1583,12 +1594,14 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
                 if (this.callStatus === 'ended') {
                     this.callStatus = 'idle';
                     this.statusMessage = '';
+                    this.endingCall = false;
                 }
             }, videoCallResetDelay);
         }
 
         if (nextStatus === 'idle') {
             this.statusMessage = '';
+            this.endingCall = false;
         }
 
         this.releaseActiveGroupCall();

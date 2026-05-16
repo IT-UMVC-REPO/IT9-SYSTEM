@@ -288,7 +288,7 @@
                             </div>
                         </template>
 
-                        <div class="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-8 text-center shadow-2xl shadow-black/30 backdrop-blur" x-cloak x-show="remoteParticipants.length === 0">
+                        <div class="flex h-full min-h-0 flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-8 text-center shadow-2xl shadow-black/30 backdrop-blur" x-cloak x-show="remoteParticipants.length === 0">
                             <div class="relative flex h-24 w-24 items-center justify-center">
                                 <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
                                 <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
@@ -460,7 +460,7 @@
                             aria-label="{{ __('Picture in picture') }}">
                             <flux:icon.squares-2x2 variant="mini" />
                         </button>
-                        <button type="button" x-on:click="leaveCall()" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
+                        <button type="button" x-on:click="leaveCall()" x-bind:disabled="endingCall" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600 disabled:pointer-events-none disabled:opacity-60" aria-label="{{ __('End call') }}">
                             <flux:icon.phone-x-mark variant="solid" />
                         </button>
                     </div>
