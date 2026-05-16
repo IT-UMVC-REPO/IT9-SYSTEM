@@ -513,7 +513,7 @@ new #[Title('Create product')] class extends Component {
                                 </div>
                             @else
                                 <label for="product-image-upload"
-                                    class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10 rounded-xl">
+                                    class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10 rounded-2xl">
                                     <span
                                         class="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--brand-600)] text-white shadow-sm">
                                         <i class="fa-solid fa-camera text-xl"></i>
