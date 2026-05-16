@@ -226,6 +226,28 @@
         background-color: var(--brand-700);
     }
 
+    button[data-loading],
+    [role='button'][data-loading],
+    .brand-button-primary[data-loading],
+    .brand-button-secondary[data-loading] {
+        cursor: progress;
+        opacity: 0.78;
+        pointer-events: none;
+    }
+
+    button[data-loading]::after,
+    [role='button'][data-loading]::after,
+    .brand-button-primary[data-loading]::after,
+    .brand-button-secondary[data-loading]::after {
+        content: '';
+        width: 1em;
+        height: 1em;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 9999px;
+        animation: spin 0.7s linear infinite;
+    }
+
     .brand-button-secondary {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-700 shadow-sm transition dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100;
     }

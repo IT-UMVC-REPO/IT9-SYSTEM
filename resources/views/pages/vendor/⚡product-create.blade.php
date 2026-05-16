@@ -538,7 +538,7 @@ new #[Title('Create product')] class extends Component {
                                     </button>
                                 </div>
                             @else
-                                <label for="product-image-upload" class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10">
+                                <label for="product-image-upload" class="flex h-full min-h-[24rem] w-full cursor-pointer flex-col items-center justify-center gap-4 border-2 border-dashed border-stone-300 p-8 text-center transition hover:border-[var(--brand-400)] hover:bg-[var(--brand-50)] dark:border-zinc-700 dark:hover:bg-[var(--brand-500)]/10 rounded-lg">
                                     <span class="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--brand-600)] text-white shadow-sm">
                                         <i class="fa-solid fa-camera text-xl"></i>
                                     </span>
@@ -592,7 +592,7 @@ new #[Title('Create product')] class extends Component {
                 </section>
 
                 <section class="brand-panel p-5 sm:p-6">
-                    <div class="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <div class="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] xl:items-start">
                         <div class="space-y-5">
                             <div class="flex items-center gap-3">
                                 <span class="brand-soft-surface flex h-10 w-10 items-center justify-center rounded-xl">
@@ -633,7 +633,7 @@ new #[Title('Create product')] class extends Component {
                                 </div>
                             </div>
 
-                            <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(11rem,0.85fr)]">
                                 <flux:field>
                                     <flux:label>{{ __('Price') }}</flux:label>
                                     <flux:input.group>
@@ -658,7 +658,7 @@ new #[Title('Create product')] class extends Component {
                                 </flux:field>
                             </div>
 
-                            <flux:callout icon="information-circle" variant="secondary">
+                            <flux:callout icon="information-circle" variant="secondary" class="max-w-2xl">
                                 <flux:callout.text>{{ __('Price is per selected selling unit. Stock is the number of those units available.') }}</flux:callout.text>
                             </flux:callout>
                         </div>

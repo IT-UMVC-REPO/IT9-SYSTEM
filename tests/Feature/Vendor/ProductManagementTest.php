@@ -107,6 +107,8 @@ test('vendors can create products with an uploaded image', function () {
         ->assertSee('Square, well-lit photos look best in the storefront.')
         ->assertSee('Unit conversion')
         ->assertSee('Price is per selected selling unit. Stock is the number of those units available.')
+        ->assertSee('lg:grid-cols-[minmax(0,1fr)_minmax(11rem,0.85fr)]', false)
+        ->assertSee('max-w-2xl', false)
         ->assertSee('Hidden from storefront. Only you can see it.')
         ->assertSee('Visible to shoppers on the storefront.')
         ->set('name', 'Pechay Bundle')
@@ -257,6 +259,7 @@ test('edit form pre-populates and updates a product', function () {
         ->test('pages::vendor.product-edit', ['product' => $product])
         ->assertSee('Save product')
         ->assertSee('Delete product')
+        ->assertSee('lg:grid-cols-[minmax(0,1fr)_minmax(11rem,0.85fr)]', false)
         ->assertSee('Hidden from storefront. Only you can see it.')
         ->assertSee('Visible to shoppers on the storefront.')
         ->assertSet('name', 'Bangus')
@@ -386,4 +389,14 @@ test('vendor products page shows the out of stock count', function () {
         ->assertOk()
         ->assertSee('Out of stock')
         ->assertSee('1');
+});
+
+test('livewire loading buttons have a visible global in-flight state', function () {
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    expect($css)
+        ->toContain('button[data-loading]')
+        ->toContain('cursor: progress')
+        ->toContain("content: ''")
+        ->toContain('animation: spin 0.7s linear infinite');
 });

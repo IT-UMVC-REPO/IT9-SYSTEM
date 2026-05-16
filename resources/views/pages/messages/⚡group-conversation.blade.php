@@ -717,21 +717,20 @@
                                                 </div>
                                             @endif
 
-                                            <div class="absolute -bottom-4 {{ $isOwnMessage ? 'right-0' : 'left-0' }} whitespace-nowrap">
-                                                <p
-                                                    x-cloak
-                                                    x-show="showTime"
-                                                    x-transition:enter="transition ease-out duration-150"
-                                                    x-transition:enter-start="opacity-0 -translate-y-1"
-                                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                                    x-transition:leave="transition ease-in duration-100"
-                                                    x-transition:leave-start="opacity-100 translate-y-0"
-                                                    x-transition:leave-end="opacity-0 -translate-y-1"
-                                                    class="mt-0.5 px-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
-                                                    {{ $message['time'] }}
-                                                </p>
-                                            </div>
                                         </div>
+
+                                        <p
+                                            x-cloak
+                                            x-show="showTime"
+                                            x-transition:enter="transition ease-out duration-150"
+                                            x-transition:enter-start="opacity-0 -translate-y-1"
+                                            x-transition:enter-end="opacity-100 translate-y-0"
+                                            x-transition:leave="transition ease-in duration-100"
+                                            x-transition:leave-start="opacity-100 translate-y-0"
+                                            x-transition:leave-end="opacity-0 -translate-y-1"
+                                            class="mt-0.5 px-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                                            {{ $message['time'] }}
+                                        </p>
 
                                     </div>
                                 </div>

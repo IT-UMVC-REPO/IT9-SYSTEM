@@ -776,7 +776,7 @@ new #[Title('Edit product')] class extends Component {
                         <h2 class="text-sm font-bold uppercase tracking-[0.16em] text-neutral-900 dark:text-zinc-100">{{ __('Pricing & stock') }}</h2>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2 sm:items-end">
+                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(11rem,0.85fr)] lg:items-end">
                         <flux:field>
                             <flux:label>{{ __('Price') }}</flux:label>
                             <flux:input.group>

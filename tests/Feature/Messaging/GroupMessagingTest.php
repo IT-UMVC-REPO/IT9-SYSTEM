@@ -395,6 +395,7 @@ test('group attachment links use same-origin attachment routes', function () {
         ->assertSee('x-data="{ showActions: false, showTime: false }"', false)
         ->assertSee('x-on:click.stop="showTime = ! showTime"', false)
         ->assertSee('x-show="showTime"', false)
+        ->assertSee('class="mt-0.5 px-1 text-[11px] text-neutral-400 dark:text-neutral-500"', false)
         ->assertSee('rounded-lg text-neutral-500', false)
         ->assertSee('lg:rounded-none', false)
         ->assertDontSee('src="https://pub.example.test/group-message-attachments/r2-receipt.jpg"', false)

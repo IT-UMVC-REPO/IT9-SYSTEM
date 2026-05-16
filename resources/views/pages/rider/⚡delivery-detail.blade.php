@@ -295,21 +295,38 @@ new #[Title('Delivery Detail')] class extends Component
                         <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('Delivery handoff') }}</h2>
                     </div>
 
-                    <form wire:submit="saveProofOfDelivery" class="mt-6 grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+                    <form wire:submit="saveProofOfDelivery" class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
                         <div class="overflow-hidden rounded-[1.25rem] border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800">
                             @if ($proofUpload)
-                                <img src="{{ $proofUpload->temporaryUrl() }}" alt="{{ __('Proof preview') }}" class="h-48 w-full object-cover">
+                                <img src="{{ $proofUpload->temporaryUrl() }}" alt="{{ __('Proof preview') }}" class="aspect-[4/3] max-h-80 w-full object-contain">
                             @elseif ($this->proofUrl($this->order->proof_of_delivery_path))
-                                <img src="{{ $this->proofUrl($this->order->proof_of_delivery_path) }}" alt="{{ __('Saved proof of delivery') }}" class="h-48 w-full object-cover">
+                                <img src="{{ $this->proofUrl($this->order->proof_of_delivery_path) }}" alt="{{ __('Saved proof of delivery') }}" class="aspect-[4/3] max-h-80 w-full object-contain">
                             @else
-                                <div class="flex h-48 items-center justify-center text-neutral-400 dark:text-zinc-500">
+                                <div class="flex aspect-[4/3] max-h-80 items-center justify-center text-neutral-400 dark:text-zinc-500">
                                     <i class="fa-solid fa-image text-2xl"></i>
                                 </div>
                             @endif
                         </div>
 
-                        <div class="space-y-5">
-                            <flux:input type="file" wire:model="proofUpload" :label="__('Proof image')" accept="image/*" />
+                        <div class="min-w-0 space-y-5">
+                            <div class="grid min-w-0 gap-2">
+                                <label for="proof-upload" class="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ __('Proof image') }}</label>
+                                <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+                                    <label for="proof-upload" class="brand-button-secondary active:scale-[0.96] shrink-0 cursor-pointer">
+                                        {{ __('Choose file') }}
+                                    </label>
+                                    <input id="proof-upload" type="file" wire:model="proofUpload" accept="image/*" class="sr-only">
+                                    <span class="min-w-0 truncate text-sm font-medium text-neutral-500 dark:text-zinc-400">
+                                        @if ($proofUpload instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile)
+                                            {{ $proofUpload->getClientOriginalName() }}
+                                        @elseif ($this->order->proof_of_delivery_path)
+                                            {{ basename($this->order->proof_of_delivery_path) }}
+                                        @else
+                                            {{ __('No file selected') }}
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
                             <flux:error name="proofUpload" />
 
                             <flux:textarea wire:model="delivered_note" :label="__('Delivery note')" :placeholder="__('Optional note for this handoff')" maxlength="200" />
