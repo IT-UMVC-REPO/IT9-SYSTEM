@@ -54,6 +54,13 @@ return [
             'key' => env('PUSHER_APP_KEY'),
             'secret' => env('PUSHER_APP_SECRET'),
             'app_id' => env('PUSHER_APP_ID'),
+            'client' => [
+                'key' => env('VITE_REVERB_APP_KEY') ?: env('PUSHER_APP_KEY'),
+                'cluster' => env('VITE_REVERB_APP_CLUSTER') ?: $pusherCluster,
+                'host' => env('VITE_REVERB_HOST') ?: env('PUSHER_HOST'),
+                'port' => (int) env('VITE_REVERB_PORT', env('PUSHER_PORT', 443)),
+                'scheme' => env('VITE_REVERB_SCHEME', env('PUSHER_SCHEME', 'https')),
+            ],
             'options' => [
                 'cluster' => $pusherCluster,
                 'host' => env('PUSHER_HOST') ?: ('api-'.$pusherCluster.'.pusher.com'),

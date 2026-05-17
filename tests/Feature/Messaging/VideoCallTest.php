@@ -526,15 +526,21 @@ test('video call signaling uses ably pusher-compatible echo credentials', functi
     $client = file_get_contents(resource_path('js/echo.js'));
     $app = file_get_contents(resource_path('js/app.js'));
     $broadcasting = file_get_contents(config_path('broadcasting.php'));
+    $head = file_get_contents(resource_path('views/partials/head.blade.php'));
 
     expect($client)
         ->toContain('Broadcasting: Pusher-compatible realtime transport')
         ->toContain("broadcaster: 'pusher'")
+        ->toContain('window.sukiRealtimeConfig')
+        ->toContain('const realtimeKey = runtimeConfig.key ?? import.meta.env.VITE_REVERB_APP_KEY')
         ->toContain('VITE_REVERB_APP_KEY')
         ->toContain('VITE_REVERB_HOST')
         ->toContain('VITE_REVERB_PORT')
         ->toContain('VITE_REVERB_SCHEME')
-        ->toContain("cluster: import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1'")
+        ->toContain('window.Echo = null')
+        ->toContain('SukiMarket realtime is disabled')
+        ->toContain('if (realtimeKey && realtimeHost)')
+        ->toContain("const realtimeCluster = runtimeConfig.cluster ?? import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1'")
         ->toContain('httpHost: realtimeHost')
         ->toContain('disableStats: true')
         ->toContain("enabledTransports: ['ws', 'wss']")
@@ -543,11 +549,18 @@ test('video call signaling uses ably pusher-compatible echo credentials', functi
         ->not->toContain('VITE_PUSHER_APP_CLUSTER')
         ->and($broadcasting)
         ->toContain("\$pusherCluster = env('PUSHER_APP_CLUSTER') ?: 'mt1';")
+        ->toContain("'client' => [")
+        ->toContain("'key' => env('VITE_REVERB_APP_KEY') ?: env('PUSHER_APP_KEY')")
+        ->toContain("'host' => env('VITE_REVERB_HOST') ?: env('PUSHER_HOST')")
         ->toContain("'host' => env('PUSHER_HOST') ?: ('api-'.\$pusherCluster.'.pusher.com')")
         ->toContain('PUSHER_CONNECT_TIMEOUT')
         ->toContain('PUSHER_TIMEOUT')
         ->toContain('REVERB_CONNECT_TIMEOUT')
         ->toContain('REVERB_TIMEOUT')
+        ->and($head)
+        ->toContain('window.sukiRealtimeConfig = @js')
+        ->toContain("config('broadcasting.connections.pusher.client', [])")
+        ->toContain("'key' => \$sukiRealtimeConfig['key'] ?? null")
         ->and($app)
         ->toContain("import './echo';");
 });

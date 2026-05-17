@@ -6,6 +6,7 @@
     $sukiText = $metaDescription ?? __('Order fresh produce, seafood, meat, and daily goods from verified local vendors on SukiMarket.');
     $sukiHeader = secure_asset('imgs/sukiheader.webp');
     $sukiUrl = secure_url(request()->path());
+    $sukiRealtimeConfig = config('broadcasting.connections.pusher.client', []);
 @endphp
 <meta name="description" content="{{ $sukiText }}" />
 <meta property="og:site_name" content="SukiMarket" />
@@ -43,5 +44,14 @@
     <style>:root{ {!! auth()->user()->brandColorCssVars() !!} }</style>
 @endauth
 
+<script>
+    window.sukiRealtimeConfig = @js([
+        'key' => $sukiRealtimeConfig['key'] ?? null,
+        'cluster' => $sukiRealtimeConfig['cluster'] ?? 'mt1',
+        'host' => $sukiRealtimeConfig['host'] ?? null,
+        'port' => (int) ($sukiRealtimeConfig['port'] ?? 443),
+        'scheme' => $sukiRealtimeConfig['scheme'] ?? 'https',
+    ]);
+</script>
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance

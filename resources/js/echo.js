@@ -9,20 +9,28 @@ import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
-const realtimeScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
-const realtimeHost = (import.meta.env.VITE_REVERB_HOST ?? '').replace(/^https?:\/\//, '');
-const realtimePort = Number(import.meta.env.VITE_REVERB_PORT ?? (realtimeScheme === 'https' ? 443 : 80));
+const runtimeConfig = window.sukiRealtimeConfig ?? {};
+const realtimeKey = runtimeConfig.key ?? import.meta.env.VITE_REVERB_APP_KEY ?? '';
+const realtimeScheme = runtimeConfig.scheme ?? import.meta.env.VITE_REVERB_SCHEME ?? 'https';
+const realtimeHost = String(runtimeConfig.host ?? import.meta.env.VITE_REVERB_HOST ?? '').replace(/^https?:\/\//, '');
+const realtimePort = Number(runtimeConfig.port ?? import.meta.env.VITE_REVERB_PORT ?? (realtimeScheme === 'https' ? 443 : 80));
+const realtimeCluster = runtimeConfig.cluster ?? import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1';
 
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    cluster: import.meta.env.VITE_REVERB_APP_CLUSTER ?? 'mt1',
-    wsHost: realtimeHost,
-    httpHost: realtimeHost,
-    wsPort: realtimePort,
-    wssPort: realtimePort,
-    forceTLS: realtimeScheme === 'https',
-    encrypted: realtimeScheme === 'https',
-    disableStats: true,
-    enabledTransports: ['ws', 'wss'],
-});
+if (realtimeKey && realtimeHost) {
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: realtimeKey,
+        cluster: realtimeCluster,
+        wsHost: realtimeHost,
+        httpHost: realtimeHost,
+        wsPort: realtimePort,
+        wssPort: realtimePort,
+        forceTLS: realtimeScheme === 'https',
+        encrypted: realtimeScheme === 'https',
+        disableStats: true,
+        enabledTransports: ['ws', 'wss'],
+    });
+} else {
+    window.Echo = null;
+    console.warn('SukiMarket realtime is disabled because the public Echo key or host is missing.');
+}
