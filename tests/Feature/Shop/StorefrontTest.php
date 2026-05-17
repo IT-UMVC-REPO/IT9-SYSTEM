@@ -685,8 +685,8 @@ test('customers can open a visible product detail page', function () {
         ->assertSee('8')
         ->assertSee("\u{20B1}188.75")
         ->assertSee('Bring this stall to your cart')
-        ->assertSee('stepperButton(() => $wire.decrementQuantity())', false)
-        ->assertSee('stepperButton(() => $wire.incrementQuantity())', false)
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee('commit: (value) => $wire.$set(\'quantity\'', false)
         ->assertSee('Message vendor')
         ->assertDontSee('Digital payment options')
         ->assertDontSee('Vendor support');

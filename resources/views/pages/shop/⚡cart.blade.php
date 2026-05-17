@@ -229,9 +229,10 @@ new #[Title('Cart')] class extends Component {
                                         class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 dark:border-white/10 dark:bg-zinc-800"
                                     >
                                         <img
-                                            src="{{ $item->product->image }}"
+                                            src="{{ $item->product->image_url }}"
                                             alt="{{ $item->product->name }}"
                                             class="h-full w-full object-cover"
+                                            onerror="this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'"
                                             loading="lazy"
                                         >
                                     </a>
@@ -255,18 +256,27 @@ new #[Title('Cart')] class extends Component {
                                             {{ $this->priceWithUnit($item) }}
                                         </p>
 
-                                        <div class="flex items-center gap-3">
+                                        @php($availableStock = max(1, $this->availableStockFor($item)))
+
+                                        <div
+                                            x-data="sukiQuantityStepper({
+                                                value: @js($item->quantity),
+                                                min: 1,
+                                                max: @js($availableStock),
+                                                commit: (value) => $wire.updateQuantity({{ $item->id }}, value),
+                                            })"
+                                            class="flex items-center gap-3"
+                                        >
                                             <button
                                                 type="button"
-                                                x-data="stepperButton(() => $wire.decrementQuantity({{ $item->id }}))"
-                                                x-on:mousedown.prevent="start"
-                                                x-on:touchstart.prevent="start"
+                                                x-on:mousedown.prevent="start(-1)"
+                                                x-on:touchstart.prevent="start(-1)"
                                                 x-on:mouseup.window="stop"
                                                 x-on:mouseleave="stop"
                                                 x-on:touchend.window="stop"
                                                 x-on:touchcancel.window="stop"
+                                                x-bind:disabled="! canDecrement"
                                                 class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                                                @disabled($item->quantity <= 1)
                                                 aria-label="{{ __('Decrease quantity') }}"
                                             >
                                                 <span aria-hidden="true">-</span>
@@ -275,24 +285,25 @@ new #[Title('Cart')] class extends Component {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                max="{{ max(1, $this->availableStockFor($item)) }}"
-                                                value="{{ $item->quantity }}"
-                                                wire:change="updateQuantity({{ $item->id }}, $event.target.value)"
+                                                max="{{ $availableStock }}"
+                                                x-model="value"
+                                                x-on:input.debounce.150ms="syncFromInput"
+                                                x-on:change="commitNow"
+                                                x-on:blur="commitNow"
                                                 class="brand-stepper-input"
                                                 aria-label="{{ __('Quantity for :product', ['product' => $item->product->name]) }}"
                                             >
 
                                             <button
                                                 type="button"
-                                                x-data="stepperButton(() => $wire.incrementQuantity({{ $item->id }}))"
-                                                x-on:mousedown.prevent="start"
-                                                x-on:touchstart.prevent="start"
+                                                x-on:mousedown.prevent="start(1)"
+                                                x-on:touchstart.prevent="start(1)"
                                                 x-on:mouseup.window="stop"
                                                 x-on:mouseleave="stop"
                                                 x-on:touchend.window="stop"
                                                 x-on:touchcancel.window="stop"
+                                                x-bind:disabled="! canIncrement"
                                                 class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                                                @disabled($item->quantity >= $this->availableStockFor($item))
                                                 aria-label="{{ __('Increase quantity') }}"
                                             >
                                                 <span aria-hidden="true">+</span>

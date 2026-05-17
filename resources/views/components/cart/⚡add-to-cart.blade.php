@@ -294,18 +294,26 @@ new class extends Component {
                     <span class="text-xs font-medium text-neutral-400 dark:text-zinc-400">{{ __('Up to :amount available', ['amount' => $this->selectedStockLabel]) }}</span>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <div
+                    x-data="sukiQuantityStepper({
+                        value: @js((int) $quantity),
+                        min: 1,
+                        max: @js($this->availableStock),
+                        sync: (value) => $wire.$set('quantity', String(value), false),
+                        commit: (value) => $wire.$set('quantity', String(value), false),
+                    })"
+                    class="flex items-center gap-3"
+                >
                     <button
                         type="button"
-                        x-data="stepperButton(() => $wire.decrementQuantity())"
-                        x-on:mousedown.prevent="start"
-                        x-on:touchstart.prevent="start"
+                        x-on:mousedown.prevent="start(-1)"
+                        x-on:touchstart.prevent="start(-1)"
                         x-on:mouseup.window="stop"
                         x-on:mouseleave="stop"
                         x-on:touchend.window="stop"
                         x-on:touchcancel.window="stop"
+                        x-bind:disabled="! canDecrement"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                        @disabled((int) $quantity <= 1)
                         aria-label="{{ __('Decrease quantity') }}"
                     >
                         <span aria-hidden="true">-</span>
@@ -316,21 +324,23 @@ new class extends Component {
                         type="number"
                         min="1"
                         max="{{ $this->availableStock }}"
-                        wire:model.live="quantity"
+                        x-model="value"
+                        x-on:input.debounce.150ms="syncFromInput"
+                        x-on:change="commitNow"
+                        x-on:blur="commitNow"
                         class="brand-stepper-input transition-colors duration-150"
                     >
 
                     <button
                         type="button"
-                        x-data="stepperButton(() => $wire.incrementQuantity())"
-                        x-on:mousedown.prevent="start"
-                        x-on:touchstart.prevent="start"
+                        x-on:mousedown.prevent="start(1)"
+                        x-on:touchstart.prevent="start(1)"
                         x-on:mouseup.window="stop"
                         x-on:mouseleave="stop"
                         x-on:touchend.window="stop"
                         x-on:touchcancel.window="stop"
+                        x-bind:disabled="! canIncrement"
                         class="brand-stepper-button disabled:cursor-not-allowed disabled:opacity-40"
-                        @disabled((int) $quantity >= $this->availableStock)
                         aria-label="{{ __('Increase quantity') }}"
                     >
                         <span aria-hidden="true">+</span>

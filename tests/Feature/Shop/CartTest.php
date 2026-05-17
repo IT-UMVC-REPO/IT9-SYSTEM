@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\VendorProfile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 function makeCartProduct(array $overrides = []): Product
@@ -161,8 +162,35 @@ test('cart inline steppers use holdable Alpine controls', function () {
     $this->actingAs($customer)
         ->get(route('shop.cart'))
         ->assertOk()
-        ->assertSee('stepperButton(() => $wire.decrementQuantity', false)
-        ->assertSee('stepperButton(() => $wire.incrementQuantity', false);
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee('commit: (value) => $wire.updateQuantity', false)
+        ->assertDontSee('stepperButton(() => $wire.decrementQuantity', false)
+        ->assertDontSee('stepperButton(() => $wire.incrementQuantity', false);
+});
+
+test('cart product images render through public disk urls', function () {
+    Storage::fake('public');
+
+    $customer = User::factory()->create();
+    $product = makeCartProduct([
+        'image' => 'product-images/fresh-egg.png',
+    ]);
+    $cart = Cart::factory()->for($customer, 'customer')->create();
+
+    Storage::disk('public')->put('product-images/fresh-egg.png', 'image-bytes');
+
+    CartItem::query()->create([
+        'cart_id' => $cart->getKey(),
+        'product_id' => $product->getKey(),
+        'quantity' => 3,
+    ]);
+
+    $this->actingAs($customer)
+        ->get(route('shop.cart'))
+        ->assertOk()
+        ->assertSee('src="'.$product->image_url.'"', false)
+        ->assertDontSee('src="product-images/fresh-egg.png"', false)
+        ->assertSee("onerror=\"this.src='https://placehold.co/640x640/e7e5e4/9ca3af?text=No+Image'\"", false);
 });
 
 test('cart stepper methods adjust quantity against current stock', function () {

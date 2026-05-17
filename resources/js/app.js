@@ -81,6 +81,120 @@ window.stepperButton = (callback) => ({
     },
 });
 
+window.sukiQuantityStepper = (config) => ({
+    value: Number(config.value ?? config.min ?? 1),
+    min: Number(config.min ?? 1),
+    max: Number(config.max ?? Number.MAX_SAFE_INTEGER),
+    _timer: null,
+    _interval: null,
+    _commitTimer: null,
+    _committing: false,
+    _queuedCommit: false,
+
+    init() {
+        this.value = this.clamp(this.value);
+        this.syncClient();
+    },
+
+    get canDecrement() {
+        return this.value > this.min;
+    },
+
+    get canIncrement() {
+        return this.value < this.max;
+    },
+
+    clamp(raw) {
+        const parsed = Number.parseInt(String(raw), 10);
+
+        if (!Number.isFinite(parsed)) {
+            return this.min;
+        }
+
+        return Math.min(this.max, Math.max(this.min, parsed));
+    },
+
+    start(step) {
+        this.stop();
+        this.step(step);
+
+        this._timer = window.setTimeout(() => {
+            this._interval = window.setInterval(() => this.step(step), 100);
+        }, 400);
+    },
+
+    stop() {
+        window.clearTimeout(this._timer);
+        window.clearInterval(this._interval);
+        this._timer = null;
+        this._interval = null;
+    },
+
+    step(step) {
+        const nextValue = this.clamp(this.value + step);
+
+        if (nextValue === this.value) {
+            return;
+        }
+
+        this.value = nextValue;
+        this.syncClient();
+        this.scheduleCommit();
+    },
+
+    syncFromInput() {
+        this.value = this.clamp(this.value);
+        this.syncClient();
+        this.scheduleCommit();
+    },
+
+    syncClient() {
+        if (typeof config.sync === 'function') {
+            config.sync(this.value);
+        }
+    },
+
+    scheduleCommit(delay = 250) {
+        window.clearTimeout(this._commitTimer);
+        this._commitTimer = window.setTimeout(() => this.commitNow(), delay);
+    },
+
+    async commitNow() {
+        window.clearTimeout(this._commitTimer);
+        this._commitTimer = null;
+        this.value = this.clamp(this.value);
+        this.syncClient();
+
+        if (typeof config.commit !== 'function') {
+            return;
+        }
+
+        if (this._committing) {
+            this._queuedCommit = true;
+
+            return;
+        }
+
+        this._committing = true;
+
+        try {
+            await config.commit(this.value);
+        } finally {
+            this._committing = false;
+
+            if (this._queuedCommit) {
+                this._queuedCommit = false;
+                this.scheduleCommit(0);
+            }
+        }
+    },
+
+    destroy() {
+        this.stop();
+        window.clearTimeout(this._commitTimer);
+    },
+});
+
 window.typingIndicator = (config) => ({
     otherUserName: config.otherUserName,
     conversationKey: config.conversationKey,
