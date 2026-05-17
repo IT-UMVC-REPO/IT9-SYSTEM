@@ -5,6 +5,7 @@ use App\Models\ConversationGroupMember;
 use App\Models\Order;
 use App\Models\VideoCall;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Cache;
 
 Broadcast::channel('order.{orderId}', function ($user, int $orderId): bool {
     $order = Order::query()
@@ -73,24 +74,15 @@ Broadcast::channel('call.{callId}', function ($user, int $callId): bool {
         return false;
     }
 
-    return ConversationGroupMember::query()
-        ->where('group_id', $call->group_id)
-        ->where('user_id', $user->id)
-        ->exists();
+    return userBelongsToConversationGroup((int) $user->id, (int) $call->group_id);
 });
 
 Broadcast::channel('group.{groupId}', function ($user, int $groupId): bool {
-    return ConversationGroupMember::query()
-        ->where('group_id', $groupId)
-        ->where('user_id', $user->id)
-        ->exists();
+    return userBelongsToConversationGroup((int) $user->id, $groupId);
 });
 
 Broadcast::channel('presence.group.{groupId}', function ($user, int $groupId): array|false {
-    $isMember = ConversationGroupMember::query()
-        ->where('group_id', $groupId)
-        ->where('user_id', $user->id)
-        ->exists();
+    $isMember = userBelongsToConversationGroup((int) $user->id, $groupId);
 
     if (! $isMember) {
         return false;
@@ -114,3 +106,17 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('admin.audit', function ($user): bool {
     return $user->effectiveMarketplaceRole() === UserRole::Admin;
 });
+
+if (! function_exists('userBelongsToConversationGroup')) {
+    function userBelongsToConversationGroup(int $userId, int $groupId): bool
+    {
+        return Cache::remember(
+            "broadcast:group-member:{$groupId}:{$userId}",
+            now()->addSeconds(10),
+            fn (): bool => ConversationGroupMember::query()
+                ->where('group_id', $groupId)
+                ->where('user_id', $userId)
+                ->exists(),
+        );
+    }
+}

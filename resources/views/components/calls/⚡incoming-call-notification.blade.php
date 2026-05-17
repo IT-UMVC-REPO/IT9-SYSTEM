@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\ConversationGroup;
-use App\Models\ConversationGroupMember;
 use Livewire\Component;
 
 new class extends Component
@@ -47,14 +46,8 @@ new class extends Component
 
         $listeners = [
             'echo-private:calls.'.auth()->id().',.VideoCallInitiated' => 'showDirectCall',
+            'echo-private:calls.'.auth()->id().',.GroupCallInitiated' => 'showGroupCall',
         ];
-
-        ConversationGroupMember::query()
-            ->where('user_id', auth()->id())
-            ->pluck('group_id')
-            ->each(function (int $groupId) use (&$listeners): void {
-                $listeners['echo-private:group.'.$groupId.',.GroupCallInitiated'] = 'showGroupCall';
-            });
 
         return $listeners;
     }

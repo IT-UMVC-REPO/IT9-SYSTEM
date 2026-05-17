@@ -163,8 +163,19 @@ test('messaging views use realtime-first fallback polling', function () {
         ->toContain('wire:poll.visible.30s')
         ->and($sidebar)
         ->toContain('wire:poll.visible.60s')
+        ->toContain('deferPresence: true')
+        ->toContain('presenceDelay: 2500')
         ->and($unreadBadge)
         ->toContain('wire:poll.visible.60s');
+});
+
+test('conversation sidebar defers bulk presence subscriptions past initial render', function () {
+    $sidebar = file_get_contents(resource_path('views/components/messages/⚡conversation-sidebar.blade.php'));
+
+    expect($sidebar)
+        ->toContain('deferPresence: true')
+        ->toContain('presenceDelay: 2500')
+        ->toContain('conversations: @js($this->directPresenceConversations())');
 });
 
 test('reverb allows client whispers on private channels', function () {

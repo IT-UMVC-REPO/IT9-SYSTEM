@@ -673,6 +673,44 @@ test('group call banner is visible while the first pending caller waits', functi
         ->assertSee('Join call');
 });
 
+test('group call initiation also broadcasts to member call channels', function () {
+    $creator = User::factory()->create();
+    $member = User::factory()->create();
+    $group = createMessagingGroup($creator, [$member]);
+
+    $call = VideoCall::query()->create([
+        'caller_id' => $creator->getKey(),
+        'receiver_id' => null,
+        'group_id' => $group->getKey(),
+        'is_group_call' => true,
+        'conversation_key' => 'group-'.$group->getKey(),
+        'status' => VideoCallStatus::Pending,
+        'created_at' => now(),
+    ]);
+
+    $channels = collect((new GroupCallInitiated($call))->broadcastOn())
+        ->map(fn ($channel): string => $channel->name)
+        ->all();
+
+    expect($channels)
+        ->toContain('private-group.'.$group->getKey())
+        ->toContain('private-calls.'.$creator->getKey())
+        ->toContain('private-calls.'.$member->getKey());
+});
+
+test('messaging performance indexes cover realtime auth and group thread hot paths', function () {
+    $migration = collect(glob(database_path('migrations/*_add_realtime_messaging_performance_indexes.php')))
+        ->map(fn (string $path): string => file_get_contents($path))
+        ->first();
+
+    expect($migration)->not->toBeNull()
+        ->and($migration)
+        ->toContain('conversation_group_members_user_group_read_idx')
+        ->toContain('group_messages_group_created_id_idx')
+        ->toContain('video_calls_group_status_created_idx')
+        ->toContain('video_call_participants_call_left_user_idx');
+});
+
 test('group call routes expire stale calls before starting or joining', function () {
     Event::fake([
         GroupCallInitiated::class,

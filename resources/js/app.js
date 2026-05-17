@@ -389,6 +389,7 @@ window.conversationSidebarPresence = (config) => ({
     channels: [],
     initialized: false,
     pendingHydrations: 0,
+    presenceTimer: null,
 
     init() {
         if (!window.Echo) {
@@ -403,6 +404,18 @@ window.conversationSidebarPresence = (config) => ({
             return;
         }
 
+        if (config.deferPresence) {
+            this.presenceTimer = setTimeout(() => {
+                this.joinPresenceChannels(conversations);
+            }, Number(config.presenceDelay ?? 2500));
+
+            return;
+        }
+
+        this.joinPresenceChannels(conversations);
+    },
+
+    joinPresenceChannels(conversations) {
         conversations.forEach((conversation) => {
             const channelName = `presence.conversation.${conversation.key}`;
             const otherUserId = Number(conversation.userId);
@@ -449,6 +462,7 @@ window.conversationSidebarPresence = (config) => ({
             return;
         }
 
+        clearTimeout(this.presenceTimer);
         this.channels.forEach((channel) => window.Echo.leave(channel));
         this.channels = [];
     },

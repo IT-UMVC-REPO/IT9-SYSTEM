@@ -167,6 +167,8 @@ new class extends Component
     wire:poll.visible.60s
     x-data="conversationSidebarPresence({
         conversations: @js($this->directPresenceConversations()),
+        deferPresence: true,
+        presenceDelay: 2500,
     })"
     x-init="init()"
     x-on:destroy="destroy()"

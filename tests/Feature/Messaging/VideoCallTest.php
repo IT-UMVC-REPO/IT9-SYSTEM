@@ -437,6 +437,15 @@ test('call feature bootstrap owns rate limiting secure requests and private call
         ->toContain('navigator.maxTouchPoints > 1');
 });
 
+test('global incoming call listener uses the user channel instead of every group channel', function () {
+    $component = file_get_contents(resource_path('views/components/calls/⚡incoming-call-notification.blade.php'));
+
+    expect($component)
+        ->toContain("'echo-private:calls.'.auth()->id().',.VideoCallInitiated' => 'showDirectCall'")
+        ->toContain("'echo-private:calls.'.auth()->id().',.GroupCallInitiated' => 'showGroupCall'")
+        ->not->toContain('ConversationGroupMember::query()');
+});
+
 test('guests cannot read call ice server configuration', function () {
     $this->getJson(route('calls.ice-servers'))
         ->assertUnauthorized();

@@ -215,12 +215,29 @@ class GroupConversation extends Component
 
     public function markRead(): void
     {
-        ConversationGroupMember::query()
+        $latestMessageAt = GroupMessage::query()
+            ->where('group_id', $this->groupId)
+            ->latest('created_at')
+            ->latest('id')
+            ->value('created_at');
+
+        if ($latestMessageAt === null) {
+            return;
+        }
+
+        $updatedCount = ConversationGroupMember::query()
             ->where('group_id', $this->groupId)
             ->where('user_id', auth()->id())
+            ->where(function (Builder $query) use ($latestMessageAt): void {
+                $query
+                    ->whereNull('last_read_at')
+                    ->orWhere('last_read_at', '<', $latestMessageAt);
+            })
             ->update(['last_read_at' => now()]);
 
-        $this->dispatch('message-marked-read');
+        if ($updatedCount > 0) {
+            $this->dispatch('message-marked-read');
+        }
     }
 
     public function setReplyTo(int $messageId): void
@@ -484,6 +501,7 @@ class GroupConversation extends Component
                 'reactions.user:id,name',
             ])
             ->latest('created_at')
+            ->latest('id')
             ->limit(100)
             ->get()
             ->sortBy('created_at')
