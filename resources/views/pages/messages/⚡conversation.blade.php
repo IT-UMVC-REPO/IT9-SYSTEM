@@ -581,6 +581,7 @@
                                 otherUserName: @js($this->otherUser->name),
                             }),
                             draftMessage: @js($newMessage),
+                            showEmoji: false,
                             messageLength() {
                                 return this.draftMessage.length;
                             },
@@ -663,7 +664,7 @@
                             <span x-text="`${otherUserName} is typing...`" class="italic"></span>
                         </div>
 
-                        <div class="flex items-center gap-2 relative" x-data="{ showEmoji: false }">
+                        <div class="flex items-center gap-2 relative">
                             <button type="button" x-on:click="showEmoji = !showEmoji" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
                                 <flux:icon.face-smile variant="mini" />
                             </button>

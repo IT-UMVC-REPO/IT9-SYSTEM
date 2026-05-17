@@ -788,6 +788,7 @@
                                 participantSummaries: @js($this->groupParticipantSummaries()),
                             }),
                             draftMessage: @js($newMessage),
+                            showEmoji: false,
                             handlePaste(event) {
                                 const imageFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
 
@@ -871,7 +872,7 @@
                             <span x-text="typingLabel" class="italic"></span>
                         </div>
 
-                        <div class="flex items-center gap-2 relative" x-data="{ showEmoji: false }">
+                        <div class="flex items-center gap-2 relative">
                             <button type="button" x-on:click="showEmoji = !showEmoji" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white" aria-label="{{ __('Emoji') }}">
                                 <flux:icon.face-smile variant="mini" />
                             </button>
