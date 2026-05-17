@@ -98,6 +98,7 @@
                 answer: @js(route('calls.group.answer', ['call' => '__CALL_ID__'])),
                 end: @js(route('calls.group.end', ['call' => '__CALL_ID__'])),
                 conversation: @js(route('messages.group', ['groupId' => $groupId])),
+                inbox: @js(route('messages.inbox')),
             },
         })"
         x-init="$el.__groupConversationVideoCall = $data;
@@ -158,7 +159,7 @@
                     class="absolute left-0 right-0 top-0 z-30 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5">
                     <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/50 px-3 py-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
                         <div class="flex min-w-0 items-center gap-3">
-                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="leaveCall()"
+                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="keepAliveOnNavigate()"
                                 class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
                                 aria-label="{{ __('Back to messages') }}">
                                 <flux:icon.arrow-left variant="mini" />

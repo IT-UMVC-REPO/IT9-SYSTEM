@@ -28,6 +28,18 @@ const streamEntriesFrom = (streams) => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
+const pipIcon = (name) => {
+    const icons = {
+        camera: '<path d="M15 10l4.5-3v10L15 14v-4z"/><path d="M3.75 7.75A1.75 1.75 0 0 1 5.5 6h7.75A1.75 1.75 0 0 1 15 7.75v8.5A1.75 1.75 0 0 1 13.25 18H5.5a1.75 1.75 0 0 1-1.75-1.75v-8.5z"/>',
+        end: '<path d="M4.5 13.5c4-3.5 11-3.5 15 0"/><path d="M8 12.25l-1.6 2.4a1.5 1.5 0 0 0 1.25 2.35h2.1a1.5 1.5 0 0 0 1.5-1.5v-1.1"/><path d="M16 12.25l1.6 2.4A1.5 1.5 0 0 1 16.35 17h-2.1a1.5 1.5 0 0 1-1.5-1.5v-1.1"/>',
+        microphone: '<path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/><path d="M8 21h8"/>',
+        return: '<path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>',
+        screen: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7A2.5 2.5 0 0 1 17.5 15h-11A2.5 2.5 0 0 1 4 12.5v-7z"/><path d="M12 15v4"/><path d="M8 19h8"/>',
+    };
+
+    return `<svg data-pip-icon="${name}" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] ?? ''}</svg>`;
+};
+
 const initialOverlayPosition = () => ({
     x: Math.max(overlayPadding, window.innerWidth - overlaySize.width - 24),
     y: Math.max(overlayPadding, window.innerHeight - overlaySize.height - 24),
@@ -46,6 +58,8 @@ export const createPipManager = () => ({
     activeCall: null,
     callKind: 'direct',
     title: 'Call',
+    returnUrl: null,
+    exitUrl: null,
     pagehideBehavior: 'overlay',
     dragging: false,
     dragOffset: { x: 0, y: 0 },
@@ -142,7 +156,11 @@ export const createPipManager = () => ({
         this.activeCall = call;
         this.callKind = options.kind ?? (call.groupId ? 'group' : 'direct');
         this.title = options.title ?? call.groupName ?? call.otherUserName ?? 'Call';
+        this.returnUrl = options.returnUrl ?? call.returnUrl ?? window.location.href;
+        this.exitUrl = options.exitUrl ?? call.exitUrl ?? null;
         this.pagehideBehavior = options.pagehideBehavior ?? this.pagehideBehavior;
+        call.returnUrl = this.returnUrl;
+        call.exitUrl = this.exitUrl;
         this.sync(call);
     },
 
@@ -308,14 +326,14 @@ export const createPipManager = () => ({
                         <strong data-pip-title></strong>
                         <span data-pip-status></span>
                     </div>
-                    <button type="button" data-action="overlay" title="Return to tab">Tab</button>
+                    <button type="button" data-action="return" title="Return to call" aria-label="Return to call">${pipIcon('return')}</button>
                 </header>
                 <section class="pip-grid" data-pip-grid></section>
                 <footer class="pip-controls">
-                    <button type="button" data-action="microphone" title="Mute microphone">Mic</button>
-                    <button type="button" data-action="camera" title="Turn camera off">Cam</button>
-                    <button type="button" data-action="screen" title="Share screen">Share</button>
-                    <button type="button" data-end data-action="end" title="End call">End</button>
+                    <button type="button" data-action="microphone" title="Mute microphone" aria-label="Mute microphone">${pipIcon('microphone')}</button>
+                    <button type="button" data-action="camera" title="Turn camera off" aria-label="Turn camera off">${pipIcon('camera')}</button>
+                    <button type="button" data-action="screen" title="Share screen" aria-label="Share screen">${pipIcon('screen')}</button>
+                    <button type="button" data-end data-action="end" title="End call" aria-label="End call">${pipIcon('end')}</button>
                 </footer>
             </main>
         `;
@@ -504,6 +522,29 @@ export const createPipManager = () => ({
         this.pipWindow = null;
     },
 
+    returnToCall() {
+        const targetUrl = this.activeCall?.returnUrl ?? this.returnUrl ?? window.location.href;
+
+        this.active = false;
+        this.minimized = true;
+
+        void this.closePipWindow();
+        this.navigateToUrl(targetUrl);
+    },
+
+    navigateToUrl(targetUrl) {
+        if (!targetUrl) {
+            return;
+        }
+
+        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
+            window.Livewire.navigate(targetUrl);
+            return;
+        }
+
+        window.location.href = targetUrl;
+    },
+
     forgetCallState() {
         this.activeCall = null;
         this.localStream = null;
@@ -512,6 +553,8 @@ export const createPipManager = () => ({
         this.participants = [];
         this.callKind = 'direct';
         this.title = 'Call';
+        this.returnUrl = null;
+        this.exitUrl = null;
     },
 
     isLiveCall(call = this.activeCall) {
@@ -559,6 +602,8 @@ export const createPipManager = () => ({
             void this.toggleScreenShare();
         } else if (action === 'end') {
             void this.endCall();
+        } else if (action === 'return') {
+            this.returnToCall();
         } else if (action === 'overlay') {
             this.switchToOverlay();
             void this.closePipWindow();

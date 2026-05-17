@@ -34,9 +34,11 @@ export const sukiGroupCallPip = {
         this.attachCall(call);
         call.returnUrl = returnUrl ?? call.returnUrl ?? window.location.href;
 
-        void window.sukiPipManager?.enter(call, {
+        return window.sukiPipManager?.enter(call, {
             kind: 'group',
             title: call.groupName ?? 'Group call',
+            returnUrl: call.returnUrl,
+            exitUrl: call.routes?.inbox ?? null,
         });
     },
 
@@ -55,13 +57,15 @@ export const sukiGroupCallPip = {
     exitToConversation() {
         const targetUrl = this.activeCall?.groupConversationUrl?.() ?? this.activeCall?.returnUrl ?? window.location.href;
 
-        this.hide(this.activeCall);
+        window.sukiPipManager?.returnToCall?.();
 
-        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
-            window.Livewire.navigate(targetUrl);
-            return;
+        if (!window.sukiPipManager?.navigateToUrl) {
+            if (window.Livewire && typeof window.Livewire.navigate === 'function') {
+                window.Livewire.navigate(targetUrl);
+                return;
+            }
+
+            window.location.href = targetUrl;
         }
-
-        window.location.href = targetUrl;
     },
 };

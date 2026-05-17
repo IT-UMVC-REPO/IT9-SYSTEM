@@ -819,6 +819,44 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('$this->skipRender();');
 });
 
+test('pip exits the full call screen without ending the call', function () {
+    $conversation = messagingBladeSource('conversation');
+    $groupConversation = messagingBladeSource('group-conversation');
+    $videoCall = file_get_contents(resource_path('js/video-call.js'));
+    $groupCall = file_get_contents(resource_path('js/group-call.js'));
+    $pipManager = file_get_contents(resource_path('js/pip-manager.js'));
+    $callOverlay = file_get_contents(resource_path('views/components/⚡call-overlay.blade.php'));
+
+    expect($groupConversation)
+        ->toContain('href="{{ route(\'messages.inbox\') }}" wire:navigate x-on:click="keepAliveOnNavigate()"')
+        ->not->toContain('href="{{ route(\'messages.inbox\') }}" wire:navigate x-on:click="leaveCall()"')
+        ->and($conversation)
+        ->toContain('inbox: @js(route(\'messages.inbox\'))')
+        ->and($videoCall)
+        ->toContain('navigateAwayFromCallScreen()')
+        ->toContain('this.navigateAwayFromCallScreen();')
+        ->toContain('returnUrl: window.location.href')
+        ->toContain('window.Livewire.navigate(targetUrl)')
+        ->and($groupCall)
+        ->toContain('navigateAwayFromCallScreen()')
+        ->toContain('this.navigateAwayFromCallScreen();')
+        ->toContain('returnUrl: this.groupConversationUrl()')
+        ->toContain('window.Livewire.navigate(targetUrl)')
+        ->and($pipManager)
+        ->toContain('returnToCall()')
+        ->toContain('data-action="return"')
+        ->toContain("pipIcon('microphone')")
+        ->toContain('aria-label="Mute microphone"')
+        ->not->toContain('>Mic<')
+        ->not->toContain('>Cam<')
+        ->not->toContain('>Share<')
+        ->not->toContain('>End<')
+        ->not->toContain('>Tab<')
+        ->and($callOverlay)
+        ->toContain('returnToCall()')
+        ->toContain('Return to call');
+});
+
 test('group conversation call overlay uses desktop tiles and a mobile filmstrip', function () {
     $groupConversation = messagingBladeSource('group-conversation');
 

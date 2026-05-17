@@ -64,6 +64,7 @@
                 answer: @js(route('calls.answer', ['call' => '__CALL_ID__'])),
                 decline: @js(route('calls.decline', ['call' => '__CALL_ID__'])),
                 end: @js(route('calls.end', ['call' => '__CALL_ID__'])),
+                inbox: @js(route('messages.inbox')),
             },
         }) }" x-init="$el.__conversationVideoCall = $data;
         init();

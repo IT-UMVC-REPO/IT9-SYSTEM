@@ -106,7 +106,17 @@ export function iceCandidateSignal(candidate) {
     };
 }
 
-export const conversationVideoCall = (config) => ({
+const reusableConversationCallFor = (config) => {
+    const activeCall = window.__conversationVideoCallInstance;
+
+    if (!activeCall?.isReusableForConfig?.(config)) {
+        return null;
+    }
+
+    return activeCall.adoptConfig(config);
+};
+
+export const conversationVideoCall = (config) => reusableConversationCallFor(config) ?? ({
     authUserId: config.authUserId,
     conversationKey: config.conversationKey,
     otherUserId: config.otherUserId,
@@ -150,8 +160,34 @@ export const conversationVideoCall = (config) => ({
     previewPosition: { right: 16, bottom: 96 },
     persistentRemoteStream: null,
 
+    adoptConfig(nextConfig) {
+        this.authUserId = nextConfig.authUserId;
+        this.conversationKey = nextConfig.conversationKey;
+        this.otherUserId = nextConfig.otherUserId;
+        this.otherUserName = nextConfig.otherUserName;
+        this.otherUserInitials = nextConfig.otherUserInitials ?? '?';
+        this.realtimeEnabled = nextConfig.realtimeEnabled;
+        this.routes = nextConfig.routes;
+
+        return this;
+    },
+
+    isReusableForConfig(nextConfig) {
+        return Number(this.otherUserId) === Number(nextConfig.otherUserId)
+            && this.callId !== null
+            && this.isCallInProgress();
+    },
+
     init() {
-        if (this.initialized || !this.realtimeEnabled || !window.Echo) {
+        if (this.initialized) {
+            window.__conversationVideoCallInstance = this;
+            this.setVideoSource(localVideoElementId, this.localStream);
+            this.setVideoSource(localVideoBackgroundElementId, this.localStream);
+            this.setVideoSource(remoteVideoElementId, this.persistentRemoteStream);
+            return;
+        }
+
+        if (!this.realtimeEnabled || !window.Echo) {
             return;
         }
 
@@ -1057,11 +1093,32 @@ export const conversationVideoCall = (config) => ({
         await window.sukiPipManager.enter(this, {
             kind: 'direct',
             title: this.otherUserName,
+            returnUrl: window.location.href,
+            exitUrl: this.routes?.inbox ?? null,
         });
+
+        if (window.sukiPipManager.active) {
+            this.navigateAwayFromCallScreen();
+        }
     },
 
     async exitPip() {
         window.sukiPipManager?.hide(this);
+    },
+
+    navigateAwayFromCallScreen() {
+        const targetUrl = this.routes?.inbox;
+
+        if (!targetUrl || window.location.href === targetUrl) {
+            return;
+        }
+
+        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
+            window.Livewire.navigate(targetUrl);
+            return;
+        }
+
+        window.location.href = targetUrl;
     },
 
     isMobileDevice() {

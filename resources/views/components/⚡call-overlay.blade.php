@@ -48,6 +48,16 @@ new class extends Component
                 <button
                     type="button"
                     x-show="! $store.pipManager?.minimized"
+                    x-on:click.stop="$store.pipManager?.returnToCall()"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                    aria-label="{{ __('Return to call') }}"
+                    title="{{ __('Return to call') }}"
+                >
+                    <flux:icon.arrow-top-right-on-square variant="micro" />
+                </button>
+                <button
+                    type="button"
+                    x-show="! $store.pipManager?.minimized"
                     x-on:click.stop="$store.pipManager?.minimize()"
                     class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
                     aria-label="{{ __('Minimize call') }}"

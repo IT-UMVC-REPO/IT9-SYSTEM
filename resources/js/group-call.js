@@ -696,17 +696,38 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         return Boolean(window.sukiGroupCallPip);
     },
 
-    enterPip() {
+    async enterPip() {
         if (!this.isPipSupported() || !this.isCallInProgress()) {
             return;
         }
 
         this.exposeActiveGroupCall();
-        window.sukiGroupCallPip.enter(this, this.groupConversationUrl());
+        const pipOptions = { returnUrl: this.groupConversationUrl() };
+        this.returnUrl = pipOptions.returnUrl;
+        await window.sukiGroupCallPip.enter(this, pipOptions.returnUrl);
+
+        if (window.sukiPipManager?.active) {
+            this.navigateAwayFromCallScreen();
+        }
     },
 
     exitPip() {
         window.sukiGroupCallPip?.hide(this);
+    },
+
+    navigateAwayFromCallScreen() {
+        const targetUrl = this.routes?.inbox;
+
+        if (!targetUrl || window.location.href === targetUrl) {
+            return;
+        }
+
+        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
+            window.Livewire.navigate(targetUrl);
+            return;
+        }
+
+        window.location.href = targetUrl;
     },
 
     async updateCameraCapabilities() {
