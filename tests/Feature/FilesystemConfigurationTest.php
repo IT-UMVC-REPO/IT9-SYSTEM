@@ -89,13 +89,40 @@ test('railway deploy command refreshes the storage link fallback', function () {
 
 test('railway web process only serves http traffic', function () {
     expect(file_get_contents(base_path('railway.toml')))
-        ->toContain('php artisan serve --host=0.0.0.0 --port=${PORT}')
+        ->toContain('builder = "DOCKERFILE"')
+        ->toContain('frankenphp run --config /app/Caddyfile')
+        ->toContain('php artisan config:cache')
+        ->toContain('php artisan route:cache')
+        ->toContain('php artisan view:cache')
+        ->not->toContain('php artisan serve')
         ->not->toContain('queue:work');
+});
+
+test('frankenphp docker image includes the runtime extensions the railway app uses', function () {
+    expect(file_get_contents(base_path('Dockerfile')))
+        ->toContain('FROM dunglas/frankenphp:php8.5-bookworm')
+        ->toContain('pdo_mysql')
+        ->toContain('redis')
+        ->toContain('intl')
+        ->toContain('opcache')
+        ->toContain('COPY --from=php-base /app/vendor ./vendor')
+        ->toContain('BROADCAST_CONNECTION=log')
+        ->toContain('FILESYSTEM_PUBLIC_URL=http://localhost/public-storage')
+        ->toContain('npm run build');
+});
+
+test('frankenphp caddyfile serves laravel through the public directory', function () {
+    expect(file_get_contents(base_path('Caddyfile')))
+        ->toContain(':{$PORT}')
+        ->toContain('root * /app/public')
+        ->toContain('php_server')
+        ->toContain('try_files {path} index.php');
 });
 
 test('railway worker process handles queued verification mail', function () {
     expect(file_get_contents(base_path('railway-worker.toml')))
-        ->toContain('php artisan queue:work ${QUEUE_CONNECTION:-redis} --tries=3 --sleep=1 --timeout=90');
+        ->toContain('builder = "DOCKERFILE"')
+        ->toContain("sh -lc 'php artisan config:cache && exec php artisan queue:work \${QUEUE_CONNECTION:-redis} --tries=3 --sleep=1 --timeout=90'");
 });
 
 /**
