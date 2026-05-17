@@ -37,6 +37,15 @@ test('authenticated customers can see the vendor registration form', function ()
         ->assertSee('Submit application');
 });
 
+test('vendor registration sample product stock uses an optimistic stepper', function () {
+    $customer = User::factory()->create();
+
+    Livewire::actingAs($customer)
+        ->test('pages::vendor.registration')
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee("\$wire.\$set('sampleProducts.0.stock_quantity'", false);
+});
+
 test('approved vendors are redirected to the vendor dashboard', function () {
     $vendor = User::factory()->vendor()->create();
     VendorProfile::factory()->for($vendor, 'user')->approved()->create();

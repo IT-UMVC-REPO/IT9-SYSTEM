@@ -641,15 +641,15 @@ new #[Title('Create product')] class extends Component {
 
                                 <flux:field>
                                     <flux:label>{{ __('Stock quantity') }}</flux:label>
-                                        <flux:input.group>
-                                            <flux:input wire:model.live.debounce.250ms="stock_quantity" type="number"
-                                                min="0" step="1" class:input="h-11" required />
-                                            @if ($selectedUnit)
-                                                <flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}
-                                                </flux:input.group.suffix>
-                                            @endif
-                                        </flux:input.group>
-                                        <flux:error name="stock_quantity" />
+                                    <x-integer-stepper
+                                        model="stock_quantity"
+                                        :value="$stock_quantity"
+                                        :min="0"
+                                        :max="999999"
+                                        :suffix="$selectedUnit?->abbreviation()"
+                                        required
+                                    />
+                                    <flux:error name="stock_quantity" />
                                 </flux:field>
                                 @if ($this->pricePreview)
                                     <p class="text-sm font-semibold text-[var(--brand-700)] dark:text-[var(--brand-300)]">
@@ -961,15 +961,13 @@ new #[Title('Create product')] class extends Component {
 
                                     <flux:field>
                                         <flux:label>{{ __('Stock') }}</flux:label>
-                                        <flux:input.group>
-                                            <flux:input
-                                                wire:model.live.debounce.250ms="additionalVariants.{{ $index }}.stock_quantity"
-                                                type="number" min="0" step="1" />
-                                            @if ($variantUnit)
-                                                <flux:input.group.suffix>{{ $variantUnit->symbol() }}
-                                                </flux:input.group.suffix>
-                                            @endif
-                                        </flux:input.group>
+                                        <x-integer-stepper
+                                            model="additionalVariants.{{ $index }}.stock_quantity"
+                                            :value="$variant['stock_quantity'] ?? 0"
+                                            :min="0"
+                                            :max="999999"
+                                            :suffix="$variantUnit?->symbol()"
+                                        />
                                         <flux:error name="additionalVariants.{{ $index }}.stock_quantity" />
                                     </flux:field>
                                 </div>

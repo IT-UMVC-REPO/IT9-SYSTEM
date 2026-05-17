@@ -33,44 +33,54 @@
                     </p>
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-2">
-                    <button
-                        type="button"
-                        wire:click="$set('fulfillment_method', 'delivery')"
-                        @class([
-                            'relative rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97]',
-                            'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $fulfillment_method === 'delivery',
-                            'border border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $fulfillment_method !== 'delivery',
-                        ])
+                <div x-data="{ fulfillmentMethod: $wire.entangle('fulfillment_method').live }" class="grid gap-3 sm:grid-cols-2">
+                    <label
+                        for="checkout-fulfillment-delivery"
+                        x-on:click="fulfillmentMethod = 'delivery'"
+                        class="relative cursor-pointer rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97] focus-within:outline-2 focus-within:outline-offset-3 focus-within:outline-[var(--brand-500)]"
+                        x-bind:class="fulfillmentMethod === 'delivery'
+                            ? 'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white'
+                            : 'border border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300'"
                     >
-                        @if ($fulfillment_method === 'delivery')
-                            <span class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
-                                <i class="fa-solid fa-check text-[10px]"></i>
-                            </span>
-                        @endif
+                        <input
+                            id="checkout-fulfillment-delivery"
+                            type="radio"
+                            value="delivery"
+                            wire:model.live="fulfillment_method"
+                            x-model="fulfillmentMethod"
+                            class="sr-only"
+                        >
+                        <span x-cloak x-show="fulfillmentMethod === 'delivery'" class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </span>
                         <i class="fa-solid fa-motorcycle"></i>
                         <span class="mt-3 block text-sm font-bold">{{ __('Deliver to my address') }}</span>
                         <span class="mt-1 block text-xs leading-5 opacity-80">{{ __('A rider brings the order to your selected pin.') }}</span>
-                    </button>
+                    </label>
 
-                    <button
-                        type="button"
-                        wire:click="$set('fulfillment_method', 'self_pickup')"
-                        @class([
-                            'relative rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97]',
-                            'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white' => $fulfillment_method === 'self_pickup',
-                            'border border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300' => $fulfillment_method !== 'self_pickup',
-                        ])
+                    <label
+                        for="checkout-fulfillment-pickup"
+                        x-on:click="fulfillmentMethod = 'self_pickup'"
+                        class="relative cursor-pointer rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.97] focus-within:outline-2 focus-within:outline-offset-3 focus-within:outline-[var(--brand-500)]"
+                        x-bind:class="fulfillmentMethod === 'self_pickup'
+                            ? 'border-2 border-[var(--brand-500)] bg-[var(--brand-600)] text-white'
+                            : 'border border-stone-200 bg-white text-neutral-700 hover:border-[var(--brand-300)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300'"
                     >
-                        @if ($fulfillment_method === 'self_pickup')
-                            <span class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
-                                <i class="fa-solid fa-check text-[10px]"></i>
-                            </span>
-                        @endif
+                        <input
+                            id="checkout-fulfillment-pickup"
+                            type="radio"
+                            value="self_pickup"
+                            wire:model.live="fulfillment_method"
+                            x-model="fulfillmentMethod"
+                            class="sr-only"
+                        >
+                        <span x-cloak x-show="fulfillmentMethod === 'self_pickup'" class="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--brand-600)]">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </span>
                         <i class="fa-solid fa-store"></i>
                         <span class="mt-3 block text-sm font-bold">{{ __("I'll pick it up") }}</span>
                         <span class="mt-1 block text-xs leading-5 opacity-80">{{ __('Collect from the vendor stall when it is ready.') }}</span>
-                    </button>
+                    </label>
                 </div>
 
                 @if ($fulfillment_method === 'delivery')

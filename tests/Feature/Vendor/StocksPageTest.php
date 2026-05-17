@@ -38,6 +38,33 @@ test('vendor can visit the stocks page', function () {
         ->assertDontSee('brand-panel suki-reveal px-6 py-14 text-center', false);
 });
 
+test('stocks page integer quantity fields use optimistic steppers', function () {
+    [$vendorUser, $vendorProfile] = stocksPageVendor();
+    $product = stocksPageProduct($vendorProfile, ['stock_quantity' => 5]);
+    $variant = ProductUnitVariant::factory()->for($product)->create([
+        'unit' => ProductUnit::Bundle,
+        'stock_quantity' => 3,
+    ]);
+    ProductUnitVariant::factory()->for($product)->default()->create([
+        'unit' => ProductUnit::Piece,
+        'stock_quantity' => 5,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.stocks')
+        ->set('showThresholdEditor', true)
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee("\$wire.\$set('lowStockThreshold'", false)
+        ->call('startInlineEdit', $product->getKey())
+        ->assertSee("\$wire.\$set('inlineEdits.{$product->id}.quantity'", false)
+        ->call('cancelInlineEdit', $product->getKey())
+        ->call('startVariantInlineEdit', $variant->getKey())
+        ->assertSee("\$wire.\$set('variantInlineEdits.{$variant->id}.quantity'", false)
+        ->set('selectedIds', [$product->id])
+        ->call('openBulkModal', 'add')
+        ->assertSee("\$wire.\$set('bulkQuantity'", false);
+});
+
 test('non vendor is redirected away', function () {
     $customer = User::factory()->create();
 

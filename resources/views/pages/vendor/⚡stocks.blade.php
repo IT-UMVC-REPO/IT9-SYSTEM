@@ -543,7 +543,13 @@ new #[Title('Stock Management')] class extends Component {
             </button>
         @else
             <form wire:submit="updateThreshold" class="flex items-center gap-2">
-                <flux:input type="number" wire:model="lowStockThreshold" size="sm" min="1" max="9999" class="w-24" />
+                <x-integer-stepper
+                    model="lowStockThreshold"
+                    :value="$lowStockThreshold"
+                    :min="1"
+                    :max="9999"
+                    input-class="brand-stepper-input h-9 w-20 px-2 py-1 text-sm tabular-nums"
+                />
                 <flux:button type="submit" size="sm" variant="primary">{{ __('Save') }}</flux:button>
                 <flux:button type="button" size="sm" variant="ghost" wire:click="$set('showThresholdEditor', false)">
                     {{ __('Cancel') }}
@@ -730,7 +736,14 @@ new #[Title('Stock Management')] class extends Component {
                                             @endif
 
                                             <div class="flex items-center gap-2">
-                                                <flux:input type="number" wire:model.live="inlineEdits.{{ $product->id }}.quantity" min="0" max="999999" size="sm" class="w-28 tabular-nums" placeholder="{{ $product->stock_quantity }}" />
+                                                <x-integer-stepper
+                                                    model="inlineEdits.{{ $product->id }}.quantity"
+                                                    :value="$inlineEdits[$product->id]['quantity'] ?? 0"
+                                                    :min="0"
+                                                    :max="999999"
+                                                    :placeholder="$product->stock_quantity"
+                                                    input-class="brand-stepper-input h-9 w-24 px-2 py-1 text-sm tabular-nums"
+                                                />
                                                 <flux:button size="sm" variant="primary" wire:click="saveInlineEdit({{ $product->id }})">{{ __('Save') }}</flux:button>
                                                 <flux:button size="sm" variant="ghost" wire:click="cancelInlineEdit({{ $product->id }})">{{ __('Cancel') }}</flux:button>
                                             </div>
@@ -806,7 +819,13 @@ new #[Title('Stock Management')] class extends Component {
                                                                     </p>
 
                                                                     <div class="flex flex-wrap items-center gap-2">
-                                                                        <flux:input type="number" wire:model.live="variantInlineEdits.{{ $variant->id }}.quantity" min="0" max="999999" size="sm" class="w-28 tabular-nums" />
+                                                                        <x-integer-stepper
+                                                                            model="variantInlineEdits.{{ $variant->id }}.quantity"
+                                                                            :value="$variantInlineEdits[$variant->id]['quantity'] ?? 0"
+                                                                            :min="0"
+                                                                            :max="999999"
+                                                                            input-class="brand-stepper-input h-9 w-24 px-2 py-1 text-sm tabular-nums"
+                                                                        />
                                                                         <flux:button size="sm" variant="primary" wire:click="saveVariantInlineEdit({{ $variant->id }})">{{ __('Save') }}</flux:button>
                                                                         <flux:button size="sm" variant="ghost" wire:click="cancelVariantInlineEdit({{ $variant->id }})">{{ __('Cancel') }}</flux:button>
                                                                     </div>
@@ -918,7 +937,13 @@ new #[Title('Stock Management')] class extends Component {
                             {{ __('Set all to') }}
                         @endif
                     </flux:label>
-                    <flux:input type="number" wire:model="bulkQuantity" min="0" max="999999" autofocus />
+                    <x-integer-stepper
+                        model="bulkQuantity"
+                        :value="$bulkQuantity"
+                        :min="0"
+                        :max="999999"
+                        autofocus
+                    />
                     <flux:error name="bulkQuantity" />
                     <flux:description>
                         {{ __('This will be applied to all :n selected products.', ['n' => count($selectedIds)]) }}

@@ -199,7 +199,8 @@ test('vendor product forms use compact conversion controls and temporary upload 
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
         ->toContain('wire:model.live.debounce.250ms="price"')
         ->toContain('class:input="h-11"')
-        ->toContain('<flux:input.group.suffix>')
+        ->toContain('model="stock_quantity"')
+        ->toContain(':suffix="$selectedUnit?->abbreviation()"')
         ->toContain("__('How many :base per 1 :unit?'")
         ->toContain('border-2 border-[var(--brand-500)]')
         ->toContain('$productImageUpload->temporaryUrl()')
@@ -207,8 +208,8 @@ test('vendor product forms use compact conversion controls and temporary upload 
         ->not->toContain('border-l-4 border-l-[var(--brand-600)]')
         ->and($productEdit)
         ->toContain('<flux:input.group.prefix>&#8369;</flux:input.group.prefix>')
-        ->toContain('wire:model.live.debounce.250ms="stock_quantity" type="number" min="0" step="1" class:input="h-11"')
-        ->toContain('<flux:input.group.suffix>{{ $selectedUnit->abbreviation() }}</flux:input.group.suffix>')
+        ->toContain('model="stock_quantity"')
+        ->toContain(':suffix="$selectedUnit?->abbreviation()"')
         ->toContain('$productImageUpload->temporaryUrl()')
         ->not->toContain('php artisan storage:link')
         ->not->toContain('border-left-color: var(--brand-600)')
@@ -367,6 +368,25 @@ test('view transition names stay unique on conversation surfaces', function () {
         ->toContain('body > header')
         ->toContain('view-transition-name: suki-header')
         ->not->toContain("\n    header {\n        view-transition-name: suki-header;");
+});
+
+test('shared mobile shell constrains horizontal overflow', function () {
+    $appLayout = uiPolishBlade('views/layouts/app.blade.php');
+    $header = uiPolishBlade('views/layouts/app/header.blade.php');
+    $appCss = file_get_contents(resource_path('css/app.css'));
+
+    expect($appLayout)
+        ->toContain('min-w-0 overflow-x-clip')
+        ->toContain('class="suki-page-enter min-w-0 overflow-x-clip"')
+        ->and($header)
+        ->toContain('overflow-x-clip')
+        ->and($appCss)
+        ->toContain('max-width: 100%;')
+        ->toContain('overflow-wrap: anywhere;')
+        ->toContain('.brand-panel {')
+        ->toContain('.brand-button-primary {')
+        ->toContain('.brand-mobile-nav-link {')
+        ->toContain('min-width: 0;');
 });
 
 test('admin and notification list items constrain long text and unread borders uniformly', function () {

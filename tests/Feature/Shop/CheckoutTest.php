@@ -351,6 +351,22 @@ test('checkout only renders cash on delivery as a payment option', function () {
         ->assertDontSee('Payment service');
 });
 
+test('fulfillment choices use immediate radio binding instead of loading buttons', function () {
+    $customer = User::factory()->create([
+        'address' => '11 Victoria Plaza, Davao City',
+    ]);
+    seedCheckoutCart($customer);
+
+    $this->actingAs($customer)
+        ->get(route('shop.checkout'))
+        ->assertOk()
+        ->assertSee('wire:model.live="fulfillment_method"', false)
+        ->assertSee('value="delivery"', false)
+        ->assertSee('value="self_pickup"', false)
+        ->assertDontSee('wire:click="$set(\'fulfillment_method\', \'delivery\')"', false)
+        ->assertDontSee('wire:click="$set(\'fulfillment_method\', \'self_pickup\')"', false);
+});
+
 test('checkout rejects non cod payment method payloads', function () {
     $customer = User::factory()->create([
         'address' => '11 Victoria Plaza, Davao City',

@@ -284,15 +284,18 @@
                                                     />
                                                 </div>
 
-                                                <flux:input
-                                                    name="sampleProducts.{{ $index }}.stock_quantity"
-                                                    wire:model="sampleProducts.{{ $index }}.stock_quantity"
-                                                    :label="__('Stock quantity')"
-                                                    type="number"
-                                                    min="0"
-                                                    step="1"
-                                                    required
-                                                />
+                                                <flux:field>
+                                                    <flux:label>{{ __('Stock quantity') }}</flux:label>
+                                                    <x-integer-stepper
+                                                        model="sampleProducts.{{ $index }}.stock_quantity"
+                                                        name="sampleProducts.{{ $index }}.stock_quantity"
+                                                        :value="$sampleProduct['stock_quantity'] ?? 0"
+                                                        :min="0"
+                                                        :max="999999"
+                                                        required
+                                                    />
+                                                    <flux:error name="sampleProducts.{{ $index }}.stock_quantity" />
+                                                </flux:field>
                                             </div>
 
                                             <flux:select

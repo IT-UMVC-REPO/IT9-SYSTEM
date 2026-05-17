@@ -133,6 +133,28 @@ test('vendors can create products with an uploaded image', function () {
     Storage::disk('public')->assertExists($product->getRawOriginal('image'));
 });
 
+test('product forms use optimistic steppers for integer stock fields', function () {
+    $vendorUser = User::factory()->vendor()->create();
+    $vendorProfile = VendorProfile::factory()->for($vendorUser, 'user')->approved()->create();
+    $product = Product::factory()->for($vendorProfile, 'vendor')->create([
+        'stock_quantity' => 7,
+    ]);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-create')
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee("\$wire.\$set('stock_quantity'", false)
+        ->call('addVariant')
+        ->assertSee("\$wire.\$set('additionalVariants.0.stock_quantity'", false);
+
+    Livewire::actingAs($vendorUser)
+        ->test('pages::vendor.product-edit', ['product' => $product])
+        ->assertSee('sukiQuantityStepper({', false)
+        ->assertSee("\$wire.\$set('stock_quantity'", false)
+        ->call('addVariant')
+        ->assertSee("\$wire.\$set('additionalVariants.0.stock_quantity'", false);
+});
+
 test('vendors can create a product with multiple unit variants and choose the default', function () {
     Storage::fake('public');
 

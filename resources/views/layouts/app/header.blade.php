@@ -157,7 +157,7 @@
         x-on:keydown.escape.window="mobileMenuOpen = false"
         x-on:livewire:navigating.window="mobileMenuOpen = false"
         @class([
-            'brand-shell min-h-screen text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100',
+            'brand-shell min-h-screen overflow-x-clip text-neutral-800 antialiased dark:bg-zinc-950 dark:text-zinc-100',
             'overflow-hidden' => $isConversationSurface,
         ])
     >
