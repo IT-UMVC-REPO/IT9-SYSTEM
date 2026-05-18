@@ -10,6 +10,7 @@ use Illuminate\Contracts\Broadcasting\Broadcaster as BroadcasterContract;
 use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -530,6 +531,82 @@ test('shared-secret turn credentials are temporary and preferred over static cre
     } finally {
         Carbon::setTestNow();
     }
+});
+
+test('cloudflare turn credentials are generated server side and returned as ice servers', function () {
+    Http::fake([
+        'https://rtc.live.cloudflare.com/v1/turn/keys/cloudflare-key/credentials/generate-ice-servers' => Http::response([
+            'iceServers' => [
+                [
+                    'urls' => [
+                        'stun:stun.cloudflare.com:3478',
+                        'stun:stun.cloudflare.com:53',
+                    ],
+                ],
+                [
+                    'urls' => [
+                        'turn:turn.cloudflare.com:3478?transport=udp',
+                        'turn:turn.cloudflare.com:53?transport=udp',
+                        'turn:turn.cloudflare.com:80?transport=tcp',
+                        'turns:turn.cloudflare.com:443?transport=tcp',
+                    ],
+                    'username' => 'temporary-user',
+                    'credential' => 'temporary-credential',
+                ],
+            ],
+        ], 201),
+    ]);
+
+    config([
+        'webrtc.cloudflare_turn_key_id' => 'cloudflare-key',
+        'webrtc.cloudflare_turn_api_token' => 'cloudflare-token',
+        'webrtc.cloudflare_turn_ttl' => 600,
+        'webrtc.cloudflare_turn_endpoint' => 'https://rtc.live.cloudflare.com/v1/turn/keys',
+        'webrtc.ice_transport_policy' => 'all',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('calls.ice-servers'))
+        ->assertSuccessful()
+        ->assertJsonPath('ice_servers.0.urls.0', 'stun:stun.cloudflare.com:3478')
+        ->assertJsonPath('ice_servers.1.urls.0', 'turn:turn.cloudflare.com:3478?transport=udp')
+        ->assertJsonPath('ice_servers.1.urls.1', 'turn:turn.cloudflare.com:80?transport=tcp')
+        ->assertJsonPath('ice_servers.1.urls.2', 'turns:turn.cloudflare.com:443?transport=tcp')
+        ->assertJsonPath('ice_servers.1.username', 'temporary-user')
+        ->assertJsonPath('ice_servers.1.credential', 'temporary-credential')
+        ->assertJsonPath('ice_transport_policy', 'all');
+
+    Http::assertSent(function ($request): bool {
+        return $request->url() === 'https://rtc.live.cloudflare.com/v1/turn/keys/cloudflare-key/credentials/generate-ice-servers'
+            && $request->hasHeader('Authorization', 'Bearer cloudflare-token')
+            && $request['ttl'] === 600;
+    });
+});
+
+test('cloudflare turn failures fall back to configured static ice servers', function () {
+    Http::fake([
+        'https://rtc.live.cloudflare.com/*' => Http::response([], 503),
+    ]);
+
+    config([
+        'webrtc.cloudflare_turn_key_id' => 'cloudflare-key',
+        'webrtc.cloudflare_turn_api_token' => 'cloudflare-token',
+        'webrtc.cloudflare_turn_ttl' => 600,
+        'webrtc.stun_urls' => ['stun:stun.example.test:19302'],
+        'webrtc.turn_urls' => ['turn:turn.example.test:3478?transport=udp'],
+        'webrtc.turn_username' => 'static-user',
+        'webrtc.turn_credential' => 'static-secret',
+        'webrtc.turn_shared_secret' => null,
+        'webrtc.ice_transport_policy' => 'all',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson(route('calls.ice-servers'))
+        ->assertSuccessful()
+        ->assertJsonPath('ice_servers.0.urls.0', 'stun:stun.example.test:19302')
+        ->assertJsonPath('ice_servers.1.urls.0', 'turn:turn.example.test:3478?transport=udp')
+        ->assertJsonPath('ice_servers.1.username', 'static-user')
+        ->assertJsonPath('ice_servers.1.credential', 'static-secret');
 });
 
 test('video call signaling uses ably pusher-compatible echo credentials', function () {

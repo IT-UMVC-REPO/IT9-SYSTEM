@@ -19,8 +19,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -419,6 +421,12 @@ class VideoCallController extends Controller
      */
     private function iceServersFor(Request $request): array
     {
+        $cloudflareIceServers = $this->cloudflareIceServersFor($request);
+
+        if ($cloudflareIceServers !== null) {
+            return $cloudflareIceServers;
+        }
+
         $iceServers = array_map(
             static fn (string $url): array => ['urls' => [$url]],
             $this->configuredUrls('stun_urls'),
@@ -435,6 +443,87 @@ class VideoCallController extends Controller
         }
 
         return $iceServers;
+    }
+
+    /**
+     * @return array<int, array{urls: array<int, string>, username?: string, credential?: string}>|null
+     */
+    private function cloudflareIceServersFor(Request $request): ?array
+    {
+        $keyId = (string) config('webrtc.cloudflare_turn_key_id', '');
+        $apiToken = (string) config('webrtc.cloudflare_turn_api_token', '');
+
+        if (! filled($keyId) || ! filled($apiToken)) {
+            return null;
+        }
+
+        $ttl = max(60, (int) config('webrtc.cloudflare_turn_ttl', 3600));
+        $cacheSeconds = max(1, min(300, $ttl - 30));
+        $cacheKey = sprintf('webrtc:cloudflare-turn:%s:%s:%s', $request->user()->getKey(), sha1($keyId), $ttl);
+
+        try {
+            return Cache::remember($cacheKey, now()->addSeconds($cacheSeconds), function () use ($apiToken, $keyId, $ttl): array {
+                $endpoint = rtrim((string) config('webrtc.cloudflare_turn_endpoint'), '/');
+
+                $response = Http::asJson()
+                    ->acceptJson()
+                    ->withToken($apiToken)
+                    ->connectTimeout(2)
+                    ->timeout(5)
+                    ->retry(2, 150)
+                    ->post("{$endpoint}/{$keyId}/credentials/generate-ice-servers", [
+                        'ttl' => $ttl,
+                    ])
+                    ->throw()
+                    ->json('iceServers', []);
+
+                return $this->normalizeCloudflareIceServers($response);
+            });
+        } catch (Throwable $exception) {
+            Log::warning('Cloudflare TURN credential generation failed; falling back to configured ICE servers.', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @return array<int, array{urls: array<int, string>, username?: string, credential?: string}>
+     */
+    private function normalizeCloudflareIceServers(mixed $iceServers): array
+    {
+        if (! is_array($iceServers)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(function (mixed $server): ?array {
+            if (! is_array($server)) {
+                return null;
+            }
+
+            $urls = Arr::wrap($server['urls'] ?? []);
+            $urls = array_values(array_filter(array_map(
+                static fn (mixed $url): string => trim((string) $url),
+                $urls,
+            ), static fn (string $url): bool => $url !== '' && ! str_contains($url, ':53')));
+
+            if ($urls === []) {
+                return null;
+            }
+
+            $normalized = ['urls' => $urls];
+
+            if (filled($server['username'] ?? null)) {
+                $normalized['username'] = (string) $server['username'];
+            }
+
+            if (filled($server['credential'] ?? null)) {
+                $normalized['credential'] = (string) $server['credential'];
+            }
+
+            return $normalized;
+        }, $iceServers)));
     }
 
     /**

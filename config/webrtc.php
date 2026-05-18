@@ -55,5 +55,9 @@ return [
     'turn_credential' => env('WEBRTC_TURN_CREDENTIAL', 'openrelayproject'),
     'turn_shared_secret' => env('WEBRTC_TURN_SHARED_SECRET'),
     'turn_ttl' => (int) env('WEBRTC_TURN_TTL', 3600),
+    'cloudflare_turn_key_id' => env('WEBRTC_CLOUDFLARE_TURN_KEY_ID'),
+    'cloudflare_turn_api_token' => env('WEBRTC_CLOUDFLARE_TURN_API_TOKEN'),
+    'cloudflare_turn_ttl' => (int) env('WEBRTC_CLOUDFLARE_TURN_TTL', env('WEBRTC_TURN_TTL', 3600)),
+    'cloudflare_turn_endpoint' => env('WEBRTC_CLOUDFLARE_TURN_ENDPOINT', 'https://rtc.live.cloudflare.com/v1/turn/keys'),
     'ice_transport_policy' => env('WEBRTC_ICE_TRANSPORT_POLICY', 'all'),
 ];
