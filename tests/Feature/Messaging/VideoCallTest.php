@@ -10,6 +10,7 @@ use Illuminate\Contracts\Broadcasting\Broadcaster as BroadcasterContract;
 use Illuminate\Contracts\Broadcasting\Factory as BroadcastFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 function createVideoCallRecord(User $caller, User $receiver, array $overrides = []): VideoCall
@@ -432,7 +433,7 @@ test('call feature bootstrap owns rate limiting secure requests and private call
         ->toContain('app()->isProduction()')
         ->toContain('Video calls require HTTPS in production.')
         ->and($layout)
-        ->toContain('<livewire:call-overlay')
+        ->not->toContain('<livewire:call-overlay')
         ->toContain('serverMobile:')
         ->toContain('navigator.maxTouchPoints > 1');
 });
@@ -600,20 +601,19 @@ test('video call client uses native rtc peer connection and server-provided ice 
     $ringtone = file_get_contents(resource_path('js/ringtone.js'));
     $videoCall = file_get_contents(resource_path('js/video-call.js'));
     $groupCall = file_get_contents(resource_path('js/group-call.js'));
-    $groupCallPip = file_get_contents(resource_path('js/group-call-pip.js'));
     $videoCallControl = file_get_contents(resource_path('js/video-call-control.js'));
-    $pipManager = file_get_contents(resource_path('js/pip-manager.js'));
-    $callOverlay = file_get_contents(resource_path('views/components/⚡call-overlay.blade.php'));
 
     expect($app)
         ->toContain("import { RingtonePlayer } from './ringtone';")
-        ->toContain("import './pip-manager';")
+        ->not->toContain("import './pip-manager';")
         ->toContain('window.sukiRingtone')
         ->toContain('window.conversationVideoCall')
         ->toContain('window.groupConversationVideoCall')
         ->toContain('window.conversationVideoCallControl')
-        ->toContain("import { sukiGroupCallPip } from './group-call-pip';")
-        ->toContain('window.sukiGroupCallPip')
+        ->not->toContain("import { sukiGroupCallPip } from './group-call-pip';")
+        ->toContain('window.sukiPipManager?.hide?.();')
+        ->toContain('window.sukiPipManager = null;')
+        ->toContain('window.sukiGroupCallPip = null;')
         ->toContain('window.sukiMessageScroller')
         ->and($ringtone)
         ->toContain("new Audio('/sound/reader.mp3')")
@@ -655,9 +655,6 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('Could not switch cameras. Your current camera is still active.')
         ->toContain('preferCodecs')
         ->toContain('setMaxBitrate')
-        ->toContain('window.sukiPipManager.enter')
-        ->toContain('window.sukiPipManager?.enterOverlay')
-        ->toContain('keepAliveOnNavigate')
         ->toContain('setRemoteStream')
         ->toContain('peer.restartIce?.();')
         ->toContain('callStatusLabel()')
@@ -669,6 +666,11 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('remoteVideoActive')
         ->toContain('const videoMaxKbps = isMobile ? 900 : 1800;')
         ->toContain('scaleResolutionDownBy = 1')
+        ->not->toContain('window.sukiPipManager')
+        ->not->toContain('enterPip')
+        ->not->toContain('exitPip')
+        ->not->toContain('navigateAwayFromCallScreen')
+        ->not->toContain('keepAliveOnNavigate')
         ->not->toContain('void this.endCall(this.connectionFailureMessage());')
         ->and($groupCall)
         ->toContain('peerConnectionOptions')
@@ -698,11 +700,14 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('safeSendGroupSignal')
         ->toContain('peerSignalQueues')
         ->toContain('peerReconnectTimers')
+        ->toContain('candidateQueues')
+        ->toContain('candidateFlushTimers')
         ->toContain('createPeerState')
         ->toContain('negotiateGroupPeer')
         ->toContain('schedulePeerReconnect')
         ->toContain('peer.onicecandidate')
-        ->toContain('iceCandidateSignal(event.candidate)')
+        ->toContain('queueIceCandidate(peerId, event.candidate)')
+        ->toContain("type: 'candidates'")
         ->toContain('localDescriptionSignal(localDescription)')
         ->toContain('isSessionDescriptionSignal(signalData)')
         ->toContain("type: 'renegotiate'")
@@ -728,36 +733,16 @@ test('video call client uses native rtc peer connection and server-provided ice 
         ->toContain('remoteVideoActive')
         ->toContain('setMaxBitrate')
         ->toContain('window.__activeGroupCall')
-        ->toContain('window.sukiGroupCallPip.enter')
-        ->toContain('window.sukiGroupCallPip?.sync(this)')
-        ->toContain('keepAliveOnNavigate')
+        ->toContain('const videoMaxKbps = isMobile ? 900 : 1800;')
+        ->not->toContain('window.sukiGroupCallPip')
+        ->not->toContain('window.sukiPipManager')
+        ->not->toContain('enterPip')
+        ->not->toContain('exitPip')
+        ->not->toContain('navigateAwayFromCallScreen')
+        ->not->toContain('keepAliveOnNavigate')
         ->toContain('new MediaStream([event.track])')
         ->toContain('this.remoteStreams = new Map(this.remoteStreams)')
         ->not->toContain('requestPictureInPicture')
-        ->and($groupCallPip)
-        ->toContain('window.sukiPipManager?.enter')
-        ->toContain('window.__activeGroupCall = call')
-        ->toContain('exitToConversation')
-        ->and($pipManager)
-        ->toContain("Alpine.store('pipManager'")
-        ->toContain("mode: 'overlay'")
-        ->toContain("mode = 'document-pip'")
-        ->toContain('documentPictureInPicture.requestWindow')
-        ->toContain('shouldUseOverlayFallback()')
-        ->toContain('if (!this.shouldUseOverlayFallback())')
-        ->toContain('button[data-end] { height: 52px; min-width: 52px;')
-        ->toContain('data-pip-grid')
-        ->toContain('toggleScreenShare')
-        ->toContain('shouldShowOverlay()')
-        ->toContain('isLiveCall(call = this.activeCall)')
-        ->toContain('forgetCallState()')
-        ->toContain('Waiting for others to join...')
-        ->and($callOverlay)
-        ->toContain('$store.pipManager?.shouldShowOverlay()')
-        ->toContain('touchmove.window')
-        ->toContain('style="display: none;"')
-        ->toContain('minimize()')
-        ->toContain('Share screen')
         ->and($videoCallControl)
         ->toContain('conversationVideoCallControl')
         ->toContain('$el.closest(\'[data-conversation-video-call]\')?.__conversationVideoCall')
@@ -793,8 +778,8 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain("activeCallInProgress('[data-conversation-video-call]')")
         ->toContain("x-show=\"! activeCallInProgress('[data-conversation-video-call]')\"")
         ->toContain('x-effect="$wire.$set(\'callInProgress\', callStatus !== \'idle\' && callStatus !== \'ended\', false)"')
-        ->toContain('x-on:livewire:navigating.window="keepAliveOnNavigate()"')
-        ->toContain('x-on:click="keepAliveOnNavigate()"')
+        ->not->toContain('x-on:livewire:navigating.window="keepAliveOnNavigate()"')
+        ->not->toContain('x-on:click="keepAliveOnNavigate()"')
         ->toContain("iceServers: @js(route('calls.ice-servers'))")
         ->toContain("callStatus === 'active' || callStatus === 'connecting'")
         ->toContain('callStatusLabel()')
@@ -816,7 +801,7 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('Share screen')
         ->toContain('phone-x-mark')
         ->toContain('Camera off')
-        ->toContain('Picture in picture')
+        ->not->toContain('Picture in picture')
         ->toContain("endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')")
         ->toContain('bg-white/60')
         ->toContain('...window.conversationVideoCall({')
@@ -835,42 +820,60 @@ test('conversation keeps video call alpine controls stable during livewire refre
         ->toContain('$this->skipRender();');
 });
 
-test('pip exits the full call screen without ending the call', function () {
+test('persistent pip overlay is removed from the call screens', function () {
+    $app = file_get_contents(resource_path('js/app.js'));
     $conversation = messagingBladeSource('conversation');
     $groupConversation = messagingBladeSource('group-conversation');
     $videoCall = file_get_contents(resource_path('js/video-call.js'));
     $groupCall = file_get_contents(resource_path('js/group-call.js'));
-    $pipManager = file_get_contents(resource_path('js/pip-manager.js'));
-    $callOverlay = file_get_contents(resource_path('views/components/⚡call-overlay.blade.php'));
+    $layout = file_get_contents(resource_path('views/layouts/app/header.blade.php'));
 
-    expect($groupConversation)
-        ->toContain('href="{{ route(\'messages.inbox\') }}" wire:navigate x-on:click="keepAliveOnNavigate()"')
-        ->not->toContain('href="{{ route(\'messages.inbox\') }}" wire:navigate x-on:click="leaveCall()"')
+    expect($app)
+        ->not->toContain("import './pip-manager';")
+        ->not->toContain("import { sukiGroupCallPip } from './group-call-pip';")
+        ->toContain('window.sukiPipManager?.hide?.();')
+        ->toContain('window.sukiPipManager = null;')
+        ->toContain('window.sukiGroupCallPip = null;')
+        ->and($layout)
+        ->not->toContain('<livewire:call-overlay')
+        ->and($groupConversation)
+        ->toContain('href="{{ route(\'messages.inbox\') }}" wire:navigate')
+        ->not->toContain('x-on:click="keepAliveOnNavigate()"')
+        ->not->toContain('Picture in picture')
         ->and($conversation)
         ->toContain('inbox: @js(route(\'messages.inbox\'))')
+        ->not->toContain('x-on:click="keepAliveOnNavigate()"')
+        ->not->toContain('Picture in picture')
         ->and($videoCall)
-        ->toContain('navigateAwayFromCallScreen()')
-        ->toContain('this.navigateAwayFromCallScreen();')
-        ->toContain('returnUrl: window.location.href')
-        ->toContain('window.Livewire.navigate(targetUrl)')
+        ->not->toContain('window.sukiPipManager')
+        ->not->toContain('enterPip')
+        ->not->toContain('exitPip')
+        ->not->toContain('navigateAwayFromCallScreen')
+        ->not->toContain('keepAliveOnNavigate')
         ->and($groupCall)
-        ->toContain('navigateAwayFromCallScreen()')
-        ->toContain('this.navigateAwayFromCallScreen();')
-        ->toContain('returnUrl: this.groupConversationUrl()')
-        ->toContain('window.Livewire.navigate(targetUrl)')
-        ->and($pipManager)
-        ->toContain('returnToCall()')
-        ->toContain('data-action="return"')
-        ->toContain("pipIcon('microphone')")
-        ->toContain('aria-label="Mute microphone"')
-        ->not->toContain('>Mic<')
-        ->not->toContain('>Cam<')
-        ->not->toContain('>Share<')
-        ->not->toContain('>End<')
-        ->not->toContain('>Tab<')
-        ->and($callOverlay)
-        ->toContain('returnToCall()')
-        ->toContain('Return to call');
+        ->not->toContain('window.sukiGroupCallPip')
+        ->not->toContain('window.sukiPipManager')
+        ->not->toContain('enterPip')
+        ->not->toContain('exitPip')
+        ->not->toContain('navigateAwayFromCallScreen')
+        ->not->toContain('keepAliveOnNavigate');
+});
+
+test('group call client starts ringing and accepts before local media setup', function () {
+    $groupCall = file_get_contents(resource_path('js/group-call.js'));
+    $startCall = Str::between($groupCall, 'async startCall() {', '    async acceptCall() {');
+    $acceptCall = Str::between($groupCall, 'async acceptCall() {', '    declineGroupCall() {');
+
+    expect($startCall)
+        ->toContain('const payload = await this.requestJson(this.routes.initiate')
+        ->toContain('await this.ensureLocalStream();')
+        ->and(strpos($startCall, 'const payload = await this.requestJson(this.routes.initiate'))
+        ->toBeLessThan(strpos($startCall, 'await this.ensureLocalStream();'))
+        ->and($acceptCall)
+        ->toContain("const payload = await this.requestJson(this.callRoute('answer')")
+        ->toContain('await this.ensureLocalStream();')
+        ->and(strpos($acceptCall, "const payload = await this.requestJson(this.callRoute('answer')"))
+        ->toBeLessThan(strpos($acceptCall, 'await this.ensureLocalStream();'));
 });
 
 test('group conversation call overlay uses desktop tiles and a mobile filmstrip', function () {
@@ -882,7 +885,7 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
         ->toContain("x-show=\"! activeCallInProgress('[data-group-video-call]')\"")
         ->toContain('x-effect="$wire.$set(\'callInProgress\', callStatus !== \'idle\' && callStatus !== \'ended\', false)"')
         ->toContain('x-on:beforeunload.window="disposeOnLeave({ force: true })"')
-        ->toContain('x-on:livewire:navigating.window="keepAliveOnNavigate()"')
+        ->not->toContain('x-on:livewire:navigating.window="keepAliveOnNavigate()"')
         ->toContain("conversation: @js(route('messages.group', ['groupId' => \$groupId]))")
         ->toContain('z-[100]')
         ->toContain('group-call-local-background-video')
@@ -934,7 +937,7 @@ test('group conversation call overlay uses desktop tiles and a mobile filmstrip'
         ->toContain('declineGroupCall()')
         ->toContain('remoteVideoActive.get(participant.id)')
         ->toContain('Camera off')
-        ->toContain('Picture in picture')
+        ->not->toContain('Picture in picture')
         ->toContain('x-bind:disabled="endingCall"')
         ->toContain("callStatus === 'active' || callStatus === 'connecting' || callStatus === 'ended'")
         ->not->toContain('min-h-[40vh]')

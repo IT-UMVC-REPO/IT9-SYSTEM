@@ -431,7 +431,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         this.localStream?.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
-        window.sukiPipManager?.sync(this);
     },
 
     async toggleCamera() {
@@ -444,7 +443,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         this.localStream?.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
-        window.sukiPipManager?.sync(this);
     },
 
     async startCall() {
@@ -562,21 +560,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         }
 
         this.cleanupCall('idle');
-    },
-
-    keepAliveOnNavigate() {
-        if (!this.isCallInProgress()) {
-            return;
-        }
-
-        if (window.sukiPipManager?.activeCall === this && window.sukiPipManager?.mode === 'document-pip') {
-            return;
-        }
-
-        window.sukiPipManager?.enterOverlay(this, {
-            kind: 'direct',
-            title: this.otherUserName,
-        });
     },
 
     isCallInProgress() {
@@ -1086,46 +1069,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         return preferCodecs(sdp, kind);
     },
 
-    isPipSupported() {
-        return Boolean(window.sukiPipManager?.supportsVideoCalling?.());
-    },
-
-    async enterPip() {
-        if (!window.sukiPipManager) {
-            return;
-        }
-
-        await window.sukiPipManager.enter(this, {
-            kind: 'direct',
-            title: this.otherUserName,
-            returnUrl: window.location.href,
-            exitUrl: this.routes?.inbox ?? null,
-        });
-
-        if (window.sukiPipManager.active) {
-            this.navigateAwayFromCallScreen();
-        }
-    },
-
-    async exitPip() {
-        window.sukiPipManager?.hide(this);
-    },
-
-    navigateAwayFromCallScreen() {
-        const targetUrl = this.routes?.inbox;
-
-        if (!targetUrl || window.location.href === targetUrl) {
-            return;
-        }
-
-        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
-            window.Livewire.navigate(targetUrl);
-            return;
-        }
-
-        window.location.href = targetUrl;
-    },
-
     isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
             || (navigator.maxTouchPoints > 1 && Math.min(window.innerWidth, window.innerHeight) < 900);
@@ -1242,7 +1185,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         this.setVideoSource(localVideoElementId, this.localStream);
         this.setVideoSource(localVideoBackgroundElementId, this.localStream);
         await this.updateCameraCapabilities();
-        window.sukiPipManager?.sync(this);
     },
 
     async toggleScreenShare() {
@@ -1295,7 +1237,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         this.localStream = new MediaStream([...this.localStream.getAudioTracks(), screenTrack]);
         this.setVideoSource(localVideoElementId, this.localStream);
         this.setVideoSource(localVideoBackgroundElementId, this.localStream);
-        window.sukiPipManager?.sync(this);
 
         screenTrack.addEventListener('ended', () => {
             if (this.screenSharing) {
@@ -1336,7 +1277,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         this.screenSharing = false;
         this.setVideoSource(localVideoElementId, this.localStream);
         this.setVideoSource(localVideoBackgroundElementId, this.localStream);
-        window.sukiPipManager?.sync(this);
     },
 
     async replaceOutgoingVideoTrack(track) {
@@ -1348,7 +1288,6 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
     },
 
     cleanupCall(nextStatus, message = '') {
-        void this.exitPip();
         window.sukiRingtone?.stop();
         this.clearConnectionTimers();
         this.stopCallTimer();
@@ -1503,6 +1442,5 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
     setRemoteStream(stream) {
         this.persistentRemoteStream = stream;
         this.setVideoSource(remoteVideoElementId, stream);
-        window.sukiPipManager?.sync(this);
     },
 });

@@ -1,5 +1,4 @@
 import {
-    iceCandidateSignal,
     isSessionDescriptionSignal,
     localDescriptionSignal,
     peerConnectionOptions,
@@ -44,6 +43,8 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
     peerStates: new Map(),
     peerSignalQueues: new Map(),
     peerReconnectTimers: new Map(),
+    candidateQueues: new Map(),
+    candidateFlushTimers: new Map(),
     statusMessage: '',
     initialized: false,
     speakerParticipantId: null,
@@ -204,12 +205,9 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         }
 
         window.__activeGroupCall = this;
-        window.sukiGroupCallPip?.attachCall(this);
     },
 
     releaseActiveGroupCall() {
-        window.sukiGroupCallPip?.releaseCall(this);
-
         if (window.__activeGroupCall === this) {
             window.__activeGroupCall = null;
         }
@@ -397,7 +395,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.localStream?.getAudioTracks().forEach((track) => {
             track.enabled = !this.microphoneMuted;
         });
-        window.sukiGroupCallPip?.sync(this);
     },
 
     async toggleCamera() {
@@ -410,7 +407,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.localStream?.getVideoTracks().forEach((track) => {
             track.enabled = !this.cameraDisabled;
         });
-        window.sukiGroupCallPip?.sync(this);
     },
 
     participantName(participantId) {
@@ -454,13 +450,9 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
         try {
             this.callStatus = 'connecting';
-            this.statusMessage = 'Preparing your camera...';
+            this.statusMessage = 'Starting group call...';
             this.startCallTimer();
             this.showCallChrome();
-            await this.ensureLocalStream();
-            this.syncLocalVideoSources();
-            this.statusMessage = 'Loading call connection settings...';
-            await this.loadIceConfiguration();
 
             const payload = await this.requestJson(this.routes.initiate, {
                 group_id: this.groupId,
@@ -473,13 +465,17 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             this.subscribeCallChannel();
             this.callStatus = 'active';
             this.participants = this.normalizeParticipantIds(payload.participants ?? [this.authUserId]);
-            this.statusMessage = 'Group call started.';
+            this.statusMessage = 'Preparing your camera...';
             this.exposeActiveGroupCall();
 
-            if (this.localStream !== null) {
-                this.connectToParticipants();
-            }
+            await this.ensureLocalStream();
+            this.syncLocalVideoSources();
+            this.statusMessage = 'Loading call connection settings...';
+            await this.loadIceConfiguration();
+            this.statusMessage = 'Group call started.';
+            this.connectToParticipants();
         } catch (error) {
+            await this.endGroupCallAfterSetupFailure();
             this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not start the group call.'));
         }
     },
@@ -496,22 +492,38 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             this.statusMessage = 'Joining group call...';
             this.startCallTimer();
             this.showCallChrome();
-            await this.ensureLocalStream();
-            this.syncLocalVideoSources();
-            await this.loadIceConfiguration();
 
             const payload = await this.requestJson(this.callRoute('answer'), null, { timeoutMs: 15000 });
 
             this.callStatus = 'active';
             this.participants = this.normalizeParticipantIds(payload.participants ?? []);
-            this.statusMessage = 'Connected.';
+            this.statusMessage = 'Preparing your camera...';
             this.exposeActiveGroupCall();
 
-            if (this.localStream !== null) {
-                this.connectToParticipants();
-            }
+            await this.ensureLocalStream();
+            this.syncLocalVideoSources();
+            this.statusMessage = 'Loading call connection settings...';
+            await this.loadIceConfiguration();
+            this.statusMessage = 'Connected.';
+            this.connectToParticipants();
         } catch (error) {
+            await this.endGroupCallAfterSetupFailure();
             this.cleanupGroupCall('ended', this.groupCallErrorMessage(error, 'Could not join the group call.'));
+        }
+    },
+
+    async endGroupCallAfterSetupFailure() {
+        if (this.callId === null) {
+            return;
+        }
+
+        try {
+            await this.requestJson(this.callRoute('end'), null, {
+                allowRealtimeUnavailable: true,
+                timeoutMs: 5000,
+            });
+        } catch {
+            // Ignore server cleanup failures after a local setup error.
         }
     },
 
@@ -538,32 +550,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.cleanupGroupCall('ended', 'Group call ended.');
     },
 
-    keepAliveOnNavigate() {
-        if (!this.isCallInProgress()) {
-            return;
-        }
-
-        if (window.sukiPipManager?.activeCall === this && window.sukiPipManager?.mode === 'document-pip') {
-            return;
-        }
-
-        window.sukiPipManager?.enterOverlay(this, {
-            kind: 'group',
-            title: this.groupName,
-        });
-    },
-
-    disposeOnLeave(options = {}) {
-        const { force = false } = options;
-
-        if (!force && window.sukiGroupCallPip?.isActiveFor(this)) {
-            this.syncLocalVideoSources();
-            window.sukiGroupCallPip.sync(this);
-            return;
-        }
-
-        void this.exitPip();
-
+    disposeOnLeave() {
         if (this.localStream === null && this.peerConnections.size === 0) {
             this.teardownRealtimeListeners();
             return;
@@ -658,7 +645,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
     async setMaxBitrate(peer) {
         const isMobile = this.isMobileDevice?.() ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
-        const videoMaxKbps = isMobile ? 300 : 1200;
+        const videoMaxKbps = isMobile ? 900 : 1800;
         const audioMaxKbps = 64;
         const senders = peer.getSenders();
 
@@ -690,44 +677,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
     preferCodecs(sdp, kind = 'video') {
         return preferCodecs(sdp, kind);
-    },
-
-    isPipSupported() {
-        return Boolean(window.sukiGroupCallPip);
-    },
-
-    async enterPip() {
-        if (!this.isPipSupported() || !this.isCallInProgress()) {
-            return;
-        }
-
-        this.exposeActiveGroupCall();
-        const pipOptions = { returnUrl: this.groupConversationUrl() };
-        this.returnUrl = pipOptions.returnUrl;
-        await window.sukiGroupCallPip.enter(this, pipOptions.returnUrl);
-
-        if (window.sukiPipManager?.active) {
-            this.navigateAwayFromCallScreen();
-        }
-    },
-
-    exitPip() {
-        window.sukiGroupCallPip?.hide(this);
-    },
-
-    navigateAwayFromCallScreen() {
-        const targetUrl = this.routes?.inbox;
-
-        if (!targetUrl || window.location.href === targetUrl) {
-            return;
-        }
-
-        if (window.Livewire && typeof window.Livewire.navigate === 'function') {
-            window.Livewire.navigate(targetUrl);
-            return;
-        }
-
-        window.location.href = targetUrl;
     },
 
     async updateCameraCapabilities() {
@@ -850,7 +799,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.cameraDisabled = false;
         this.syncLocalVideoSources();
         await this.updateCameraCapabilities();
-        window.sukiGroupCallPip?.sync(this);
     },
 
     async toggleScreenShare() {
@@ -902,7 +850,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.screenSharing = true;
         this.localStream = new MediaStream([...this.localStream.getAudioTracks(), screenTrack]);
         this.syncLocalVideoSources();
-        window.sukiGroupCallPip?.sync(this);
 
         screenTrack.addEventListener('ended', () => {
             if (this.screenSharing) {
@@ -942,7 +889,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.cameraTrackBeforeShare = null;
         this.screenSharing = false;
         this.syncLocalVideoSources();
-        window.sukiGroupCallPip?.sync(this);
     },
 
     async replaceOutgoingVideoTrack(track) {
@@ -1008,7 +954,7 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
                 return;
             }
 
-            void this.safeSendGroupSignal(peerId, iceCandidateSignal(event.candidate), { fatal: false });
+            this.queueIceCandidate(peerId, event.candidate);
         };
 
         peer.ontrack = (event) => {
@@ -1201,6 +1147,47 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
 
         this.peerConnections.delete(peerId);
         this.peerStates.delete(peerId);
+        this.candidateQueues.delete(peerId);
+
+        if (this.candidateFlushTimers.has(peerId)) {
+            window.clearTimeout(this.candidateFlushTimers.get(peerId));
+            this.candidateFlushTimers.delete(peerId);
+        }
+    },
+
+    queueIceCandidate(peerId, candidate) {
+        const candidates = this.candidateQueues.get(peerId) ?? [];
+        candidates.push(candidate.toJSON());
+        this.candidateQueues.set(peerId, candidates);
+
+        if (this.candidateFlushTimers.has(peerId)) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            this.candidateFlushTimers.delete(peerId);
+            void this.flushIceCandidates(peerId);
+        }, 120);
+
+        this.candidateFlushTimers.set(peerId, timer);
+    },
+
+    async flushIceCandidates(peerId) {
+        const candidates = this.candidateQueues.get(peerId) ?? [];
+        this.candidateQueues.delete(peerId);
+
+        if (candidates.length === 0 || !this.callId) {
+            return;
+        }
+
+        const sent = await this.safeSendGroupSignal(peerId, {
+            type: 'candidates',
+            candidates,
+        }, { fatal: false });
+
+        if (!sent) {
+            this.schedulePeerReconnect(peerId, 1500);
+        }
     },
 
     async safeHandleGroupSignal(senderId, signalData) {
@@ -1251,6 +1238,14 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             const signals = this.pendingSignals.get(senderId) ?? [];
             signals.push(signalData);
             this.pendingSignals.set(senderId, signals);
+            return;
+        }
+
+        if (signalData.type === 'candidates' && Array.isArray(signalData.candidates)) {
+            for (const candidate of signalData.candidates) {
+                await this.handleGroupSignal(senderId, { type: 'candidate', candidate });
+            }
+
             return;
         }
 
@@ -1458,8 +1453,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             this.statusMessage = 'Waiting for others to join...';
         }
 
-        window.sukiGroupCallPip?.sync(this);
-
         // Wait for Alpine to render x-for nodes, then attach srcObject.
         // Poll up to 60 times x 200 ms = 12 seconds. This is necessary because
         // Alpine processes reactive updates asynchronously and <video> elements
@@ -1517,7 +1510,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         }
 
         this.refreshSpeakerVideo();
-        window.sukiGroupCallPip?.sync(this);
     },
 
     refreshSpeakerVideo() {
@@ -1570,7 +1562,6 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
             return;
         }
 
-        void this.exitPip();
         window.sukiRingtone?.stop();
         this.stopCallTimer();
         this.unsubscribeCallChannel();
@@ -1586,6 +1577,9 @@ export const groupConversationVideoCall = (config) => reusableGroupCallFor(confi
         this.peerSignalQueues.clear();
         this.peerReconnectTimers.forEach((timer) => window.clearTimeout(timer));
         this.peerReconnectTimers.clear();
+        this.candidateFlushTimers.forEach((timer) => window.clearTimeout(timer));
+        this.candidateFlushTimers.clear();
+        this.candidateQueues.clear();
         this.speakerParticipantId = null;
         this.iceServers = null;
         this.iceTransportPolicy = 'all';

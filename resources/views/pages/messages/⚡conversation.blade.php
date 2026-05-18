@@ -77,7 +77,6 @@
             window.setTimeout(() => acceptCall());
         }" x-effect="$wire.$set('callInProgress', callStatus !== 'idle' && callStatus !== 'ended', false)"
         x-on:beforeunload.window="disposeOnLeave()"
-        x-on:livewire:navigating.window="keepAliveOnNavigate()"
         x-on:conversation-auto-answer.window="callId = $event.detail.callId; callStatus = 'incoming'; acceptCall()"
         x-on:video-call-start.window="startCall()" class="contents">
         <div wire:ignore x-cloak x-show="isOverlayVisible()" x-transition.opacity
@@ -88,7 +87,7 @@
                     class="absolute left-0 right-0 top-0 z-20 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-4">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex min-w-0 items-start gap-3">
-                            <a href="{{ route('messages.inbox') }}" wire:navigate x-on:click="keepAliveOnNavigate()"
+                            <a href="{{ route('messages.inbox') }}" wire:navigate
                                 class="mt-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
                                 aria-label="{{ __('Back to messages') }}">
                                 <flux:icon.arrow-left variant="mini" />
@@ -301,15 +300,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="button"
-                                x-cloak
-                                x-show="callStatus === 'active' && isPipSupported()"
-                                x-on:click="enterPip()"
-                                class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
-                                title="{{ __('Picture in picture') }}"
-                                aria-label="{{ __('Picture in picture') }}">
-                                <flux:icon.squares-2x2 variant="mini" />
-                            </button>
                             <button type="button" x-on:click="endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
                                 <flux:icon.phone-x-mark variant="solid" />
                             </button>

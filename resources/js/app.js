@@ -7,21 +7,21 @@ window.global = window.global ?? window;
 
 import './echo';
 import './brand-color';
-import './pip-manager';
 import 'emoji-picker-element';
 import { RingtonePlayer } from './ringtone';
 import { conversationVideoCall } from './video-call';
 import { conversationVideoCallControl } from './video-call-control';
 import { groupConversationVideoCall } from './group-call';
-import { sukiGroupCallPip } from './group-call-pip';
 import { sukiVendorMap } from './maps/vendor-map';
 
 window.sukiRingtone = window.sukiRingtone ?? new RingtonePlayer();
+window.sukiPipManager?.hide?.();
+window.sukiPipManager = null;
+window.sukiGroupCallPip = null;
 
 window.conversationVideoCall = conversationVideoCall;
 window.groupConversationVideoCall = groupConversationVideoCall;
 window.conversationVideoCallControl = conversationVideoCallControl;
-window.sukiGroupCallPip = window.sukiGroupCallPip ?? sukiGroupCallPip;
 window.sukiVendorMap = sukiVendorMap;
 
 const escapeHtml = (value) => String(value ?? '')

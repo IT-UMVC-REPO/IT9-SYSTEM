@@ -452,7 +452,6 @@
         @endif
 
         @auth
-            <livewire:call-overlay :key="'call-overlay'" />
             <livewire:calls.incoming-call-notification :key="'incoming-call-notification'" />
         @endauth
 
