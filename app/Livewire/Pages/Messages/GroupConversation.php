@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\VideoCall;
 use App\Services\GroupManagementService;
 use App\Services\MessageMutationService;
+use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -282,10 +283,13 @@ class GroupConversation extends Component
 
     public function regenerateInviteLink(?int $expiresInMinutes = null, ?int $usageLimit = null): void
     {
-        app(GroupManagementService::class)->regenerateInvite(auth()->user(), $this->group, $expiresInMinutes, $usageLimit);
+        $group = app(GroupManagementService::class)->regenerateInvite(auth()->user(), $this->group, $expiresInMinutes, $usageLimit);
 
         unset($this->group);
+        $this->dispatch('copy-invite-link', url: route('messages.group', ['groupId' => $this->groupId]).'?invite='.$group->invite_token);
         $this->dispatch('message-sent');
+
+        Flux::toast(variant: 'success', text: __('Invite Link Copied'));
     }
 
     public function leaveGroup(): void

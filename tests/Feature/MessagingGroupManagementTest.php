@@ -55,6 +55,7 @@ test('group admins can manage group details members nicknames limits and invites
         ->call('promoteMember', $member->getKey())
         ->call('removeMember', $removeable->getKey())
         ->call('regenerateInviteLink', 60, 5)
+        ->assertDispatched('copy-invite-link')
         ->assertDispatched('message-sent');
 
     $group->refresh();

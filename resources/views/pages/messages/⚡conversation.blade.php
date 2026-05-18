@@ -424,6 +424,7 @@
                             @php($showDateSeparator = $previousMessage === null || $messageDateKey !== $previousDateKey)
                             @php($isConsecutive = $previousMessage !== null && $previousMessage['sender_id'] === $message['sender_id'] && $messageDateKey === $previousDateKey)
                             @php($isGroupedWithNext = $nextMessage !== null && $nextMessage['sender_id'] === $message['sender_id'] && $nextMessage['date_key'] === $messageDateKey)
+                            @php($isDeleted = filled($message['deleted_at'] ?? null) || filled($message['deleted_for_everyone_at'] ?? null))
 
                             @if ($showDateSeparator)
                                 <div wire:key="conversation-date-{{ $messageDateKey ?? $message['id'] }}" class="flex justify-center py-2">
@@ -435,7 +436,7 @@
 
                             <div wire:key="conversation-message-{{ $message['id'] }}"
                                 x-data="{ showTime: false }"
-                                x-on:click.stop="showTime = ! showTime"
+                                @if (! $isDeleted) x-on:click.stop="showTime = ! showTime" @endif
                                 class="group flex {{ $isOwnMessage ? 'justify-end' : 'justify-start' }} {{ $isConsecutive ? 'mt-1' : 'mt-4' }}">
                                 <div
                                     class="flex max-w-[75%] flex-col gap-1 {{ $isOwnMessage ? 'items-end' : 'items-start' }}">
@@ -450,7 +451,12 @@
                                         @endunless
 
                                         <div
-                                            class="min-w-0 w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words {{ $isOwnMessage ? 'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' : 'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' }}">
+                                            @class([
+                                                'min-w-0 w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
+                                                'pointer-events-none rounded-2xl bg-stone-100 text-neutral-400 ring-1 ring-stone-200 dark:bg-zinc-800/60 dark:text-zinc-500 dark:ring-white/10' => $isDeleted,
+                                                'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage && ! $isDeleted,
+                                                'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage && ! $isDeleted,
+                                            ])>
                                             <?php if (filled($message['content'])): ?>
                                             <p class="break-words [overflow-wrap:anywhere]">
                                                 {{ $message['content'] }}</p>
@@ -458,7 +464,7 @@
 
                                             @php($attachments = collect($message['attachments'] ?? []))
 
-                                            @if ($attachments->isNotEmpty())
+                                            @if (! $isDeleted && $attachments->isNotEmpty())
                                                 <div
                                                     class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
@@ -524,19 +530,15 @@
                                             @endif
                                         </div>
 
-                                        <div class="flex flex-col gap-1 opacity-0 transition group-hover:opacity-100">
-                                            <button type="button" wire:click.stop="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-emerald-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-emerald-300" aria-label="{{ __('Pin message') }}">
-                                                <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
-                                            </button>
-                                            <button type="button" x-on:click.stop="navigator.clipboard?.writeText(@js($message['content'] ?? ''))" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white" aria-label="{{ __('Copy message') }}">
-                                                <flux:icon.clipboard variant="micro" class="h-3.5 w-3.5" />
-                                            </button>
+                                        @if (! $isDeleted && $isOwnMessage)
+                                            <div class="flex flex-col gap-1 opacity-0 transition group-hover:opacity-100">
                                             @if ($isOwnMessage)
                                                 <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
                                                     <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
                                             @endif
-                                        </div>
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <p

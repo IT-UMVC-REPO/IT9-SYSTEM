@@ -84,6 +84,13 @@
         },
         destroy() {
             clearInterval(this.pollTimer);
+        },
+        copyInviteLink(url) {
+            if (! url) {
+                return;
+            }
+
+            navigator.clipboard?.writeText(url);
         }
     }"
     x-init="init(); initInfoPanel(); initPolling()"
@@ -91,6 +98,7 @@
     x-on:group-message-pending.window="pendingGroupMessages.push($event.detail)"
     x-on:group-message-pending-remove.window="pendingGroupMessages = pendingGroupMessages.filter((message) => message.id !== $event.detail.id)"
     x-on:group-message-sent.window="pendingGroupMessages = []"
+    x-on:copy-invite-link.window="copyInviteLink($event.detail.url)"
     class="flex h-[calc(100dvh-116px)] flex-col overflow-hidden bg-white dark:bg-neutral-950 lg:h-[calc(100dvh-52px)]"
 >
     <div
@@ -584,6 +592,7 @@
                                 $showSenderAvatar = ! $isOwnMessage && ! $isGroupedWithNext;
                                 $attachments = collect($message['attachments'] ?? []);
                                 $reactions = collect($message['reactions'] ?? []);
+                                $isDeleted = filled($message['deleted_at'] ?? null) || filled($message['deleted_for_everyone_at'] ?? null);
                                 $canModerateMessage = $isOwnMessage || $this->isGroupAdmin();
                             @endphp
 
@@ -607,7 +616,7 @@
                                     </span>
                                 </div>
                             @else
-                                <div wire:key="group-message-{{ $message['id'] }}" x-data="{ showActions: false, showTime: false }" x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" x-on:click.stop="showTime = ! showTime" @class([
+                                <div wire:key="group-message-{{ $message['id'] }}" x-data="{ showActions: false, showTime: false }" @if (! $isDeleted) x-on:mouseenter="showActions = true" x-on:mouseleave="showActions = false" x-on:click.stop="showTime = ! showTime" @endif @class([
                                 'relative mb-1 flex',
                                 'mt-4' => ! $isGroupedWithPrevious,
                                 'justify-end' => $isOwnMessage,
@@ -635,6 +644,7 @@
                                             <p class="mb-1 px-1 text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $message['sender_display_name'] }}</p>
                                         @endif
 
+                                        @if (! $isDeleted)
                                         <div x-cloak x-show="showActions" @class([
                                             'absolute top-1/2 -translate-y-1/2 z-20 flex items-center gap-1',
                                             'left-0 -translate-x-full pr-1' => $isOwnMessage,
@@ -664,31 +674,25 @@
                                             <button type="button" wire:click="setReplyTo({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
                                                 <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
                                             </button>
-                                            @if ($this->isGroupAdmin())
-                                                <button type="button" wire:click="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-emerald-700 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-emerald-300" aria-label="{{ __('Pin message') }}">
-                                                    <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
-                                                </button>
-                                            @endif
-                                            <button type="button" x-on:click.stop="navigator.clipboard?.writeText(@js($message['content'] ?? ''))" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Copy message') }}">
-                                                <flux:icon.clipboard variant="micro" class="h-3.5 w-3.5" />
-                                            </button>
                                             @if ($canModerateMessage)
                                                 <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
                                                     <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
                                             @endif
                                         </div>
+                                        @endif
 
                                         <div @class([
-                                            'relative mb-4 inline-block max-w-full' => $reactions->isNotEmpty(),
-                                            'relative inline-block max-w-full' => $reactions->isEmpty(),
+                                            'relative mb-4 inline-block max-w-full' => $reactions->isNotEmpty() && ! $isDeleted,
+                                            'relative inline-block max-w-full' => $reactions->isEmpty() || $isDeleted,
                                         ])>
                                             <div @class([
                                                 'w-fit max-w-full overflow-hidden px-4 py-2 text-left text-sm leading-relaxed break-words',
-                                                'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage,
-                                                'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage,
+                                                'pointer-events-none rounded-2xl bg-stone-100 text-neutral-400 ring-1 ring-stone-200 dark:bg-zinc-800/60 dark:text-zinc-500 dark:ring-white/10' => $isDeleted,
+                                                'rounded-2xl rounded-br-sm bg-[var(--brand-600)] text-white' => $isOwnMessage && ! $isDeleted,
+                                                'rounded-2xl rounded-bl-sm bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white' => ! $isOwnMessage && ! $isDeleted,
                                             ])>
-                                            @if ($message['reply_to'])
+                                            @if (! $isDeleted && $message['reply_to'])
                                                 <div class="mb-1 rounded-lg border-l-2 border-current/40 bg-black/10 px-2 py-1 text-xs opacity-80">
                                                     <p class="font-semibold">{{ $message['reply_to']['sender_display_name'] }}</p>
                                                     <p class="truncate">{{ \Illuminate\Support\Str::limit($message['reply_to']['content'] ?: __('Attachment'), 60) }}</p>
@@ -699,7 +703,7 @@
                                                 <p class="break-words [overflow-wrap:anywhere]">{{ $message['content'] }}</p>
                                             @endif
 
-                                            @if ($attachments->isNotEmpty())
+                                            @if (! $isDeleted && $attachments->isNotEmpty())
                                                 <div class="{{ $attachments->count() > 1 ? 'mt-2 grid grid-cols-2 gap-2' : 'mt-2 grid gap-2' }}">
                                                     @foreach ($attachments as $attachment)
                                                         @php($attachmentUrl = $attachment['public_url'])
@@ -719,7 +723,7 @@
                                             @endif
                                             </div>
 
-                                            @if ($reactions->isNotEmpty())
+                                            @if (! $isDeleted && $reactions->isNotEmpty())
                                                 <div class="absolute -bottom-3 left-2 flex items-center gap-0.5 rounded-full border border-stone-200 bg-white px-1.5 py-0.5 text-xs shadow-sm dark:border-white/10 dark:bg-zinc-800">
                                                     @foreach ($reactions->groupBy('emoji') as $emoji => $reactors)
                                                         <button type="button" wire:key="group-message-{{ $message['id'] }}-reaction-{{ crc32($emoji) }}" wire:click="toggleReaction({{ $message['id'] }}, @js($emoji))" class="inline-flex items-center gap-0.5" aria-label="{{ __('Toggle :emoji reaction', ['emoji' => $emoji]) }}">
@@ -962,39 +966,42 @@
                         </div>
 
                         @if ($this->isGroupAdmin())
-                            <form wire:submit="saveGroupDetails" class="mt-5 space-y-3 rounded-2xl border border-stone-200 p-3 dark:border-white/10">
-                                <flux:field>
-                                    <flux:label>{{ __('Name') }}</flux:label>
-                                    <flux:input wire:model="groupName" />
-                                    <flux:error name="groupName" />
-                                </flux:field>
+                            <form wire:submit="saveGroupDetails" class="mt-5 space-y-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                                <div class="grid gap-3">
+                                    <flux:field>
+                                        <flux:label>{{ __('Name') }}</flux:label>
+                                        <flux:input wire:model="groupName" />
+                                        <flux:error name="groupName" />
+                                    </flux:field>
 
-                                <flux:field>
-                                    <flux:label>{{ __('Bio') }}</flux:label>
-                                    <flux:textarea wire:model="groupDescription" rows="3" />
-                                    <flux:error name="groupDescription" />
-                                </flux:field>
+                                    <flux:field>
+                                        <flux:label>{{ __('Bio') }}</flux:label>
+                                        <flux:textarea wire:model="groupDescription" rows="2" />
+                                        <flux:error name="groupDescription" />
+                                    </flux:field>
+                                </div>
 
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid items-end gap-3 sm:grid-cols-[minmax(7rem,10rem)_1fr]">
                                     <flux:field>
                                         <flux:label>{{ __('Limit') }}</flux:label>
                                         <flux:input type="number" min="2" wire:model.number="maxMembers" />
                                         <flux:error name="maxMembers" />
                                     </flux:field>
 
-                                    <div class="flex items-end">
+                                    <div class="rounded-xl border border-stone-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-zinc-900/70">
                                         <flux:checkbox wire:model="approvalRequired" label="{{ __('Approve joins') }}" />
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-between gap-2">
-                                    <flux:button type="submit" size="sm" variant="primary">{{ __('Save') }}</flux:button>
-                                    <flux:button type="button" size="sm" variant="ghost" wire:click="regenerateInviteLink(10080, 25)">{{ __('Invite link') }}</flux:button>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="submit" class="brand-button-primary justify-center px-4 py-2 text-sm">
+                                        {{ __('Save') }}
+                                    </button>
+                                    <button type="button" wire:click="regenerateInviteLink(10080, 25)" class="brand-button-secondary justify-center px-4 py-2 text-sm">
+                                        <i class="fa-regular fa-copy text-xs"></i>
+                                        {{ __('Copy invite') }}
+                                    </button>
                                 </div>
-
-                                @if ($this->group->invite_token)
-                                    <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ route('messages.group', ['groupId' => $groupId]).'?invite='.$this->group->invite_token }}</p>
-                                @endif
                             </form>
                         @endif
 

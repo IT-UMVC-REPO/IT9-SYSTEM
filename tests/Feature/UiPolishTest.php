@@ -75,6 +75,7 @@ test('vendor registration sample products use single column image first layout',
 test('messaging pending attachments render filename chips without temporary image previews', function () {
     $conversation = uiPolishBlade('views/pages/messages/*conversation.blade.php', 'group-conversation');
     $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
+    $groupComponent = file_get_contents(app_path('Livewire/Pages/Messages/GroupConversation.php'));
 
     expect($conversation)
         ->toContain('class="mt-2 flex flex-wrap gap-2"')
@@ -470,4 +471,27 @@ test('admin and notification list items constrain long text and unread borders u
         ->and($notificationIndex)
         ->toContain('border-2 border-[var(--brand-500)]')
         ->not->toContain('border-l-4 border-l-[var(--brand-500)]');
+});
+
+test('deleted chat messages are inert tombstones and invite links copy without showing tokens', function () {
+    $conversation = uiPolishBlade('views/pages/messages/*conversation.blade.php', 'group-conversation');
+    $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
+    $groupComponent = file_get_contents(app_path('Livewire/Pages/Messages/GroupConversation.php'));
+
+    expect($conversation)
+        ->toContain('pointer-events-none rounded-2xl bg-stone-100')
+        ->toContain('@if (! $isDeleted && $attachments->isNotEmpty())')
+        ->not->toContain('aria-label="{{ __(\'Pin message\') }}"')
+        ->not->toContain('aria-label="{{ __(\'Copy message\') }}"')
+        ->and($groupConversation)
+        ->toContain('x-on:copy-invite-link.window="copyInviteLink($event.detail.url)"')
+        ->toContain('pointer-events-none rounded-2xl bg-stone-100')
+        ->toContain('@if (! $isDeleted && $attachments->isNotEmpty())')
+        ->toContain('{{ __(\'Copy invite\') }}')
+        ->not->toContain('?invite=\'.$this->group->invite_token')
+        ->not->toContain('aria-label="{{ __(\'Pin message\') }}"')
+        ->not->toContain('aria-label="{{ __(\'Copy message\') }}"')
+        ->and($groupComponent)
+        ->toContain("Flux::toast(variant: 'success', text: __('Invite Link Copied'))")
+        ->toContain("\$this->dispatch('copy-invite-link'");
 });
