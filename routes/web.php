@@ -27,6 +27,7 @@ Route::middleware(['auth', $verificationThrottle])->group(function () {
     Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verifyLink'])
         ->middleware('signed')
         ->name('verification.verify');
+    Route::get('/email/verify/code', [EmailVerificationController::class, 'redirectCodeRequest']);
     Route::post('/email/verify/code', [EmailVerificationController::class, 'verify'])->name('verification.code.verify');
     Route::post('/email/resend', [EmailVerificationController::class, 'resend'])->name('verification.send');
 });

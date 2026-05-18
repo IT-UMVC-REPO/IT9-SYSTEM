@@ -73,6 +73,19 @@ test('email can be verified with a valid code', function () {
     Event::assertDispatched(Verified::class);
 });
 
+test('verification code endpoint redirects get requests back to the notice', function () {
+    $user = User::factory()->unverified()->create([
+        'email_verification_code' => '123456',
+        'email_verification_code_expires_at' => now()->addMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('verification.code.verify'))
+        ->assertRedirect(route('verification.notice', absolute: false));
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+});
+
 test('email can be verified when a code is pasted with formatting', function () {
     Event::fake([Verified::class]);
 

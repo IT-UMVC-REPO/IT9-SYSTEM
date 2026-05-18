@@ -84,6 +84,11 @@ class EmailVerificationController extends Controller
             ->with('status', 'email-verified');
     }
 
+    public function redirectCodeRequest(): RedirectResponse
+    {
+        return redirect()->route('verification.notice');
+    }
+
     private function normalizeVerificationCode(string $code): string
     {
         return preg_replace('/\D+/', '', $code) ?? '';
