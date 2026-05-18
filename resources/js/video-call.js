@@ -206,6 +206,7 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
                 this.statusMessage = `${event.caller_name} is calling...`;
                 this.startCallTimer();
                 this.showCallChrome();
+                window.sukiRingtone?.start();
             })
             .listen('.VideoCallStatusChanged', (event) => {
                 this.handleStatusChanged(event);
@@ -493,6 +494,8 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
             return;
         }
 
+        window.sukiRingtone?.stop();
+
         try {
             this.subscribeCallChannel();
             await this.ensureLocalStream();
@@ -517,6 +520,8 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
         if (!this.callId) {
             return;
         }
+
+        window.sukiRingtone?.stop();
 
         try {
             await this.requestJson(this.callRoute('decline'));
@@ -1344,6 +1349,7 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
 
     cleanupCall(nextStatus, message = '') {
         void this.exitPip();
+        window.sukiRingtone?.stop();
         this.clearConnectionTimers();
         this.stopCallTimer();
         this.unsubscribeCallChannel();

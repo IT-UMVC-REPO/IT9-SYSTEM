@@ -12,6 +12,13 @@
         pollInFlight: false,
         pendingDirectMessages: [],
         fallbackPolling: @js(! $realtimeEnabled),
+        activeCallInProgress(selector) {
+            const callEl = document.querySelector(selector);
+            const callData = callEl ? (callEl.__conversationVideoCall || callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
+            const callStatus = callData ? callData.callStatus : 'idle';
+
+            return callStatus !== 'idle' && callStatus !== 'ended';
+        },
         pendingMessageTime() {
             return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date());
         },
@@ -25,11 +32,7 @@
                     return;
                 }
 
-                const callEl = document.querySelector('[data-conversation-video-call]');
-                const callData = callEl ? (callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
-                const callStatus = callData ? callData.callStatus : 'idle';
-
-                if (callStatus === 'idle') {
+                if (! this.activeCallInProgress('[data-conversation-video-call]')) {
                     this.pollInFlight = true;
 
                     Promise.resolve(this.$wire.refreshThread()).finally(() => {
@@ -318,7 +321,7 @@
         </div>
 
         <div class="mx-auto grid h-full min-h-0 w-full max-w-[1600px] lg:grid-cols-[20rem_minmax(0,1fr)]">
-            <aside class="hidden min-h-0 flex-col overflow-hidden border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:flex">
+            <aside x-cloak x-show="! activeCallInProgress('[data-conversation-video-call]')" class="hidden min-h-0 flex-col overflow-hidden border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 lg:flex">
                 <div class="shrink-0 pb-4">
                     <a href="{{ route('messages.inbox') }}" wire:navigate class="inline-flex items-center gap-1 text-sm font-semibold text-[var(--brand-600)] transition hover:text-[var(--brand-700)] dark:text-[var(--brand-400)] dark:hover:text-[var(--brand-300)]">
                         <flux:icon.arrow-left variant="micro" class="h-4 w-4" />

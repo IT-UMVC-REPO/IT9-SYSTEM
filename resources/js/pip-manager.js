@@ -1,4 +1,4 @@
-const documentPipSize = { width: 380, height: 280 };
+const documentPipSize = { width: 440, height: 340 };
 const overlaySize = { width: 320, height: 220 };
 const overlayPadding = 12;
 
@@ -143,6 +143,10 @@ export const createPipManager = () => ({
     enterOverlay(call = this.activeCall, options = {}) {
         if (call) {
             this.attachCall(call, { ...options, forceOverlay: true });
+        }
+
+        if (!this.shouldUseOverlayFallback()) {
+            return;
         }
 
         this.switchToOverlay();
@@ -314,9 +318,9 @@ export const createPipManager = () => ({
             .pip-label { position: absolute; left: 7px; right: 7px; bottom: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 999px; background: rgba(0,0,0,.52); padding: 4px 7px; font-size: 10px; font-weight: 700; }
             .pip-overflow { display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.76); font-size: 18px; font-weight: 800; }
             .pip-controls { display: flex; align-items: center; justify-content: center; gap: 8px; }
-            button { display: inline-flex; height: 38px; min-width: 38px; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: white; cursor: pointer; font-size: 11px; font-weight: 800; }
+            button { display: inline-flex; height: 44px; min-width: 44px; align-items: center; justify-content: center; border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: white; cursor: pointer; font-size: 11px; font-weight: 800; }
             button[aria-pressed="true"] { background: rgba(239,68,68,.28); color: #fca5a5; }
-            button[data-end] { background: #ef4444; color: white; }
+            button[data-end] { height: 52px; min-width: 52px; background: #ef4444; color: white; }
         `;
         doc.head.appendChild(style);
         doc.body.innerHTML = `
@@ -487,6 +491,10 @@ export const createPipManager = () => ({
             return;
         }
 
+        if (!this.shouldUseOverlayFallback()) {
+            return;
+        }
+
         this.active = true;
         this.mode = 'overlay';
         this.minimized = true;
@@ -494,7 +502,11 @@ export const createPipManager = () => ({
     },
 
     shouldShowOverlay() {
-        return this.active && this.mode === 'overlay' && this.isLiveCall();
+        return this.active && this.mode === 'overlay' && this.shouldUseOverlayFallback() && this.isLiveCall();
+    },
+
+    shouldUseOverlayFallback() {
+        return !this.supportsDocumentPip();
     },
 
     expand() {
