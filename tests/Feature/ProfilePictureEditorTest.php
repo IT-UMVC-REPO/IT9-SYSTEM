@@ -20,7 +20,28 @@ test('profile settings embeds the cropper based profile picture editor', functio
         ->assertOk()
         ->assertSee('profile-picture-editor', false)
         ->assertSee('Change Photo')
+        ->assertSee('x-teleport="body"', false)
+        ->assertDontSee('Rotate Left')
+        ->assertDontSee('Rotate Right')
+        ->assertDontSee('Flip Horizontal')
+        ->assertDontSee('Flip Vertical')
+        ->assertDontSee('Reset')
         ->assertDontSee('profile-image-upload');
+});
+
+test('profile picture editor keeps one visible change photo action and teleports the modal', function (): void {
+    $profileEditor = file_get_contents(resource_path('views/livewire/profile-picture-editor.blade.php'));
+
+    expect(substr_count($profileEditor, "{{ __('Change Photo') }}"))->toBe(1)
+        ->and($profileEditor)
+        ->toContain('x-teleport="body"')
+        ->toContain('fixed inset-0 z-[100]')
+        ->toContain('backdrop-blur-xl')
+        ->not->toContain("{{ __('Rotate Left') }}")
+        ->not->toContain("{{ __('Rotate Right') }}")
+        ->not->toContain("{{ __('Flip Horizontal') }}")
+        ->not->toContain("{{ __('Flip Vertical') }}")
+        ->not->toContain("{{ __('Reset') }}");
 });
 
 test('profile picture editor stores a cropped data url and deletes the old profile image', function (): void {

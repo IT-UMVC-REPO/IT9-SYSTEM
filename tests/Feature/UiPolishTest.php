@@ -15,8 +15,30 @@ test('shared app logo uses the current marketplace tagline', function () {
     $appLogo = uiPolishBlade('views/components/app-logo.blade.php');
 
     expect($appLogo)
-        ->toContain("{{ __('Your Local Market, Delivered') }}")
-        ->not->toContain('Videre Est Scire');
+        ->toContain("{{ __('Videre Est Scire') }}")
+        ->toContain('tracking-[0.16em]')
+        ->not->toContain('Your Local Market, Delivered')
+        ->not->toContain('tracking-[0.28em]');
+});
+
+test('shared footer owns public contact and legal navigation', function () {
+    $siteFooter = uiPolishBlade('views/components/site-footer.blade.php');
+    $header = uiPolishBlade('views/layouts/app/header.blade.php');
+    $welcome = uiPolishBlade('views/welcome.blade.php');
+
+    expect($siteFooter)
+        ->toContain('Videre Est Scire')
+        ->toContain("route('contact.index')")
+        ->toContain("route('legal.privacy-policy')")
+        ->toContain("route('legal.terms-and-conditions')")
+        ->toContain('data-test="site-footer"')
+        ->and($header)
+        ->toContain('<x-site-footer />')
+        ->not->toContain("{{ __('Contact Us') }}")
+        ->not->toContain("route('contact.index')")
+        ->and($welcome)
+        ->not->toContain('<footer class=')
+        ->not->toContain('$footerLinks');
 });
 
 test('shared app logo mark inherits the active brand color', function () {

@@ -48,13 +48,6 @@
                 ['label' => 'Create a free account', 'href' => route('register'), 'class' => 'brand-button-primary active:scale-[0.96]', 'icon' => 'fa-solid fa-arrow-right text-xs'],
                 ['label' => 'Sign in', 'href' => route('login'), 'class' => 'inline-flex items-center justify-center rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-300 transition hover:border-neutral-500 hover:text-white', 'icon' => null],
             ];
-        $footerLinks = [
-            ['label' => 'Contact Us', 'href' => route('contact.index')],
-            ['label' => 'Privacy Policy', 'href' => route('legal.privacy-policy')],
-            ['label' => 'Terms & Conditions', 'href' => route('legal.terms-and-conditions')],
-            ['label' => 'Log in', 'href' => route('login')],
-            ['label' => 'Register', 'href' => route('register')],
-        ];
     @endphp
 
     <div class="relative overflow-x-hidden dark:text-zinc-100">
@@ -349,28 +342,5 @@
             </div>
         </section>
 
-        <footer class="border-t border-stone-200 bg-stone-50 py-12 dark:border-white/10 dark:bg-zinc-900/80">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6">
-                <div class="flex flex-col items-center justify-between gap-6 sm:flex-row">
-                    <div class="flex items-center gap-3">
-                       <x-app-logo class="h-8 w-auto" />
-                    </div>
-
-                    <p class="max-w-xl text-center text-xs leading-6 text-neutral-400 dark:text-zinc-400">
-                        Your Local Market, Delivered - a marketplace shaped around local trust, freshness, rider delivery, and familiar buying habits.
-                    </p>
-
-                    <div class="flex items-center gap-5 text-xs text-neutral-400 dark:text-zinc-400">
-                        @foreach ($footerLinks as $link)
-                            <a href="{{ $link['href'] }}" class="transition hover:text-neutral-700 dark:hover:text-zinc-100">{{ $link['label'] }}</a>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="mt-8 border-t border-stone-200 pt-6 text-center text-xs text-neutral-400 dark:border-white/10 dark:text-zinc-400">
-                    &copy; {{ date('Y') }} SukiMarket. All rights reserved.
-                </div>
-            </div>
-        </footer>
     </div>
 </x-layouts::app.header>

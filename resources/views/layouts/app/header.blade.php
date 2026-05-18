@@ -246,9 +246,6 @@
                     </div>
                 @else
                     <div class="ml-auto hidden items-center gap-3 sm:flex">
-                        <a href="{{ route('contact.index') }}" class="brand-link" wire:navigate>
-                            {{ __('Contact Us') }}
-                        </a>
                         <a href="{{ route('login') }}" class="brand-link" wire:navigate>
                             {{ __('Log in') }}
                         </a>
@@ -384,9 +381,6 @@
                     </div>
 
                     <div class="grid gap-3 p-4">
-                        <a href="{{ route('contact.index') }}" class="brand-button-secondary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
-                            {{ __('Contact Us') }}
-                        </a>
                         <a href="{{ route('login') }}" class="brand-button-secondary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
                             {{ __('Log in') }}
                         </a>
@@ -399,6 +393,10 @@
         </header>
 
         {{ $slot }}
+
+        @if (! $isConversationSurface)
+            <x-site-footer />
+        @endif
 
         @auth
             @if ($mobileBottomNavigationItems !== [])

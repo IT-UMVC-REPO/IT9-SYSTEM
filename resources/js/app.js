@@ -36,8 +36,6 @@ window.sukiProfilePictureEditor = (config) => ({
     modalOpen: false,
     cropper: null,
     zoomValue: 1,
-    scaleX: 1,
-    scaleY: 1,
 
     selectFile(event) {
         const file = event.target.files?.[0];
@@ -68,8 +66,6 @@ window.sukiProfilePictureEditor = (config) => ({
 
         this.destroyCropper();
         this.zoomValue = 1;
-        this.scaleX = 1;
-        this.scaleY = 1;
 
         image.addEventListener('load', () => {
             this.cropper = new window.Cropper(image, {
@@ -122,29 +118,6 @@ window.sukiProfilePictureEditor = (config) => ({
     zoomTo(value) {
         this.zoomValue = value;
         this.cropper?.zoomTo(Number(value));
-    },
-
-    rotate(degrees) {
-        this.cropper?.rotate(degrees);
-    },
-
-    flipHorizontal() {
-        this.scaleX *= -1;
-        this.cropper?.scaleX(this.scaleX);
-    },
-
-    flipVertical() {
-        this.scaleY *= -1;
-        this.cropper?.scaleY(this.scaleY);
-    },
-
-    resetEditor() {
-        this.zoomValue = 1;
-        this.scaleX = 1;
-        this.scaleY = 1;
-        this.cropper?.reset();
-        this.cropper?.zoomTo(1);
-        this.updatePreview();
     },
 
     cancel() {

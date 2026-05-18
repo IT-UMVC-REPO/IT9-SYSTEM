@@ -10,6 +10,6 @@
 
     <span class="{{ $sidebar ? 'min-w-0 in-data-flux-sidebar-collapsed-desktop:hidden' : 'min-w-0' }}">
         <span class="brand-serif block truncate text-lg font-bold text-neutral-900 dark:text-zinc-100">SukiMarket</span>
-        <span class="hidden truncate text-[11px] uppercase tracking-[0.28em] text-neutral-400 dark:text-zinc-400 sm:block">{{ __('Your Local Market, Delivered') }}</span>
+        <span class="hidden truncate text-[11px] uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-400 sm:block">{{ __('Videre Est Scire') }}</span>
     </span>
 </a>

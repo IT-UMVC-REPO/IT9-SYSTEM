@@ -8,7 +8,7 @@ test('landing page renders successfully', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertDontSee('<html lang="'.str_replace('_', '-', app()->getLocale()).'" x-cloak>', false)
-        ->assertSee('Your Local Market, Delivered')
+        ->assertSee('Videre Est Scire')
         ->assertSee('Fresh from the palengke');
 });
 
