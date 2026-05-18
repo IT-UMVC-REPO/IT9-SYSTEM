@@ -46,15 +46,6 @@
                 {{ __('SukiMarket keeps local buying familiar: verified stalls, fresh listings, rider delivery, and marketplace support in one place.') }}
             </p>
 
-            <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-emerald-200">Videre Est Scire</span>
-                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-amber-200">{{ __('Tagum City market flow') }}</span>
-                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
-                    <a href="{{ route('contact.index') }}" wire:navigate class="text-white transition hover:text-emerald-200">
-                        {{ __('Contact Us') }}
-                    </a>
-                </span>
-            </div>
         </div>
 
         <div class="grid gap-6 sm:grid-cols-[repeat(3,minmax(8rem,1fr))] lg:min-w-[42rem]">
