@@ -441,7 +441,11 @@ export const conversationVideoCall = (config) => reusableConversationCallFor(con
     },
 
     async toggleCamera() {
-        if (!this.hasCamera || this.screenSharing) {
+        if (this.screenSharing) {
+            return;
+        }
+
+        if (!this.hasCamera) {
             this.cameraDisabled = true;
             return;
         }

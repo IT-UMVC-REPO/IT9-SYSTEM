@@ -249,7 +249,7 @@
 
                 <video id="group-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="remoteParticipants.length === 0"
-                    x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                    x-bind:class="screenSharing ? 'opacity-100' : (cameraDisabled ? 'opacity-0' : 'opacity-100 scale-x-[-1]')"
                     class="absolute inset-0 h-full w-full bg-neutral-950 object-cover brightness-[0.55] blur-2xl transition-opacity duration-200"></video>
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_34%),linear-gradient(180deg,_rgba(4,7,12,0.72),_rgba(4,7,12,0.96))]"></div>
 
@@ -269,7 +269,7 @@
                     <div x-cloak x-show="! isMobileViewport" class="relative h-full w-full p-4 pb-32 pt-24" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight) + ' gap: 12px;'">
                         <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30" x-cloak x-show="remoteParticipants.length > 0 && participantFullscreenId === null">
                             <video id="group-call-local-grid-video" autoplay muted playsinline
-                                x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                                x-bind:class="screenSharing ? 'opacity-100' : (cameraDisabled ? 'opacity-0' : 'opacity-100 scale-x-[-1]')"
                                 class="relative z-10 h-full w-full object-cover transition-opacity duration-200"></video>
                             <div
                                 x-cloak
@@ -349,7 +349,7 @@
                             <div class="flex w-max gap-2">
                                 <div class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-900 shadow-lg">
                                     <video id="group-call-local-thumbnail-video" autoplay muted playsinline
-                                        x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                                        x-bind:class="screenSharing ? 'opacity-100' : (cameraDisabled ? 'opacity-0' : 'opacity-100 scale-x-[-1]')"
                                         class="relative z-10 h-full w-full object-cover transition-opacity duration-200"></video>
                                     <div
                                         x-cloak

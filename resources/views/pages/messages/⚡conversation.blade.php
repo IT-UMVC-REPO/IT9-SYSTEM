@@ -217,7 +217,7 @@
                 <div class="absolute z-20 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
                     <video id="conversation-call-local-video" autoplay muted playsinline
-                        x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                        x-bind:class="screenSharing ? 'opacity-100' : (cameraDisabled ? 'opacity-0' : 'opacity-100 scale-x-[-1]')"
                         class="h-full w-full bg-neutral-950 object-cover transition-opacity duration-200"></video>
                     <div
                         x-cloak
