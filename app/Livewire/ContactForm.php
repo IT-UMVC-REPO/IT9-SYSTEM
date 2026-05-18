@@ -52,7 +52,7 @@ class ContactForm extends Component
     protected function messages(): array
     {
         return [
-            'phone.regex' => __('Please enter a valid Philippine mobile number (e.g., 09171234567).'),
+            'phone.regex' => __('Please enter a valid Philippine mobile number.'),
             'subject.in' => __('Please select a valid inquiry type.'),
             'message.min' => __('Your message must be at least 20 characters.'),
         ];
@@ -66,6 +66,7 @@ class ContactForm extends Component
 
         $ipAddress = request()->ip();
         $userAgent = request()->userAgent();
+        $this->phone = $this->normalizePhoneForValidation($this->phone);
         $validated = $this->validate();
 
         $attachmentPath = $this->attachment?->store('contact-attachments', 'private');
@@ -100,5 +101,10 @@ class ContactForm extends Component
     public function render(): View
     {
         return view('livewire.contact-form');
+    }
+
+    private function normalizePhoneForValidation(string $phone): string
+    {
+        return preg_replace('/[\s().-]+/', '', trim($phone)) ?? trim($phone);
     }
 }

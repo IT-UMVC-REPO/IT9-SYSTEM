@@ -12,7 +12,9 @@ use App\Models\Order;
 use App\Models\User;
 use App\Models\VideoCall;
 use App\Services\AuditLogger;
+use App\Services\MessageMutationService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -161,6 +163,42 @@ class Conversation extends Component
         unset($this->attachmentUploads[$index]);
         $this->attachmentUploads = array_values($this->attachmentUploads);
         $this->resetValidation(['attachmentUploads', 'attachmentUploads.*']);
+    }
+
+    public function editMessage(int $messageId, string $content): void
+    {
+        $message = $this->directMessageQuery()
+            ->whereKey($messageId)
+            ->firstOrFail();
+
+        app(MessageMutationService::class)->editDirect(auth()->user(), $message, $content);
+
+        $this->loadMessages();
+        $this->dispatch('message-sent');
+    }
+
+    public function pinMessage(int $messageId): void
+    {
+        $message = $this->directMessageQuery()
+            ->whereKey($messageId)
+            ->firstOrFail();
+
+        app(MessageMutationService::class)->pinDirect(auth()->user(), $message);
+
+        $this->loadMessages();
+        $this->dispatch('message-sent');
+    }
+
+    public function deleteMessage(int $messageId, bool $forEveryone = true): void
+    {
+        $message = $this->directMessageQuery()
+            ->whereKey($messageId)
+            ->firstOrFail();
+
+        app(MessageMutationService::class)->deleteDirect(auth()->user(), $message, $forEveryone);
+
+        $this->loadMessages();
+        $this->dispatch('message-sent');
     }
 
     public function refreshThread(bool $shouldScroll = false): void
@@ -340,16 +378,8 @@ class Conversation extends Component
 
     private function loadMessages(): void
     {
-        $this->messages = Message::query()
-            ->where(function ($query): void {
-                $query
-                    ->where(function ($innerQuery): void {
-                        $innerQuery->where('sender_id', auth()->id())->where('receiver_id', $this->otherUserId);
-                    })
-                    ->orWhere(function ($innerQuery): void {
-                        $innerQuery->where('sender_id', $this->otherUserId)->where('receiver_id', auth()->id());
-                    });
-            })
+        $this->messages = $this->directMessageQuery()
+            ->withTrashed()
             ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
             ->latest('created_at')
             ->limit(100)
@@ -373,6 +403,9 @@ class Conversation extends Component
             'receiver_id' => $message->receiver_id,
             'content' => $message->content,
             'is_read' => $message->is_read,
+            'edited_at' => $message->edited_at?->toIso8601String(),
+            'deleted_at' => $message->deleted_at?->toIso8601String(),
+            'deleted_for_everyone_at' => $message->deleted_for_everyone_at?->toIso8601String(),
             'created_at' => $message->created_at?->toIso8601String(),
             'date_key' => $message->created_at?->toDateString(),
             'time' => $this->messageTimestamp($message),
@@ -416,6 +449,20 @@ class Conversation extends Component
     private function attachmentPublicUrl(MessageAttachment $attachment): string
     {
         return route('messages.attachments.show', ['attachment' => $attachment], false);
+    }
+
+    private function directMessageQuery(): Builder
+    {
+        return Message::query()
+            ->where(function ($query): void {
+                $query
+                    ->where(function ($innerQuery): void {
+                        $innerQuery->where('sender_id', auth()->id())->where('receiver_id', $this->otherUserId);
+                    })
+                    ->orWhere(function ($innerQuery): void {
+                        $innerQuery->where('sender_id', $this->otherUserId)->where('receiver_id', auth()->id());
+                    });
+            });
     }
 
     public function render(): View

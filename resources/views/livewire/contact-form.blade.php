@@ -57,7 +57,7 @@
 
             <flux:input wire:model="name" :label="__('Full Name')" type="text" required maxlength="100" autocomplete="name" />
             <flux:input wire:model="email" :label="__('Email Address')" type="email" required maxlength="150" autocomplete="email" />
-            <flux:input wire:model="phone" :label="__('Phone Number')" type="tel" :description="__('Optional. Use 09171234567 or +639171234567.')" />
+            <flux:input wire:model="phone" :label="__('Phone Number')" type="tel" placeholder="+63 917 123 4567" autocomplete="tel" />
 
             <flux:select wire:model="subject" :label="__('Subject')" placeholder="{{ __('Choose an inquiry type') }}" required>
                 <flux:select.option value="general_inquiry">{{ __('General Inquiry') }}</flux:select.option>

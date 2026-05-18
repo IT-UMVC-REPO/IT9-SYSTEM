@@ -29,57 +29,50 @@
         ];
 @endphp
 
-<footer data-test="site-footer" class="border-t border-white/60 bg-neutral-950 text-zinc-200 shadow-[0_-24px_80px_rgba(15,23,42,0.12)] dark:border-white/10">
-    <div class="mx-auto grid max-w-[1500px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:px-8 lg:py-14">
-        <div class="grid gap-6">
+<footer data-test="site-footer" class="border-t border-white/10 bg-neutral-950 text-zinc-200">
+    <div class="mx-auto grid max-w-[1500px] gap-7 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:px-8 lg:py-7">
+        <div class="grid max-w-3xl gap-4">
             <a href="{{ route('home') }}" wire:navigate class="flex min-w-0 items-center gap-3">
-                <span class="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-400/15 text-emerald-200 shadow-sm" aria-hidden="true">
-                    <span class="brand-logo-mark h-7 w-7" style="--suki-logo-mask: url('{{ asset('imgs/sukilogo.png') }}')"></span>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-300/25 bg-emerald-400/15 text-emerald-200 shadow-sm" aria-hidden="true">
+                    <span class="brand-logo-mark h-6 w-6" style="--suki-logo-mask: url('{{ asset('imgs/sukilogo.png') }}')"></span>
                 </span>
                 <span class="min-w-0">
-                    <span class="brand-serif block truncate text-xl font-bold text-white">SukiMarket</span>
-                    <span class="block truncate text-[11px] uppercase tracking-[0.16em] text-zinc-400">{{ __('Videre Est Scire') }}</span>
+                    <span class="brand-serif block truncate text-lg font-bold leading-tight text-white">SukiMarket</span>
+                    <span class="block truncate text-[10px] uppercase tracking-[0.16em] text-zinc-400">{{ __('Videre Est Scire') }}</span>
                 </span>
             </a>
 
-            <p class="max-w-2xl text-sm leading-7 text-zinc-400">
+            <p class="max-w-2xl text-sm leading-6 text-zinc-400">
                 {{ __('SukiMarket keeps local buying familiar: verified stalls, fresh listings, rider delivery, and marketplace support in one place.') }}
             </p>
 
-            <div class="grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">{{ __('Tagline') }}</p>
-                    <p class="mt-2 text-sm font-semibold text-white">Videre Est Scire</p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">{{ __('Local') }}</p>
-                    <p class="mt-2 text-sm font-semibold text-white">{{ __('Tagum City market flow') }}</p>
-                </div>
-                <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-rose-300">{{ __('Help') }}</p>
-                    <a href="{{ route('contact.index') }}" wire:navigate class="mt-2 inline-flex text-sm font-semibold text-white transition hover:text-emerald-200">
+            <div class="flex flex-wrap gap-2 text-xs font-semibold">
+                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-emerald-200">Videre Est Scire</span>
+                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-amber-200">{{ __('Tagum City market flow') }}</span>
+                <span class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">
+                    <a href="{{ route('contact.index') }}" wire:navigate class="text-white transition hover:text-emerald-200">
                         {{ __('Contact Us') }}
                     </a>
-                </div>
+                </span>
             </div>
         </div>
 
-        <div class="grid gap-8 sm:grid-cols-3">
+        <div class="grid gap-6 sm:grid-cols-[repeat(3,minmax(8rem,1fr))] lg:min-w-[42rem]">
             @foreach ($footerGroups as $group)
-                <nav class="grid content-start gap-3" aria-label="{{ $group['title'] }}">
-                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{{ $group['title'] }}</p>
+                <nav class="grid content-start gap-2" aria-label="{{ $group['title'] }}">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">{{ $group['title'] }}</p>
                     @foreach ($group['links'] as $link)
-                        <a href="{{ $link['href'] }}" wire:navigate class="text-sm font-medium text-zinc-300 transition hover:text-white">
+                        <a href="{{ $link['href'] }}" wire:navigate class="text-sm font-medium leading-5 text-zinc-300 transition hover:text-white">
                             {{ $link['label'] }}
                         </a>
                     @endforeach
                 </nav>
             @endforeach
 
-            <nav class="grid content-start gap-3" aria-label="{{ __('Account') }}">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{{ __('Account') }}</p>
+            <nav class="grid content-start gap-2" aria-label="{{ __('Account') }}">
+                <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">{{ __('Account') }}</p>
                 @foreach ($accountLinks as $link)
-                    <a href="{{ $link['href'] }}" wire:navigate class="text-sm font-medium text-zinc-300 transition hover:text-white">
+                    <a href="{{ $link['href'] }}" wire:navigate class="text-sm font-medium leading-5 text-zinc-300 transition hover:text-white">
                         {{ $link['label'] }}
                     </a>
                 @endforeach
@@ -88,7 +81,7 @@
     </div>
 
     <div class="border-t border-white/10">
-        <div class="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-5 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-[1500px] flex-col gap-2 px-4 py-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
             <p>&copy; {{ now()->year }} SukiMarket. {{ __('All rights reserved.') }}</p>
             <p>{{ __('Fresh market routines, translated for the web.') }}</p>
         </div>

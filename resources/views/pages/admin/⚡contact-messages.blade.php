@@ -1,4 +1,4 @@
-<div class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+<div wire:poll.visible.15s class="mx-auto flex max-w-[1500px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
     <section class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
             <p class="brand-kicker">{{ __('Support inbox') }}</p>
@@ -38,7 +38,7 @@
                                 <td class="px-5 py-4 text-neutral-600 dark:text-zinc-300">{{ $contactMessage->subjectLabel() }}</td>
                                 <td class="px-5 py-4 text-neutral-500 dark:text-zinc-400">{{ $contactMessage->created_at?->format('M j, Y g:i A') }}</td>
                                 <td class="px-5 py-4">
-                                    <span class="{{ $contactMessage->is_read ? 'bg-stone-100 text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' }} inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
+                                    <span class="{{ $contactMessage->is_read ? 'bg-stone-100 text-neutral-600 dark:bg-zinc-800 dark:text-zinc-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' }} inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em]">
                                         {{ $contactMessage->is_read ? __('Read') : __('Unread') }}
                                     </span>
                                 </td>

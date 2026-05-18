@@ -11,6 +11,8 @@ use App\Models\GroupMessageAttachment;
 use App\Models\GroupMessageReaction;
 use App\Models\User;
 use App\Models\VideoCall;
+use App\Services\GroupManagementService;
+use App\Services\MessageMutationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -48,6 +50,14 @@ class GroupConversation extends Component
 
     public string $memberSearch = '';
 
+    public string $groupName = '';
+
+    public ?string $groupDescription = null;
+
+    public ?int $maxMembers = null;
+
+    public bool $approvalRequired = false;
+
     public ?int $replyingToId = null;
 
     public ?string $replyingToContent = null;
@@ -69,6 +79,11 @@ class GroupConversation extends Component
 
         $this->groupId = $groupId;
         $this->incomingCallId = $this->resolveIncomingGroupCallId();
+        $group = ConversationGroup::query()->findOrFail($groupId);
+        $this->groupName = $group->name ?? '';
+        $this->groupDescription = $group->description;
+        $this->maxMembers = $group->max_members;
+        $this->approvalRequired = (bool) $group->approval_required;
 
         unset($this->activeGroupCall);
 
@@ -191,6 +206,12 @@ class GroupConversation extends Component
             return;
         }
 
+        if ($this->group->max_members !== null && $this->members->count() >= $this->group->max_members) {
+            throw ValidationException::withMessages([
+                'memberSearch' => __('This group has reached its member limit.'),
+            ]);
+        }
+
         ConversationGroupMember::query()->create([
             'group_id' => $this->groupId,
             'user_id' => $userId,
@@ -203,12 +224,73 @@ class GroupConversation extends Component
         unset($this->availableMembers);
     }
 
+    public function saveGroupDetails(): void
+    {
+        app(GroupManagementService::class)->updateDetails(auth()->user(), $this->group, [
+            'name' => $this->groupName,
+            'description' => $this->groupDescription,
+            'max_members' => $this->maxMembers,
+            'approval_required' => $this->approvalRequired,
+        ]);
+
+        unset($this->group);
+        $this->dispatch('message-sent');
+    }
+
+    public function setMemberNickname(int $userId, ?string $nickname): void
+    {
+        app(GroupManagementService::class)->setNickname(auth()->user(), $this->group, $userId, $nickname);
+
+        unset($this->members);
+        $this->loadMessages();
+        $this->dispatch('message-sent');
+    }
+
+    public function promoteMember(int $userId): void
+    {
+        app(GroupManagementService::class)->promote(auth()->user(), $this->group, $userId);
+
+        unset($this->members);
+        $this->dispatch('message-sent');
+    }
+
+    public function demoteMember(int $userId): void
+    {
+        app(GroupManagementService::class)->demote(auth()->user(), $this->group, $userId);
+
+        unset($this->members);
+        $this->dispatch('message-sent');
+    }
+
+    public function removeMember(int $userId): void
+    {
+        app(GroupManagementService::class)->remove(auth()->user(), $this->group, $userId);
+
+        unset($this->members);
+        unset($this->availableMembers);
+        $this->dispatch('message-sent');
+    }
+
+    public function transferOwnership(int $userId): void
+    {
+        app(GroupManagementService::class)->transferOwnership(auth()->user(), $this->group, $userId);
+
+        unset($this->group);
+        unset($this->members);
+        $this->dispatch('message-sent');
+    }
+
+    public function regenerateInviteLink(?int $expiresInMinutes = null, ?int $usageLimit = null): void
+    {
+        app(GroupManagementService::class)->regenerateInvite(auth()->user(), $this->group, $expiresInMinutes, $usageLimit);
+
+        unset($this->group);
+        $this->dispatch('message-sent');
+    }
+
     public function leaveGroup(): void
     {
-        ConversationGroupMember::query()
-            ->where('group_id', $this->groupId)
-            ->where('user_id', auth()->id())
-            ->delete();
+        app(GroupManagementService::class)->leave(auth()->user(), $this->group);
 
         $this->redirect(route('messages.inbox'), navigate: true);
     }
@@ -243,6 +325,7 @@ class GroupConversation extends Component
     public function setReplyTo(int $messageId): void
     {
         $message = GroupMessage::query()
+            ->withTrashed()
             ->where('group_id', $this->groupId)
             ->with('sender:id,name,profile_image')
             ->findOrFail($messageId);
@@ -292,6 +375,43 @@ class GroupConversation extends Component
         }
 
         $this->loadMessages();
+    }
+
+    public function editMessage(int $messageId, string $content): void
+    {
+        $message = GroupMessage::query()
+            ->withTrashed()
+            ->where('group_id', $this->groupId)
+            ->findOrFail($messageId);
+
+        app(MessageMutationService::class)->editGroup(auth()->user(), $message, $content);
+
+        $this->loadMessages();
+        $this->dispatch('group-message-sent');
+    }
+
+    public function pinMessage(int $messageId): void
+    {
+        $message = GroupMessage::query()
+            ->where('group_id', $this->groupId)
+            ->findOrFail($messageId);
+
+        app(MessageMutationService::class)->pinGroup(auth()->user(), $message);
+
+        $this->loadMessages();
+        $this->dispatch('group-message-sent');
+    }
+
+    public function deleteMessage(int $messageId, bool $forEveryone = true): void
+    {
+        $message = GroupMessage::query()
+            ->where('group_id', $this->groupId)
+            ->findOrFail($messageId);
+
+        app(MessageMutationService::class)->deleteGroup(auth()->user(), $message, $forEveryone);
+
+        $this->loadMessages();
+        $this->dispatch('group-message-sent');
     }
 
     #[Computed]
@@ -356,6 +476,13 @@ class GroupConversation extends Component
 
     public function memberDisplayName(User $user): string
     {
+        $membership = $this->members
+            ->first(fn (ConversationGroupMember $member): bool => $member->user_id === $user->getKey());
+
+        if ($membership instanceof ConversationGroupMember && filled($membership->nickname)) {
+            return $membership->nickname;
+        }
+
         return $user->nicknameFor((int) auth()->id()) ?? $user->name;
     }
 
@@ -493,6 +620,7 @@ class GroupConversation extends Component
     private function loadMessages(): void
     {
         $this->messages = GroupMessage::query()
+            ->withTrashed()
             ->where('group_id', $this->groupId)
             ->with([
                 'sender:id,name,profile_image',
@@ -530,6 +658,9 @@ class GroupConversation extends Component
             'reply_to_id' => $message->reply_to_id,
             'is_system_message' => $message->is_system_message,
             'system_event' => $message->system_event,
+            'edited_at' => $message->edited_at?->toIso8601String(),
+            'deleted_at' => $message->deleted_at?->toIso8601String(),
+            'deleted_for_everyone_at' => $message->deleted_for_everyone_at?->toIso8601String(),
             'created_at' => $message->created_at?->toIso8601String(),
             'date_key' => $message->created_at?->toDateString(),
             'time' => $this->messageTimestamp($message),

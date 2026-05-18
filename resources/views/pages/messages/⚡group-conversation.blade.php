@@ -46,7 +46,20 @@
         pollTimer: null,
         pollInFlight: false,
         pendingGroupMessages: [],
+        realtimeEnabled: @js($realtimeEnabled),
         fallbackPolling: @js(! $realtimeEnabled),
+        echoConnectionState() {
+            return window.Echo?.connector?.pusher?.connection?.state ?? null;
+        },
+        shouldUseFallbackPolling() {
+            if (this.fallbackPolling || ! this.realtimeEnabled || ! window.Echo) {
+                return true;
+            }
+
+            const state = this.echoConnectionState();
+
+            return state !== null && state !== 'connected';
+        },
         activeCallInProgress(selector) {
             const callEl = document.querySelector(selector);
             const callData = callEl ? (callEl.__groupConversationVideoCall || callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
@@ -55,12 +68,8 @@
             return callStatus !== 'idle' && callStatus !== 'ended';
         },
         initPolling() {
-            if (! this.fallbackPolling) {
-                return;
-            }
-
             this.pollTimer = setInterval(() => {
-                if (this.pollInFlight || document.hidden) {
+                if (! this.shouldUseFallbackPolling() || this.pollInFlight || document.hidden) {
                     return;
                 }
 
@@ -497,18 +506,15 @@
 
                             <div class="flex h-11 shrink-0 items-center">
                                 @foreach ($this->members->take(3) as $index => $member)
-                                    <div @class([
-                                        'relative inline-flex shrink-0',
-                                        '-ml-3' => $index > 0,
-                                    ])>
+                                    <div
+                                        @class([
+                                            'inline-flex shrink-0 rounded-full p-0.5 transition',
+                                            '-ml-3' => $index > 0,
+                                        ])
+                                        x-bind:class="initialized && isOnline(@js($member->user_id)) ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-neutral-900' : ''"
+                                        title="{{ __('Online') }}"
+                                    >
                                         <x-user-avatar :user="$member->user" size="sm" class="border-2 border-white dark:border-neutral-900" />
-                                        <span
-                                            x-cloak
-                                            x-show="initialized && isOnline(@js($member->user_id))"
-                                            x-transition.opacity
-                                            class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
-                                            title="{{ __('Online') }}"
-                                        ></span>
                                     </div>
                                 @endforeach
                             </div>
@@ -578,6 +584,7 @@
                                 $showSenderAvatar = ! $isOwnMessage && ! $isGroupedWithNext;
                                 $attachments = collect($message['attachments'] ?? []);
                                 $reactions = collect($message['reactions'] ?? []);
+                                $canModerateMessage = $isOwnMessage || $this->isGroupAdmin();
                             @endphp
 
                             @if ($startsNewDate)
@@ -657,6 +664,19 @@
                                             <button type="button" wire:click="setReplyTo({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
                                                 <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
                                             </button>
+                                            @if ($this->isGroupAdmin())
+                                                <button type="button" wire:click="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-emerald-700 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-emerald-300" aria-label="{{ __('Pin message') }}">
+                                                    <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
+                                            <button type="button" x-on:click.stop="navigator.clipboard?.writeText(@js($message['content'] ?? ''))" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Copy message') }}">
+                                                <flux:icon.clipboard variant="micro" class="h-3.5 w-3.5" />
+                                            </button>
+                                            @if ($canModerateMessage)
+                                                <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
                                         </div>
 
                                         <div @class([
@@ -941,23 +961,78 @@
                             </div>
                         </div>
 
+                        @if ($this->isGroupAdmin())
+                            <form wire:submit="saveGroupDetails" class="mt-5 space-y-3 rounded-2xl border border-stone-200 p-3 dark:border-white/10">
+                                <flux:field>
+                                    <flux:label>{{ __('Name') }}</flux:label>
+                                    <flux:input wire:model="groupName" />
+                                    <flux:error name="groupName" />
+                                </flux:field>
+
+                                <flux:field>
+                                    <flux:label>{{ __('Bio') }}</flux:label>
+                                    <flux:textarea wire:model="groupDescription" rows="3" />
+                                    <flux:error name="groupDescription" />
+                                </flux:field>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <flux:field>
+                                        <flux:label>{{ __('Limit') }}</flux:label>
+                                        <flux:input type="number" min="2" wire:model.number="maxMembers" />
+                                        <flux:error name="maxMembers" />
+                                    </flux:field>
+
+                                    <div class="flex items-end">
+                                        <flux:checkbox wire:model="approvalRequired" label="{{ __('Approve joins') }}" />
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between gap-2">
+                                    <flux:button type="submit" size="sm" variant="primary">{{ __('Save') }}</flux:button>
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="regenerateInviteLink(10080, 25)">{{ __('Invite link') }}</flux:button>
+                                </div>
+
+                                @if ($this->group->invite_token)
+                                    <p class="truncate text-xs text-neutral-500 dark:text-zinc-400">{{ route('messages.group', ['groupId' => $groupId]).'?invite='.$this->group->invite_token }}</p>
+                                @endif
+                            </form>
+                        @endif
+
                         <div class="mt-5 space-y-3">
                             @foreach ($this->members as $member)
                                 <div wire:key="group-member-{{ $member->user_id }}" class="flex items-center gap-3">
-                                    <div class="relative inline-flex shrink-0">
+                                    <div
+                                        class="inline-flex shrink-0 rounded-full p-0.5 transition"
+                                        x-bind:class="initialized && isOnline(@js($member->user_id)) ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-zinc-950' : ''"
+                                        title="{{ __('Online') }}"
+                                    >
                                         <x-user-avatar :user="$member->user" size="sm" />
-                                        <span
-                                            x-cloak
-                                            x-show="initialized && isOnline(@js($member->user_id))"
-                                            x-transition.opacity
-                                            class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
-                                            title="{{ __('Online') }}"
-                                        ></span>
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->memberDisplayName($member->user) }}</p>
-                                        <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }}</p>
+                                        <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }} · {{ $member->joined_at?->format('M j') }}</p>
                                     </div>
+                                    @if ($this->isGroupAdmin() && $member->user_id !== auth()->id())
+                                        <div class="flex shrink-0 items-center gap-1">
+                                            @if ($member->role === 'admin')
+                                                <button type="button" wire:click="demoteMember({{ $member->user_id }})" class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-stone-100 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-white" aria-label="{{ __('Demote admin') }}">
+                                                    <flux:icon.arrow-down variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @else
+                                                <button type="button" wire:click="promoteMember({{ $member->user_id }})" class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-stone-100 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-white" aria-label="{{ __('Promote member') }}">
+                                                    <flux:icon.arrow-up variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
+                                            @if ((int) $this->group->owner_id === auth()->id())
+                                                <button type="button" wire:click="transferOwnership({{ $member->user_id }})" wire:confirm="{{ __('Transfer group ownership to this member?') }}" class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-400/10 dark:hover:text-emerald-300" aria-label="{{ __('Transfer ownership') }}">
+                                                    <flux:icon.key variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
+                                            <button type="button" wire:click="removeMember({{ $member->user_id }})" wire:confirm="{{ __('Remove this member?') }}" class="flex h-8 w-8 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-400/10 dark:hover:text-rose-300" aria-label="{{ __('Remove member') }}">
+                                                <flux:icon.x-mark variant="micro" class="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

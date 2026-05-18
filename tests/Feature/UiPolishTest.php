@@ -32,6 +32,11 @@ test('shared footer owns public contact and legal navigation', function () {
         ->toContain("route('legal.privacy-policy')")
         ->toContain("route('legal.terms-and-conditions')")
         ->toContain('data-test="site-footer"')
+        ->toContain('lg:grid-cols-[minmax(0,1fr)_auto]')
+        ->toContain('lg:py-7')
+        ->toContain('flex flex-wrap gap-2')
+        ->not->toContain('lg:py-14')
+        ->not->toContain('sm:grid-cols-3')
         ->and($header)
         ->toContain('<x-site-footer />')
         ->not->toContain("{{ __('Contact Us') }}")
@@ -79,6 +84,24 @@ test('messaging pending attachments render filename chips without temporary imag
         ->toContain('class="mt-2 flex flex-wrap gap-2"')
         ->toContain('$upload->getClientOriginalName()')
         ->not->toContain('$upload->temporaryUrl()');
+});
+
+test('contact form phone copy and admin inbox live refresh stay compact', function () {
+    $contactForm = uiPolishBlade('views/livewire/contact-form.blade.php');
+    $contactComponent = file_get_contents(app_path('Livewire/ContactForm.php'));
+    $adminMessages = uiPolishBlade('views/pages/admin/*contact-messages.blade.php');
+
+    expect($contactForm)
+        ->toContain('placeholder="+63 917 123 4567"')
+        ->not->toContain('Optional. Use')
+        ->and($contactComponent)
+        ->toContain('normalizePhoneForValidation')
+        ->toContain("preg_replace('/[\\s().-]+/'")
+        ->not->toContain('Please enter a valid Philippine mobile number (e.g., 09171234567).')
+        ->and($adminMessages)
+        ->toContain('wire:poll.visible.15s')
+        ->toContain('whitespace-nowrap')
+        ->not->toContain('tracking-[0.16em]');
 });
 
 test('modal components avoid nested card wrappers', function () {

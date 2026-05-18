@@ -111,7 +111,7 @@ test('contact form stores the message and queues notifications', function (): vo
     Livewire::test(ContactForm::class)
         ->set('name', 'Maria Santos')
         ->set('email', 'maria@example.com')
-        ->set('phone', '09171234567')
+        ->set('phone', '+63 917 123 4567')
         ->set('subject', 'vendor_support')
         ->set('message', 'I need help updating my vendor application details please.')
         ->set('attachment', UploadedFile::fake()->createWithContent('screenshot.jpg', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==')))
@@ -123,6 +123,7 @@ test('contact form stores the message and queues notifications', function (): vo
 
     expect($message->name)->toBe('Maria Santos')
         ->and($message->subject)->toBe('vendor_support')
+        ->and($message->phone)->toBe('+639171234567')
         ->and($message->attachment_path)->toStartWith('contact-attachments/');
 
     Storage::disk('private')->assertExists($message->attachment_path);

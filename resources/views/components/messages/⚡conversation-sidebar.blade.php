@@ -3,6 +3,7 @@
 use App\Models\ConversationGroup;
 use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
+use App\Models\ChatParticipantState;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -22,7 +23,10 @@ new class extends Component
     {
         return $this->directThreads()
             ->concat($this->groupThreads())
-            ->sortByDesc('latest_at')
+            ->sortBy([
+                ['is_pinned', 'desc'],
+                ['latest_at', 'desc'],
+            ])
             ->values();
     }
 
@@ -58,7 +62,7 @@ new class extends Component
         $userId = (int) auth()->id();
         $latestMessageIds = DB::query()
             ->fromSub(
-                Message::query()
+                Message::withTrashed()
                     ->select('id')
                     ->selectRaw('ROW_NUMBER() OVER (PARTITION BY LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id) ORDER BY created_at DESC, id DESC) as thread_rank')
                     ->where(function ($query) use ($userId): void {
@@ -83,7 +87,14 @@ new class extends Component
             ->groupBy('sender_id')
             ->pluck('aggregate', 'sender_id');
 
-        return Message::query()
+        $states = ChatParticipantState::withTrashed()
+            ->where('user_id', $userId)
+            ->where('chat_type', 'direct')
+            ->whereNotNull('direct_user_id')
+            ->get()
+            ->keyBy('direct_user_id');
+
+        return Message::withTrashed()
             ->whereIn('id', $latestMessageIds)
             ->with([
                 'sender:id,name,profile_image',
@@ -91,21 +102,46 @@ new class extends Component
                 'order:id,order_status',
             ])
             ->get()
-            ->map(function (Message $message) use ($unreadCounts): array {
+            ->map(function (Message $message) use ($states, $unreadCounts): ?array {
                 $otherUser = $this->otherParticipant($message);
+                $state = $states->get($otherUser->getKey());
+                $displayName = $this->displayNameFor($otherUser);
+
+                if ($state?->deleted_at !== null || $state?->archived_at !== null) {
+                    return null;
+                }
+
+                $unreadCount = (int) ($unreadCounts[$otherUser->getKey()] ?? 0);
+
+                if ($state?->marked_unread_at !== null && $unreadCount === 0) {
+                    $unreadCount = 1;
+                }
 
                 return [
                     'type' => 'direct',
                     'id' => $otherUser->getKey(),
-                    'title' => $this->displayNameFor($otherUser),
+                    'title' => $displayName,
                     'preview' => Str::limit($message->content ?: __('Attachment'), 60),
                     'latest_at' => $message->created_at,
+                    'is_pinned' => $state?->pinned_at !== null,
+                    'is_muted' => $state?->isMuted() ?? false,
+                    'label' => $state?->label,
                     'time' => $message->timeAgo(),
-                    'unread_count' => (int) ($unreadCounts[$otherUser->getKey()] ?? 0),
-                    'message' => $message,
-                    'user' => $otherUser,
+                    'unread_count' => $unreadCount,
+                    'order_status' => $message->order?->order_status?->value,
+                    'user' => [
+                        'id' => $otherUser->getKey(),
+                        'name' => $displayName,
+                        'initials' => collect(explode(' ', $displayName))
+                            ->filter()
+                            ->map(fn (string $part): string => mb_substr($part, 0, 1))
+                            ->take(2)
+                            ->implode(''),
+                        'profile_image_url' => $otherUser->profile_image_url,
+                    ],
                 ];
             })
+            ->filter()
             ->sortByDesc('latest_at')
             ->values();
     }
@@ -152,8 +188,11 @@ new class extends Component
                     'title' => $group?->displayName((int) auth()->id()) ?? __('Group conversation'),
                     'preview' => $preview,
                     'latest_at' => $latestMessage?->created_at ?? $membership->joined_at,
+                    'is_pinned' => $membership->pinned_at !== null,
+                    'is_muted' => $membership->muted_until !== null && $membership->muted_until->isFuture(),
+                    'label' => null,
                     'time' => $latestMessage?->timeAgo() ?? $membership->joined_at?->diffForHumans(),
-                    'unread_count' => (int) ($unreadCounts[$membership->group_id] ?? 0),
+                    'unread_count' => $membership->marked_unread_at !== null ? max(1, (int) ($unreadCounts[$membership->group_id] ?? 0)) : (int) ($unreadCounts[$membership->group_id] ?? 0),
                     'group' => $group,
                 ];
             })
@@ -199,15 +238,15 @@ new class extends Component
                                 <i class="fa-solid fa-user-group text-sm"></i>
                             </span>
                         @else
-                            <div class="relative shrink-0">
+                            <div
+                                @class([
+                                    'shrink-0 rounded-full p-0.5 transition',
+                                    'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-zinc-950' => false,
+                                ])
+                                x-bind:class="initialized && isOnline(@js($thread['id'])) ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-zinc-950' : ''"
+                                title="{{ __('Online') }}"
+                            >
                                 <x-user-avatar :user="$thread['user']" size="md" />
-                                <span
-                                    x-cloak
-                                    x-show="initialized && isOnline(@js($thread['id']))"
-                                    x-transition.opacity
-                                    class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
-                                    title="{{ __('Online') }}"
-                                ></span>
                             </div>
                         @endif
 
@@ -215,6 +254,19 @@ new class extends Component
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="truncate text-base font-semibold text-neutral-900 dark:text-zinc-100">{{ $thread['title'] }}</p>
+                                    @if ($thread['is_pinned'] || $thread['is_muted'] || filled($thread['label']))
+                                        <div class="mt-1 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide">
+                                            @if ($thread['is_pinned'])
+                                                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{{ __('Pinned') }}</span>
+                                            @endif
+                                            @if ($thread['is_muted'])
+                                                <span class="rounded-full bg-stone-100 px-2 py-0.5 text-neutral-500 dark:bg-white/10 dark:text-zinc-300">{{ __('Muted') }}</span>
+                                            @endif
+                                            @if (filled($thread['label']))
+                                                <span class="rounded-full bg-[var(--brand-50)] px-2 py-0.5 text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">{{ $thread['label'] }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                     <p @class([
                                         'mt-1 truncate text-sm',
                                         'font-semibold text-neutral-900 dark:text-zinc-100' => $thread['unread_count'] > 0,
@@ -235,9 +287,9 @@ new class extends Component
                                 </div>
                             </div>
 
-                            @if (! $isGroup && $thread['message']->order !== null)
+                            @if (! $isGroup && filled($thread['order_status']))
                                 <p class="mt-2 text-xs font-medium text-neutral-400 dark:text-zinc-500">
-                                    {{ __('Order context: :status', ['status' => Str::headline($thread['message']->order->order_status->value)]) }}
+                                    {{ __('Order context: :status', ['status' => Str::headline($thread['order_status'])]) }}
                                 </p>
                             @endif
                         </div>

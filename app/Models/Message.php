@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use RuntimeException;
 
@@ -21,11 +23,18 @@ use RuntimeException;
     'attachment_mime',
     'attachment_size',
     'is_read',
+    'edited_at',
+    'deleted_for_everyone_at',
+    'delivered_at',
+    'read_at',
+    'forwarded_from_type',
+    'forwarded_from_id',
     'created_at',
 ])]
 class Message extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     public const UPDATED_AT = null;
 
@@ -48,6 +57,11 @@ class Message extends Model
         return [
             'is_read' => 'bool',
             'created_at' => 'immutable_datetime',
+            'edited_at' => 'immutable_datetime',
+            'deleted_for_everyone_at' => 'immutable_datetime',
+            'delivered_at' => 'immutable_datetime',
+            'read_at' => 'immutable_datetime',
+            'deleted_at' => 'immutable_datetime',
             'attachment_size' => 'int',
         ];
     }
@@ -70,6 +84,11 @@ class Message extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(MessageAttachment::class);
+    }
+
+    public function pins(): MorphMany
+    {
+        return $this->morphMany(MessagePin::class, 'pinnable');
     }
 
     /**

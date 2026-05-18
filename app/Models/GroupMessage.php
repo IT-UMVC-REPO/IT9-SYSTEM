@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'group_id',
@@ -16,11 +18,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'is_system_message',
     'system_event',
     'system_actor_id',
+    'edited_at',
+    'deleted_for_everyone_at',
+    'forwarded_from_type',
+    'forwarded_from_id',
     'created_at',
 ])]
 class GroupMessage extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     public const UPDATED_AT = null;
 
@@ -32,6 +39,9 @@ class GroupMessage extends Model
         return [
             'is_system_message' => 'bool',
             'created_at' => 'immutable_datetime',
+            'edited_at' => 'immutable_datetime',
+            'deleted_for_everyone_at' => 'immutable_datetime',
+            'deleted_at' => 'immutable_datetime',
         ];
     }
 
@@ -63,6 +73,11 @@ class GroupMessage extends Model
     public function reactions(): HasMany
     {
         return $this->hasMany(GroupMessageReaction::class);
+    }
+
+    public function pins(): MorphMany
+    {
+        return $this->morphMany(MessagePin::class, 'pinnable');
     }
 
     public function timeAgo(): string

@@ -11,7 +11,20 @@
         pollTimer: null,
         pollInFlight: false,
         pendingDirectMessages: [],
+        realtimeEnabled: @js($realtimeEnabled),
         fallbackPolling: @js(! $realtimeEnabled),
+        echoConnectionState() {
+            return window.Echo?.connector?.pusher?.connection?.state ?? null;
+        },
+        shouldUseFallbackPolling() {
+            if (this.fallbackPolling || ! this.realtimeEnabled || ! window.Echo) {
+                return true;
+            }
+
+            const state = this.echoConnectionState();
+
+            return state !== null && state !== 'connected';
+        },
         activeCallInProgress(selector) {
             const callEl = document.querySelector(selector);
             const callData = callEl ? (callEl.__conversationVideoCall || callEl.__x?.$data || callEl._x_dataStack?.[0]) : null;
@@ -23,12 +36,8 @@
             return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date());
         },
         initPolling() {
-            if (! this.fallbackPolling) {
-                return;
-            }
-
             this.pollTimer = setInterval(() => {
-                if (this.pollInFlight || document.hidden) {
+                if (! this.shouldUseFallbackPolling() || this.pollInFlight || document.hidden) {
                     return;
                 }
 
@@ -344,15 +353,12 @@
                             <flux:icon.arrow-left variant="mini" />
                         </a>
 
-                        <div class="relative inline-flex shrink-0">
+                        <div
+                            class="inline-flex shrink-0 rounded-full p-0.5 transition"
+                            x-bind:class="initialized && isOnline(@js($otherUserId)) ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-neutral-900' : ''"
+                            title="{{ __('Online') }}"
+                        >
                             <x-user-avatar :user="$this->otherUser" size="profile" />
-                            <span
-                                x-cloak
-                                x-show="isOnline(@js($otherUserId)) && initialized"
-                                x-transition.opacity
-                                class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-zinc-900"
-                                title="{{ __('Online') }}"
-                            ></span>
                         </div>
 
                         <div class="min-w-0 flex-1">
@@ -515,6 +521,20 @@
                                                         @endif
                                                     @endforeach
                                                 </div>
+                                            @endif
+                                        </div>
+
+                                        <div class="flex flex-col gap-1 opacity-0 transition group-hover:opacity-100">
+                                            <button type="button" wire:click.stop="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-emerald-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-emerald-300" aria-label="{{ __('Pin message') }}">
+                                                <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
+                                            </button>
+                                            <button type="button" x-on:click.stop="navigator.clipboard?.writeText(@js($message['content'] ?? ''))" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-white" aria-label="{{ __('Copy message') }}">
+                                                <flux:icon.clipboard variant="micro" class="h-3.5 w-3.5" />
+                                            </button>
+                                            @if ($isOwnMessage)
+                                                <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
                                             @endif
                                         </div>
                                     </div>
