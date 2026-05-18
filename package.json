@@ -10,6 +10,7 @@
         "@tailwindcss/vite": "^4.1.11",
         "autoprefixer": "^10.4.20",
         "concurrently": "^9.0.1",
+        "cropperjs": "^1.6.2",
         "emoji-picker-element": "^1.29.1",
         "events": "^3.3.0",
         "laravel-vite-plugin": "^3.0.0",

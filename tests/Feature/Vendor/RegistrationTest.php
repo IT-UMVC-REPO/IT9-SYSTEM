@@ -75,6 +75,7 @@ test('submitting valid data creates a pending vendor profile, stores the image, 
         ->set('sampleProducts.0.stock_quantity', '12')
         ->set('sampleProducts.0.categoryId', (string) $category->getKey())
         ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('okra.png', vendorRegistrationPngFixture()))
+        ->set('agree_vendor_tos', true)
         ->call('submit')
         ->assertRedirect(route('vendor.registration'));
 
@@ -132,6 +133,7 @@ test('vendor address is saved during registration', function () {
         ->set('sampleProducts.0.stock_quantity', '7')
         ->set('sampleProducts.0.categoryId', (string) $category->getKey())
         ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('sayote.png', vendorRegistrationPngFixture()))
+        ->set('agree_vendor_tos', true)
         ->call('submit');
 
     $vendorProfile = VendorProfile::query()->where('user_id', $customer->getKey())->first();
@@ -160,6 +162,7 @@ test('vendor address is optional during registration', function () {
         ->set('sampleProducts.0.stock_quantity', '8')
         ->set('sampleProducts.0.categoryId', (string) $category->getKey())
         ->set('sampleProductUploads.0', UploadedFile::fake()->createWithContent('mango.png', vendorRegistrationPngFixture()))
+        ->set('agree_vendor_tos', true)
         ->call('submit');
 
     $vendorProfile = VendorProfile::query()->where('user_id', $customer->getKey())->first();
@@ -185,6 +188,7 @@ test('missing sample product image validation uses customer-facing copy', functi
         ->set('sampleProducts.0.price', '95.50')
         ->set('sampleProducts.0.stock_quantity', '12')
         ->set('sampleProducts.0.categoryId', (string) $category->getKey())
+        ->set('agree_vendor_tos', true)
         ->call('submit')
         ->assertHasErrors(['sampleProductUploads.0' => 'required'])
         ->assertSee('Upload a photo for sample product #1 before submitting.')
@@ -265,6 +269,7 @@ test('rejected vendors can reopen the form and reapply', function () {
         ->set('sampleProducts.1.stock_quantity', '14')
         ->set('sampleProducts.1.categoryId', (string) $newCategory->getKey())
         ->set('sampleProductUploads.1', UploadedFile::fake()->createWithContent('pechay.png', vendorRegistrationPngFixture()))
+        ->set('agree_vendor_tos', true)
         ->call('submit')
         ->assertRedirect(route('vendor.registration'));
 

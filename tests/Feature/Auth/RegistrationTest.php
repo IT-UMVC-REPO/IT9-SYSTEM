@@ -22,6 +22,7 @@ test('new users can register', function () {
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'agree_terms' => 'on',
     ]);
 
     $response->assertSessionHasNoErrors()
@@ -45,6 +46,7 @@ test('new users can register with optional phone and address', function () {
         'password_confirmation' => 'password',
         'phone' => '+63 912 345 6789',
         'address' => '12 Tindalo St, Quezon City',
+        'agree_terms' => 'on',
     ]);
 
     $response->assertSessionHasNoErrors()
@@ -62,6 +64,7 @@ test('phone and address are optional during registration', function () {
         'email' => 'juan@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'agree_terms' => 'on',
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -81,6 +84,7 @@ test('new users are redirected to their intended page after registration', funct
         'email' => 'jane@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'agree_terms' => 'on',
     ]);
 
     $response->assertSessionHasNoErrors()
@@ -97,6 +101,7 @@ test('new users receive a branded verification email and land on the verificatio
         'email' => 'otp-user@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'agree_terms' => 'on',
     ]);
 
     $user = User::query()->where('email', 'otp-user@example.com')->firstOrFail();

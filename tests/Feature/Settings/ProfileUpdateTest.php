@@ -244,8 +244,9 @@ test('user avatar component falls back for stale local profile image paths', fun
     ]);
 
     expect($rendered)
-        ->not->toContain('<img')
-        ->toContain('AN');
+        ->toContain('<img')
+        ->toContain('https://ui-avatars.com/api/')
+        ->toContain('Arthur+Navarro');
 });
 
 test('profile location map remains immediately visible after profile renders', function () {

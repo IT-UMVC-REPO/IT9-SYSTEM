@@ -66,8 +66,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected function profileImageUrl(): Attribute
     {
-        return Attribute::get(fn (): ?string => $this->resolveNullablePublicImageUrl(
+        return Attribute::get(fn (): string => $this->resolvePublicImageUrl(
             $this->profile_image,
+            'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=random&color=fff&size=200',
         ));
     }
 

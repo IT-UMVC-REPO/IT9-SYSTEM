@@ -71,6 +71,7 @@ test('customer can apply for rider access and admin can approve the profile', fu
         ->set('vehicle_type', 'motorcycle')
         ->set('plate_number', 'ABC-1234')
         ->set('contact_number', '+63 912 345 6789')
+        ->set('agree_rider_tos', true)
         ->call('submit')
         ->assertRedirect(route('rider.registration'));
 

@@ -8,6 +8,8 @@ window.global = window.global ?? window;
 import './echo';
 import './brand-color';
 import 'emoji-picker-element';
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 import { RingtonePlayer } from './ringtone';
 import { conversationVideoCall } from './video-call';
 import { conversationVideoCallControl } from './video-call-control';
@@ -23,6 +25,187 @@ window.conversationVideoCall = conversationVideoCall;
 window.groupConversationVideoCall = groupConversationVideoCall;
 window.conversationVideoCallControl = conversationVideoCallControl;
 window.sukiVendorMap = sukiVendorMap;
+window.Cropper = Cropper;
+
+window.sukiProfilePictureEditor = (config) => ({
+    currentAvatar: config.currentAvatar,
+    initials: config.initials,
+    originalImage: null,
+    croppedImage: null,
+    previewImage: null,
+    modalOpen: false,
+    cropper: null,
+    zoomValue: 1,
+    scaleX: 1,
+    scaleY: 1,
+
+    selectFile(event) {
+        const file = event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.originalImage = reader.result;
+            this.openEditor();
+        };
+        reader.readAsDataURL(file);
+    },
+
+    openEditor() {
+        this.modalOpen = true;
+        this.$nextTick(() => this.initializeCropper());
+    },
+
+    initializeCropper() {
+        const image = this.$refs.cropperImage;
+
+        if (!image || !this.originalImage || !window.Cropper) {
+            return;
+        }
+
+        this.destroyCropper();
+        this.zoomValue = 1;
+        this.scaleX = 1;
+        this.scaleY = 1;
+
+        image.addEventListener('load', () => {
+            this.cropper = new window.Cropper(image, {
+                aspectRatio: 1,
+                viewMode: 1,
+                autoCropArea: 0.8,
+                responsive: true,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                ready: () => this.updatePreview(),
+                crop: () => this.updatePreview(),
+                zoom: (event) => {
+                    this.zoomValue = Number(event.detail.ratio).toFixed(2);
+                },
+            });
+        }, { once: true });
+
+        image.src = this.originalImage;
+    },
+
+    updatePreview() {
+        if (!this.cropper) {
+            return;
+        }
+
+        const canvas = this.cropper.getCroppedCanvas({
+            width: 160,
+            height: 160,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+
+        if (canvas) {
+            this.previewImage = canvas.toDataURL('image/jpeg', 0.82);
+        }
+    },
+
+    zoomIn() {
+        this.cropper?.zoom(0.1);
+    },
+
+    zoomOut() {
+        this.cropper?.zoom(-0.1);
+    },
+
+    zoomTo(value) {
+        this.zoomValue = value;
+        this.cropper?.zoomTo(Number(value));
+    },
+
+    rotate(degrees) {
+        this.cropper?.rotate(degrees);
+    },
+
+    flipHorizontal() {
+        this.scaleX *= -1;
+        this.cropper?.scaleX(this.scaleX);
+    },
+
+    flipVertical() {
+        this.scaleY *= -1;
+        this.cropper?.scaleY(this.scaleY);
+    },
+
+    resetEditor() {
+        this.zoomValue = 1;
+        this.scaleX = 1;
+        this.scaleY = 1;
+        this.cropper?.reset();
+        this.cropper?.zoomTo(1);
+        this.updatePreview();
+    },
+
+    cancel() {
+        this.destroyCropper();
+        this.modalOpen = false;
+        this.originalImage = null;
+        this.previewImage = null;
+
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+    },
+
+    applyCrop() {
+        if (!this.cropper) {
+            return;
+        }
+
+        const canvas = this.cropper.getCroppedCanvas({
+            width: 400,
+            height: 400,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+
+        this.croppedImage = canvas.toDataURL('image/jpeg', 0.9);
+        this.destroyCropper();
+        this.modalOpen = false;
+    },
+
+    reEdit() {
+        if (this.originalImage) {
+            this.openEditor();
+        }
+    },
+
+    async savePhoto() {
+        if (!this.croppedImage) {
+            return;
+        }
+
+        await this.$wire.$set('croppedImageData', this.croppedImage);
+        await this.$wire.save();
+    },
+
+    handleUpdated(event) {
+        this.currentAvatar = event.detail?.url || this.croppedImage || this.currentAvatar;
+        this.croppedImage = null;
+        this.originalImage = null;
+        this.previewImage = null;
+
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+    },
+
+    destroyCropper() {
+        this.cropper?.destroy();
+        this.cropper = null;
+    },
+});
 
 const escapeHtml = (value) => String(value ?? '')
     .replaceAll('&', '&amp;')

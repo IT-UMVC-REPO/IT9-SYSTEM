@@ -80,6 +80,30 @@
                 </div>
 
                 <form wire:submit="submit" class="mt-8 space-y-8">
+                    <section class="rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60">
+                        <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Vendor Terms of Service') }}</p>
+                        <div class="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
+                            @include('legal.partials.vendor-tos')
+                        </div>
+
+                        <label for="agree_vendor_tos" class="mt-4 flex items-start gap-2 text-sm leading-6 text-neutral-600 dark:text-zinc-300">
+                            <input
+                                id="agree_vendor_tos"
+                                type="checkbox"
+                                wire:model="agree_vendor_tos"
+                                required
+                                class="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 dark:border-white/10 dark:bg-zinc-800"
+                            >
+                            <span>{{ __('I have read and agree to the Vendor Terms of Service.') }}</span>
+                        </label>
+                        @error('agree_vendor_tos')
+                            <p class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-2 text-xs leading-6 text-neutral-500 dark:text-zinc-400">
+                            {{ __('By registering as a vendor on Sukimarket, you agree to comply with all applicable laws of the Republic of the Philippines.') }}
+                        </p>
+                    </section>
+
                     <div
                         class="rounded-[1.75rem] border-2 border-dashed border-stone-200 bg-stone-50/80 p-5 transition-all duration-200 dark:border-white/10 dark:bg-zinc-800/60"
                         x-bind:class="dragOver ? 'border-[var(--brand-400)] bg-[color:oklch(from_var(--brand-50)_l_c_h_/_0.9)] dark:bg-zinc-800' : ''"

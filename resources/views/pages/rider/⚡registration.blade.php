@@ -31,6 +31,8 @@ new #[Title('Rider registration')] class extends Component
 
     public ?string $currentProfileImage = null;
 
+    public bool $agree_rider_tos = false;
+
     public $profilePhotoUpload = null;
 
     public function mount(): void
@@ -76,6 +78,10 @@ new #[Title('Rider registration')] class extends Component
             'contact_number' => ['required', 'string', 'max:20'],
             'bio' => ['nullable', 'string', 'max:160'],
             'profilePhotoUpload' => ['nullable', 'image', 'max:2048'],
+            'agree_rider_tos' => ['required', 'accepted'],
+        ], [
+            'agree_rider_tos.required' => __('You must agree to the Rider Terms of Service.'),
+            'agree_rider_tos.accepted' => __('You must agree to the Rider Terms of Service.'),
         ]);
 
         $profileImagePath = null;
@@ -184,6 +190,30 @@ new #[Title('Rider registration')] class extends Component
                 </div>
 
                 <form wire:submit="submit" class="mt-8 space-y-6">
+                    <section class="rounded-[1.5rem] border border-stone-200 bg-stone-50/80 p-5 dark:border-white/10 dark:bg-zinc-800/60">
+                        <p class="text-sm font-bold text-neutral-900 dark:text-zinc-100">{{ __('Rider Terms of Service') }}</p>
+                        <div class="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
+                            @include('legal.partials.rider-tos')
+                        </div>
+
+                        <label for="agree_rider_tos" class="mt-4 flex items-start gap-2 text-sm leading-6 text-neutral-600 dark:text-zinc-300">
+                            <input
+                                id="agree_rider_tos"
+                                type="checkbox"
+                                wire:model="agree_rider_tos"
+                                required
+                                class="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 dark:border-white/10 dark:bg-zinc-800"
+                            >
+                            <span>{{ __('I have read and agree to the Rider Terms of Service.') }}</span>
+                        </label>
+                        @error('agree_rider_tos')
+                            <p class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-2 text-xs leading-6 text-neutral-500 dark:text-zinc-400">
+                            {{ __("By registering as a rider on Sukimarket, you confirm that you hold a valid driver's license issued by the Land Transportation Office (LTO) of the Philippines.") }}
+                        </p>
+                    </section>
+
                     <flux:select wire:model="vehicle_type" :label="__('Vehicle type')" required>
                         <flux:select.option value="motorcycle">{{ __('Motorcycle') }}</flux:select.option>
                         <flux:select.option value="bicycle">{{ __('Bicycle') }}</flux:select.option>

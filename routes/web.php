@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\LandingPageController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\RiderEarningsController;
 use App\Http\Controllers\RiderLocationController;
@@ -15,6 +17,14 @@ $verificationThrottle = 'throttle:'.config('fortify.limiters.verification', '6,1
 Route::get('/robots.txt', [LandingPageController::class, 'robots'])->name('robots');
 
 Route::get('/', [LandingPageController::class, 'index'])->name('home');
+
+Route::prefix('legal')->name('legal.')->group(function (): void {
+    Route::get('/privacy-policy', [LegalController::class, 'privacyPolicy'])->name('privacy-policy');
+    Route::get('/terms-and-conditions', [LegalController::class, 'termsAndConditions'])->name('terms-and-conditions');
+});
+
+Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 
 Route::get('/logout', function () {
     return redirect()->route('home');
@@ -118,6 +128,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     Route::livewire('/audit', 'pages::admin.audit-log')->name('audit');
     Route::livewire('/reports', 'pages::admin.reports')->name('reports');
     Route::livewire('/reports/{report}', 'pages::admin.report-detail')->name('reports.show');
+    Route::livewire('/contact-messages', 'pages::admin.contact-messages')->name('contact-messages');
+    Route::get('/contact-messages/{contactMessage}/attachment', [ContactController::class, 'attachment'])->name('contact-messages.attachment');
 });
 
 require __DIR__.'/settings.php';

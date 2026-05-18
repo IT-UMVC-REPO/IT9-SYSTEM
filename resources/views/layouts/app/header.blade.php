@@ -60,6 +60,7 @@
                         $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
                         $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
                         $navItem('Users', 'admin.users', ['admin.users', 'admin.users.*', 'admin.reports', 'admin.reports.*'], 'fa-solid fa-users'),
+                        $navItem('Support', 'admin.contact-messages', ['admin.contact-messages'], 'fa-solid fa-envelope-open-text'),
                     ],
                     [
                         $navItem('Messages', 'messages.inbox', ['messages.*'], 'fa-solid fa-comments'),
@@ -132,6 +133,7 @@
                     $navItem('Dashboard', 'admin.dashboard', ['admin.dashboard'], 'fa-solid fa-shield-halved'),
                     $navItem('Applications', 'admin.applications', ['admin.applications', 'admin.vendors', 'admin.vendors.*', 'admin.riders', 'admin.riders.*'], 'fa-solid fa-clipboard-list'),
                     $navItem('Users', 'admin.users', ['admin.users', 'admin.users.*', 'admin.reports', 'admin.reports.*'], 'fa-solid fa-users'),
+                    $navItem('Support', 'admin.contact-messages', ['admin.contact-messages'], 'fa-solid fa-envelope-open-text'),
                 ],
                 \App\Enums\UserRole::Rider => [
                     $navItem('Dashboard', 'rider.dashboard', ['rider.dashboard'], 'fa-solid fa-motorcycle'),
@@ -244,6 +246,9 @@
                     </div>
                 @else
                     <div class="ml-auto hidden items-center gap-3 sm:flex">
+                        <a href="{{ route('contact.index') }}" class="brand-link" wire:navigate>
+                            {{ __('Contact Us') }}
+                        </a>
                         <a href="{{ route('login') }}" class="brand-link" wire:navigate>
                             {{ __('Log in') }}
                         </a>
@@ -379,6 +384,9 @@
                     </div>
 
                     <div class="grid gap-3 p-4">
+                        <a href="{{ route('contact.index') }}" class="brand-button-secondary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
+                            {{ __('Contact Us') }}
+                        </a>
                         <a href="{{ route('login') }}" class="brand-button-secondary active:scale-[0.96] w-full" wire:navigate x-on:click="mobileMenuOpen = false">
                             {{ __('Log in') }}
                         </a>

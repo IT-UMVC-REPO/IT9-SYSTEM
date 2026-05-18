@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => env('FILESYSTEM_PUBLIC_DRIVER') ?: 'local',
             'root' => (env('FILESYSTEM_PUBLIC_DRIVER') ?: 'local') === 's3'

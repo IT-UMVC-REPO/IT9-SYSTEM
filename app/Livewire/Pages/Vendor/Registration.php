@@ -49,6 +49,8 @@ class Registration extends Component
 
     public bool $showReapplicationForm = false;
 
+    public bool $agree_vendor_tos = false;
+
     /**
      * @var array<int, array{
      *     productId: int|null,
@@ -270,6 +272,7 @@ class Registration extends Component
             'vendor_address' => ['nullable', 'string', 'max:500'],
             'storeImageUpload' => ['required', 'image', 'max:3072'],
             'sampleProducts' => ['required', 'array', 'min:1'],
+            'agree_vendor_tos' => ['required', 'accepted'],
         ];
 
         foreach (array_keys($this->sampleProducts) as $index) {
@@ -294,6 +297,8 @@ class Registration extends Component
             'storeImageUpload.required' => __('Upload a clear store cover image before submitting.'),
             'storeImageUpload.image' => __('Use a valid image file for the store cover.'),
             'storeImageUpload.max' => __('Store cover images must be 3 MB or smaller.'),
+            'agree_vendor_tos.required' => __('You must agree to the Vendor Terms of Service.'),
+            'agree_vendor_tos.accepted' => __('You must agree to the Vendor Terms of Service.'),
         ];
 
         foreach (array_keys($this->sampleProducts) as $index) {

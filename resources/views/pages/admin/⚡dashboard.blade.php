@@ -331,5 +331,12 @@
                 @endif
             @endforeach
         </div>
+
+        <div class="mt-5">
+            <a href="{{ route('admin.contact-messages') }}" wire:navigate class="brand-button-secondary active:scale-[0.96]">
+                <i class="fa-solid fa-envelope-open-text text-xs"></i>
+                {{ __('Review contact messages') }}
+            </a>
+        </div>
     </section>
 </div>

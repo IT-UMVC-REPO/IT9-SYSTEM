@@ -49,6 +49,9 @@
                 ['label' => 'Sign in', 'href' => route('login'), 'class' => 'inline-flex items-center justify-center rounded-xl border border-neutral-700 px-5 py-3 text-sm font-semibold text-neutral-300 transition hover:border-neutral-500 hover:text-white', 'icon' => null],
             ];
         $footerLinks = [
+            ['label' => 'Contact Us', 'href' => route('contact.index')],
+            ['label' => 'Privacy Policy', 'href' => route('legal.privacy-policy')],
+            ['label' => 'Terms & Conditions', 'href' => route('legal.terms-and-conditions')],
             ['label' => 'Log in', 'href' => route('login')],
             ['label' => 'Register', 'href' => route('register')],
         ];

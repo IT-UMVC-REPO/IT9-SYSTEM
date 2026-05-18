@@ -61,6 +61,30 @@
                 viewable
             />
 
+            <div>
+                <label for="agree_terms" class="flex items-start gap-2 text-sm leading-6 text-neutral-600 dark:text-zinc-300">
+                    <input
+                        id="agree_terms"
+                        name="agree_terms"
+                        type="checkbox"
+                        value="1"
+                        required
+                        @checked(old('agree_terms'))
+                        class="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 dark:border-white/10 dark:bg-zinc-800"
+                    >
+                    <span>
+                        {{ __('I have read and agree to the') }}
+                        <a href="{{ route('legal.terms-and-conditions') }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-[var(--brand-700)] underline dark:text-[var(--brand-300)]">{{ __('Terms and Conditions') }}</a>
+                        {{ __('and') }}
+                        <a href="{{ route('legal.privacy-policy') }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-[var(--brand-700)] underline dark:text-[var(--brand-300)]">{{ __('Privacy Policy') }}</a>.
+                    </span>
+                </label>
+
+                @error('agree_terms')
+                    <p class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div class="flex items-center justify-end">
                 <flux:button type="submit" variant="primary" class="w-full transition-all duration-150 active:scale-[0.97]" data-test="register-user-button">
                     {{ __('Create account') }}
