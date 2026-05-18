@@ -19,6 +19,22 @@ test('shared app logo uses the current marketplace tagline', function () {
         ->not->toContain('Videre Est Scire');
 });
 
+test('shared app logo mark inherits the active brand color', function () {
+    $appLogo = uiPolishBlade('views/components/app-logo.blade.php');
+    $appCss = file_get_contents(resource_path('css/app.css'));
+
+    expect($appLogo)
+        ->toContain('brand-logo-mark')
+        ->toContain("--suki-logo-mask: url('{{ asset('imgs/sukilogo.png') }}')")
+        ->not->toContain('<img src="{{ asset(\'imgs/sukilogo.png\') }}"')
+        ->and($appCss)
+        ->toContain('.brand-logo-mark')
+        ->toContain('background-color: currentColor;')
+        ->toContain('mask: var(--suki-logo-mask) center / contain no-repeat;')
+        ->toContain('color: var(--brand-700);')
+        ->toContain('color: var(--brand-300);');
+});
+
 test('vendor registration sample products use single column image first layout', function () {
     $registration = uiPolishBlade('views/pages/vendor/*registration.blade.php');
 

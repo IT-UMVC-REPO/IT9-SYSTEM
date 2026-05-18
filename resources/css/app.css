@@ -381,12 +381,23 @@
     }
 
     .brand-logo-badge {
-        background-color: var(--brand-600);
-        color: var(--color-accent-foreground);
+        border: 1px solid oklch(from var(--brand-500) l c h / 0.18);
+        background-color: oklch(from var(--brand-50) l c h / 0.88);
+        color: var(--brand-700);
     }
 
     .dark .brand-logo-badge {
-        background-color: var(--brand-500);
+        border-color: oklch(from var(--brand-400) l c h / 0.24);
+        background-color: oklch(from var(--brand-500) l c h / 0.16);
+        color: var(--brand-300);
+    }
+
+    .brand-logo-mark {
+        display: inline-block;
+        flex-shrink: 0;
+        background-color: currentColor;
+        mask: var(--suki-logo-mask) center / contain no-repeat;
+        -webkit-mask: var(--suki-logo-mask) center / contain no-repeat;
     }
 
     .brand-soft-surface {
