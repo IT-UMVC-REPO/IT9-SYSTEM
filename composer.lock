@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0ac12b0e57e1105e2494502948207a2a",
+    "content-hash": "9348006b29845b5ba6362bb1e3f25195",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -893,78 +893,6 @@
                 }
             ],
             "time": "2025-03-06T22:45:56+00:00"
-        },
-        {
-            "name": "endroid/qr-code",
-            "version": "6.1.3",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/endroid/qr-code.git",
-                "reference": "5fa534856ed95649d67c0eab0cabc03ab1d8e0e2"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/endroid/qr-code/zipball/5fa534856ed95649d67c0eab0cabc03ab1d8e0e2",
-                "reference": "5fa534856ed95649d67c0eab0cabc03ab1d8e0e2",
-                "shasum": ""
-            },
-            "require": {
-                "bacon/bacon-qr-code": "^3.0",
-                "php": "^8.4"
-            },
-            "require-dev": {
-                "endroid/quality": "dev-main",
-                "ext-gd": "*",
-                "khanamiryan/qrcode-detector-decoder": "^2.0.3",
-                "setasign/fpdf": "^1.8.2"
-            },
-            "suggest": {
-                "ext-gd": "Enables you to write PNG images",
-                "khanamiryan/qrcode-detector-decoder": "Enables you to use the image validator",
-                "roave/security-advisories": "Makes sure package versions with known security issues are not installed",
-                "setasign/fpdf": "Enables you to use the PDF writer"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-main": "6.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Endroid\\QrCode\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Jeroen van den Enden",
-                    "email": "info@endroid.nl"
-                }
-            ],
-            "description": "Endroid QR Code",
-            "homepage": "https://github.com/endroid/qr-code",
-            "keywords": [
-                "code",
-                "endroid",
-                "php",
-                "qr",
-                "qrcode"
-            ],
-            "support": {
-                "issues": "https://github.com/endroid/qr-code/issues",
-                "source": "https://github.com/endroid/qr-code/tree/6.1.3"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/endroid",
-                    "type": "github"
-                }
-            ],
-            "time": "2026-02-05T07:01:58+00:00"
         },
         {
             "name": "evenement/evenement",
@@ -3163,89 +3091,6 @@
             "time": "2024-09-04T18:46:31+00:00"
         },
         {
-            "name": "nativephp/mobile",
-            "version": "3.3.4",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/NativePHP/mobile-air.git",
-                "reference": "ddf704d743364de259b59849331aa94253b95cab"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/NativePHP/mobile-air/zipball/ddf704d743364de259b59849331aa94253b95cab",
-                "reference": "ddf704d743364de259b59849331aa94253b95cab",
-                "shasum": ""
-            },
-            "require": {
-                "endroid/qr-code": "^6.0.9",
-                "ext-dom": "*",
-                "ext-simplexml": "*",
-                "guzzlehttp/guzzle": "^7.9",
-                "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0",
-                "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
-                "laravel/prompts": "^0.1.1|^0.2|^0.3",
-                "php": "^8.3",
-                "react/datagram": "^1.10",
-                "spatie/laravel-package-tools": "^1.14.0",
-                "workerman/workerman": "^4.1"
-            },
-            "require-dev": {
-                "larastan/larastan": "^2.0",
-                "laravel/pint": "^1.0",
-                "nunomaduro/collision": "^7.9",
-                "orchestra/testbench": "^8.18",
-                "pestphp/pest": "^2.7|^3.0|^4.0",
-                "pestphp/pest-plugin-arch": "^2.0",
-                "pestphp/pest-plugin-laravel": "^2.0",
-                "phpstan/extension-installer": "^1.1",
-                "phpstan/phpstan-deprecation-rules": "^1.0",
-                "phpstan/phpstan-phpunit": "^1.0",
-                "spatie/laravel-ray": "^1.26"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Native\\Mobile\\NativeServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Native\\Mobile\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Simon Hamp",
-                    "email": "simon@nativephp.com",
-                    "role": "Co-founder"
-                },
-                {
-                    "name": "Shane Rosenthal",
-                    "email": "shane@nativephp.com",
-                    "role": "Co-founder"
-                }
-            ],
-            "description": "NativePHP for Mobile",
-            "homepage": "https://nativephp.com/mobile",
-            "keywords": [
-                "android",
-                "ios",
-                "laravel",
-                "nativephp"
-            ],
-            "support": {
-                "issues": "https://github.com/NativePHP/mobile-air/issues",
-                "source": "https://github.com/NativePHP/mobile-air/tree/3.3.4"
-            },
-            "time": "2026-05-09T20:16:30+00:00"
-        },
-        {
             "name": "nesbot/carbon",
             "version": "3.11.4",
             "source": {
@@ -4871,87 +4716,6 @@
                 }
             ],
             "time": "2022-11-30T15:59:55+00:00"
-        },
-        {
-            "name": "react/datagram",
-            "version": "v1.10.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/reactphp/datagram.git",
-                "reference": "9236e1f5a67a6029be17d551e9858c487836c301"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/reactphp/datagram/zipball/9236e1f5a67a6029be17d551e9858c487836c301",
-                "reference": "9236e1f5a67a6029be17d551e9858c487836c301",
-                "shasum": ""
-            },
-            "require": {
-                "evenement/evenement": "^3.0 || ^2.0 || ^1.0",
-                "php": ">=5.3",
-                "react/dns": "^1.13",
-                "react/event-loop": "^1.2",
-                "react/promise": "^3.2 || ^2.1 || ^1.2"
-            },
-            "require-dev": {
-                "phpunit/phpunit": "^9.6 || ^5.7 || ^4.8.36",
-                "react/async": "^4.3 || ^3 || ^2"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "React\\Datagram\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Christian Lück",
-                    "email": "christian@clue.engineering",
-                    "homepage": "https://clue.engineering/"
-                },
-                {
-                    "name": "Cees-Jan Kiewiet",
-                    "email": "reactphp@ceesjankiewiet.nl",
-                    "homepage": "https://wyrihaximus.net/"
-                },
-                {
-                    "name": "Jan Sorgalla",
-                    "email": "jsorgalla@gmail.com",
-                    "homepage": "https://sorgalla.com/"
-                },
-                {
-                    "name": "Chris Boden",
-                    "email": "cboden@gmail.com",
-                    "homepage": "https://cboden.dev/"
-                }
-            ],
-            "description": "Event-driven UDP datagram socket client and server for ReactPHP",
-            "homepage": "https://github.com/reactphp/datagram",
-            "keywords": [
-                "Socket",
-                "async",
-                "client",
-                "datagram",
-                "dgram",
-                "reactphp",
-                "server",
-                "udp"
-            ],
-            "support": {
-                "issues": "https://github.com/reactphp/datagram/issues",
-                "source": "https://github.com/reactphp/datagram/tree/v1.10.0"
-            },
-            "funding": [
-                {
-                    "url": "https://opencollective.com/reactphp",
-                    "type": "open_collective"
-                }
-            ],
-            "time": "2024-09-06T11:22:35+00:00"
         },
         {
             "name": "react/dns",
@@ -8341,69 +8105,6 @@
                 }
             ],
             "time": "2026-04-26T05:33:54+00:00"
-        },
-        {
-            "name": "workerman/workerman",
-            "version": "v4.2.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/walkor/workerman.git",
-                "reference": "cafb5a43d93d7d30a16b32a57948581cca993562"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/walkor/workerman/zipball/cafb5a43d93d7d30a16b32a57948581cca993562",
-                "reference": "cafb5a43d93d7d30a16b32a57948581cca993562",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=8.0"
-            },
-            "suggest": {
-                "ext-event": "For better performance. "
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Workerman\\": "./"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "walkor",
-                    "email": "walkor@workerman.net",
-                    "homepage": "http://www.workerman.net",
-                    "role": "Developer"
-                }
-            ],
-            "description": "An asynchronous event driven PHP framework for easily building fast, scalable network applications.",
-            "homepage": "http://www.workerman.net",
-            "keywords": [
-                "asynchronous",
-                "event-loop"
-            ],
-            "support": {
-                "email": "walkor@workerman.net",
-                "forum": "http://wenda.workerman.net/",
-                "issues": "https://github.com/walkor/workerman/issues",
-                "source": "https://github.com/walkor/workerman",
-                "wiki": "http://doc.workerman.net/"
-            },
-            "funding": [
-                {
-                    "url": "https://opencollective.com/workerman",
-                    "type": "open_collective"
-                },
-                {
-                    "url": "https://www.patreon.com/walkor",
-                    "type": "patreon"
-                }
-            ],
-            "time": "2024-11-24T11:45:37+00:00"
         }
     ],
     "packages-dev": [

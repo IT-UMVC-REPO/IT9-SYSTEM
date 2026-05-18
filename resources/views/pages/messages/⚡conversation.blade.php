@@ -217,8 +217,8 @@
                 <div class="absolute z-20 h-36 w-28 touch-none overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-950 shadow-xl"
                     x-bind:style="callPreviewStyle()" x-on:mousedown.prevent="startPreviewDrag($event)" x-on:touchstart.prevent="startPreviewDrag($event)">
                     <video id="conversation-call-local-video" autoplay muted playsinline
-                        x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                        class="h-full w-full scale-x-[-1] bg-neutral-950 object-cover transition-opacity duration-200"></video>
+                        x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                        class="h-full w-full bg-neutral-950 object-cover transition-opacity duration-200"></video>
                     <div
                         x-cloak
                         x-show="cameraDisabled"
@@ -260,13 +260,17 @@
                     <template x-if="callStatus !== 'incoming'">
                         <div class="flex items-center gap-3 rounded-full bg-white/60 px-5 py-3 backdrop-blur-md dark:bg-black/60">
                             <button type="button" x-on:click="toggleMicrophone()"
-                                x-bind:class="microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                                x-bind:disabled="! hasMicrophone"
+                                x-bind:title="hasMicrophone ? @js(__('Toggle microphone')) : @js(__('No microphone detected'))"
+                                x-bind:class="! hasMicrophone ? 'cursor-not-allowed bg-red-500/10 text-red-300 opacity-60' : (microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20')"
                                 class="relative flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle microphone') }}">
                                 <flux:icon.microphone variant="mini" />
-                                <span x-cloak x-show="microphoneMuted" class="absolute h-7 w-0.5 rotate-45 rounded-full bg-red-400"></span>
+                                <span x-cloak x-show="microphoneMuted || ! hasMicrophone" class="absolute h-7 w-0.5 rotate-45 rounded-full bg-red-400"></span>
                             </button>
                             <button type="button" x-on:click="toggleCamera()"
-                                x-bind:class="cameraDisabled ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                                x-bind:disabled="! hasCamera || screenSharing"
+                                x-bind:title="hasCamera ? (screenSharing ? @js(__('Stop sharing to use camera')) : @js(__('Toggle camera'))) : @js(__('No camera detected'))"
+                                x-bind:class="! hasCamera || screenSharing ? 'cursor-not-allowed bg-red-500/10 text-red-300 opacity-60' : (cameraDisabled ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20')"
                                 class="flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle camera') }}">
                                 <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
                                 <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
@@ -278,37 +282,33 @@
                                 aria-label="{{ __('Share screen') }}">
                                 <flux:icon.computer-desktop variant="mini" />
                             </button>
-                            <div class="relative flex items-center" x-data="{ showVolume: false }">
-                                <button type="button" x-on:click="showVolume = !showVolume" 
+                            <div class="relative flex items-center" x-data="{ showVolume: false }" x-on:keydown.escape.window="showVolume = false">
+                                <button type="button" x-on:click.stop="showVolume = !showVolume"
                                     x-bind:class="showVolume ? 'bg-[var(--brand-600)] text-white' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
                                     class="flex h-12 w-12 items-center justify-center rounded-full transition shadow-sm" aria-label="{{ __('Speaker volume') }}">
                                     <template x-if="volume > 0"><flux:icon.speaker-wave variant="mini" /></template>
                                     <template x-if="volume == 0"><flux:icon.speaker-x-mark variant="mini" /></template>
                                 </button>
                                 
-                                <div x-cloak x-show="showVolume" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" x-on:click.away="showVolume = false" 
-                                    class="absolute bottom-full left-1/2 mb-6 flex h-48 w-14 -translate-x-1/2 flex-col items-center justify-between rounded-[2rem] bg-white/95 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10">
-                                    <div class="relative h-full w-2.5 rounded-full bg-neutral-100 dark:bg-white/10">
-                                        <!-- Progress Fill -->
-                                        <div class="absolute bottom-0 w-full rounded-full bg-[var(--brand-600)] transition-all duration-150 ease-out"
-                                            x-bind:style="`height: ${volume * 100}%`"></div>
-                                        
-                                        <!-- Thumb Dot -->
-                                        <div class="absolute left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white bg-[var(--brand-600)] shadow-xl transition-all duration-150 ease-out pointer-events-none"
-                                            x-bind:style="`bottom: calc(${volume * 100}% - 10px)`"></div>
-                                        
-                                        <!-- Interactive Range Input (Invisible) -->
-                                        <input type="range" min="0" max="1" step="0.01" x-model="volume"
-                                            class="absolute inset-x-[-12px] inset-y-0 z-20 w-[calc(100%+24px)] cursor-pointer opacity-0"
-                                            style="-webkit-appearance: slider-vertical; appearance: slider-vertical; writing-mode: bt-lr;"
-                                            orient="vertical">
-                                    </div>
-
-                                    <div class="mt-3 flex flex-col items-center">
-                                        <span class="text-[10px] font-bold text-neutral-500 dark:text-neutral-400" x-text="Math.round(volume * 100) + '%'"></span>
+                                <div x-cloak x-show="showVolume" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-3" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-3" x-on:click.outside="showVolume = false" x-on:click.stop
+                                    class="absolute bottom-full left-1/2 mb-4 flex w-48 -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-2xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10">
+                                    <flux:icon.speaker-wave variant="micro" class="h-4 w-4 text-neutral-500 dark:text-zinc-300" />
+                                    <input type="range" min="0" max="1" step="0.01" x-model.number="volume"
+                                        class="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--brand-600)]">
+                                    <div class="w-9 text-right text-[10px] font-bold text-neutral-500 dark:text-neutral-400">
+                                        <span x-text="Math.round(volume * 100) + '%'"></span>
                                     </div>
                                 </div>
                             </div>
+                            <button type="button"
+                                x-cloak
+                                x-show="callStatus === 'active' && isPipSupported()"
+                                x-on:click="enterPip()"
+                                class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
+                                title="{{ __('Picture in picture') }}"
+                                aria-label="{{ __('Picture in picture') }}">
+                                <flux:icon.squares-2x2 variant="mini" />
+                            </button>
                             <button type="button" x-on:click="endCall(callStatus === 'calling' ? 'Call cancelled.' : 'Call ended.')" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600" aria-label="{{ __('End call') }}">
                                 <flux:icon.phone-x-mark variant="solid" />
                             </button>
@@ -532,11 +532,18 @@
 
                                         @if (! $isDeleted && $isOwnMessage)
                                             <div class="flex flex-col gap-1 opacity-0 transition group-hover:opacity-100">
-                                            @if ($isOwnMessage)
-                                                <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
-                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                <button type="button" wire:click.stop="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Pin message') }}">
+                                                    <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
-                                            @endif
+                                                <button type="button" x-on:click.stop='const updated = window.prompt(@js(__('Edit message')), @js($message['content'] ?? '')); if (updated !== null && updated.trim() !== "") { $wire.editMessage({{ $message['id'] }}, updated); }' class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Edit message') }}">
+                                                    <flux:icon.pencil-square variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                                <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <span wire:loading.remove wire:target="deleteMessage({{ $message['id'] }}, true)">
+                                                        <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <span wire:loading wire:target="deleteMessage({{ $message['id'] }}, true)" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                                                </button>
                                             </div>
                                         @endif
                                     </div>

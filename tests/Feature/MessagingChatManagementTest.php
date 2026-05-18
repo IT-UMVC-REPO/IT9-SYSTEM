@@ -80,3 +80,26 @@ test('direct messages can be edited pinned deleted and unsent with realtime even
     Event::assertDispatched(MessageUpdated::class);
     Event::assertDispatched(MessageThreadUpdated::class);
 });
+
+test('inbox actions can archive and delete direct chats', function () {
+    $viewer = User::factory()->create();
+    $archivedContact = User::factory()->create(['name' => 'Archive Contact']);
+    $deletedContact = User::factory()->create(['name' => 'Delete Contact']);
+
+    createDirectChatMessage($archivedContact, $viewer, 'Archive this thread');
+    createDirectChatMessage($deletedContact, $viewer, 'Delete this thread');
+
+    Livewire::actingAs($viewer)
+        ->test('messages.conversation-sidebar')
+        ->call('archiveDirectThread', $archivedContact->getKey())
+        ->call('deleteDirectThread', $deletedContact->getKey());
+
+    expect(ChatParticipantState::withTrashed()
+        ->where('user_id', $viewer->getKey())
+        ->where('direct_user_id', $archivedContact->getKey())
+        ->value('archived_at'))->not->toBeNull()
+        ->and(ChatParticipantState::withTrashed()
+            ->where('user_id', $viewer->getKey())
+            ->where('direct_user_id', $deletedContact->getKey())
+            ->first()?->trashed())->toBeTrue();
+});

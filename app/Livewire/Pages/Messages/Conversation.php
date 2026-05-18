@@ -8,6 +8,7 @@ use App\Enums\VideoCallStatus;
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\MessageAttachment;
+use App\Models\MessagePin;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\VideoCall;
@@ -275,6 +276,21 @@ class Conversation extends Component
         return is_array($latestOwnMessage) ? (int) $latestOwnMessage['id'] : null;
     }
 
+    #[Computed]
+    public function pinnedMessages(): Collection
+    {
+        $firstUserId = min((int) auth()->id(), $this->otherUserId);
+        $secondUserId = max((int) auth()->id(), $this->otherUserId);
+
+        return MessagePin::query()
+            ->where('direct_user_one_id', $firstUserId)
+            ->where('direct_user_two_id', $secondUserId)
+            ->with('pinnable')
+            ->latest('pinned_at')
+            ->limit(3)
+            ->get();
+    }
+
     public function messageDateLabel(Message $message): string
     {
         if ($message->created_at?->isToday()) {
@@ -382,6 +398,7 @@ class Conversation extends Component
             ->withTrashed()
             ->with(['sender:id,name,profile_image', 'order:id,order_status', 'attachments'])
             ->latest('created_at')
+            ->latest('id')
             ->limit(100)
             ->get()
             ->sortBy('created_at')

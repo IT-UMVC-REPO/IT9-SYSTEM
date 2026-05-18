@@ -6,6 +6,7 @@ use App\Models\GroupMessage;
 use App\Models\ChatParticipantState;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\ChatParticipantStateService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -40,6 +41,40 @@ new class extends Component
     public function displayNameFor(User $user): string
     {
         return $user->nicknameFor((int) auth()->id()) ?? $user->name;
+    }
+
+    public function archiveDirectThread(int $directUserId): void
+    {
+        app(ChatParticipantStateService::class)->archive(ChatParticipantState::forDirect(auth()->user(), $directUserId));
+
+        unset($this->threads);
+    }
+
+    public function deleteDirectThread(int $directUserId): void
+    {
+        app(ChatParticipantStateService::class)->delete(ChatParticipantState::forDirect(auth()->user(), $directUserId));
+
+        unset($this->threads);
+    }
+
+    public function archiveGroupThread(int $groupId): void
+    {
+        ConversationGroupMember::query()
+            ->where('group_id', $groupId)
+            ->where('user_id', auth()->id())
+            ->update(['archived_at' => now()]);
+
+        unset($this->threads);
+    }
+
+    public function deleteGroupThread(int $groupId): void
+    {
+        ConversationGroupMember::query()
+            ->where('group_id', $groupId)
+            ->where('user_id', auth()->id())
+            ->delete();
+
+        unset($this->threads);
     }
 
     /**
@@ -151,6 +186,7 @@ new class extends Component
         $userId = (int) auth()->id();
         $memberships = ConversationGroupMember::query()
             ->where('user_id', auth()->id())
+            ->whereNull('archived_at')
             ->with([
                 'group.memberUsers:id,name,profile_image',
                 'group.latestMessage.sender:id,name',
@@ -193,6 +229,7 @@ new class extends Component
                     'label' => null,
                     'time' => $latestMessage?->timeAgo() ?? $membership->joined_at?->diffForHumans(),
                     'unread_count' => $membership->marked_unread_at !== null ? max(1, (int) ($unreadCounts[$membership->group_id] ?? 0)) : (int) ($unreadCounts[$membership->group_id] ?? 0),
+                    'avatar_url' => $group?->avatar_url,
                     'group' => $group,
                 ];
             })
@@ -234,9 +271,13 @@ new class extends Component
                         ])
                     >
                         @if ($isGroup)
-                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
-                                <i class="fa-solid fa-user-group text-sm"></i>
-                            </span>
+                            @if (filled($thread['avatar_url'] ?? null))
+                                <img src="{{ $thread['avatar_url'] }}" alt="{{ $thread['title'] }}" class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-stone-200 dark:ring-white/10" loading="lazy">
+                            @else
+                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
+                                    <i class="fa-solid fa-user-group text-sm"></i>
+                                </span>
+                            @endif
                         @else
                             <div
                                 @class([
@@ -292,6 +333,15 @@ new class extends Component
                                     {{ __('Order context: :status', ['status' => Str::headline($thread['order_status'])]) }}
                                 </p>
                             @endif
+
+                            <div class="mt-3 flex items-center gap-1">
+                                <button type="button" wire:click.prevent.stop="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 transition hover:bg-stone-100 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-white" aria-label="{{ __('Archive chat') }}">
+                                    <flux:icon.archive-box variant="micro" class="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" wire:click.prevent.stop="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}" wire:confirm="{{ __('Delete this chat from your inbox?') }}" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-400/10 dark:hover:text-rose-300" aria-label="{{ __('Delete chat') }}">
+                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                </button>
+                            </div>
                         </div>
                     </a>
                 @endforeach

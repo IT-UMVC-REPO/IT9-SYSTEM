@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Concerns\HasStorageImage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +29,7 @@ use Illuminate\Support\Str;
 ])]
 class ConversationGroup extends Model
 {
-    use HasFactory;
+    use HasFactory, HasStorageImage;
     use SoftDeletes;
 
     /**
@@ -48,6 +50,11 @@ class ConversationGroup extends Model
     public function members(): HasMany
     {
         return $this->hasMany(ConversationGroupMember::class, 'group_id');
+    }
+
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->resolveNullablePublicImageUrl($this->avatar_path));
     }
 
     public function messages(): HasMany

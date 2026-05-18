@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'group_id',
@@ -43,6 +44,19 @@ class ConversationGroupMember extends Model
             'marked_unread_at' => 'immutable_datetime',
             'deleted_at' => 'immutable_datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(fn (self $member): mixed => $member->forgetBroadcastMembershipCache());
+        static::deleted(fn (self $member): mixed => $member->forgetBroadcastMembershipCache());
+        static::restored(fn (self $member): mixed => $member->forgetBroadcastMembershipCache());
+        static::forceDeleted(fn (self $member): mixed => $member->forgetBroadcastMembershipCache());
+    }
+
+    public function forgetBroadcastMembershipCache(): void
+    {
+        Cache::forget("broadcast:group-member:{$this->group_id}:{$this->user_id}");
     }
 
     public function group(): BelongsTo

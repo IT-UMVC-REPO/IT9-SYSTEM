@@ -16,12 +16,18 @@ class GroupManagementService
     {
         $this->authorizeAdmin($actor, $group);
 
-        $group->forceFill([
+        $updates = [
             'name' => mb_substr((string) ($attributes['name'] ?? $group->name), 0, 120),
             'description' => filled($attributes['description'] ?? null) ? mb_substr((string) $attributes['description'], 0, 500) : null,
             'max_members' => $attributes['max_members'] ?? null,
             'approval_required' => (bool) ($attributes['approval_required'] ?? false),
-        ])->save();
+        ];
+
+        if (array_key_exists('avatar_path', $attributes)) {
+            $updates['avatar_path'] = $attributes['avatar_path'];
+        }
+
+        $group->forceFill($updates)->save();
 
         $this->audit($actor, $group, 'updated group details', ['fields' => array_keys($attributes)]);
         event(MessageThreadUpdated::group($group, 'group.updated'));

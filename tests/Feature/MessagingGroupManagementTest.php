@@ -7,7 +7,10 @@ use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
 use App\Models\MessagePin;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 function createManagedMessagingGroup(User $owner, array $members = [], array $overrides = []): ConversationGroup
@@ -70,6 +73,54 @@ test('group admins can manage group details members nicknames limits and invites
         ->and($group->members()->where('user_id', $member->getKey())->value('nickname'))->toBe('Kuya Ramon');
 
     Event::assertDispatched(MessageThreadUpdated::class);
+});
+
+test('group admins can upload and replace the group photo', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create();
+    $group = createManagedMessagingGroup($owner);
+
+    Livewire::actingAs($owner)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->set('groupAvatarUpload', UploadedFile::fake()->createWithContent(
+            'crew.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII='),
+        ))
+        ->call('saveGroupDetails')
+        ->assertHasNoErrors();
+
+    $group->refresh();
+
+    expect($group->avatar_path)->toStartWith('group-avatars/')
+        ->and(Storage::disk('public')->exists($group->avatar_path))->toBeTrue();
+});
+
+test('group membership mutations invalidate broadcast membership cache entries', function () {
+    $admin = User::factory()->create();
+    $member = User::factory()->create();
+    $newMember = User::factory()->create();
+    $group = createManagedMessagingGroup($admin, [$member]);
+    $newMemberCacheKey = "broadcast:group-member:{$group->getKey()}:{$newMember->getKey()}";
+    $memberCacheKey = "broadcast:group-member:{$group->getKey()}:{$member->getKey()}";
+
+    Cache::put($newMemberCacheKey, false, now()->addMinute());
+
+    Livewire::actingAs($admin)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->call('addMember', $newMember->getKey());
+
+    expect(Cache::get($newMemberCacheKey))->toBeNull()
+        ->and(userBelongsToConversationGroup($newMember->getKey(), $group->getKey()))->toBeTrue();
+
+    Cache::put($memberCacheKey, true, now()->addMinute());
+
+    Livewire::actingAs($admin)
+        ->test('pages::messages.group-conversation', ['groupId' => $group->getKey()])
+        ->call('removeMember', $member->getKey());
+
+    expect(Cache::get($memberCacheKey))->toBeNull()
+        ->and(userBelongsToConversationGroup($member->getKey(), $group->getKey()))->toBeFalse();
 });
 
 test('group owners can transfer ownership and leaving auto promotes the oldest member', function () {

@@ -481,7 +481,6 @@ test('deleted chat messages are inert tombstones and invite links copy without s
     expect($conversation)
         ->toContain('pointer-events-none rounded-2xl bg-stone-100')
         ->toContain('@if (! $isDeleted && $attachments->isNotEmpty())')
-        ->not->toContain('aria-label="{{ __(\'Pin message\') }}"')
         ->not->toContain('aria-label="{{ __(\'Copy message\') }}"')
         ->and($groupConversation)
         ->toContain('x-on:copy-invite-link.window="copyInviteLink($event.detail.url)"')
@@ -489,9 +488,49 @@ test('deleted chat messages are inert tombstones and invite links copy without s
         ->toContain('@if (! $isDeleted && $attachments->isNotEmpty())')
         ->toContain('{{ __(\'Copy invite\') }}')
         ->not->toContain('?invite=\'.$this->group->invite_token')
-        ->not->toContain('aria-label="{{ __(\'Pin message\') }}"')
         ->not->toContain('aria-label="{{ __(\'Copy message\') }}"')
         ->and($groupComponent)
         ->toContain("Flux::toast(variant: 'success', text: __('Invite Link Copied'))")
         ->toContain("\$this->dispatch('copy-invite-link'");
+});
+
+test('round three chat controls expose edit pin inbox archive and group profile actions', function () {
+    $conversation = uiPolishBlade('views/pages/messages/*conversation.blade.php', 'group-conversation');
+    $groupConversation = uiPolishBlade('views/pages/messages/*group-conversation.blade.php');
+    $sidebar = uiPolishBlade('views/components/messages/*conversation-sidebar.blade.php');
+    $groupComponent = file_get_contents(app_path('Livewire/Pages/Messages/GroupConversation.php'));
+
+    expect($conversation)
+        ->toContain('wire:click.stop="pinMessage')
+        ->toContain('$wire.editMessage')
+        ->toContain('wire:loading.remove')
+        ->toContain("wire:target=\"deleteMessage({{ \$message['id'] }}, true)\"")
+        ->and($groupConversation)
+        ->toContain('wire:click="pinMessage')
+        ->toContain('$wire.editMessage')
+        ->toContain('wire:model="groupAvatarUpload"')
+        ->toContain('wire:change="setMemberNickname')
+        ->toContain("wire:target=\"deleteMessage({{ \$message['id'] }}, true)\"")
+        ->and($groupComponent)
+        ->toContain('public mixed $groupAvatarUpload = null;')
+        ->toContain("'avatar_path' => \$avatarPath")
+        ->and($sidebar)
+        ->toContain('archiveDirectThread')
+        ->toContain('deleteDirectThread')
+        ->toContain('archiveGroupThread')
+        ->toContain('deleteGroupThread');
+});
+
+test('mobile shell integration has been removed from the application', function () {
+    $needle = 'native'.'php';
+    $composer = file_get_contents(base_path('composer.json'));
+    $lock = file_get_contents(base_path('composer.lock'));
+
+    expect(file_exists(config_path($needle.'.php')))->toBeFalse()
+        ->and(file_exists(base_path('native')))->toBeFalse()
+        ->and(file_exists(base_path($needle.'.lock')))->toBeFalse()
+        ->and(is_dir(base_path($needle)))->toBeFalse()
+        ->and(file_exists(base_path('tests/Feature/NativePhpConfigurationTest.php')))->toBeFalse()
+        ->and(mb_strtolower($composer))->not->toContain($needle)
+        ->and(mb_strtolower($lock))->not->toContain($needle);
 });

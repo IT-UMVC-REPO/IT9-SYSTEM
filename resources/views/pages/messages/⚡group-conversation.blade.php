@@ -249,8 +249,8 @@
 
                 <video id="group-call-local-background-video" autoplay muted playsinline
                     x-cloak x-show="remoteParticipants.length === 0"
-                    x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                    class="absolute inset-0 h-full w-full scale-x-[-1] bg-neutral-950 object-cover brightness-[0.55] blur-2xl transition-opacity duration-200"></video>
+                    x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                    class="absolute inset-0 h-full w-full bg-neutral-950 object-cover brightness-[0.55] blur-2xl transition-opacity duration-200"></video>
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_34%),linear-gradient(180deg,_rgba(4,7,12,0.72),_rgba(4,7,12,0.96))]"></div>
 
                 <div class="absolute inset-0 z-10"
@@ -266,11 +266,11 @@
                     }"
                     x-init="updateViewport(); window.addEventListener('resize', () => { updateViewport(); })"
                 >
-                    <div x-cloak x-show="! isMobileViewport" class="h-full w-full p-4 pb-32 pt-24" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight) + ' gap: 12px;'">
-                        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30" x-cloak x-show="remoteParticipants.length > 0">
+                    <div x-cloak x-show="! isMobileViewport" class="relative h-full w-full p-4 pb-32 pt-24" x-bind:style="gridStyle(remoteParticipants.length, viewportWidth, viewportHeight) + ' gap: 12px;'">
+                        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30" x-cloak x-show="remoteParticipants.length > 0 && participantFullscreenId === null">
                             <video id="group-call-local-grid-video" autoplay muted playsinline
-                                x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                                class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
+                                x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                                class="relative z-10 h-full w-full object-cover transition-opacity duration-200"></video>
                             <div
                                 x-cloak
                                 x-show="cameraDisabled"
@@ -292,7 +292,9 @@
                         </div>
 
                         <template x-for="participant in remoteParticipants" :key="participant.id">
-                            <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30">
+                            <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl shadow-black/30 transition-all"
+                                x-on:click="handleParticipantTap(participant.id)"
+                                x-bind:class="participantFullscreenClass(participant.id)">
                                 <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
                                     <span class="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white"
                                         style="background-color: var(--brand-600);"
@@ -308,7 +310,7 @@
                             </div>
                         </template>
 
-                        <div class="flex h-full min-h-0 flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-8 text-center shadow-2xl shadow-black/30 backdrop-blur" x-cloak x-show="remoteParticipants.length === 0">
+                        <div class="flex h-full min-h-0 flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-8 text-center shadow-2xl shadow-black/30 backdrop-blur" x-cloak x-show="remoteParticipants.length === 0 && participantFullscreenId === null">
                             <div class="relative flex h-24 w-24 items-center justify-center">
                                 <span class="absolute inline-flex h-full w-full animate-ping rounded-full border-2 border-green-500/50"></span>
                                 <span class="relative flex h-20 w-20 items-center justify-center rounded-full bg-green-600 text-2xl font-bold text-white">{{ auth()->user()->initials() }}</span>
@@ -327,6 +329,7 @@
                             </div>
                             <video wire:ignore id="group-call-speaker-video" autoplay playsinline
                                 x-effect="$el.volume = Number(volume);"
+                                x-on:click="speakerParticipant() && handleParticipantTap(speakerParticipant().id)"
                                 x-cloak x-show="remoteParticipants.length > 0"
                                 x-bind:class="speakerParticipant() && remoteVideoActive.get(speakerParticipant().id) ? 'opacity-100' : 'opacity-0'"
                                 class="relative z-10 h-full w-full object-cover transition-opacity duration-300"></video>
@@ -346,8 +349,8 @@
                             <div class="flex w-max gap-2">
                                 <div class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-white/30 bg-neutral-900 shadow-lg">
                                     <video id="group-call-local-thumbnail-video" autoplay muted playsinline
-                                        x-bind:class="cameraDisabled ? 'opacity-0' : 'opacity-100'"
-                                        class="relative z-10 h-full w-full scale-x-[-1] object-cover transition-opacity duration-200"></video>
+                                        x-bind:class="cameraDisabled ? 'opacity-0' : (screenSharing ? 'opacity-100' : 'opacity-100 scale-x-[-1]')"
+                                        class="relative z-10 h-full w-full object-cover transition-opacity duration-200"></video>
                                     <div
                                         x-cloak
                                         x-show="cameraDisabled"
@@ -369,7 +372,7 @@
                                 </div>
 
                                 <template x-for="participant in thumbnailParticipants()" :key="participant.id">
-                                    <button type="button" x-on:click="selectSpeaker(participant.id)" class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-neutral-900 shadow-lg transition focus:border-[var(--brand-400)]">
+                                    <button type="button" x-on:click="handleParticipantTap(participant.id)" class="relative h-24 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/15 bg-neutral-900 shadow-lg transition focus:border-[var(--brand-400)]">
                                         <div class="absolute inset-0 z-0 flex flex-col items-center justify-center bg-neutral-800">
                                             <span class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
                                                 style="background-color: var(--brand-600);"
@@ -415,13 +418,17 @@
                 <div class="absolute bottom-0 left-0 right-0 z-30 flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 sm:px-4">
                     <div class="flex max-w-[calc(100vw-1.5rem)] items-center gap-2 overflow-x-auto rounded-[2rem] border border-white/10 bg-black/55 px-3 py-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:gap-3 sm:px-5">
                         <button type="button" x-on:click="toggleMicrophone()"
-                            x-bind:class="microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                            x-bind:disabled="! hasMicrophone"
+                            x-bind:title="hasMicrophone ? @js(__('Toggle microphone')) : @js(__('No microphone detected'))"
+                            x-bind:class="! hasMicrophone ? 'cursor-not-allowed bg-red-500/10 text-red-300 opacity-60' : (microphoneMuted ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20')"
                             class="relative flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle microphone') }}">
                             <flux:icon.microphone variant="mini" />
-                            <span x-cloak x-show="microphoneMuted" class="absolute h-7 w-0.5 rotate-45 rounded-full bg-red-400"></span>
+                            <span x-cloak x-show="microphoneMuted || ! hasMicrophone" class="absolute h-7 w-0.5 rotate-45 rounded-full bg-red-400"></span>
                         </button>
                         <button type="button" x-on:click="toggleCamera()"
-                            x-bind:class="cameraDisabled ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
+                            x-bind:disabled="! hasCamera || screenSharing"
+                            x-bind:title="hasCamera ? (screenSharing ? @js(__('Stop sharing to use camera')) : @js(__('Toggle camera'))) : @js(__('No camera detected'))"
+                            x-bind:class="! hasCamera || screenSharing ? 'cursor-not-allowed bg-red-500/10 text-red-300 opacity-60' : (cameraDisabled ? 'bg-red-500/20 text-red-400' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20')"
                             class="flex h-12 w-12 items-center justify-center rounded-full transition" aria-label="{{ __('Toggle camera') }}">
                             <template x-if="! cameraDisabled"><flux:icon.video-camera variant="mini" /></template>
                             <template x-if="cameraDisabled"><flux:icon.video-camera-slash variant="mini" /></template>
@@ -440,37 +447,33 @@
                             aria-label="{{ __('Switch camera') }}">
                             <i class="fa-solid fa-camera-rotate text-sm"></i>
                         </button>
-                        <div class="relative flex items-center" x-data="{ showVolume: false }">
-                            <button type="button" x-on:click="showVolume = !showVolume" 
+                        <div class="relative flex items-center" x-data="{ showVolume: false }" x-on:keydown.escape.window="showVolume = false">
+                            <button type="button" x-on:click.stop="showVolume = !showVolume"
                                 x-bind:class="showVolume ? 'bg-[var(--brand-600)] text-white' : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20'"
                                 class="flex h-12 w-12 items-center justify-center rounded-full transition shadow-sm" aria-label="{{ __('Speaker volume') }}">
                                 <template x-if="volume > 0"><flux:icon.speaker-wave variant="mini" /></template>
                                 <template x-if="volume == 0"><flux:icon.speaker-x-mark variant="mini" /></template>
                             </button>
                             
-                            <div x-cloak x-show="showVolume" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4" x-on:click.away="showVolume = false" 
-                                class="absolute bottom-full left-1/2 mb-6 flex h-48 w-14 -translate-x-1/2 flex-col items-center justify-between rounded-[2rem] bg-white/95 p-4 shadow-2xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10">
-                                <div class="relative h-full w-2.5 rounded-full bg-neutral-100 dark:bg-white/10">
-                                    <!-- Progress Fill -->
-                                    <div class="absolute bottom-0 w-full rounded-full bg-[var(--brand-600)] transition-all duration-150 ease-out"
-                                        x-bind:style="`height: ${volume * 100}%`"></div>
-                                    
-                                    <!-- Thumb Dot -->
-                                    <div class="absolute left-1/2 h-5 w-5 -translate-x-1/2 rounded-full border-2 border-white bg-[var(--brand-600)] shadow-xl transition-all duration-150 ease-out pointer-events-none"
-                                        x-bind:style="`bottom: calc(${volume * 100}% - 10px)`"></div>
-                                    
-                                    <!-- Interactive Range Input (Invisible) -->
-                                    <input type="range" min="0" max="1" step="0.01" x-model="volume"
-                                        class="absolute inset-x-[-12px] inset-y-0 z-20 w-[calc(100%+24px)] cursor-pointer opacity-0"
-                                        style="-webkit-appearance: slider-vertical; appearance: slider-vertical; writing-mode: bt-lr;"
-                                        orient="vertical">
-                                </div>
-
-                                <div class="mt-3 flex flex-col items-center">
-                                    <span class="text-[10px] font-bold text-neutral-500 dark:text-neutral-400" x-text="Math.round(volume * 100) + '%'"></span>
+                            <div x-cloak x-show="showVolume" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-3" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-3" x-on:click.outside="showVolume = false" x-on:click.stop
+                                class="absolute bottom-full left-1/2 mb-4 flex w-48 -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 px-4 py-3 shadow-2xl backdrop-blur-xl ring-1 ring-black/5 dark:bg-zinc-900/95 dark:ring-white/10">
+                                <flux:icon.speaker-wave variant="micro" class="h-4 w-4 text-neutral-500 dark:text-zinc-300" />
+                                <input type="range" min="0" max="1" step="0.01" x-model.number="volume"
+                                    class="h-2 min-w-0 flex-1 cursor-pointer accent-[var(--brand-600)]">
+                                <div class="w-9 text-right text-[10px] font-bold text-neutral-500 dark:text-neutral-400">
+                                    <span x-text="Math.round(volume * 100) + '%'"></span>
                                 </div>
                             </div>
                         </div>
+                        <button type="button"
+                            x-cloak
+                            x-show="callStatus === 'active' && isPipSupported()"
+                            x-on:click="enterPip()"
+                            class="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-200 text-neutral-700 transition hover:bg-neutral-300 dark:bg-white/15 dark:text-white dark:hover:bg-white/20"
+                            title="{{ __('Picture in picture') }}"
+                            aria-label="{{ __('Picture in picture') }}">
+                            <flux:icon.squares-2x2 variant="mini" />
+                        </button>
                         <button type="button" x-on:click="leaveCall()" x-bind:disabled="endingCall" class="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600 disabled:pointer-events-none disabled:opacity-60" aria-label="{{ __('End call') }}">
                             <flux:icon.phone-x-mark variant="solid" />
                         </button>
@@ -593,7 +596,8 @@
                                 $attachments = collect($message['attachments'] ?? []);
                                 $reactions = collect($message['reactions'] ?? []);
                                 $isDeleted = filled($message['deleted_at'] ?? null) || filled($message['deleted_for_everyone_at'] ?? null);
-                                $canModerateMessage = $isOwnMessage || $this->isGroupAdmin();
+                                $canPinMessage = $this->isGroupAdmin();
+                                $canModerateMessage = $isOwnMessage || $canPinMessage;
                             @endphp
 
                             @if ($startsNewDate)
@@ -674,9 +678,22 @@
                                             <button type="button" wire:click="setReplyTo({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Reply') }}">
                                                 <flux:icon.arrow-uturn-left variant="micro" class="h-3.5 w-3.5" />
                                             </button>
+                                            @if ($canPinMessage)
+                                                <button type="button" wire:click="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Pin message') }}">
+                                                    <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
+                                            @if ($isOwnMessage)
+                                                <button type="button" x-on:click.stop='const updated = window.prompt(@js(__('Edit message')), @js($message['content'] ?? '')); if (updated !== null && updated.trim() !== "") { $wire.editMessage({{ $message['id'] }}, updated); }' class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Edit message') }}">
+                                                    <flux:icon.pencil-square variant="micro" class="h-3.5 w-3.5" />
+                                                </button>
+                                            @endif
                                             @if ($canModerateMessage)
-                                                <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
-                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <span wire:loading.remove wire:target="deleteMessage({{ $message['id'] }}, true)">
+                                                        <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <span wire:loading wire:target="deleteMessage({{ $message['id'] }}, true)" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
                                                 </button>
                                             @endif
                                         </div>
@@ -967,6 +984,21 @@
 
                         @if ($this->isGroupAdmin())
                             <form wire:submit="saveGroupDetails" class="mt-5 space-y-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                                <div class="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 dark:border-white/10 dark:bg-zinc-900/70">
+                                    @if ($this->group->avatar_url)
+                                        <img src="{{ $this->group->avatar_url }}" alt="{{ $groupDisplayName }}" class="h-12 w-12 rounded-full object-cover ring-2 ring-stone-200 dark:ring-white/10" loading="lazy">
+                                    @else
+                                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
+                                            <i class="fa-solid fa-user-group"></i>
+                                        </span>
+                                    @endif
+                                    <flux:field class="min-w-0 flex-1">
+                                        <flux:label>{{ __('Photo') }}</flux:label>
+                                        <flux:input type="file" wire:model="groupAvatarUpload" accept="image/png,image/jpeg,image/webp,image/gif" />
+                                        <flux:error name="groupAvatarUpload" />
+                                    </flux:field>
+                                </div>
+
                                 <div class="grid gap-3">
                                     <flux:field>
                                         <flux:label>{{ __('Name') }}</flux:label>
@@ -1018,6 +1050,9 @@
                                     <div class="min-w-0 flex-1">
                                         <p class="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-100">{{ $this->memberDisplayName($member->user) }}</p>
                                         <p class="text-xs uppercase tracking-[0.16em] text-neutral-400 dark:text-zinc-500">{{ $member->role }} · {{ $member->joined_at?->format('M j') }}</p>
+                                        @if ($this->isGroupAdmin())
+                                            <input type="text" value="{{ $member->nickname }}" wire:change="setMemberNickname({{ $member->user_id }}, $event.target.value)" placeholder="{{ __('Nickname') }}" class="mt-2 w-full rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 outline-none transition focus:border-[var(--brand-500)] focus:ring-2 focus:ring-[var(--brand-200)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:ring-[var(--brand-500)]/20">
+                                        @endif
                                     </div>
                                     @if ($this->isGroupAdmin() && $member->user_id !== auth()->id())
                                         <div class="flex shrink-0 items-center gap-1">

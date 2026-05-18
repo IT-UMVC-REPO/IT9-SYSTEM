@@ -39,6 +39,12 @@ class ChatParticipantStateService
         return $state;
     }
 
+    public function delete(ChatParticipantState $state): void
+    {
+        $state->delete();
+        $this->broadcastState($state, 'chat.deleted');
+    }
+
     public function markUnread(ChatParticipantState $state): ChatParticipantState
     {
         $state->forceFill(['marked_unread_at' => now()])->save();

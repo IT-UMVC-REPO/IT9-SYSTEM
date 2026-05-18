@@ -364,6 +364,19 @@ test('messages are marked read when the conversation is opened', function () {
     expect($message->fresh()->is_read)->toBeTrue();
 });
 
+test('direct message performance indexes cover thread loading and read marking', function () {
+    $migration = collect(glob(database_path('migrations/*_add_missing_direct_message_performance_indexes.php')))
+        ->map(fn (string $path): string => file_get_contents($path))
+        ->first();
+
+    expect($migration)->not->toBeNull()
+        ->and($migration)
+        ->toContain('messages_direct_thread_created_id_idx')
+        ->toContain("['sender_id', 'receiver_id', 'created_at', 'id']")
+        ->toContain('messages_direct_read_marking_idx')
+        ->toContain("['receiver_id', 'sender_id', 'is_read', 'created_at']");
+});
+
 test('users cannot message themselves', function () {
     $user = User::factory()->create();
 

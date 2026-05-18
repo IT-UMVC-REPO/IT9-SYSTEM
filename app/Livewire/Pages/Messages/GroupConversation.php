@@ -9,6 +9,7 @@ use App\Models\ConversationGroupMember;
 use App\Models\GroupMessage;
 use App\Models\GroupMessageAttachment;
 use App\Models\GroupMessageReaction;
+use App\Models\MessagePin;
 use App\Models\User;
 use App\Models\VideoCall;
 use App\Services\GroupManagementService;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -58,6 +60,8 @@ class GroupConversation extends Component
     public ?int $maxMembers = null;
 
     public bool $approvalRequired = false;
+
+    public mixed $groupAvatarUpload = null;
 
     public ?int $replyingToId = null;
 
@@ -227,13 +231,32 @@ class GroupConversation extends Component
 
     public function saveGroupDetails(): void
     {
+        $this->validate([
+            'groupName' => ['nullable', 'string', 'max:120'],
+            'groupDescription' => ['nullable', 'string', 'max:500'],
+            'maxMembers' => ['nullable', 'integer', 'min:2', 'max:500'],
+            'groupAvatarUpload' => ['nullable', File::image()->max(2048)],
+        ]);
+
+        $avatarPath = $this->group->avatar_path;
+
+        if ($this->groupAvatarUpload !== null) {
+            $avatarPath = $this->groupAvatarUpload->store('group-avatars', 'public');
+
+            if (filled($this->group->avatar_path) && ! Str::startsWith($this->group->avatar_path, ['http://', 'https://', '//'])) {
+                Storage::disk('public')->delete($this->group->avatar_path);
+            }
+        }
+
         app(GroupManagementService::class)->updateDetails(auth()->user(), $this->group, [
             'name' => $this->groupName,
             'description' => $this->groupDescription,
             'max_members' => $this->maxMembers,
             'approval_required' => $this->approvalRequired,
+            'avatar_path' => $avatarPath,
         ]);
 
+        $this->groupAvatarUpload = null;
         unset($this->group);
         $this->dispatch('message-sent');
     }
@@ -459,6 +482,17 @@ class GroupConversation extends Component
             ->with('user:id,name,profile_image')
             ->orderByRaw("role = 'admin' desc")
             ->orderBy('joined_at')
+            ->get();
+    }
+
+    #[Computed]
+    public function pinnedMessages(): Collection
+    {
+        return MessagePin::query()
+            ->where('conversation_group_id', $this->groupId)
+            ->with('pinnable')
+            ->latest('pinned_at')
+            ->limit(3)
             ->get();
     }
 
