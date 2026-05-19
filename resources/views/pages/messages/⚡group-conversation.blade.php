@@ -689,11 +689,8 @@
                                                 </button>
                                             @endif
                                             @if ($canModerateMessage)
-                                                <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
-                                                    <span wire:loading.remove wire:target="deleteMessage({{ $message['id'] }}, true)">
-                                                        <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
-                                                    </span>
-                                                    <span wire:loading wire:target="deleteMessage({{ $message['id'] }}, true)" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                                                <button type="button" wire:click="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" data-no-loading-spinner class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
                                             @endif
                                         </div>
@@ -925,9 +922,8 @@
                                 <flux:textarea x-ref="messageInput" x-model="draftMessage" :label="__('Message')" label:sr-only rows="1" :placeholder="__('Write a message...')" x-on:input="resizeMessageInput()" x-on:paste="handlePaste($event)" x-on:keydown="onKeydown()" x-on:keydown.enter.prevent="sendNow()" class="scrollbar-none resize-none overflow-hidden rounded-2xl bg-neutral-100 px-4 py-2 text-sm dark:bg-neutral-800" style="min-height: 2.5rem; max-height: 7.5rem; overflow-y: auto;" />
                             </div>
 
-                            <button type="submit" x-bind:disabled="! hasDraft()" wire:loading.attr="disabled" wire:target="send,attachmentUploads" x-bind:class="hasDraft() ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
-                                <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>
-                                <span wire:loading wire:target="send" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                            <button type="submit" x-bind:disabled="! hasDraft()" wire:loading.attr="disabled" wire:target="send,attachmentUploads" data-no-loading-spinner x-bind:class="hasDraft() ? 'bg-[var(--brand-600)] text-white shadow-sm hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed" aria-label="{{ __('Send') }}">
+                                <flux:icon.arrow-up variant="mini" />
                             </button>
                         </div>
 

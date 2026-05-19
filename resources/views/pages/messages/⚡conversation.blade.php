@@ -531,18 +531,15 @@
                                         </div>
 
                                         @if (! $isDeleted && $isOwnMessage)
-                                            <div class="flex flex-col gap-1 opacity-0 transition group-hover:opacity-100">
+                                            <div class="flex flex-row items-center gap-1 opacity-0 transition group-hover:opacity-100">
                                                 <button type="button" wire:click.stop="pinMessage({{ $message['id'] }})" class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Pin message') }}">
                                                     <flux:icon.bookmark variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
                                                 <button type="button" x-on:click.stop='const updated = window.prompt(@js(__('Edit message')), @js($message['content'] ?? '')); if (updated !== null && updated.trim() !== "") { $wire.editMessage({{ $message['id'] }}, updated); }' class="flex h-7 w-7 items-center justify-center rounded-full border border-stone-200 bg-white text-neutral-500 shadow-sm transition hover:text-neutral-900 dark:border-white/10 dark:bg-zinc-800 dark:hover:text-white" aria-label="{{ __('Edit message') }}">
                                                     <flux:icon.pencil-square variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
-                                                <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
-                                                    <span wire:loading.remove wire:target="deleteMessage({{ $message['id'] }}, true)">
-                                                        <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
-                                                    </span>
-                                                    <span wire:loading wire:target="deleteMessage({{ $message['id'] }}, true)" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                                                <button type="button" wire:click.stop="deleteMessage({{ $message['id'] }}, true)" wire:confirm="{{ __('Delete this message for everyone?') }}" wire:loading.attr="disabled" wire:target="deleteMessage({{ $message['id'] }}, true)" data-no-loading-spinner class="flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 shadow-sm transition hover:text-rose-700 disabled:cursor-wait disabled:opacity-70 dark:border-rose-400/30 dark:bg-zinc-800 dark:text-rose-300" aria-label="{{ __('Delete message') }}">
+                                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
                                                 </button>
                                             </div>
                                         @endif
@@ -718,9 +715,9 @@
                                 x-bind:disabled="! hasDraft()"
                                 x-bind:class="hasDraft() ? 'bg-[var(--brand-600)] text-white hover:bg-[var(--brand-700)]' : 'bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500'"
                                 wire:loading.attr="disabled" wire:target="send,attachmentUploads"
+                                data-no-loading-spinner
                                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed">
-                                <span wire:loading.remove wire:target="send"><flux:icon.arrow-up variant="mini" /></span>
-                                <span wire:loading wire:target="send" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                                <flux:icon.arrow-up variant="mini" />
                             </button>
                         </div>
 
