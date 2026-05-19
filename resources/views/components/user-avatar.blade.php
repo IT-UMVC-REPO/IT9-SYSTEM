@@ -36,14 +36,14 @@
             x-on:error="imageFailed = true"
             src="{{ $profileImageUrl }}"
             alt="{{ $userName ?? __('User') }}"
-            class="{{ $sizeClasses }} rounded-full object-cover shadow-sm ring-2 ring-stone-200 transition-opacity duration-300 dark:ring-white/10"
+            class="{{ $sizeClasses }} avatar-frame rounded-full object-cover shadow-sm ring-2 ring-stone-200 transition duration-300 dark:ring-white/10"
             loading="lazy"
         >
-        <span x-cloak x-show="imageFailed" class="{{ $sizeClasses }} brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm">
+        <span x-cloak x-show="imageFailed" class="{{ $sizeClasses }} avatar-frame brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm ring-2 ring-stone-200 transition duration-300 dark:ring-white/10">
             {{ filled($initials) ? $initials : '?' }}
         </span>
     @else
-        <span class="{{ $sizeClasses }} brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm">
+        <span class="{{ $sizeClasses }} avatar-frame brand-logo-badge flex items-center justify-center rounded-full font-semibold shadow-sm ring-2 ring-stone-200 transition duration-300 dark:ring-white/10">
             {{ filled($initials) ? $initials : '?' }}
         </span>
     @endif

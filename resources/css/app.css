@@ -254,10 +254,10 @@
         pointer-events: none;
     }
 
-    button[data-loading]:not([data-flux-button])::after,
-    [role='button'][data-loading]:not([data-flux-button])::after,
-    .brand-button-primary[data-loading]::after,
-    .brand-button-secondary[data-loading]::after {
+    button[data-loading]:not([data-flux-button]):not([data-no-loading-spinner])::after,
+    [role='button'][data-loading]:not([data-flux-button]):not([data-no-loading-spinner])::after,
+    .brand-button-primary[data-loading]:not([data-no-loading-spinner])::after,
+    .brand-button-secondary[data-loading]:not([data-no-loading-spinner])::after {
         content: '';
         width: 1em;
         height: 1em;

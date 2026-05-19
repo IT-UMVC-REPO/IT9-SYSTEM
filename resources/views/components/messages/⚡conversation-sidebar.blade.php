@@ -19,11 +19,13 @@ new class extends Component
 
     public ?int $activeGroupId = null;
 
+    public bool $showArchived = false;
+
     #[Computed]
     public function threads(): Collection
     {
-        return $this->directThreads()
-            ->concat($this->groupThreads())
+        return $this->directThreads($this->showArchived)
+            ->concat($this->groupThreads($this->showArchived))
             ->sortBy([
                 ['is_pinned', 'desc'],
                 ['latest_at', 'desc'],
@@ -50,6 +52,13 @@ new class extends Component
         unset($this->threads);
     }
 
+    public function unarchiveDirectThread(int $directUserId): void
+    {
+        app(ChatParticipantStateService::class)->unarchive(ChatParticipantState::forDirect(auth()->user(), $directUserId));
+
+        unset($this->threads);
+    }
+
     public function deleteDirectThread(int $directUserId): void
     {
         app(ChatParticipantStateService::class)->delete(ChatParticipantState::forDirect(auth()->user(), $directUserId));
@@ -67,12 +76,36 @@ new class extends Component
         unset($this->threads);
     }
 
+    public function unarchiveGroupThread(int $groupId): void
+    {
+        ConversationGroupMember::query()
+            ->where('group_id', $groupId)
+            ->where('user_id', auth()->id())
+            ->update(['archived_at' => null]);
+
+        unset($this->threads);
+    }
+
     public function deleteGroupThread(int $groupId): void
     {
         ConversationGroupMember::query()
             ->where('group_id', $groupId)
             ->where('user_id', auth()->id())
             ->delete();
+
+        unset($this->threads);
+    }
+
+    public function showInboxThreads(): void
+    {
+        $this->showArchived = false;
+
+        unset($this->threads);
+    }
+
+    public function showArchivedThreads(): void
+    {
+        $this->showArchived = true;
 
         unset($this->threads);
     }
@@ -92,7 +125,7 @@ new class extends Component
             ->all();
     }
 
-    private function directThreads(): Collection
+    private function directThreads(bool $archived): Collection
     {
         $userId = (int) auth()->id();
         $latestMessageIds = DB::query()
@@ -137,12 +170,20 @@ new class extends Component
                 'order:id,order_status',
             ])
             ->get()
-            ->map(function (Message $message) use ($states, $unreadCounts): ?array {
+            ->map(function (Message $message) use ($states, $unreadCounts, $archived): ?array {
                 $otherUser = $this->otherParticipant($message);
                 $state = $states->get($otherUser->getKey());
                 $displayName = $this->displayNameFor($otherUser);
 
-                if ($state?->deleted_at !== null || $state?->archived_at !== null) {
+                if ($state?->deleted_at !== null) {
+                    return null;
+                }
+
+                if ($archived && $state?->archived_at === null) {
+                    return null;
+                }
+
+                if (! $archived && $state?->archived_at !== null) {
                     return null;
                 }
 
@@ -181,12 +222,16 @@ new class extends Component
             ->values();
     }
 
-    private function groupThreads(): Collection
+    private function groupThreads(bool $archived): Collection
     {
         $userId = (int) auth()->id();
         $memberships = ConversationGroupMember::query()
             ->where('user_id', auth()->id())
-            ->whereNull('archived_at')
+            ->when(
+                $archived,
+                fn ($query) => $query->whereNotNull('archived_at'),
+                fn ($query) => $query->whereNull('archived_at'),
+            )
             ->with([
                 'group.memberUsers:id,name,profile_image',
                 'group.latestMessage.sender:id,name',
@@ -218,10 +263,12 @@ new class extends Component
                     $preview = $senderName.': '.Str::limit($latestMessage->content ?: __('Attachment'), 54);
                 }
 
+                $title = $group?->displayName((int) auth()->id()) ?? __('Group conversation');
+
                 return [
                     'type' => 'group',
                     'id' => $group?->getKey(),
-                    'title' => $group?->displayName((int) auth()->id()) ?? __('Group conversation'),
+                    'title' => $title,
                     'preview' => $preview,
                     'latest_at' => $latestMessage?->created_at ?? $membership->joined_at,
                     'is_pinned' => $membership->pinned_at !== null,
@@ -230,6 +277,11 @@ new class extends Component
                     'time' => $latestMessage?->timeAgo() ?? $membership->joined_at?->diffForHumans(),
                     'unread_count' => $membership->marked_unread_at !== null ? max(1, (int) ($unreadCounts[$membership->group_id] ?? 0)) : (int) ($unreadCounts[$membership->group_id] ?? 0),
                     'avatar_url' => $group?->avatar_url,
+                    'initials' => collect(explode(' ', $title))
+                        ->filter()
+                        ->map(fn (string $part): string => mb_substr($part, 0, 1))
+                        ->take(2)
+                        ->implode(''),
                     'group' => $group,
                 ];
             })
@@ -250,112 +302,136 @@ new class extends Component
     x-on:destroy="destroy()"
     class="h-full"
 >
-    @if ($this->threads->isNotEmpty())
-        <section class="brand-panel flex h-full flex-col overflow-hidden p-3 sm:p-4">
+    <section class="brand-panel flex h-full flex-col overflow-hidden p-3 sm:p-4">
+            <div class="mb-3 flex shrink-0 rounded-full bg-stone-100 p-1 text-xs font-semibold dark:bg-white/5">
+                <button type="button" wire:click="showInboxThreads" data-no-loading-spinner @class([
+                    'flex-1 rounded-full px-3 py-1.5 transition',
+                    'bg-white text-neutral-900 shadow-sm dark:bg-zinc-800 dark:text-white' => ! $showArchived,
+                    'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-white' => $showArchived,
+                ])>
+                    {{ __('Inbox') }}
+                </button>
+                <button type="button" wire:click="showArchivedThreads" data-no-loading-spinner @class([
+                    'flex-1 rounded-full px-3 py-1.5 transition',
+                    'bg-white text-neutral-900 shadow-sm dark:bg-zinc-800 dark:text-white' => $showArchived,
+                    'text-neutral-500 hover:text-neutral-900 dark:text-zinc-400 dark:hover:text-white' => ! $showArchived,
+                ])>
+                    {{ __('Archived') }}
+                </button>
+            </div>
+
             <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                @foreach ($this->threads as $thread)
+                @forelse ($this->threads as $thread)
                     @php($isGroup = $thread['type'] === 'group')
                     @php($isActiveConversation = ! $isGroup && $activeConversationUserId === $thread['id'])
                     @php($isActiveGroup = $isGroup && $activeGroupId === $thread['id'])
 
-                    <a
-                        href="{{ $isGroup ? route('messages.group', ['groupId' => $thread['id']]) : route('messages.conversation', ['conversationReference' => $thread['id']]) }}"
+                    <article
                         wire:key="message-thread-{{ $thread['type'] }}-{{ $thread['id'] }}"
                         wire:transition
-                        wire:navigate
-                        @if ($isActiveConversation || $isActiveGroup) aria-current="page" @endif
                         @class([
-                            'flex items-start gap-4 rounded-[1.5rem] border px-4 py-4 transition-all duration-200',
+                            'rounded-[1.5rem] border px-4 py-4 transition-all duration-200',
                             'border-[var(--brand-200)] bg-[color:color-mix(in_oklab,var(--brand-50),white_30%)] dark:border-[var(--brand-500)] dark:bg-zinc-800/90' => $isActiveConversation || $isActiveGroup,
                             'border-transparent hover:border-stone-200 hover:bg-stone-50/70 dark:hover:border-white/10 dark:hover:bg-white/5' => ! $isActiveConversation && ! $isActiveGroup,
                         ])
                     >
-                        @if ($isGroup)
-                            @if (filled($thread['avatar_url'] ?? null))
-                                <img src="{{ $thread['avatar_url'] }}" alt="{{ $thread['title'] }}" class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-stone-200 dark:ring-white/10" loading="lazy">
+                        <a
+                            href="{{ $isGroup ? route('messages.group', ['groupId' => $thread['id']]) : route('messages.conversation', ['conversationReference' => $thread['id']]) }}"
+                            wire:navigate
+                            @if ($isActiveConversation || $isActiveGroup) aria-current="page" @endif
+                            class="flex min-w-0 items-start gap-4"
+                        >
+                            @if ($isGroup)
+                                @if (filled($thread['avatar_url'] ?? null))
+                                    <img src="{{ $thread['avatar_url'] }}" alt="{{ $thread['title'] }}" class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-stone-200 dark:ring-white/10" loading="lazy">
+                                @else
+                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-sm font-semibold text-[var(--brand-700)] ring-2 ring-stone-200 dark:bg-white/10 dark:text-[var(--brand-300)] dark:ring-white/10">
+                                        {{ filled($thread['initials'] ?? null) ? $thread['initials'] : '?' }}
+                                    </span>
+                                @endif
                             @else
-                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-100)] text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">
-                                    <i class="fa-solid fa-user-group text-sm"></i>
+                                <span
+                                    class="shrink-0 rounded-full [&_.avatar-frame]:transition [&_.avatar-frame]:duration-200 [&_.avatar-frame]:ring-stone-200 [&_.avatar-frame]:dark:ring-white/10"
+                                    x-bind:class="initialized && isOnline(@js($thread['id'])) ? '[&_.avatar-frame]:ring-emerald-400 [&_.avatar-frame]:dark:ring-emerald-300' : ''"
+                                >
+                                    <x-user-avatar :user="$thread['user']" size="md" />
                                 </span>
                             @endif
-                        @else
-                            <div
-                                @class([
-                                    'shrink-0 rounded-full p-0.5 transition',
-                                    'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-zinc-950' => false,
-                                ])
-                                x-bind:class="initialized && isOnline(@js($thread['id'])) ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-white dark:ring-emerald-300 dark:ring-offset-zinc-950' : ''"
-                                title="{{ __('Online') }}"
-                            >
-                                <x-user-avatar :user="$thread['user']" size="md" />
-                            </div>
-                        @endif
 
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <p class="truncate text-base font-semibold text-neutral-900 dark:text-zinc-100">{{ $thread['title'] }}</p>
-                                    @if ($thread['is_pinned'] || $thread['is_muted'] || filled($thread['label']))
-                                        <div class="mt-1 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide">
-                                            @if ($thread['is_pinned'])
-                                                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{{ __('Pinned') }}</span>
-                                            @endif
-                                            @if ($thread['is_muted'])
-                                                <span class="rounded-full bg-stone-100 px-2 py-0.5 text-neutral-500 dark:bg-white/10 dark:text-zinc-300">{{ __('Muted') }}</span>
-                                            @endif
-                                            @if (filled($thread['label']))
-                                                <span class="rounded-full bg-[var(--brand-50)] px-2 py-0.5 text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">{{ $thread['label'] }}</span>
-                                            @endif
-                                        </div>
-                                    @endif
-                                    <p @class([
-                                        'mt-1 truncate text-sm',
-                                        'font-semibold text-neutral-900 dark:text-zinc-100' => $thread['unread_count'] > 0,
-                                        'text-neutral-500 dark:text-zinc-400' => $thread['unread_count'] === 0,
-                                    ])>
-                                        {{ $thread['preview'] }}
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-base font-semibold text-neutral-900 dark:text-zinc-100">{{ $thread['title'] }}</p>
+                                        @if ($thread['is_pinned'] || $thread['is_muted'] || filled($thread['label']))
+                                            <div class="mt-1 flex flex-wrap gap-1.5 text-[10px] font-semibold uppercase tracking-wide">
+                                                @if ($thread['is_pinned'])
+                                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">{{ __('Pinned') }}</span>
+                                                @endif
+                                                @if ($thread['is_muted'])
+                                                    <span class="rounded-full bg-stone-100 px-2 py-0.5 text-neutral-500 dark:bg-white/10 dark:text-zinc-300">{{ __('Muted') }}</span>
+                                                @endif
+                                                @if (filled($thread['label']))
+                                                    <span class="rounded-full bg-[var(--brand-50)] px-2 py-0.5 text-[var(--brand-700)] dark:bg-white/10 dark:text-[var(--brand-300)]">{{ $thread['label'] }}</span>
+                                                @endif
+                                            </div>
+                                        @endif
+                                        <p @class([
+                                            'mt-1 truncate text-sm',
+                                            'font-semibold text-neutral-900 dark:text-zinc-100' => $thread['unread_count'] > 0,
+                                            'text-neutral-500 dark:text-zinc-400' => $thread['unread_count'] === 0,
+                                        ])>
+                                            {{ $thread['preview'] }}
+                                        </p>
+                                    </div>
+
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        @if ($thread['unread_count'] > 0)
+                                            <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                                                {{ $thread['unread_count'] > 99 ? '99+' : $thread['unread_count'] }}
+                                            </span>
+                                        @endif
+
+                                        <span class="text-xs font-medium text-neutral-400 dark:text-zinc-500">{{ $thread['time'] }}</span>
+                                    </div>
+                                </div>
+
+                                @if (! $isGroup && filled($thread['order_status']))
+                                    <p class="mt-2 text-xs font-medium text-neutral-400 dark:text-zinc-500">
+                                        {{ __('Order context: :status', ['status' => Str::headline($thread['order_status'])]) }}
                                     </p>
-                                </div>
-
-                                <div class="flex shrink-0 items-center gap-2">
-                                    @if ($thread['unread_count'] > 0)
-                                        <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--brand-600)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                                            {{ $thread['unread_count'] > 99 ? '99+' : $thread['unread_count'] }}
-                                        </span>
-                                    @endif
-
-                                    <span class="text-xs font-medium text-neutral-400 dark:text-zinc-500">{{ $thread['time'] }}</span>
-                                </div>
+                                @endif
                             </div>
+                        </a>
 
-                            @if (! $isGroup && filled($thread['order_status']))
-                                <p class="mt-2 text-xs font-medium text-neutral-400 dark:text-zinc-500">
-                                    {{ __('Order context: :status', ['status' => Str::headline($thread['order_status'])]) }}
-                                </p>
+                        <div class="mt-3 flex items-center gap-2 pl-14 text-[11px] font-semibold">
+                            @if ($showArchived)
+                                <button type="button" wire:click.stop="{{ $isGroup ? 'unarchiveGroupThread('.$thread['id'].')' : 'unarchiveDirectThread('.$thread['id'].')' }}" wire:loading.attr="disabled" wire:target="{{ $isGroup ? 'unarchiveGroupThread('.$thread['id'].')' : 'unarchiveDirectThread('.$thread['id'].')' }}" data-no-loading-spinner class="rounded-full px-2.5 py-1 text-[var(--brand-700)] transition hover:bg-[var(--brand-50)] disabled:cursor-wait disabled:opacity-60 dark:text-[var(--brand-300)] dark:hover:bg-white/10" aria-label="{{ __('Unarchive chat') }}">
+                                    <span wire:loading.remove wire:target="{{ $isGroup ? 'unarchiveGroupThread('.$thread['id'].')' : 'unarchiveDirectThread('.$thread['id'].')' }}">{{ __('Unarchive') }}</span>
+                                    <span wire:loading wire:target="{{ $isGroup ? 'unarchiveGroupThread('.$thread['id'].')' : 'unarchiveDirectThread('.$thread['id'].')' }}">{{ __('Restoring') }}</span>
+                                </button>
+                            @else
+                                <button type="button" wire:click.stop="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}" wire:loading.attr="disabled" wire:target="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}" data-no-loading-spinner class="rounded-full px-2.5 py-1 text-neutral-500 transition hover:bg-stone-100 hover:text-neutral-800 disabled:cursor-wait disabled:opacity-60 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white" aria-label="{{ __('Archive chat') }}">
+                                    <span wire:loading.remove wire:target="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}">{{ __('Archive') }}</span>
+                                    <span wire:loading wire:target="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}">{{ __('Archiving') }}</span>
+                                </button>
                             @endif
 
-                            <div class="mt-3 flex items-center gap-1">
-                                <button type="button" wire:click.prevent.stop="{{ $isGroup ? 'archiveGroupThread('.$thread['id'].')' : 'archiveDirectThread('.$thread['id'].')' }}" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-neutral-400 transition hover:bg-stone-100 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-white" aria-label="{{ __('Archive chat') }}">
-                                    <flux:icon.archive-box variant="micro" class="h-3.5 w-3.5" />
-                                </button>
-                                <button type="button" wire:click.prevent.stop="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}" wire:confirm="{{ __('Delete this chat from your inbox?') }}" class="inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-400 transition hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-400/10 dark:hover:text-rose-300" aria-label="{{ __('Delete chat') }}">
-                                    <flux:icon.trash variant="micro" class="h-3.5 w-3.5" />
-                                </button>
-                            </div>
+                            <button type="button" wire:click.stop="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}" wire:confirm="{{ __('Delete this chat from your inbox?') }}" wire:loading.attr="disabled" wire:target="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}" data-no-loading-spinner class="rounded-full px-2.5 py-1 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:cursor-wait disabled:opacity-60 dark:hover:bg-rose-400/10 dark:hover:text-rose-300" aria-label="{{ __('Delete chat') }}">
+                                <span wire:loading.remove wire:target="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}">{{ __('Delete') }}</span>
+                                <span wire:loading wire:target="{{ $isGroup ? 'deleteGroupThread('.$thread['id'].')' : 'deleteDirectThread('.$thread['id'].')' }}">{{ __('Deleting') }}</span>
+                            </button>
                         </div>
-                    </a>
-                @endforeach
+                    </article>
+                @empty
+                    <div class="px-3 py-12 text-center">
+                        <h2 class="brand-serif text-2xl font-bold text-neutral-900 dark:text-zinc-100">
+                            {{ $showArchived ? __('No archived chats') : __('No conversations yet') }}
+                        </h2>
+                        <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
+                            {{ $showArchived ? __('Archived chats will stay here until you restore or delete them.') : __('Start from a product or vendor page when you are ready to message a stall.') }}
+                        </p>
+                    </div>
+                @endforelse
             </div>
-        </section>
-    @else
-        <section class="brand-panel px-6 py-16 text-center">
-            <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-neutral-600 dark:text-zinc-300" style="background-color: color-mix(in oklab, var(--brand-50) 72%, white 28%);">
-                <i class="fa-regular fa-comments text-xl"></i>
-            </span>
-            <h2 class="brand-serif mt-5 text-3xl font-bold text-neutral-900 dark:text-zinc-100">{{ __('No conversations yet') }}</h2>
-            <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-neutral-500 dark:text-zinc-400">
-                {{ __('Start from a product or vendor page when you are ready to message a stall.') }}
-            </p>
-        </section>
-    @endif
+    </section>
 </div>

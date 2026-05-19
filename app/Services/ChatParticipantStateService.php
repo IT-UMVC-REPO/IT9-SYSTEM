@@ -39,6 +39,14 @@ class ChatParticipantStateService
         return $state;
     }
 
+    public function unarchive(ChatParticipantState $state): ChatParticipantState
+    {
+        $state->forceFill(['archived_at' => null])->save();
+        $this->broadcastState($state, 'chat.unarchived');
+
+        return $state;
+    }
+
     public function delete(ChatParticipantState $state): void
     {
         $state->delete();

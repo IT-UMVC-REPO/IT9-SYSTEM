@@ -3,6 +3,9 @@
 use App\Events\MessageThreadUpdated;
 use App\Events\MessageUpdated;
 use App\Models\ChatParticipantState;
+use App\Models\ConversationGroup;
+use App\Models\ConversationGroupMember;
+use App\Models\GroupMessage;
 use App\Models\Message;
 use App\Models\MessagePin;
 use App\Models\User;
@@ -101,5 +104,90 @@ test('inbox actions can archive and delete direct chats', function () {
         ->and(ChatParticipantState::withTrashed()
             ->where('user_id', $viewer->getKey())
             ->where('direct_user_id', $deletedContact->getKey())
+            ->first()?->trashed())->toBeTrue();
+});
+
+test('archived direct chats move to archived view and can be restored before delete', function () {
+    $viewer = User::factory()->create();
+    $archivedContact = User::factory()->create(['name' => 'Recoverable Vendor']);
+    $deletedContact = User::factory()->create(['name' => 'Disposable Vendor']);
+
+    createDirectChatMessage($archivedContact, $viewer, 'Keep this thread');
+    createDirectChatMessage($deletedContact, $viewer, 'Remove this thread');
+
+    Livewire::actingAs($viewer)
+        ->test('messages.conversation-sidebar')
+        ->assertSee('Recoverable Vendor')
+        ->assertSee('Disposable Vendor')
+        ->call('archiveDirectThread', $archivedContact->getKey())
+        ->call('deleteDirectThread', $deletedContact->getKey())
+        ->assertDontSee('Recoverable Vendor')
+        ->assertDontSee('Disposable Vendor')
+        ->call('showArchivedThreads')
+        ->assertSee('Recoverable Vendor')
+        ->assertDontSee('Disposable Vendor')
+        ->call('unarchiveDirectThread', $archivedContact->getKey())
+        ->assertDontSee('Recoverable Vendor')
+        ->call('showInboxThreads')
+        ->assertSee('Recoverable Vendor')
+        ->assertDontSee('Disposable Vendor');
+
+    expect(ChatParticipantState::query()
+        ->where('user_id', $viewer->getKey())
+        ->where('direct_user_id', $archivedContact->getKey())
+        ->value('archived_at'))->toBeNull()
+        ->and(ChatParticipantState::withTrashed()
+            ->where('user_id', $viewer->getKey())
+            ->where('direct_user_id', $deletedContact->getKey())
+            ->first()?->trashed())->toBeTrue();
+});
+
+test('archived group chats are restorable while deleted group chats leave the sidebar', function () {
+    $viewer = User::factory()->create();
+    $sender = User::factory()->create();
+    $archivedGroup = ConversationGroup::factory()->create(['name' => 'Recoverable Group']);
+    $deletedGroup = ConversationGroup::factory()->create(['name' => 'Disposable Group']);
+
+    ConversationGroupMember::factory()->create([
+        'group_id' => $archivedGroup->getKey(),
+        'user_id' => $viewer->getKey(),
+        'joined_at' => now()->subMinutes(10),
+    ]);
+    ConversationGroupMember::factory()->create([
+        'group_id' => $deletedGroup->getKey(),
+        'user_id' => $viewer->getKey(),
+        'joined_at' => now()->subMinutes(10),
+    ]);
+
+    GroupMessage::factory()->create([
+        'group_id' => $archivedGroup->getKey(),
+        'sender_id' => $sender->getKey(),
+        'content' => 'Keep this group',
+    ]);
+    GroupMessage::factory()->create([
+        'group_id' => $deletedGroup->getKey(),
+        'sender_id' => $sender->getKey(),
+        'content' => 'Remove this group',
+    ]);
+
+    Livewire::actingAs($viewer)
+        ->test('messages.conversation-sidebar')
+        ->call('archiveGroupThread', $archivedGroup->getKey())
+        ->call('deleteGroupThread', $deletedGroup->getKey())
+        ->call('showArchivedThreads')
+        ->assertSee('Recoverable Group')
+        ->assertDontSee('Disposable Group')
+        ->call('unarchiveGroupThread', $archivedGroup->getKey())
+        ->call('showInboxThreads')
+        ->assertSee('Recoverable Group')
+        ->assertDontSee('Disposable Group');
+
+    expect(ConversationGroupMember::query()
+        ->where('group_id', $archivedGroup->getKey())
+        ->where('user_id', $viewer->getKey())
+        ->value('archived_at'))->toBeNull()
+        ->and(ConversationGroupMember::withTrashed()
+            ->where('group_id', $deletedGroup->getKey())
+            ->where('user_id', $viewer->getKey())
             ->first()?->trashed())->toBeTrue();
 });

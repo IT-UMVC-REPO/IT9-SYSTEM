@@ -516,9 +516,17 @@ test('round three chat controls expose edit pin inbox archive and group profile 
         ->toContain("'avatar_path' => \$avatarPath")
         ->and($sidebar)
         ->toContain('archiveDirectThread')
+        ->toContain('unarchiveDirectThread')
         ->toContain('deleteDirectThread')
         ->toContain('archiveGroupThread')
-        ->toContain('deleteGroupThread');
+        ->toContain('unarchiveGroupThread')
+        ->toContain('deleteGroupThread')
+        ->toContain('showArchivedThreads')
+        ->toContain('data-no-loading-spinner')
+        ->toContain('[&_.avatar-frame]:ring-emerald-400')
+        ->not->toContain('title="{{ __(\'Online\') }}"')
+        ->not->toContain('<flux:icon.archive-box')
+        ->not->toContain('<flux:icon.trash');
 });
 
 test('mobile shell integration has been removed from the application', function () {
